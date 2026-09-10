@@ -67,15 +67,6 @@ function AuthPage() {
     toast.success("Conta criada! Você já pode entrar.");
   }
 
-  async function google() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/simulacoes` },
-    });
-    if (error) toast.error("Falha no login com Google");
-    // On success the browser is redirected to Google; nothing else to do here.
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <Card className="w-full max-w-md">
@@ -134,14 +125,6 @@ function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
-          <div className="my-4 flex items-center gap-2">
-            <div className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs text-slate-400">ou</span>
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
-          <Button variant="outline" className="w-full" onClick={google}>
-            Continuar com Google
-          </Button>
         </CardContent>
       </Card>
     </div>
