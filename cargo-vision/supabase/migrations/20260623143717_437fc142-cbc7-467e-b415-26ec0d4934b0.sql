@@ -1,0 +1,1 @@
+ALTER TABLE public.materiais ADD COLUMN IF NOT EXISTS permite_rotacao boolean NOT NULL DEFAULT true;

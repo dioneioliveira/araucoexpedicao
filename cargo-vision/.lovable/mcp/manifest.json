@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "sdk_version": "2.0.4",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://miuuxvtxulpkxheihnwa.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "cargo-vision",
+      "version": "0.1.0",
+      "title": "Cargo Vision"
+    },
+    "tools": [
+      {
+        "name": "list_materiais",
+        "title": "Listar materiais",
+        "description": "Lista os materiais (lotes) cadastrados pelo usuário, com dimensões em cm e peso em kg.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "busca": {
+              "description": "Filtro opcional por nome ou SKU.",
+              "type": "string"
+            },
+            "limite": {
+              "description": "Máximo de registros a retornar (padrão 50).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_material",
+        "title": "Cadastrar material",
+        "description": "Cadastra um novo material (lote) com dimensões em cm e peso em kg para o usuário autenticado.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "nome": {
+              "type": "string",
+              "description": "Nome do material."
+            },
+            "sku": {
+              "description": "Código/SKU do lote.",
+              "type": "string"
+            },
+            "comprimento_cm": {
+              "type": "number",
+              "description": "Comprimento em centímetros."
+            },
+            "largura_cm": {
+              "type": "number",
+              "description": "Largura em centímetros."
+            },
+            "altura_cm": {
+              "type": "number",
+              "description": "Altura em centímetros."
+            },
+            "peso_kg": {
+              "type": "number",
+              "description": "Peso do lote em quilos."
+            },
+            "cor": {
+              "description": "Cor hex para a visualização 3D, ex: #2563eb.",
+              "type": "string"
+            },
+            "tipo_embalagem": {
+              "description": "Posição padrão do lote: pé ou deitado.",
+              "type": "string",
+              "enum": [
+                "pe",
+                "deitado"
+              ]
+            },
+            "permite_rotacao": {
+              "description": "Se o lote pode ser rotacionado na montagem.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "nome",
+            "comprimento_cm",
+            "largura_cm",
+            "altura_cm",
+            "peso_kg"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_veiculos",
+        "title": "Listar veículos",
+        "description": "Lista os veículos/containers cadastrados, com dimensões internas em cm e capacidade de peso em kg.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_simulacoes",
+        "title": "Listar simulações",
+        "description": "Lista as simulações de carga do usuário, com veículo, dimensões e limite de peso.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "limite": {
+              "description": "Máximo de registros (padrão 30).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_simulacao",
+        "title": "Detalhar simulação",
+        "description": "Retorna uma simulação com seus itens (material, dimensões, peso e quantidade).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "ID da simulação."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_simulacao",
+        "title": "Criar simulação",
+        "description": "Cria uma simulação de carga com itens (material_id + quantidade). Dimensões em cm; padrão container 40HC.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "nome": {
+              "type": "string",
+              "description": "Nome da simulação."
+            },
+            "veiculo_nome": {
+              "description": "Nome do veículo/container.",
+              "type": "string"
+            },
+            "comprimento_cm": {
+              "description": "Comprimento interno em cm.",
+              "type": "number"
+            },
+            "largura_cm": {
+              "description": "Largura interna em cm.",
+              "type": "number"
+            },
+            "altura_cm": {
+              "description": "Altura interna em cm.",
+              "type": "number"
+            },
+            "capacidade_peso_kg": {
+              "description": "Limite de peso em kg.",
+              "type": "number"
+            },
+            "itens": {
+              "description": "Itens da carga.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "material_id": {
+                    "type": "string"
+                  },
+                  "quantidade": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "material_id",
+                  "quantidade"
+                ]
+              }
+            }
+          },
+          "required": [
+            "nome"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
