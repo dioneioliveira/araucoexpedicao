@@ -1,0 +1,1 @@
+ALTER TABLE public.materiais ADD COLUMN IF NOT EXISTS tipo_embalagem text NOT NULL DEFAULT 'pe';
