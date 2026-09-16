@@ -1,0 +1,1175 @@
+<!doctype html><html><head><title>Arauco Piên - Metas Vision</title>
+<meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:dark}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#0a0e13;color:#e8edf3}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+</head><body>
+<style>
+:root{
+  --bg-void:#0a0e13;
+  --bg-panel:#12181f;
+  --bg-panel-2:#161d25;
+  --bg-raised:#1d2731;
+  --bg-raised-2:#232f3b;
+  --line:#28333f;
+  --line-soft:#1c2530;
+  --ink:#e8edf3;
+  --ink-dim:#96a4b3;
+  --ink-faint:#576675;
+  --accent:#9085e9;
+  --accent-soft:rgba(144,133,233,.16);
+  --accent-ink:#0a0e13;
+  --ind:#3987e5;
+  --ind-soft:rgba(57,135,229,.16);
+  --rev:#d9772e;
+  --rev-soft:rgba(217,119,46,.18);
+  --aqua:#22b483;
+  --yellow:#c98500;
+  --magenta:#d55181;
+  --good:#2fce6a;
+  --good-soft:rgba(47,206,106,.14);
+  --warning:#fab219;
+  --critical:#e6675f;
+  --critical-soft:rgba(230,103,95,.14);
+  --radius-s:5px;
+  --radius-m:10px;
+  --font-display:'Big Shoulders Display',sans-serif;
+  --font-ui:'IBM Plex Sans',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{margin:0;background:var(--bg-void);color:var(--ink);font-family:var(--font-ui);-webkit-font-smoothing:antialiased;}
+#app{min-height:100%;display:flex;flex-direction:column;background:
+  radial-gradient(1100px 520px at 12% -8%, rgba(144,133,233,.10), transparent 60%),
+  radial-gradient(900px 480px at 100% 0%, rgba(57,135,229,.08), transparent 55%),
+  var(--bg-void);
+}
+::selection{background:var(--accent-soft);}
+button{font-family:inherit;}
+a{color:inherit;}
+
+/* ---------- scrollbars ---------- */
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent;}
+*::-webkit-scrollbar{width:8px;height:8px;}
+*::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+
+/* ---------- topbar ---------- */
+#topbar{
+  flex:0 0 auto;display:flex;align-items:center;gap:18px;padding:0 20px;height:64px;
+  background:linear-gradient(180deg,var(--bg-panel-2),var(--bg-panel));
+  border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30;
+}
+#topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent-soft) 30%,var(--accent-soft) 70%,transparent);}
+.brand{display:flex;align-items:baseline;gap:9px;flex:0 0 auto;}
+.brand-mark{font-family:var(--font-display);font-weight:800;font-size:21px;letter-spacing:.02em;white-space:nowrap;}
+.brand-mark b{color:var(--accent);font-weight:800;}
+.brand-sub{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.09em;text-transform:uppercase;
+  border-left:1px solid var(--line);padding-left:9px;white-space:nowrap;}
+
+.month-select, .top-select{
+  appearance:none;background:var(--bg-raised);border:1px solid var(--line);color:var(--ink);
+  font-family:var(--font-mono);font-size:12px;font-weight:600;letter-spacing:.03em;
+  padding:7px 26px 7px 11px;border-radius:7px;cursor:pointer;outline:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2396a4b3' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;background-size:13px;
+  transition:border-color .15s;
+}
+.month-select:hover,.top-select:hover{border-color:var(--accent);}
+
+.topbar-spacer{flex:1 1 auto;}
+
+.import-badge{
+  display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);
+  background:var(--bg-raised);border:1px solid var(--line);border-radius:7px;padding:6px 11px;white-space:nowrap;
+}
+.import-badge b{color:var(--ink);font-weight:600;}
+.diff-pill{
+  display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;letter-spacing:.02em;
+  padding:2px 7px;border-radius:20px;background:var(--accent-soft);color:var(--accent);
+  animation:pulseIn .5s var(--ease);
+}
+@keyframes pulseIn{from{transform:scale(.85);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+.btn{
+  display:inline-flex;align-items:center;gap:7px;font-family:var(--font-ui);font-size:12.5px;font-weight:600;
+  padding:9px 15px;border-radius:8px;border:1px solid var(--line);background:var(--bg-raised);color:var(--ink);
+  cursor:pointer;transition:border-color .15s,background .15s,transform .1s;white-space:nowrap;
+}
+.btn:hover{border-color:var(--accent);background:var(--bg-raised-2);}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:linear-gradient(180deg,var(--accent),#7166d6);border-color:transparent;color:#0d0a1f;font-weight:700;}
+.btn-primary:hover{filter:brightness(1.08);}
+.btn.busy{opacity:.6;pointer-events:none;}
+.btn svg{width:15px;height:15px;flex:0 0 auto;}
+#file-input{display:none;}
+
+/* ---------- KPI strip ---------- */
+#kpi-strip{
+  flex:0 0 auto;display:flex;gap:0;padding:0 20px;background:var(--bg-panel);border-bottom:1px solid var(--line);
+  overflow-x:auto;
+}
+.kpi{
+  display:flex;flex-direction:column;justify-content:center;gap:3px;padding:14px 20px;
+  border-right:1px solid var(--line-soft);min-width:130px;flex:1 1 0;
+}
+.kpi:last-child{border-right:none;}
+.kpi-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap;}
+.kpi-value{font-family:var(--font-mono);font-size:19px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.kpi-value small{font-size:11px;font-weight:400;color:var(--ink-dim);margin-left:3px;}
+.kpi-delta{font-family:var(--font-mono);font-size:11px;font-weight:600;display:flex;align-items:center;gap:3px;}
+.kpi-delta.up{color:var(--good);}
+.kpi-delta.down{color:var(--critical);}
+.kpi-delta.flat{color:var(--ink-faint);}
+.kpi-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex:0 0 auto;}
+
+/* ---------- filters ---------- */
+#filters{
+  flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 20px;background:var(--bg-panel-2);
+  border-bottom:1px solid var(--line);flex-wrap:wrap;
+}
+.filter-label{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-right:2px;}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;
+  border:1px solid var(--line);background:var(--bg-raised);color:var(--ink-dim);cursor:pointer;
+  transition:all .15s var(--ease);user-select:none;
+}
+.chip:hover{border-color:var(--accent);color:var(--ink);}
+.chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+.search-box{
+  display:flex;align-items:center;gap:7px;background:var(--bg-raised);border:1px solid var(--line);
+  border-radius:8px;padding:7px 11px;min-width:190px;flex:0 1 240px;
+}
+.search-box svg{width:14px;height:14px;color:var(--ink-faint);flex:0 0 auto;}
+.search-box input{
+  border:none;background:transparent;outline:none;color:var(--ink);font-family:var(--font-ui);font-size:12.5px;width:100%;
+}
+.search-box input::placeholder{color:var(--ink-faint);}
+.filters-spacer{flex:1 1 auto;}
+.toggle-compare{
+  display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--ink-dim);cursor:pointer;user-select:none;
+  padding:6px 10px;border-radius:7px;border:1px solid transparent;
+}
+.toggle-compare:hover{border-color:var(--line);}
+.toggle-compare input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;}
+
+/* ---------- main layout ---------- */
+#main{flex:1 1 auto;padding:20px;display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:start;}
+@media (max-width:1080px){#main{grid-template-columns:1fr;}}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0;}
+
+.panel{
+  background:var(--bg-panel);border:1px solid var(--line);border-radius:var(--radius-m);
+  padding:18px 20px;box-shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 12px 30px -18px rgba(0,0,0,.6);
+  animation:panelIn .45s var(--ease) backwards;
+}
+@keyframes panelIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px;}
+.panel-title{font-size:13.5px;font-weight:700;color:var(--ink);letter-spacing:.01em;}
+.panel-sub{font-size:11px;color:var(--ink-faint);font-family:var(--font-mono);}
+.legend{display:flex;gap:14px;align-items:center;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-dim);font-family:var(--font-mono);}
+.legend-dot{width:9px;height:9px;border-radius:3px;flex:0 0 auto;}
+
+/* ---------- bar chart ---------- */
+.bar-list{display:flex;flex-direction:column;gap:9px;}
+.bar-row{display:grid;grid-template-columns:132px 1fr auto;gap:10px;align-items:center;}
+.bar-row-label{
+  font-size:12px;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  cursor:default;
+}
+.bar-track{position:relative;height:20px;border-radius:4px;background:var(--line-soft);overflow:hidden;}
+.bar-fill-wrap{
+  position:absolute;left:0;top:0;bottom:0;width:0;display:flex;border-radius:0 4px 4px 0;overflow:hidden;
+  transition:width 1s var(--ease);
+}
+.bar-seg{height:100%;flex:0 0 auto;transition:background-color .3s;}
+.bar-seg + .bar-seg{margin-left:2px;}
+.bar-row-value{font-family:var(--font-mono);font-size:12px;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums;min-width:64px;text-align:right;}
+.bar-row:hover .bar-row-label{color:var(--ink);}
+.bar-row:hover .bar-track{background:var(--line);}
+
+/* ---------- tooltip ---------- */
+#tooltip{
+  position:fixed;z-index:200;pointer-events:none;background:var(--bg-raised-2);border:1px solid var(--line);
+  border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--ink);box-shadow:0 10px 28px -10px rgba(0,0,0,.7);
+  opacity:0;transform:translateY(3px);transition:opacity .12s,transform .12s;max-width:260px;
+}
+#tooltip.show{opacity:1;transform:translateY(0);}
+#tooltip .tt-title{font-weight:700;margin-bottom:4px;color:var(--ink);}
+#tooltip .tt-row{display:flex;justify-content:space-between;gap:14px;color:var(--ink-dim);font-family:var(--font-mono);font-size:11px;}
+#tooltip .tt-row b{color:var(--ink);font-weight:600;}
+
+/* ---------- table ---------- */
+.table-wrap{overflow:auto;max-height:520px;border-radius:8px;border:1px solid var(--line-soft);}
+table.data-table{width:100%;border-collapse:collapse;font-size:12px;}
+table.data-table thead th{
+  position:sticky;top:0;background:var(--bg-raised);color:var(--ink-faint);font-size:10px;letter-spacing:.06em;
+  text-transform:uppercase;text-align:left;padding:9px 12px;cursor:pointer;user-select:none;white-space:nowrap;
+  border-bottom:1px solid var(--line);z-index:5;
+}
+table.data-table thead th:hover{color:var(--ink);}
+table.data-table thead th.sorted{color:var(--accent);}
+table.data-table tbody td{padding:8px 12px;border-bottom:1px solid var(--line-soft);color:var(--ink-dim);white-space:nowrap;}
+table.data-table tbody tr{transition:background .12s;}
+table.data-table tbody tr:hover{background:var(--bg-raised);}
+table.data-table tbody td.num{font-family:var(--font-mono);text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);}
+table.data-table tbody td.name{color:var(--ink);font-weight:500;}
+table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellipsis;}
+#table-diff{table-layout:fixed;}
+#table-diff th:nth-child(1),#table-diff td:nth-child(1){width:24%;}
+#table-diff th:nth-child(2),#table-diff td:nth-child(2){width:15%;}
+#table-diff th:nth-child(3),#table-diff td:nth-child(3){width:23%;}
+#table-diff th:nth-child(4),#table-diff td:nth-child(4){width:11%;}
+#table-diff th:nth-child(5),#table-diff td:nth-child(5){width:11%;}
+#table-diff th:nth-child(6),#table-diff td:nth-child(6){width:16%;}
+.tag{display:inline-block;font-family:var(--font-mono);font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.03em;}
+.tag-ind{background:var(--ind-soft);color:var(--ind);}
+.tag-rev{background:var(--rev-soft);color:var(--rev);}
+.delta{font-family:var(--font-mono);font-weight:600;display:inline-flex;align-items:center;gap:3px;}
+.delta.up{color:var(--good);}
+.delta.down{color:var(--critical);}
+.delta.new{color:var(--accent);}
+.delta.removed{color:var(--ink-faint);text-decoration:line-through;}
+.delta.flat{color:var(--ink-faint);}
+
+/* ---------- comparison / history ---------- */
+.stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.stat-chip{
+  flex:1 1 100px;background:var(--bg-raised);border:1px solid var(--line);border-radius:8px;padding:10px 12px;
+}
+.stat-chip .n{font-family:var(--font-mono);font-size:18px;font-weight:700;}
+.stat-chip .l{font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+.stat-chip.added .n{color:var(--good);}
+.stat-chip.removed .n{color:var(--critical);}
+.stat-chip.changed .n{color:var(--accent);}
+.stat-chip.unchanged .n{color:var(--ink-dim);}
+
+.history-list{display:flex;flex-direction:column;gap:8px;}
+.history-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);
+  background:var(--bg-raised);transition:border-color .15s;
+}
+.history-item.current{border-color:var(--accent);background:var(--accent-soft);}
+.history-dot{width:9px;height:9px;border-radius:50%;background:var(--ink-faint);flex:0 0 auto;}
+.history-item.current .history-dot{background:var(--accent);}
+.history-main{flex:1 1 auto;min-width:0;}
+.history-label{font-size:12px;font-weight:600;color:var(--ink);}
+.history-meta{font-size:10.5px;color:var(--ink-faint);font-family:var(--font-mono);margin-top:1px;}
+.history-total{font-family:var(--font-mono);font-size:12px;color:var(--ink-dim);white-space:nowrap;}
+
+.empty-note{font-size:12px;color:var(--ink-faint);padding:20px 6px;text-align:center;}
+
+/* ---------- import report modal ---------- */
+#import-overlay{
+  position:fixed;inset:0;background:rgba(5,7,10,.6);backdrop-filter:blur(3px);z-index:100;
+  display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;
+}
+#import-overlay.show{opacity:1;pointer-events:auto;}
+#import-modal{
+  width:min(560px,92vw);max-height:82vh;overflow:auto;background:var(--bg-panel);border:1px solid var(--line);
+  border-radius:14px;padding:22px 24px;box-shadow:0 30px 70px -20px rgba(0,0,0,.7);
+  transform:translateY(8px) scale(.98);transition:transform .22s var(--ease);
+}
+#import-overlay.show #import-modal{transform:translateY(0) scale(1);}
+#import-modal h2{margin:0 0 4px;font-size:16px;font-family:var(--font-display);font-weight:700;letter-spacing:.01em;}
+#import-modal .imr-sub{font-size:12px;color:var(--ink-faint);margin-bottom:16px;}
+#import-modal .imr-close{
+  position:absolute;margin-top:-22px;margin-left:calc(min(560px,92vw) - 40px);
+}
+.imr-close-btn{
+  position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:7px;border:1px solid var(--line);
+  background:var(--bg-raised);color:var(--ink-dim);display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.imr-close-btn:hover{color:var(--ink);border-color:var(--accent);}
+.imr-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;font-size:12.5px;}
+.imr-list li{padding:8px 10px;border-radius:6px;background:var(--bg-raised);color:var(--ink-dim);}
+.imr-list li b{color:var(--ink);}
+
+/* ---------- misc ---------- */
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+.fade-in{animation:fadeIn .35s var(--ease);}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.footer-note{padding:16px 20px 28px;text-align:center;font-size:11px;color:var(--ink-faint);}
+</style>
+
+<div id="app">
+  <div id="topbar">
+    <div class="brand">
+      <span class="brand-mark">Arauco <b>Metas</b></span>
+      <span class="brand-sub">Vendas · Vision</span>
+    </div>
+    <select id="month-select" class="month-select" title="Mês de referência (AnoMes)"></select>
+    <div class="topbar-spacer"></div>
+    <div id="import-badge" class="import-badge"></div>
+    <button class="btn btn-primary" id="import-btn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+      Importar planilha
+    </button>
+    <input type="file" id="file-input" accept=".xlsx,.xls">
+  </div>
+
+  <div id="kpi-strip"></div>
+
+  <div id="filters">
+    <span class="filter-label">Planta</span>
+    <div class="chip-row" id="chips-filial"></div>
+    <span class="filter-label">Canal</span>
+    <div class="chip-row" id="chips-canal"></div>
+    <span class="filter-label">Gerente</span>
+    <select id="select-gerente" class="top-select"></select>
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" id="search-vendedor" placeholder="Buscar vendedor ou material…">
+    </div>
+    <div class="filters-spacer"></div>
+    <label class="toggle-compare"><input type="checkbox" id="toggle-diff" checked> Destacar variações desde a importação anterior</label>
+  </div>
+
+  <div id="main">
+    <div class="col">
+      <div class="panel" style="animation-delay:.02s">
+        <div class="panel-head">
+          <span class="panel-title">Meta por planta</span>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-dot" style="background:var(--ind)"></span>Indústria</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--rev)"></span>Revenda</span>
+          </div>
+        </div>
+        <div class="bar-list" id="chart-filial"></div>
+      </div>
+
+      <div class="panel" style="animation-delay:.06s">
+        <div class="panel-head">
+          <span class="panel-title">Ranking de vendedores</span>
+          <span class="panel-sub" id="ranking-count"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="table-vendedores">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="panel" style="animation-delay:.04s">
+        <div class="panel-head"><span class="panel-title">Meta por gerente regional</span></div>
+        <div class="bar-list" id="chart-gerente"></div>
+      </div>
+
+      <div class="panel" style="animation-delay:.08s">
+        <div class="panel-head"><span class="panel-title">Meta por tipo de material</span></div>
+        <div class="bar-list" id="chart-linha"></div>
+      </div>
+
+      <div class="panel" style="animation-delay:.1s">
+        <div class="panel-head">
+          <span class="panel-title">O que mudou desde a última importação</span>
+        </div>
+        <div class="stat-row" id="diff-stats"></div>
+        <div class="table-wrap" style="max-height:280px">
+          <table class="data-table" id="table-diff">
+            <thead>
+              <tr><th>Vendedor</th><th>Planta</th><th>Material</th><th>Antes</th><th>Depois</th><th>Variação</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel" style="animation-delay:.12s">
+        <div class="panel-head">
+          <span class="panel-title">Histórico de importações</span>
+          <span class="panel-sub" id="history-count"></span>
+        </div>
+        <div class="history-list" id="history-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">Dados armazenados localmente no navegador (localStorage) · nenhuma informação sai deste dispositivo</div>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="import-overlay">
+  <div id="import-modal">
+    <button class="imr-close-btn" id="import-close" type="button" aria-label="Fechar">✕</button>
+    <h2 id="imr-title">Importação</h2>
+    <div class="imr-sub" id="imr-sub"></div>
+    <ul class="imr-list" id="imr-list"></ul>
+  </div>
+</div>
+
+<script id="seed-data" type="application/json">{"id":"imp_seed_20260916","importedAt":"2026-09-16T12:00:00.000Z","fileName":"Meta_Vendas_Setembro_2026_v2.xlsx","label":"Meta inicial (planejada)","rows":[{"key":"B12|JOÃO CASTILHO|PB23|Pnl PBO CRU|IND","anoMes":"2026/09","vendedorCode":"B12","vendedorNome":"ROBERTO CARLOS","vendedorFull":"B12 - ROBERTO CARLOS","gerente":"JOÃO CASTILHO","filialCode":"PB23","filialNome":"MONTENEGRO","filialFull":"PB23 - MONTENEGRO","linha":"Pnl PBO CRU","channel":"IND","meta":8578.125,"metaBase":8578.125,"metaAjustada":null,"industria":8578.125,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB23|Pnl PBO CRU|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB23","filialNome":"MONTENEGRO","filialFull":"PB23 - MONTENEGRO","linha":"Pnl PBO CRU","channel":"IND","meta":7148.4375,"metaBase":7148.4375,"metaAjustada":null,"industria":7148.4375,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":4900,"metaBase":4900,"metaAjustada":null,"industria":4900,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB23|Pnl PBO CRU|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB23","filialNome":"MONTENEGRO","filialFull":"PB23 - MONTENEGRO","linha":"Pnl PBO CRU","channel":"IND","meta":4765.625,"metaBase":4765.625,"metaAjustada":null,"industria":4765.625,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB23|Pnl PBO CRU|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB23","filialNome":"MONTENEGRO","filialFull":"PB23 - MONTENEGRO","linha":"Pnl PBO CRU","channel":"IND","meta":3621.875,"metaBase":3621.875,"metaAjustada":null,"industria":3621.875,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB23|Pnl PBO CRU|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB23","filialNome":"MONTENEGRO","filialFull":"PB23 - MONTENEGRO","linha":"Pnl PBO CRU","channel":"IND","meta":3335.9375,"metaBase":3335.9375,"metaAjustada":null,"industria":3335.9375,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":2311,"metaBase":2311,"metaAjustada":null,"industria":2311,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB02|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":2232.244055417716,"metaBase":2232.244055417716,"metaAjustada":null,"industria":2232.244055417716,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":1500,"metaBase":1500,"metaAjustada":null,"industria":1500,"revenda":null},{"key":"B86|JOÃO CASTILHO|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B86","vendedorNome":"BRUNO LOPES ALVARES","vendedorFull":"B86 - BRUNO LOPES ALVARES","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":1600,"metaBase":1600,"metaAjustada":null,"industria":1600,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB23|Pnl PBO CRU|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB23","filialNome":"MONTENEGRO","filialFull":"PB23 - MONTENEGRO","linha":"Pnl PBO CRU","channel":"IND","meta":1429.6875,"metaBase":1429.6875,"metaAjustada":null,"industria":1429.6875,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":1000,"metaBase":1000,"metaAjustada":null,"industria":1000,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":1100,"metaBase":1100,"metaAjustada":null,"industria":1100,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":1129.077955085205,"metaBase":1129.077955085205,"metaAjustada":null,"industria":1129.077955085205,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB02|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":1074.938636681769,"metaBase":1074.938636681769,"metaAjustada":null,"industria":1074.938636681769,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":1000,"metaBase":1000,"metaAjustada":null,"industria":1000,"revenda":null},{"key":"B12|JOÃO CASTILHO|PB06|Pnl MDF Pintado Bco|IND","anoMes":"2026/09","vendedorCode":"B12","vendedorNome":"ROBERTO CARLOS","vendedorFull":"B12 - ROBERTO CARLOS","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF Pintado Bco","channel":"IND","meta":1002.089794325947,"metaBase":1002.089794325947,"metaAjustada":null,"industria":1002.089794325947,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB22|Pnl PBO Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Unicor","channel":"IND","meta":990,"metaBase":990,"metaAjustada":null,"industria":990,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB22|Pnl PBO Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Madeirad","channel":"IND","meta":989.2533624136678,"metaBase":989.2533624136678,"metaAjustada":null,"industria":989.2533624136678,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB02|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":952.952389842033,"metaBase":952.952389842033,"metaAjustada":null,"industria":952.952389842033,"revenda":null},{"key":"B86|JOÃO CASTILHO|PB06|Pnl MDF Pintado Bco|IND","anoMes":"2026/09","vendedorCode":"B86","vendedorNome":"BRUNO LOPES ALVARES","vendedorFull":"B86 - BRUNO LOPES ALVARES","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF Pintado Bco","channel":"IND","meta":949.3482262035283,"metaBase":949.3482262035283,"metaAjustada":null,"industria":949.3482262035283,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB22|Pnl PBO Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Unicor","channel":"IND","meta":890.5676855895194,"metaBase":890.5676855895194,"metaAjustada":null,"industria":890.5676855895194,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":900,"metaBase":900,"metaAjustada":null,"industria":900,"revenda":null},{"key":"B86|JOÃO CASTILHO|PB23|Pnl PBO CRU|IND","anoMes":"2026/09","vendedorCode":"B86","vendedorNome":"BRUNO LOPES ALVARES","vendedorFull":"B86 - BRUNO LOPES ALVARES","gerente":"JOÃO CASTILHO","filialCode":"PB23","filialNome":"MONTENEGRO","filialFull":"PB23 - MONTENEGRO","linha":"Pnl PBO CRU","channel":"IND","meta":857.8125,"metaBase":857.8125,"metaAjustada":null,"industria":857.8125,"revenda":null},{"key":"B80|SULAMITA SANTOS|PB02|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B80","vendedorNome":"ILHA BELA REPRES","vendedorFull":"B80 - ILHA BELA REPRES","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":758.1497461221068,"metaBase":758.1497461221068,"metaAjustada":null,"industria":758.1497461221068,"revenda":null},{"key":"B86|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B86","vendedorNome":"BRUNO LOPES ALVARES","vendedorFull":"B86 - BRUNO LOPES ALVARES","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":727.0947043873173,"metaBase":727.0947043873173,"metaAjustada":null,"industria":727.0947043873173,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB22|Pnl PBO Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Madeirad","channel":"IND","meta":668.5019992729917,"metaBase":668.5019992729917,"metaAjustada":null,"industria":668.5019992729917,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB23|Pnl PBO CRU|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB23","filialNome":"MONTENEGRO","filialFull":"PB23 - MONTENEGRO","linha":"Pnl PBO CRU","channel":"IND","meta":667.1875,"metaBase":667.1875,"metaAjustada":null,"industria":667.1875,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":800,"metaBase":800,"metaAjustada":null,"industria":800,"revenda":null},{"key":"B14|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B14","vendedorNome":"SIDNEY COSTA","vendedorFull":"B14 - SIDNEY COSTA","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":628.0988292154494,"metaBase":628.0988292154494,"metaAjustada":null,"industria":628.0988292154494,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB22|Pnl PBO Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Madeirad","channel":"IND","meta":593.9840058160671,"metaBase":593.9840058160671,"metaAjustada":null,"industria":593.9840058160671,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":500,"metaBase":500,"metaAjustada":null,"industria":500,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB22|Pnl PBO Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Branco","channel":"IND","meta":530,"metaBase":530,"metaAjustada":null,"industria":530,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB22|Pnl PBO Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Branco","channel":"IND","meta":530,"metaBase":530,"metaAjustada":null,"industria":530,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB06|Pnl MDF Pintado Bco|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF Pintado Bco","channel":"IND","meta":527.4156812241824,"metaBase":527.4156812241824,"metaAjustada":null,"industria":527.4156812241824,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB06|Pnl MDF Pintado Bco|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF Pintado Bco","channel":"IND","meta":474.6741131017641,"metaBase":474.6741131017641,"metaAjustada":null,"industria":474.6741131017641,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB02|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":453.5386100451689,"metaBase":453.5386100451689,"metaAjustada":null,"industria":453.5386100451689,"revenda":null},{"key":"B14|JOÃO CASTILHO|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B14","vendedorNome":"SIDNEY COSTA","vendedorFull":"B14 - SIDNEY COSTA","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":500,"metaBase":500,"metaAjustada":null,"industria":500,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":800,"metaBase":800,"metaAjustada":null,"industria":800,"revenda":null},{"key":"B86|JOÃO CASTILHO|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B86","vendedorNome":"BRUNO LOPES ALVARES","vendedorFull":"B86 - BRUNO LOPES ALVARES","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":500,"metaBase":500,"metaAjustada":null,"industria":500,"revenda":null},{"key":"B12|JOÃO CASTILHO|PB22|Pnl PBO Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B12","vendedorNome":"ROBERTO CARLOS","vendedorFull":"B12 - ROBERTO CARLOS","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Madeirad","channel":"IND","meta":396.3493275172664,"metaBase":396.3493275172664,"metaAjustada":null,"industria":396.3493275172664,"revenda":null},{"key":"B12|JOÃO CASTILHO|PB22|Pnl PBO Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B12","vendedorNome":"ROBERTO CARLOS","vendedorFull":"B12 - ROBERTO CARLOS","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Unicor","channel":"IND","meta":395.5676855895197,"metaBase":395.5676855895197,"metaAjustada":null,"industria":395.5676855895197,"revenda":null},{"key":"B43|SULAMITA SANTOS|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B43","vendedorNome":"LUCIANA DA ROCHA","vendedorFull":"B43 - LUCIANA DA ROCHA","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":391.2731603665055,"metaBase":391.2731603665055,"metaAjustada":null,"industria":391.2731603665055,"revenda":null},{"key":"B43|SULAMITA SANTOS|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B43","vendedorNome":"LUCIANA DA ROCHA","vendedorFull":"B43 - LUCIANA DA ROCHA","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":355.564273772956,"metaBase":355.564273772956,"metaAjustada":null,"industria":355.564273772956,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":500,"metaBase":500,"metaAjustada":null,"industria":500,"revenda":null},{"key":"B23|JOÃO CASTILHO|PB02|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":348.2342431151413,"metaBase":348.2342431151413,"metaAjustada":null,"industria":348.2342431151413,"revenda":null},{"key":"B43|SULAMITA SANTOS|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B43","vendedorNome":"LUCIANA DA ROCHA","vendedorFull":"B43 - LUCIANA DA ROCHA","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":317.4772976965131,"metaBase":317.4772976965131,"metaAjustada":null,"industria":317.4772976965131,"revenda":null},{"key":"B43|SULAMITA SANTOS|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B43","vendedorNome":"LUCIANA DA ROCHA","vendedorFull":"B43 - LUCIANA DA ROCHA","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":313.8286592385386,"metaBase":313.8286592385386,"metaAjustada":null,"industria":313.8286592385386,"revenda":null},{"key":"B80|SULAMITA SANTOS|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B80","vendedorNome":"ILHA BELA REPRES","vendedorFull":"B80 - ILHA BELA REPRES","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":304.4832090900807,"metaBase":304.4832090900807,"metaAjustada":null,"industria":304.4832090900807,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB02|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":272.1231660271014,"metaBase":272.1231660271014,"metaAjustada":null,"industria":272.1231660271014,"revenda":null},{"key":"B23|JOÃO CASTILHO|PB06|Pnl MDF Pintado Bco|IND","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF Pintado Bco","channel":"IND","meta":267.9271660618846,"metaBase":267.9271660618846,"metaAjustada":null,"industria":267.9271660618846,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":400,"metaBase":400,"metaAjustada":null,"industria":400,"revenda":null},{"key":"B80|SULAMITA SANTOS|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B80","vendedorNome":"ILHA BELA REPRES","vendedorFull":"B80 - ILHA BELA REPRES","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":253.3809347546303,"metaBase":253.3809347546303,"metaAjustada":null,"industria":253.3809347546303,"revenda":null},{"key":"B14|JOÃO CASTILHO|PB22|Pnl PBO Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B14","vendedorNome":"SIDNEY COSTA","vendedorFull":"B14 - SIDNEY COSTA","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Unicor","channel":"IND","meta":222.6419213973799,"metaBase":222.6419213973799,"metaAjustada":null,"industria":222.6419213973799,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":221.0616970736876,"metaBase":221.0616970736876,"metaAjustada":null,"industria":221.0616970736876,"revenda":null},{"key":"B43|SULAMITA SANTOS|PB06|Pnl MDF Pintado Bco|IND","anoMes":"2026/09","vendedorCode":"B43","vendedorNome":"LUCIANA DA ROCHA","vendedorFull":"B43 - LUCIANA DA ROCHA","gerente":"SULAMITA SANTOS","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF Pintado Bco","channel":"IND","meta":218.9829908442806,"metaBase":218.9829908442806,"metaAjustada":null,"industria":218.9829908442806,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":208.313179561119,"metaBase":208.313179561119,"metaAjustada":null,"industria":208.313179561119,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB22|Pnl PBO Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Unicor","channel":"IND","meta":197.7838427947598,"metaBase":197.7838427947598,"metaAjustada":null,"industria":197.7838427947598,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB22|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":190.5075230334186,"metaBase":190.5075230334186,"metaAjustada":null,"industria":190.5075230334186,"revenda":null},{"key":"B43|SULAMITA SANTOS|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B43","vendedorNome":"LUCIANA DA ROCHA","vendedorFull":"B43 - LUCIANA DA ROCHA","gerente":"SULAMITA SANTOS","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":170.0023611439048,"metaBase":170.0023611439048,"metaAjustada":null,"industria":170.0023611439048,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":167.7674466866071,"metaBase":167.7674466866071,"metaAjustada":null,"industria":167.7674466866071,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":164.8093902290439,"metaBase":164.8093902290439,"metaAjustada":null,"industria":164.8093902290439,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":163.2454243676077,"metaBase":163.2454243676077,"metaAjustada":null,"industria":163.2454243676077,"revenda":null},{"key":"V37|SULAMITA SANTOS|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"V37","vendedorNome":"ROSARIO REPRES. COM","vendedorFull":"V37 - ROSARIO REPRES. COM","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":151.4249236446647,"metaBase":151.4249236446647,"metaAjustada":null,"industria":151.4249236446647,"revenda":null},{"key":"B23|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":150.2258506450378,"metaBase":150.2258506450378,"metaAjustada":null,"industria":150.2258506450378,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":148.0301000175945,"metaBase":148.0301000175945,"metaAjustada":null,"industria":148.0301000175945,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":147.0455038570511,"metaBase":147.0455038570511,"metaAjustada":null,"industria":147.0455038570511,"revenda":null},{"key":"B23|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":147.0455038570511,"metaBase":147.0455038570511,"metaAjustada":null,"industria":147.0455038570511,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":145.4939377525936,"metaBase":145.4939377525936,"metaAjustada":null,"industria":145.4939377525936,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":143.2272990127682,"metaBase":143.2272990127682,"metaAjustada":null,"industria":143.2272990127682,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":138.2077825934347,"metaBase":138.2077825934347,"metaAjustada":null,"industria":138.2077825934347,"revenda":null},{"key":"B16|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":137.890024017826,"metaBase":137.890024017826,"metaAjustada":null,"industria":137.890024017826,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB02|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":136.582891760729,"metaBase":136.582891760729,"metaAjustada":null,"industria":136.582891760729,"revenda":null},{"key":"B14|JOÃO CASTILHO|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B14","vendedorNome":"SIDNEY COSTA","vendedorFull":"B14 - SIDNEY COSTA","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":1500,"metaBase":1500,"metaAjustada":null,"industria":1500,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":598,"metaBase":598,"metaAjustada":null,"industria":598,"revenda":null},{"key":"B23|JOÃO CASTILHO|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":200,"metaBase":200,"metaAjustada":null,"industria":200,"revenda":null},{"key":"V37|SULAMITA SANTOS|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"V37","vendedorNome":"ROSARIO REPRES. COM","vendedorFull":"V37 - ROSARIO REPRES. COM","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":131.2082249697387,"metaBase":131.2082249697387,"metaAjustada":null,"industria":131.2082249697387,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":123.3584166813287,"metaBase":123.3584166813287,"metaAjustada":null,"industria":123.3584166813287,"revenda":null},{"key":"V37|SULAMITA SANTOS|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"V37","vendedorNome":"ROSARIO REPRES. COM","vendedorFull":"V37 - ROSARIO REPRES. COM","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":122.183691857964,"metaBase":122.183691857964,"metaAjustada":null,"industria":122.183691857964,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":116.2451564518145,"metaBase":116.2451564518145,"metaAjustada":null,"industria":116.2451564518145,"revenda":null},{"key":"V37|SULAMITA SANTOS|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"V37","vendedorNome":"ROSARIO REPRES. COM","vendedorFull":"V37 - ROSARIO REPRES. COM","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":113.4914962655092,"metaBase":113.4914962655092,"metaAjustada":null,"industria":113.4914962655092,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":112.1780244016087,"metaBase":112.1780244016087,"metaAjustada":null,"industria":112.1780244016087,"revenda":null},{"key":"B43|SULAMITA SANTOS|PB02|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B43","vendedorNome":"LUCIANA DA ROCHA","vendedorFull":"B43 - LUCIANA DA ROCHA","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF CRU Std","channel":"IND","meta":101.7631769180334,"metaBase":101.7631769180334,"metaAjustada":null,"industria":101.7631769180334,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":100.1505670966918,"metaBase":100.1505670966918,"metaAjustada":null,"industria":100.1505670966918,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":100.1505670966918,"metaBase":100.1505670966918,"metaAjustada":null,"industria":100.1505670966918,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":99.67514019840378,"metaBase":99.67514019840378,"metaAjustada":null,"industria":99.67514019840378,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":99.67514019840378,"metaBase":99.67514019840378,"metaAjustada":null,"industria":99.67514019840378,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB22|Pnl PBO Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Unicor","channel":"IND","meta":99.43231441048034,"metaBase":99.43231441048034,"metaAjustada":null,"industria":99.43231441048034,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB22|Pnl PBO Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Unicor","channel":"IND","meta":99.43231441048034,"metaBase":99.43231441048034,"metaAjustada":null,"industria":99.43231441048034,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB22|Pnl PBO Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Madeirad","channel":"IND","meta":99.35732460923306,"metaBase":99.35732460923306,"metaAjustada":null,"industria":99.35732460923306,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB22|Pnl PBO Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Madeirad","channel":"IND","meta":99.35732460923306,"metaBase":99.35732460923306,"metaAjustada":null,"industria":99.35732460923306,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB22|Pnl PBO Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Madeirad","channel":"IND","meta":99.35732460923306,"metaBase":99.35732460923306,"metaAjustada":null,"industria":99.35732460923306,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB23|Pnl PBO CRU|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB23","filialNome":"MONTENEGRO","filialFull":"PB23 - MONTENEGRO","linha":"Pnl PBO CRU","channel":"IND","meta":95.3125,"metaBase":95.3125,"metaAjustada":null,"industria":95.3125,"revenda":null},{"key":"B12|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B12","vendedorNome":"ROBERTO CARLOS","vendedorFull":"B12 - ROBERTO CARLOS","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":94.74072731729468,"metaBase":94.74072731729468,"metaAjustada":null,"industria":94.74072731729468,"revenda":null},{"key":"B86|JOÃO CASTILHO|PB02|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B86","vendedorNome":"BRUNO LOPES ALVARES","vendedorFull":"B86 - BRUNO LOPES ALVARES","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":90.70772200903383,"metaBase":90.70772200903383,"metaAjustada":null,"industria":90.70772200903383,"revenda":null},{"key":"B12|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B12","vendedorNome":"ROBERTO CARLOS","vendedorFull":"B12 - ROBERTO CARLOS","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":85.12798203218806,"metaBase":85.12798203218806,"metaAjustada":null,"industria":85.12798203218806,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":78.95060609774558,"metaBase":78.95060609774558,"metaAjustada":null,"industria":78.95060609774558,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB22|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":75.00296182418056,"metaBase":75.00296182418056,"metaAjustada":null,"industria":75.00296182418056,"revenda":null},{"key":"V44|SULAMITA SANTOS|PB06|Pnl MDF Pintado Bco|IND","anoMes":"2026/09","vendedorCode":"V44","vendedorNome":"MAIS BRASIL REP LTDA","vendedorFull":"V44 - MAIS BRASIL REP LTDA","gerente":"SULAMITA SANTOS","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF Pintado Bco","channel":"IND","meta":74.13486669207414,"metaBase":74.13486669207414,"metaAjustada":null,"industria":74.13486669207414,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB06|Pnl MDF Pintado Bco|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF Pintado Bco","channel":"IND","meta":73.83819537138554,"metaBase":73.83819537138554,"metaAjustada":null,"industria":73.83819537138554,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":72.94923328867056,"metaBase":72.94923328867056,"metaAjustada":null,"industria":72.94923328867056,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":72.10840830961811,"metaBase":72.10840830961811,"metaAjustada":null,"industria":72.10840830961811,"revenda":null},{"key":"B86|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B86","vendedorNome":"BRUNO LOPES ALVARES","vendedorFull":"B86 - BRUNO LOPES ALVARES","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":72.04242806419283,"metaBase":72.04242806419283,"metaAjustada":null,"industria":72.04242806419283,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":71.11285475459121,"metaBase":71.11285475459121,"metaAjustada":null,"industria":71.11285475459121,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":67.10801518308374,"metaBase":67.10801518308374,"metaAjustada":null,"industria":67.10801518308374,"revenda":null},{"key":"B23|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":65.21219339441762,"metaBase":65.21219339441762,"metaAjustada":null,"industria":65.21219339441762,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":63.00161056748821,"metaBase":63.00161056748821,"metaAjustada":null,"industria":63.00161056748821,"revenda":null},{"key":"B12|JOÃO CASTILHO|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B12","vendedorNome":"ROBERTO CARLOS","vendedorFull":"B12 - ROBERTO CARLOS","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":70,"metaBase":70,"metaAjustada":null,"industria":70,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":100,"metaBase":100,"metaAjustada":null,"industria":100,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":61.09184592898202,"metaBase":61.09184592898202,"metaAjustada":null,"industria":61.09184592898202,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":58.12257822590725,"metaBase":58.12257822590725,"metaAjustada":null,"industria":58.12257822590725,"revenda":null},{"key":"B48|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B48","vendedorNome":"DANILO PAPIN","vendedorFull":"B48 - DANILO PAPIN","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":58.12257822590725,"metaBase":58.12257822590725,"metaAjustada":null,"industria":58.12257822590725,"revenda":null},{"key":"B86|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B86","vendedorNome":"BRUNO LOPES ALVARES","vendedorFull":"B86 - BRUNO LOPES ALVARES","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":58.08732891608127,"metaBase":58.08732891608127,"metaAjustada":null,"industria":58.08732891608127,"revenda":null},{"key":"B14|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B14","vendedorNome":"SIDNEY COSTA","vendedorFull":"B14 - SIDNEY COSTA","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":57.23830534013653,"metaBase":57.23830534013653,"metaAjustada":null,"industria":57.23830534013653,"revenda":null},{"key":"V43|SULAMITA SANTOS|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"V43","vendedorNome":"BARUK REPRESENTAÇÕES","vendedorFull":"V43 - BARUK REPRESENTAÇÕES","gerente":"SULAMITA SANTOS","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":56.0007777885804,"metaBase":56.0007777885804,"metaAjustada":null,"industria":56.0007777885804,"revenda":null},{"key":"V44|SULAMITA SANTOS|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"V44","vendedorNome":"MAIS BRASIL REP LTDA","vendedorFull":"V44 - MAIS BRASIL REP LTDA","gerente":"SULAMITA SANTOS","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":56.0007777885804,"metaBase":56.0007777885804,"metaAjustada":null,"industria":56.0007777885804,"revenda":null},{"key":"B20|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B20","vendedorNome":"GARAVAGLIA REP","vendedorFull":"B20 - GARAVAGLIA REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":55.08742269721854,"metaBase":55.08742269721854,"metaAjustada":null,"industria":55.08742269721854,"revenda":null},{"key":"B14|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B14","vendedorNome":"SIDNEY COSTA","vendedorFull":"B14 - SIDNEY COSTA","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":52.08265418646117,"metaBase":52.08265418646117,"metaAjustada":null,"industria":52.08265418646117,"revenda":null},{"key":"B23|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":51.08106468287538,"metaBase":51.08106468287538,"metaAjustada":null,"industria":51.08106468287538,"revenda":null},{"key":"B23|JOÃO CASTILHO|PB22|Pnl PBO Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Unicor","channel":"IND","meta":49.71615720524017,"metaBase":49.71615720524017,"metaAjustada":null,"industria":49.71615720524017,"revenda":null},{"key":"B69|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":46.3827646721796,"metaBase":46.3827646721796,"metaAjustada":null,"industria":46.3827646721796,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB22|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":40.5015993850575,"metaBase":40.5015993850575,"metaAjustada":null,"industria":40.5015993850575,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":37.49843756510145,"metaBase":37.49843756510145,"metaAjustada":null,"industria":37.49843756510145,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":37.49843756510145,"metaBase":37.49843756510145,"metaAjustada":null,"industria":37.49843756510145,"revenda":null},{"key":"B80|SULAMITA SANTOS|PB06|Pnl MDF CRU 2.8|IND","anoMes":"2026/09","vendedorCode":"B80","vendedorNome":"ILHA BELA REPRES","vendedorFull":"B80 - ILHA BELA REPRES","gerente":"SULAMITA SANTOS","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU 2.8","channel":"IND","meta":37.00051389602633,"metaBase":37.00051389602633,"metaAjustada":null,"industria":37.00051389602633,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":36.0572221290885,"metaBase":36.0572221290885,"metaAjustada":null,"industria":36.0572221290885,"revenda":null},{"key":"B15|JOÃO CASTILHO|PB22|Pnl MDF Rev Branco|IND","anoMes":"2026/09","vendedorCode":"B15","vendedorNome":"VILMAR BRUNONI","vendedorFull":"B15 - VILMAR BRUNONI","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"IND","meta":36.00142167560666,"metaBase":36.00142167560666,"metaAjustada":null,"industria":36.00142167560666,"revenda":null},{"key":"B13|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B13","vendedorNome":"ROGÉRIO LENS","vendedorFull":"B13 - ROGÉRIO LENS","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":34.54035667077205,"metaBase":34.54035667077205,"metaAjustada":null,"industria":34.54035667077205,"revenda":null},{"key":"B12|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B12","vendedorNome":"ROBERTO CARLOS","vendedorFull":"B12 - ROBERTO CARLOS","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":33.74930657778955,"metaBase":33.74930657778955,"metaAjustada":null,"industria":33.74930657778955,"revenda":null},{"key":"B86|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B86","vendedorNome":"BRUNO LOPES ALVARES","vendedorFull":"B86 - BRUNO LOPES ALVARES","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":32.78504067556702,"metaBase":32.78504067556702,"metaAjustada":null,"industria":32.78504067556702,"revenda":null},{"key":"B12|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B12","vendedorNome":"ROBERTO CARLOS","vendedorFull":"B12 - ROBERTO CARLOS","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":29.84286816354705,"metaBase":29.84286816354705,"metaAjustada":null,"industria":29.84286816354705,"revenda":null},{"key":"B69|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":28.61959471043277,"metaBase":28.61959471043277,"metaAjustada":null,"industria":28.61959471043277,"revenda":null},{"key":"B69|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":27.04291659681638,"metaBase":27.04291659681638,"metaAjustada":null,"industria":27.04291659681638,"revenda":null},{"key":"B69|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":26.03914744513988,"metaBase":26.03914744513988,"metaAjustada":null,"industria":26.03914744513988,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB22|Pnl PBO Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Unicor","channel":"IND","meta":24.85807860262008,"metaBase":24.85807860262008,"metaAjustada":null,"industria":24.85807860262008,"revenda":null},{"key":"B84|JOÃO CASTILHO|PB22|Pnl PBO Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl PBO Rev Madeirad","channel":"IND","meta":24.83933115230825,"metaBase":24.83933115230825,"metaAjustada":null,"industria":24.83933115230825,"revenda":null},{"key":"B86|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B86","vendedorNome":"BRUNO LOPES ALVARES","vendedorFull":"B86 - BRUNO LOPES ALVARES","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":23.21111968275882,"metaBase":23.21111968275882,"metaAjustada":null,"industria":23.21111968275882,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB22|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":22.69794866936448,"metaBase":22.69794866936448,"metaAjustada":null,"industria":22.69794866936448,"revenda":null},{"key":"B43|SULAMITA SANTOS|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B43","vendedorNome":"LUCIANA DA ROCHA","vendedorFull":"B43 - LUCIANA DA ROCHA","gerente":"SULAMITA SANTOS","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":19.99916670138744,"metaBase":19.99916670138744,"metaAjustada":null,"industria":19.99916670138744,"revenda":null},{"key":"B14|JOÃO CASTILHO|PB02|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B14","vendedorNome":"SIDNEY COSTA","vendedorFull":"B14 - SIDNEY COSTA","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":18.02710207740453,"metaBase":18.02710207740453,"metaAjustada":null,"industria":18.02710207740453,"revenda":null},{"key":"B05|JOÃO CASTILHO|PB02|Pnl MDF Rev Madeirad|IND","anoMes":"2026/09","vendedorCode":"B05","vendedorNome":"KEILA FEDERIZZI","vendedorFull":"B05 - KEILA FEDERIZZI","gerente":"JOÃO CASTILHO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"IND","meta":17.02702156095846,"metaBase":17.02702156095846,"metaAjustada":null,"industria":17.02702156095846,"revenda":null},{"key":"B14|JOÃO CASTILHO|PB22|Pnl MDF Rev Unicor|IND","anoMes":"2026/09","vendedorCode":"B14","vendedorNome":"SIDNEY COSTA","vendedorFull":"B14 - SIDNEY COSTA","gerente":"JOÃO CASTILHO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"IND","meta":15.79012121954912,"metaBase":15.79012121954912,"metaAjustada":null,"industria":15.79012121954912,"revenda":null},{"key":"B12|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B12","vendedorNome":"ROBERTO CARLOS","vendedorFull":"B12 - ROBERTO CARLOS","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":14.24940627473855,"metaBase":14.24940627473855,"metaAjustada":null,"industria":14.24940627473855,"revenda":null},{"key":"B23|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":14.24940627473855,"metaBase":14.24940627473855,"metaAjustada":null,"industria":14.24940627473855,"revenda":null},{"key":"B69|JOÃO CASTILHO|PB06|Pnl MDF CRU Std|IND","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOÃO CASTILHO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF CRU Std","channel":"IND","meta":14.24940627473855,"metaBase":14.24940627473855,"metaAjustada":null,"industria":14.24940627473855,"revenda":null},{"key":"B67|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B67","vendedorNome":"GERSON DENTINI","vendedorFull":"B67 - GERSON DENTINI","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":2530.144364429322,"metaBase":2530.144364429322,"metaAjustada":null,"industria":null,"revenda":2530.144364429322},{"key":"B94|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B94","vendedorNome":"PAULO MULLER","vendedorFull":"B94 - PAULO MULLER","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":1844.180214534598,"metaBase":1844.180214534598,"metaAjustada":null,"industria":null,"revenda":1844.180214534598},{"key":"B67|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B67","vendedorNome":"GERSON DENTINI","vendedorFull":"B67 - GERSON DENTINI","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":1757.413347408882,"metaBase":1757.413347408882,"metaAjustada":null,"industria":null,"revenda":1757.413347408882},{"key":"B78|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B78","vendedorNome":"CLEITON SANTOS","vendedorFull":"B78 - CLEITON SANTOS","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":1646.105460005727,"metaBase":1646.105460005727,"metaAjustada":null,"industria":null,"revenda":1646.105460005727},{"key":"B67|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B67","vendedorNome":"GERSON DENTINI","vendedorFull":"B67 - GERSON DENTINI","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":1633.32047475114,"metaBase":1633.32047475114,"metaAjustada":null,"industria":null,"revenda":1633.32047475114},{"key":"B03|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B03","vendedorNome":"HÉLCIO DEL BIANCO","vendedorFull":"B03 - HÉLCIO DEL BIANCO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":1516.835620207936,"metaBase":1516.835620207936,"metaAjustada":null,"industria":null,"revenda":1516.835620207936},{"key":"B01|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B01","vendedorNome":"ALESSANDRO BELEZE","vendedorFull":"B01 - ALESSANDRO BELEZE","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":1511.623126667703,"metaBase":1511.623126667703,"metaAjustada":null,"industria":null,"revenda":1511.623126667703},{"key":"V08|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V08","vendedorNome":"ELIZANGELLA TONATTO","vendedorFull":"V08 - ELIZANGELLA TONATTO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":1458.455692557323,"metaBase":1458.455692557323,"metaAjustada":null,"industria":null,"revenda":1458.455692557323},{"key":"B67|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B67","vendedorNome":"GERSON DENTINI","vendedorFull":"B67 - GERSON DENTINI","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":1458.314317220913,"metaBase":1458.314317220913,"metaAjustada":null,"industria":null,"revenda":1458.314317220913},{"key":"B94|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B94","vendedorNome":"PAULO MULLER","vendedorFull":"B94 - PAULO MULLER","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":1294.296245167169,"metaBase":1294.296245167169,"metaAjustada":null,"industria":null,"revenda":1294.296245167169},{"key":"B94|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B94","vendedorNome":"PAULO MULLER","vendedorFull":"B94 - PAULO MULLER","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":1156.903844742468,"metaBase":1156.903844742468,"metaAjustada":null,"industria":null,"revenda":1156.903844742468},{"key":"B67|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B67","vendedorNome":"GERSON DENTINI","vendedorFull":"B67 - GERSON DENTINI","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":1130.141196199911,"metaBase":1130.141196199911,"metaAjustada":null,"industria":null,"revenda":1130.141196199911},{"key":"B23|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":1129.026100814567,"metaBase":1129.026100814567,"metaAjustada":null,"industria":null,"revenda":1129.026100814567},{"key":"B94|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B94","vendedorNome":"PAULO MULLER","vendedorFull":"B94 - PAULO MULLER","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":1101.383245635205,"metaBase":1101.383245635205,"metaAjustada":null,"industria":null,"revenda":1101.383245635205},{"key":"V08|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"V08","vendedorNome":"ELIZANGELLA TONATTO","vendedorFull":"V08 - ELIZANGELLA TONATTO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":1033.145262876916,"metaBase":1033.145262876916,"metaAjustada":null,"industria":null,"revenda":1033.145262876916},{"key":"B84|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":968.4812997753769,"metaBase":968.4812997753769,"metaAjustada":null,"industria":null,"revenda":968.4812997753769},{"key":"V08|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"V08","vendedorNome":"ELIZANGELLA TONATTO","vendedorFull":"V08 - ELIZANGELLA TONATTO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":937.2843367801316,"metaBase":937.2843367801316,"metaAjustada":null,"industria":null,"revenda":937.2843367801316},{"key":"B10|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B10","vendedorNome":"RAMON NEVES","vendedorFull":"B10 - RAMON NEVES","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":911.1438708328088,"metaBase":911.1438708328088,"metaAjustada":null,"industria":null,"revenda":911.1438708328088},{"key":"V08|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"V08","vendedorNome":"ELIZANGELLA TONATTO","vendedorFull":"V08 - ELIZANGELLA TONATTO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":869.4222258313372,"metaBase":869.4222258313372,"metaAjustada":null,"industria":null,"revenda":869.4222258313372},{"key":"B23|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":797.3179600913212,"metaBase":797.3179600913212,"metaAjustada":null,"industria":null,"revenda":797.3179600913212},{"key":"V08|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"V08","vendedorNome":"ELIZANGELLA TONATTO","vendedorFull":"V08 - ELIZANGELLA TONATTO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":790.7285554624675,"metaBase":790.7285554624675,"metaAjustada":null,"industria":null,"revenda":790.7285554624675},{"key":"V52|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"V52","vendedorNome":"ANDRIUS LEITE","vendedorFull":"V52 - ANDRIUS LEITE","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":744.9664126752117,"metaBase":744.9664126752117,"metaAjustada":null,"industria":null,"revenda":744.9664126752117},{"key":"B22|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B22","vendedorNome":"MADEJONER REP","vendedorFull":"B22 - MADEJONER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":703.6866279315174,"metaBase":703.6866279315174,"metaAjustada":null,"industria":null,"revenda":703.6866279315174},{"key":"V52|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"V52","vendedorNome":"ANDRIUS LEITE","vendedorFull":"V52 - ANDRIUS LEITE","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":697.1775468025054,"metaBase":697.1775468025054,"metaAjustada":null,"industria":null,"revenda":697.1775468025054},{"key":"B23|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":693.0177162423703,"metaBase":693.0177162423703,"metaAjustada":null,"industria":null,"revenda":693.0177162423703},{"key":"B03|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B03","vendedorNome":"HÉLCIO DEL BIANCO","vendedorFull":"B03 - HÉLCIO DEL BIANCO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":685.6061352373185,"metaBase":685.6061352373185,"metaAjustada":null,"industria":null,"revenda":685.6061352373185},{"key":"V52|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"V52","vendedorNome":"ANDRIUS LEITE","vendedorFull":"V52 - ANDRIUS LEITE","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":682.463842347556,"metaBase":682.463842347556,"metaAjustada":null,"industria":null,"revenda":682.463842347556},{"key":"V07|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V07","vendedorNome":"CRISTIANO RODRIGUES","vendedorFull":"V07 - CRISTIANO RODRIGUES","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":670.326669274023,"metaBase":670.326669274023,"metaAjustada":null,"industria":null,"revenda":670.326669274023},{"key":"B94|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B94","vendedorNome":"PAULO MULLER","vendedorFull":"B94 - PAULO MULLER","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":661.464954890708,"metaBase":661.464954890708,"metaAjustada":null,"industria":null,"revenda":661.464954890708},{"key":"B03|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B03","vendedorNome":"HÉLCIO DEL BIANCO","vendedorFull":"B03 - HÉLCIO DEL BIANCO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":630.0161056748822,"metaBase":630.0161056748822,"metaAjustada":null,"industria":null,"revenda":630.0161056748822},{"key":"V52|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"V52","vendedorNome":"ANDRIUS LEITE","vendedorFull":"V52 - ANDRIUS LEITE","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":616.0512973253644,"metaBase":616.0512973253644,"metaAjustada":null,"industria":null,"revenda":616.0512973253644},{"key":"B03|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B03","vendedorNome":"HÉLCIO DEL BIANCO","vendedorFull":"B03 - HÉLCIO DEL BIANCO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":580.171345902807,"metaBase":580.171345902807,"metaAjustada":null,"industria":null,"revenda":580.171345902807},{"key":"B23|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":574.6459045132564,"metaBase":574.6459045132564,"metaAjustada":null,"industria":null,"revenda":574.6459045132564},{"key":"B22|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B22","vendedorNome":"MADEJONER REP","vendedorFull":"B22 - MADEJONER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":572.3918942086555,"metaBase":572.3918942086555,"metaAjustada":null,"industria":null,"revenda":572.3918942086555},{"key":"B43|SULAMITA SANTOS|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B43","vendedorNome":"LUCIANA DA ROCHA","vendedorFull":"B43 - LUCIANA DA ROCHA","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":562.1469392251887,"metaBase":562.1469392251887,"metaAjustada":null,"industria":null,"revenda":562.1469392251887},{"key":"B78|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B78","vendedorNome":"CLEITON SANTOS","vendedorFull":"B78 - CLEITON SANTOS","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":553.7509981458174,"metaBase":553.7509981458174,"metaAjustada":null,"industria":null,"revenda":553.7509981458174},{"key":"B03|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B03","vendedorNome":"HÉLCIO DEL BIANCO","vendedorFull":"B03 - HÉLCIO DEL BIANCO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":545.9792406764657,"metaBase":545.9792406764657,"metaAjustada":null,"industria":null,"revenda":545.9792406764657},{"key":"B01|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B01","vendedorNome":"ALESSANDRO BELEZE","vendedorFull":"B01 - ALESSANDRO BELEZE","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":544.8085210096835,"metaBase":544.8085210096835,"metaAjustada":null,"industria":null,"revenda":544.8085210096835},{"key":"B78|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B78","vendedorNome":"CLEITON SANTOS","vendedorFull":"B78 - CLEITON SANTOS","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":540.8116517695572,"metaBase":540.8116517695572,"metaAjustada":null,"industria":null,"revenda":540.8116517695572},{"key":"B78|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B78","vendedorNome":"CLEITON SANTOS","vendedorFull":"B78 - CLEITON SANTOS","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":530.7980056124667,"metaBase":530.7980056124667,"metaAjustada":null,"industria":null,"revenda":530.7980056124667},{"key":"B78|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B78","vendedorNome":"CLEITON SANTOS","vendedorFull":"B78 - CLEITON SANTOS","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":524.4630762832521,"metaBase":524.4630762832521,"metaAjustada":null,"industria":null,"revenda":524.4630762832521},{"key":"B23|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":495.1517839351434,"metaBase":495.1517839351434,"metaAjustada":null,"industria":null,"revenda":495.1517839351434},{"key":"B91|SULAMITA SANTOS|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B91","vendedorNome":"MARRANE REP","vendedorFull":"B91 - MARRANE REP","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":445.0897073284182,"metaBase":445.0897073284182,"metaAjustada":null,"industria":null,"revenda":445.0897073284182},{"key":"B22|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B22","vendedorNome":"MADEJONER REP","vendedorFull":"B22 - MADEJONER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":406.6113024125688,"metaBase":406.6113024125688,"metaAjustada":null,"industria":null,"revenda":406.6113024125688},{"key":"B01|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B01","vendedorNome":"ALESSANDRO BELEZE","vendedorFull":"B01 - ALESSANDRO BELEZE","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":404.6082910706349,"metaBase":404.6082910706349,"metaAjustada":null,"industria":null,"revenda":404.6082910706349},{"key":"V43|SULAMITA SANTOS|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V43","vendedorNome":"BARUK REPRESENTAÇÕES","vendedorFull":"V43 - BARUK REPRESENTAÇÕES","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":404.2557892248935,"metaBase":404.2557892248935,"metaAjustada":null,"industria":null,"revenda":404.2557892248935},{"key":"B01|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B01","vendedorNome":"ALESSANDRO BELEZE","vendedorFull":"B01 - ALESSANDRO BELEZE","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":402.0240860480076,"metaBase":402.0240860480076,"metaAjustada":null,"industria":null,"revenda":402.0240860480076},{"key":"V44|SULAMITA SANTOS|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V44","vendedorNome":"MAIS BRASIL REP LTDA","vendedorFull":"V44 - MAIS BRASIL REP LTDA","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":385.1999607765821,"metaBase":385.1999607765821,"metaAjustada":null,"industria":null,"revenda":385.1999607765821},{"key":"B22|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B22","vendedorNome":"MADEJONER REP","vendedorFull":"B22 - MADEJONER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":374.6547203262642,"metaBase":374.6547203262642,"metaAjustada":null,"industria":null,"revenda":374.6547203262642},{"key":"B16|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":351.3220646117352,"metaBase":351.3220646117352,"metaAjustada":null,"industria":null,"revenda":351.3220646117352},{"key":"V07|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"V07","vendedorNome":"CRISTIANO RODRIGUES","vendedorFull":"V07 - CRISTIANO RODRIGUES","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":320.7368372720913,"metaBase":320.7368372720913,"metaAjustada":null,"industria":null,"revenda":320.7368372720913},{"key":"B80|SULAMITA SANTOS|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B80","vendedorNome":"ILHA BELA REPRES","vendedorFull":"B80 - ILHA BELA REPRES","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":319.4292184912999,"metaBase":319.4292184912999,"metaAjustada":null,"industria":null,"revenda":319.4292184912999},{"key":"B82|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B82","vendedorNome":"MANOEL NETO","vendedorFull":"B82 - MANOEL NETO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":313.7921111220543,"metaBase":313.7921111220543,"metaAjustada":null,"industria":null,"revenda":313.7921111220543},{"key":"B84|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":300.4517012900755,"metaBase":300.4517012900755,"metaAjustada":null,"industria":null,"revenda":300.4517012900755},{"key":"B01|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B01","vendedorNome":"ALESSANDRO BELEZE","vendedorFull":"B01 - ALESSANDRO BELEZE","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":292.902224568147,"metaBase":292.902224568147,"metaAjustada":null,"industria":null,"revenda":292.902224568147},{"key":"B84|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":282.9546018469646,"metaBase":282.9546018469646,"metaAjustada":null,"industria":null,"revenda":282.9546018469646},{"key":"B16|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":270.406531161068,"metaBase":270.406531161068,"metaAjustada":null,"industria":null,"revenda":270.406531161068},{"key":"B82|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B82","vendedorNome":"MANOEL NETO","vendedorFull":"B82 - MANOEL NETO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":268.4035198191341,"metaBase":268.4035198191341,"metaAjustada":null,"industria":null,"revenda":268.4035198191341},{"key":"B82|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B82","vendedorNome":"MANOEL NETO","vendedorFull":"B82 - MANOEL NETO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":266.4582955798913,"metaBase":266.4582955798913,"metaAjustada":null,"industria":null,"revenda":266.4582955798913},{"key":"B80|SULAMITA SANTOS|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B80","vendedorNome":"ILHA BELA REPRES","vendedorFull":"B80 - ILHA BELA REPRES","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":266.4582955798913,"metaBase":266.4582955798913,"metaAjustada":null,"industria":null,"revenda":266.4582955798913},{"key":"B22|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B22","vendedorNome":"MADEJONER REP","vendedorFull":"B22 - MADEJONER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":253.1117336834175,"metaBase":253.1117336834175,"metaAjustada":null,"industria":null,"revenda":253.1117336834175},{"key":"B10|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B10","vendedorNome":"RAMON NEVES","vendedorFull":"B10 - RAMON NEVES","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":238.1599101571478,"metaBase":238.1599101571478,"metaAjustada":null,"industria":null,"revenda":238.1599101571478},{"key":"V07|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"V07","vendedorNome":"CRISTIANO RODRIGUES","vendedorFull":"V07 - CRISTIANO RODRIGUES","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":225.3387759675566,"metaBase":225.3387759675566,"metaAjustada":null,"industria":null,"revenda":225.3387759675566},{"key":"B76|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B76","vendedorNome":"FERNANDO BATALHA","vendedorFull":"B76 - FERNANDO BATALHA","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":221.0097261058988,"metaBase":221.0097261058988,"metaAjustada":null,"industria":null,"revenda":221.0097261058988},{"key":"B82|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B82","vendedorNome":"MANOEL NETO","vendedorFull":"B82 - MANOEL NETO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":215.567665715363,"metaBase":215.567665715363,"metaAjustada":null,"industria":null,"revenda":215.567665715363},{"key":"B84|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":209.2067785909297,"metaBase":209.2067785909297,"metaAjustada":null,"industria":null,"revenda":209.2067785909297},{"key":"V07|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"V07","vendedorNome":"CRISTIANO RODRIGUES","vendedorFull":"V07 - CRISTIANO RODRIGUES","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":208.9553417155026,"metaBase":208.9553417155026,"metaAjustada":null,"industria":null,"revenda":208.9553417155026},{"key":"B10|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B10","vendedorNome":"RAMON NEVES","vendedorFull":"B10 - RAMON NEVES","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":208.232223582804,"metaBase":208.232223582804,"metaAjustada":null,"industria":null,"revenda":208.232223582804},{"key":"B69|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":205.3722454851984,"metaBase":205.3722454851984,"metaAjustada":null,"industria":null,"revenda":205.3722454851984},{"key":"B76|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B76","vendedorNome":"FERNANDO BATALHA","vendedorFull":"B76 - FERNANDO BATALHA","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":205.350432441788,"metaBase":205.350432441788,"metaAjustada":null,"industria":null,"revenda":205.350432441788},{"key":"V52|JOSÉ MOMESSO|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V52","vendedorNome":"ANDRIUS LEITE","vendedorFull":"V52 - ANDRIUS LEITE","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":202.2447493610582,"metaBase":202.2447493610582,"metaAjustada":null,"industria":null,"revenda":202.2447493610582},{"key":"V37|SULAMITA SANTOS|PB02|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V37","vendedorNome":"ROSARIO REPRES. COM","vendedorFull":"V37 - ROSARIO REPRES. COM","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":200.0861987072705,"metaBase":200.0861987072705,"metaAjustada":null,"industria":null,"revenda":200.0861987072705},{"key":"B69|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":199.5659132180757,"metaBase":199.5659132180757,"metaAjustada":null,"industria":null,"revenda":199.5659132180757},{"key":"V07|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"V07","vendedorNome":"CRISTIANO RODRIGUES","vendedorFull":"V07 - CRISTIANO RODRIGUES","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":199.5648259024321,"metaBase":199.5648259024321,"metaAjustada":null,"industria":null,"revenda":199.5648259024321},{"key":"B10|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B10","vendedorNome":"RAMON NEVES","vendedorFull":"B10 - RAMON NEVES","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":199.5051001303793,"metaBase":199.5051001303793,"metaAjustada":null,"industria":null,"revenda":199.5051001303793},{"key":"B16|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":187.5076894821457,"metaBase":187.5076894821457,"metaAjustada":null,"industria":null,"revenda":187.5076894821457},{"key":"B82|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B82","vendedorNome":"MANOEL NETO","vendedorFull":"B82 - MANOEL NETO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":179.0572089812823,"metaBase":179.0572089812823,"metaAjustada":null,"industria":null,"revenda":179.0572089812823},{"key":"B16|JOSÉ MOMESSO|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":175.4637497859409,"metaBase":175.4637497859409,"metaAjustada":null,"industria":null,"revenda":175.4637497859409},{"key":"B69|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":173.5307519139588,"metaBase":173.5307519139588,"metaAjustada":null,"industria":null,"revenda":173.5307519139588},{"key":"B67|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B67","vendedorNome":"GERSON DENTINI","vendedorFull":"B67 - GERSON DENTINI","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":166.3408327652348,"metaBase":166.3408327652348,"metaAjustada":null,"industria":null,"revenda":166.3408327652348},{"key":"B84|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":163.553065130696,"metaBase":163.553065130696,"metaAjustada":null,"industria":null,"revenda":163.553065130696},{"key":"B76|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B76","vendedorNome":"FERNANDO BATALHA","vendedorFull":"B76 - FERNANDO BATALHA","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":160.2409073547069,"metaBase":160.2409073547069,"metaAjustada":null,"industria":null,"revenda":160.2409073547069},{"key":"B16|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B16","vendedorNome":"AGLOSCHEFFER REP","vendedorFull":"B16 - AGLOSCHEFFER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":154.7407978850588,"metaBase":154.7407978850588,"metaAjustada":null,"industria":null,"revenda":154.7407978850588},{"key":"B76|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B76","vendedorNome":"FERNANDO BATALHA","vendedorFull":"B76 - FERNANDO BATALHA","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":152.2419340621471,"metaBase":152.2419340621471,"metaAjustada":null,"industria":null,"revenda":152.2419340621471},{"key":"V43|SULAMITA SANTOS|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"V43","vendedorNome":"BARUK REPRESENTAÇÕES","vendedorFull":"V43 - BARUK REPRESENTAÇÕES","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":147.0037579908058,"metaBase":147.0037579908058,"metaAjustada":null,"industria":null,"revenda":147.0037579908058},{"key":"B76|JOSÉ MOMESSO|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B76","vendedorNome":"FERNANDO BATALHA","vendedorFull":"B76 - FERNANDO BATALHA","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":131.2533553489338,"metaBase":131.2533553489338,"metaAjustada":null,"industria":null,"revenda":131.2533553489338},{"key":"V43|SULAMITA SANTOS|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"V43","vendedorNome":"BARUK REPRESENTAÇÕES","vendedorFull":"V43 - BARUK REPRESENTAÇÕES","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":130.1516825335276,"metaBase":130.1516825335276,"metaAjustada":null,"industria":null,"revenda":130.1516825335276},{"key":"B69|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":127.1912202127986,"metaBase":127.1912202127986,"metaAjustada":null,"industria":null,"revenda":127.1912202127986},{"key":"B69|JOSÉ MOMESSO|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":125.9800636817524,"metaBase":125.9800636817524,"metaAjustada":null,"industria":null,"revenda":125.9800636817524},{"key":"B94|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B94","vendedorNome":"PAULO MULLER","vendedorFull":"B94 - PAULO MULLER","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":118.4729672212824,"metaBase":118.4729672212824,"metaAjustada":null,"industria":null,"revenda":118.4729672212824},{"key":"V43|SULAMITA SANTOS|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"V43","vendedorNome":"BARUK REPRESENTAÇÕES","vendedorFull":"V43 - BARUK REPRESENTAÇÕES","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":112.8212627605715,"metaBase":112.8212627605715,"metaAjustada":null,"industria":null,"revenda":112.8212627605715},{"key":"V44|SULAMITA SANTOS|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"V44","vendedorNome":"MAIS BRASIL REP LTDA","vendedorFull":"V44 - MAIS BRASIL REP LTDA","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":111.8340383251052,"metaBase":111.8340383251052,"metaAjustada":null,"industria":null,"revenda":111.8340383251052},{"key":"B91|SULAMITA SANTOS|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B91","vendedorNome":"MARRANE REP","vendedorFull":"B91 - MARRANE REP","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":110.5291413464705,"metaBase":110.5291413464705,"metaAjustada":null,"industria":null,"revenda":110.5291413464705},{"key":"V43|SULAMITA SANTOS|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"V43","vendedorNome":"BARUK REPRESENTAÇÕES","vendedorFull":"V43 - BARUK REPRESENTAÇÕES","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":108.5570833844002,"metaBase":108.5570833844002,"metaAjustada":null,"industria":null,"revenda":108.5570833844002},{"key":"V44|SULAMITA SANTOS|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"V44","vendedorNome":"MAIS BRASIL REP LTDA","vendedorFull":"V44 - MAIS BRASIL REP LTDA","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":108.5570833844002,"metaBase":108.5570833844002,"metaAjustada":null,"industria":null,"revenda":108.5570833844002},{"key":"V44|SULAMITA SANTOS|PB22|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"V44","vendedorNome":"MAIS BRASIL REP LTDA","vendedorFull":"V44 - MAIS BRASIL REP LTDA","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":107.2132671060764,"metaBase":107.2132671060764,"metaAjustada":null,"industria":null,"revenda":107.2132671060764},{"key":"B03|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B03","vendedorNome":"HÉLCIO DEL BIANCO","vendedorFull":"B03 - HÉLCIO DEL BIANCO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":104.7109558773961,"metaBase":104.7109558773961,"metaAjustada":null,"industria":null,"revenda":104.7109558773961},{"key":"B91|SULAMITA SANTOS|PB22|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B91","vendedorNome":"MARRANE REP","vendedorFull":"B91 - MARRANE REP","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":104.6095530795129,"metaBase":104.6095530795129,"metaAjustada":null,"industria":null,"revenda":104.6095530795129},{"key":"B91|SULAMITA SANTOS|PB02|Pnl MDF Rev Madeirad|REV","anoMes":"2026/09","vendedorCode":"B91","vendedorNome":"MARRANE REP","vendedorFull":"B91 - MARRANE REP","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Madeirad","channel":"REV","meta":104.1213460268221,"metaBase":104.1213460268221,"metaAjustada":null,"industria":null,"revenda":104.1213460268221},{"key":"B23|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B23","vendedorNome":"MARFIM REP","vendedorFull":"B23 - MARFIM REP","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":103.5142592387972,"metaBase":103.5142592387972,"metaAjustada":null,"industria":null,"revenda":103.5142592387972},{"key":"B78|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B78","vendedorNome":"CLEITON SANTOS","vendedorFull":"B78 - CLEITON SANTOS","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":103.5142592387972,"metaBase":103.5142592387972,"metaAjustada":null,"industria":null,"revenda":103.5142592387972},{"key":"B91|SULAMITA SANTOS|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B91","vendedorNome":"MARRANE REP","vendedorFull":"B91 - MARRANE REP","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":100.2855668982857,"metaBase":100.2855668982857,"metaAjustada":null,"industria":null,"revenda":100.2855668982857},{"key":"B10|JOSÉ MOMESSO|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"B10","vendedorNome":"RAMON NEVES","vendedorFull":"B10 - RAMON NEVES","gerente":"JOSÉ MOMESSO","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":96.14454441282416,"metaBase":96.14454441282416,"metaAjustada":null,"industria":null,"revenda":96.14454441282416},{"key":"B01|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B01","vendedorNome":"ALESSANDRO BELEZE","vendedorFull":"B01 - ALESSANDRO BELEZE","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":92.14564117210855,"metaBase":92.14564117210855,"metaAjustada":null,"industria":null,"revenda":92.14564117210855},{"key":"V44|SULAMITA SANTOS|PB02|Pnl MDF Rev Unicor|REV","anoMes":"2026/09","vendedorCode":"V44","vendedorNome":"MAIS BRASIL REP LTDA","vendedorFull":"V44 - MAIS BRASIL REP LTDA","gerente":"SULAMITA SANTOS","filialCode":"PB02","filialNome":"JAGUARIAIVA","filialFull":"PB02 - JAGUARIAIVA","linha":"Pnl MDF Rev Unicor","channel":"REV","meta":91.13701605798956,"metaBase":91.13701605798956,"metaAjustada":null,"industria":null,"revenda":91.13701605798956},{"key":"B84|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B84","vendedorNome":"FILIPE ZORZETTO","vendedorFull":"B84 - FILIPE ZORZETTO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":64.62161848433584,"metaBase":64.62161848433584,"metaAjustada":null,"industria":null,"revenda":64.62161848433584},{"key":"B10|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B10","vendedorNome":"RAMON NEVES","vendedorFull":"B10 - RAMON NEVES","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":58.63813529134178,"metaBase":58.63813529134178,"metaAjustada":null,"industria":null,"revenda":58.63813529134178},{"key":"V08|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V08","vendedorNome":"ELIZANGELLA TONATTO","vendedorFull":"V08 - ELIZANGELLA TONATTO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":50.26125882115009,"metaBase":50.26125882115009,"metaAjustada":null,"industria":null,"revenda":50.26125882115009},{"key":"B80|SULAMITA SANTOS|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B80","vendedorNome":"ILHA BELA REPRES","vendedorFull":"B80 - ILHA BELA REPRES","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":46.50183633099194,"metaBase":46.50183633099194,"metaAjustada":null,"industria":null,"revenda":46.50183633099194},{"key":"V07|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V07","vendedorNome":"CRISTIANO RODRIGUES","vendedorFull":"V07 - CRISTIANO RODRIGUES","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":41.28603403165901,"metaBase":41.28603403165901,"metaAjustada":null,"industria":null,"revenda":41.28603403165901},{"key":"B43|SULAMITA SANTOS|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B43","vendedorNome":"LUCIANA DA ROCHA","vendedorFull":"B43 - LUCIANA DA ROCHA","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":34.50136243912306,"metaBase":34.50136243912306,"metaAjustada":null,"industria":null,"revenda":34.50136243912306},{"key":"B94|JOSÉ MOMESSO|PB06|Pnl MDF Pintado Bco|REV","anoMes":"2026/09","vendedorCode":"B94","vendedorNome":"PAULO MULLER","vendedorFull":"B94 - PAULO MULLER","gerente":"JOSÉ MOMESSO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF Pintado Bco","channel":"REV","meta":30.79448308747696,"metaBase":30.79448308747696,"metaAjustada":null,"industria":null,"revenda":30.79448308747696},{"key":"V08|JOSÉ MOMESSO|PB06|Pnl MDF Pintado Bco|REV","anoMes":"2026/09","vendedorCode":"V08","vendedorNome":"ELIZANGELLA TONATTO","vendedorFull":"V08 - ELIZANGELLA TONATTO","gerente":"JOSÉ MOMESSO","filialCode":"PB06","filialNome":"PIEN","filialFull":"PB06 - PIEN","linha":"Pnl MDF Pintado Bco","channel":"REV","meta":30.79448308747696,"metaBase":30.79448308747696,"metaAjustada":null,"industria":null,"revenda":30.79448308747696},{"key":"B82|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B82","vendedorNome":"MANOEL NETO","vendedorFull":"B82 - MANOEL NETO","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":28.7207193263715,"metaBase":28.7207193263715,"metaAjustada":null,"industria":null,"revenda":28.7207193263715},{"key":"B91|SULAMITA SANTOS|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B91","vendedorNome":"MARRANE REP","vendedorFull":"B91 - MARRANE REP","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":27.001066256705,"metaBase":27.001066256705,"metaAjustada":null,"industria":null,"revenda":27.001066256705},{"key":"V43|SULAMITA SANTOS|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V43","vendedorNome":"BARUK REPRESENTAÇÕES","vendedorFull":"V43 - BARUK REPRESENTAÇÕES","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":24.75097740197958,"metaBase":24.75097740197958,"metaAjustada":null,"industria":null,"revenda":24.75097740197958},{"key":"V44|SULAMITA SANTOS|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V44","vendedorNome":"MAIS BRASIL REP LTDA","vendedorFull":"V44 - MAIS BRASIL REP LTDA","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":23.25091816549597,"metaBase":23.25091816549597,"metaAjustada":null,"industria":null,"revenda":23.25091816549597},{"key":"B22|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B22","vendedorNome":"MADEJONER REP","vendedorFull":"B22 - MADEJONER REP","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":19.7454945368804,"metaBase":19.7454945368804,"metaAjustada":null,"industria":null,"revenda":19.7454945368804},{"key":"B69|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B69","vendedorNome":"DIEGO RESENDE","vendedorFull":"B69 - DIEGO RESENDE","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":17.95044957898218,"metaBase":17.95044957898218,"metaAjustada":null,"industria":null,"revenda":17.95044957898218},{"key":"V52|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V52","vendedorNome":"ANDRIUS LEITE","vendedorFull":"V52 - ANDRIUS LEITE","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":15.55705630178456,"metaBase":15.55705630178456,"metaAjustada":null,"industria":null,"revenda":15.55705630178456},{"key":"V37|SULAMITA SANTOS|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"V37","vendedorNome":"ROSARIO REPRES. COM","vendedorFull":"V37 - ROSARIO REPRES. COM","gerente":"SULAMITA SANTOS","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":12.00047389186889,"metaBase":12.00047389186889,"metaAjustada":null,"industria":null,"revenda":12.00047389186889},{"key":"B76|JOSÉ MOMESSO|PB22|Pnl MDF Rev Branco|REV","anoMes":"2026/09","vendedorCode":"B76","vendedorNome":"FERNANDO BATALHA","vendedorFull":"B76 - FERNANDO BATALHA","gerente":"JOSÉ MOMESSO","filialCode":"PB22","filialNome":"PONTA GROSSA","filialFull":"PB22 - PONTA GROSSA","linha":"Pnl MDF Rev Branco","channel":"REV","meta":4.500177709450833,"metaBase":4.500177709450833,"metaAjustada":null,"industria":null,"revenda":4.500177709450833}],"totals":{"total":132381.76760753506,"industria":78445.87174916072,"revenda":53935.89585837447,"count":267,"vendedores":30,"gerentes":3,"filiais":4,"linhas":10}}</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+"use strict";
+
+/* =========================================================================
+   DATA LAYER — parsing, normalization, aggregation, diffing.
+   (Validated separately against the real spreadsheet before being wired
+   into the UI: totals reproduce the workbook's own "% Gerente" pivot.)
+   ========================================================================= */
+
+function stripAccents(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function normHeader(s){ return stripAccents(String(s||'')).toLowerCase().replace(/\s+/g,' ').trim(); }
+function splitCode(s){
+  s = String(s||'').trim();
+  const i = s.indexOf(' - ');
+  if (i<0) return {code:s, nome:'', full:s};
+  return {code:s.slice(0,i).trim(), nome:s.slice(i+3).trim(), full:s};
+}
+function numOrNull(v){ return (typeof v==='number' && isFinite(v)) ? v : null; }
+
+function mapHeaders(headerRow){
+  const idx = {};
+  headerRow.forEach((h,i)=>{
+    const n = normHeader(h);
+    if (n==='anomes') idx.anoMes = i;
+    else if (n==='vendedor') idx.vendedor = i;
+    else if (n.startsWith('gerente')) idx.gerente = i;
+    else if (n==='filial') idx.filial = i;
+    else if (n==='linha') idx.linha = i;
+    else if (n==='meta') idx.meta = i;
+    else if (n.startsWith('industria')) idx.industria = i;
+    else if (n.startsWith('export rev')) idx.exportRev = i;
+    else if (n.startsWith('export ind')) idx.exportInd = i;
+    else if (n.startsWith('revenda')) idx.revenda = i;
+    else if (n.startsWith('meta') && n.includes('m3')) idx.metaFinal = i;
+  });
+  return idx;
+}
+
+function findHeaderRowIndex(aoa){
+  for (let r=0;r<Math.min(aoa.length,10);r++){
+    const row = aoa[r]||[];
+    const norm = row.map(normHeader);
+    if (norm.includes('anomes') && norm.includes('vendedor')) return r;
+  }
+  return -1;
+}
+
+function normalizeRows(aoa){
+  const headerRowIdx = findHeaderRowIndex(aoa);
+  if (headerRowIdx<0) throw new Error('Cabeçalho da guia "Meta Vendedor" não encontrado (esperado colunas AnoMes/Vendedor).');
+  const idx = mapHeaders(aoa[headerRowIdx]);
+  const required = ['anoMes','vendedor','gerente','filial','linha','meta'];
+  for (const k of required){
+    if (idx[k]===undefined) throw new Error('Coluna obrigatória ausente na guia "Meta Vendedor": '+k);
+  }
+  const rows = [];
+  for (let r=headerRowIdx+1; r<aoa.length; r++){
+    const row = aoa[r]||[];
+    const vendedorRaw = row[idx.vendedor];
+    if (vendedorRaw===null || vendedorRaw===undefined || String(vendedorRaw).trim()==='') continue;
+    const metaBase = numOrNull(row[idx.meta]);
+    if (metaBase===null) continue;
+    const metaFinalVal = idx.metaFinal!==undefined ? numOrNull(row[idx.metaFinal]) : null;
+    const industria = numOrNull(row[idx.industria]);
+    const revenda = numOrNull(row[idx.revenda]);
+    const channel = industria!==null ? 'IND' : (revenda!==null ? 'REV' : 'OUTRO');
+    const vend = splitCode(vendedorRaw);
+    const fil = splitCode(row[idx.filial]);
+    const gerente = String(row[idx.gerente]||'').trim();
+    const linha = String(row[idx.linha]||'').trim();
+    const anoMes = String(row[idx.anoMes]||'').trim();
+    const meta = metaFinalVal!==null ? metaFinalVal : metaBase;
+    const key = [vend.code, gerente, fil.code, linha, channel].join('|');
+    rows.push({
+      key, anoMes,
+      vendedorCode: vend.code, vendedorNome: vend.nome, vendedorFull: vend.full,
+      gerente,
+      filialCode: fil.code, filialNome: fil.nome, filialFull: fil.full,
+      linha, channel,
+      meta, metaBase, metaAjustada: metaFinalVal,
+      industria, revenda,
+    });
+  }
+  return rows;
+}
+
+function totals(rows){
+  const t = {total:0, industria:0, revenda:0, count:rows.length,
+    vendedores:new Set(), gerentes:new Set(), filiais:new Set(), linhas:new Set()};
+  for (const r of rows){
+    t.total += r.meta;
+    if (r.channel==='IND') t.industria += r.meta;
+    else if (r.channel==='REV') t.revenda += r.meta;
+    t.vendedores.add(r.vendedorCode);
+    t.gerentes.add(r.gerente);
+    t.filiais.add(r.filialCode);
+    t.linhas.add(r.linha);
+  }
+  return {
+    total:t.total, industria:t.industria, revenda:t.revenda, count:t.count,
+    vendedores:t.vendedores.size, gerentes:t.gerentes.size, filiais:t.filiais.size, linhas:t.linhas.size,
+  };
+}
+
+function aggregateBy(rows, keyFn, labelFn){
+  const map = new Map();
+  for (const r of rows){
+    const k = keyFn(r);
+    if (!map.has(k)) map.set(k, {key:k, label: labelFn?labelFn(r):k, total:0, industria:0, revenda:0, count:0});
+    const e = map.get(k);
+    e.total += r.meta; e.count++;
+    if (r.channel==='IND') e.industria += r.meta;
+    else if (r.channel==='REV') e.revenda += r.meta;
+  }
+  return [...map.values()].sort((a,b)=>b.total-a.total);
+}
+
+const DIFF_EPS = 0.01;
+function diffImports(prevRows, currRows){
+  const prevMap = new Map(prevRows.map(r=>[r.key,r]));
+  const currMap = new Map(currRows.map(r=>[r.key,r]));
+  const added=[], removed=[], changed=[];
+  let unchanged=0;
+  for (const [k,cur] of currMap){
+    const prev = prevMap.get(k);
+    if (!prev){ added.push(cur); continue; }
+    if (Math.abs(cur.meta - prev.meta) > DIFF_EPS){
+      changed.push({key:k, row:cur, before:prev.meta, after:cur.meta, delta:cur.meta-prev.meta, pct: prev.meta!==0 ? (cur.meta-prev.meta)/prev.meta : null});
+    } else {
+      unchanged++;
+    }
+  }
+  for (const [k,prev] of prevMap){
+    if (!currMap.has(k)) removed.push(prev);
+  }
+  changed.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+  return {added, removed, changed, unchanged, isIdentical: added.length===0 && removed.length===0 && changed.length===0};
+}
+
+function findMetaVendedorSheet(wb){
+  const names = wb.SheetNames;
+  let hit = names.find(n=>{ const nn=normHeader(n); return nn.includes('meta') && nn.includes('vendedor'); });
+  if (hit) return hit;
+  return null;
+}
+
+/* =========================================================================
+   STORAGE
+   ========================================================================= */
+
+const STORAGE_KEY = 'araucoMetasVendas_v1';
+
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e){ console.warn('Falha ao ler dados salvos', e); }
+  return { months:{}, ui:{} };
+}
+function saveState(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }
+  catch(e){ console.warn('Falha ao salvar dados', e); }
+}
+
+let STATE = loadState();
+
+// bootstrap with the reference spreadsheet on first run
+(function bootstrapSeed(){
+  if (Object.keys(STATE.months).length) return;
+  try {
+    const seedEl = document.getElementById('seed-data');
+    const seed = JSON.parse(seedEl.textContent);
+    const monthKey = seed.rows[0] ? seed.rows[0].anoMes : '2026/09';
+    seed.totals = totals(seed.rows);
+    STATE.months[monthKey] = { imports:[seed] };
+    STATE.ui.lastMonth = monthKey;
+    saveState();
+  } catch(e){ console.warn('Sem dados de referência embutidos', e); }
+})();
+
+/* =========================================================================
+   FORMATTING HELPERS
+   ========================================================================= */
+
+const fmtInt = new Intl.NumberFormat('pt-BR', {maximumFractionDigits:0});
+const fmtPct = new Intl.NumberFormat('pt-BR', {maximumFractionDigits:1, signDisplay:'exceptZero'});
+function fmtM3(v){ return fmtInt.format(Math.round(v)); }
+function fmtDelta(v){ return (v>=0?'+':'') + fmtInt.format(Math.round(v)); }
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' +
+         d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function animateNumber(el, to, opts){
+  opts = opts||{};
+  const from = 0, dur = 900;
+  const t0 = performance.now();
+  function tick(t){
+    const p = Math.min(1,(t-t0)/dur);
+    const eased = 1 - Math.pow(1-p,3);
+    const val = from + (to-from)*eased;
+    el.textContent = opts.fmt ? opts.fmt(val) : fmtM3(val);
+    if (p<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* =========================================================================
+   TOOLTIP
+   ========================================================================= */
+
+const tooltipEl = document.getElementById('tooltip');
+let tooltipTarget = null;
+function showTooltip(target, html){
+  tooltipTarget = target;
+  tooltipEl.innerHTML = html;
+  tooltipEl.classList.add('show');
+  positionTooltip();
+}
+function hideTooltip(target){
+  if (target && target!==tooltipTarget) return;
+  tooltipEl.classList.remove('show');
+  tooltipTarget = null;
+}
+function positionTooltip(){
+  if (!tooltipTarget) return;
+  const r = tooltipTarget.getBoundingClientRect();
+  const tw = tooltipEl.offsetWidth, th = tooltipEl.offsetHeight;
+  let x = r.left + r.width/2 - tw/2;
+  let y = r.top - th - 10;
+  x = Math.max(8, Math.min(window.innerWidth-tw-8, x));
+  if (y<8) y = r.bottom + 10;
+  tooltipEl.style.left = x+'px';
+  tooltipEl.style.top = y+'px';
+}
+function wireTooltip(el, htmlFn){
+  el.addEventListener('mouseenter', ()=>showTooltip(el, htmlFn()));
+  el.addEventListener('mouseleave', ()=>hideTooltip(el));
+}
+
+/* =========================================================================
+   UI STATE
+   ========================================================================= */
+
+const filters = { filiais: new Set(), canal: 'ALL', gerente: 'ALL', busca: '' };
+let showDiff = true;
+
+function currentMonthKey(){
+  const months = Object.keys(STATE.months);
+  if (!months.length) return null;
+  if (STATE.ui.lastMonth && STATE.months[STATE.ui.lastMonth]) return STATE.ui.lastMonth;
+  months.sort();
+  return months[months.length-1];
+}
+function monthState(){
+  const mk = currentMonthKey();
+  return mk ? STATE.months[mk] : null;
+}
+function currentImport(){
+  const ms = monthState();
+  if (!ms || !ms.imports.length) return null;
+  return ms.imports[ms.imports.length-1];
+}
+function previousImport(){
+  const ms = monthState();
+  if (!ms || ms.imports.length<2) return null;
+  return ms.imports[ms.imports.length-2];
+}
+
+function applyFilters(rows){
+  return rows.filter(r=>{
+    if (filters.filiais.size && !filters.filiais.has(r.filialCode)) return false;
+    if (filters.canal!=='ALL' && r.channel!==filters.canal) return false;
+    if (filters.gerente!=='ALL' && r.gerente!==filters.gerente) return false;
+    if (filters.busca){
+      const q = filters.busca;
+      const hay = (r.vendedorFull+' '+r.linha+' '+r.gerente).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+/* =========================================================================
+   RENDER — top bar / KPIs
+   ========================================================================= */
+
+function renderMonthSelect(){
+  const sel = document.getElementById('month-select');
+  const months = Object.keys(STATE.months).sort();
+  const cur = currentMonthKey();
+  sel.innerHTML = months.map(m=>`<option value="${m}"${m===cur?' selected':''}>${m}</option>`).join('');
+  sel.onchange = ()=>{ STATE.ui.lastMonth = sel.value; saveState(); renderAll(); };
+}
+
+function renderImportBadge(){
+  const badge = document.getElementById('import-badge');
+  const imp = currentImport();
+  const prev = previousImport();
+  if (!imp){ badge.innerHTML = 'Nenhuma importação ainda'; return; }
+  let diffHtml = '';
+  if (prev){
+    const d = diffImports(prev.rows, imp.rows);
+    const changes = d.added.length + d.removed.length + d.changed.length;
+    if (changes>0) diffHtml = `<span class="diff-pill">${changes} alteraç${changes===1?'ão':'ões'}</span>`;
+    else diffHtml = `<span class="diff-pill" style="background:var(--good-soft);color:var(--good)">sem alterações</span>`;
+  }
+  badge.innerHTML = `<span>${imp.label} · <b>${fmtDate(imp.importedAt)}</b></span>${diffHtml}`;
+}
+
+function renderKPIs(rows, diff){
+  const strip = document.getElementById('kpi-strip');
+  const t = totals(rows);
+  const prevTotal = diff ? diff._prevTotal : null;
+
+  function deltaBlock(curVal, prevVal){
+    if (prevVal===null || prevVal===undefined) return '';
+    const d = curVal - prevVal;
+    const pct = prevVal!==0 ? d/prevVal : 0;
+    const cls = Math.abs(d)<DIFF_EPS ? 'flat' : (d>0?'up':'down');
+    const arrow = cls==='up'?'▲':cls==='down'?'▼':'—';
+    return `<div class="kpi-delta ${cls}">${arrow} ${fmtDelta(d)} <span style="opacity:.7">(${fmtPct.format(pct*100)}%)</span></div>`;
+  }
+
+  const kpis = [
+    {label:'Meta total', value:t.total, fmt:v=>fmtM3(v)+' m³', prev: diff?diff._prevKpis.total:null},
+    {label:'Indústria', value:t.industria, fmt:v=>fmtM3(v)+' m³', dot:'var(--ind)', prev: diff?diff._prevKpis.industria:null},
+    {label:'Revenda', value:t.revenda, fmt:v=>fmtM3(v)+' m³', dot:'var(--rev)', prev: diff?diff._prevKpis.revenda:null},
+    {label:'Vendedores', value:t.vendedores, fmt:v=>fmtInt.format(Math.round(v))},
+    {label:'Gerentes / Plantas', value:null, raw:`${t.gerentes} / ${t.filiais}`},
+    {label:'Linhas de material', value:t.linhas, fmt:v=>fmtInt.format(Math.round(v))},
+  ];
+
+  strip.innerHTML = kpis.map((k,i)=>`
+    <div class="kpi">
+      <div class="kpi-label">${k.dot?`<span class="kpi-dot" style="background:${k.dot}"></span>`:''}${k.label}</div>
+      <div class="kpi-value" id="kpi-val-${i}">${k.raw!==undefined?k.raw:'0'}</div>
+      ${k.value!==null && k.prev!==null && k.prev!==undefined ? deltaBlock(k.value,k.prev) : ''}
+    </div>
+  `).join('');
+
+  kpis.forEach((k,i)=>{
+    if (k.value===null) return;
+    const el = document.getElementById('kpi-val-'+i);
+    animateNumber(el, k.value, {fmt:k.fmt});
+  });
+}
+
+/* =========================================================================
+   RENDER — bar charts
+   ========================================================================= */
+
+function renderStackedBarChart(containerId, entries, opts){
+  opts = opts||{};
+  const el = document.getElementById(containerId);
+  if (!entries.length){ el.innerHTML = '<div class="empty-note">Sem dados para os filtros atuais.</div>'; return; }
+  const max = Math.max(...entries.map(e=>e.total), 1);
+  el.innerHTML = entries.map((e,i)=>`
+    <div class="bar-row" data-idx="${i}">
+      <div class="bar-row-label" title="${e.label}">${e.label}</div>
+      <div class="bar-track">
+        <div class="bar-fill-wrap" data-w="${(e.total/max*100).toFixed(2)}">
+          ${e.industria>0?`<div class="bar-seg" style="width:${(e.industria/e.total*100).toFixed(2)}%;background:var(--ind)"></div>`:''}
+          ${e.revenda>0?`<div class="bar-seg" style="width:${(e.revenda/e.total*100).toFixed(2)}%;background:var(--rev)"></div>`:''}
+        </div>
+      </div>
+      <div class="bar-row-value">${fmtM3(e.total)} m³</div>
+    </div>
+  `).join('');
+
+  entries.forEach((e,i)=>{
+    const row = el.querySelector(`.bar-row[data-idx="${i}"]`);
+    const wrap = row.querySelector('.bar-fill-wrap');
+    wireTooltip(row, ()=>`
+      <div class="tt-title">${e.label}</div>
+      <div class="tt-row"><span>Indústria</span><b>${fmtM3(e.industria)} m³</b></div>
+      <div class="tt-row"><span>Revenda</span><b>${fmtM3(e.revenda)} m³</b></div>
+      <div class="tt-row"><span>Total</span><b>${fmtM3(e.total)} m³</b></div>
+    `);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ wrap.style.width = wrap.dataset.w+'%'; }));
+  });
+}
+
+function renderSingleBarChart(containerId, entries, opts){
+  opts = opts||{};
+  const color = opts.color || 'var(--accent)';
+  const el = document.getElementById(containerId);
+  if (!entries.length){ el.innerHTML = '<div class="empty-note">Sem dados para os filtros atuais.</div>'; return; }
+  const list = opts.limit ? entries.slice(0,opts.limit) : entries;
+  const max = Math.max(...list.map(e=>e.total), 1);
+  el.innerHTML = list.map((e,i)=>`
+    <div class="bar-row" data-idx="${i}">
+      <div class="bar-row-label" title="${e.label}">${e.label}</div>
+      <div class="bar-track">
+        <div class="bar-fill-wrap" data-w="${(e.total/max*100).toFixed(2)}">
+          <div class="bar-seg" style="width:100%;background:${color}"></div>
+        </div>
+      </div>
+      <div class="bar-row-value">${fmtM3(e.total)} m³</div>
+    </div>
+  `).join('');
+  list.forEach((e,i)=>{
+    const row = el.querySelector(`.bar-row[data-idx="${i}"]`);
+    const wrap = row.querySelector('.bar-fill-wrap');
+    wireTooltip(row, ()=>`
+      <div class="tt-title">${e.label}</div>
+      <div class="tt-row"><span>Meta total</span><b>${fmtM3(e.total)} m³</b></div>
+      <div class="tt-row"><span>Registros</span><b>${e.count}</b></div>
+    `);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ wrap.style.width = wrap.dataset.w+'%'; }));
+  });
+}
+
+/* =========================================================================
+   RENDER — ranking table
+   ========================================================================= */
+
+let sortState = { col:'total', dir:-1 };
+
+function renderVendedoresTable(rows, changedByKey, addedKeys, removedRows){
+  const byVend = new Map();
+  for (const r of rows){
+    const k = r.vendedorCode+'|'+r.gerente;
+    if (!byVend.has(k)) byVend.set(k, {
+      vendedorCode:r.vendedorCode, vendedorNome:r.vendedorNome, gerente:r.gerente,
+      filiais:new Set(), total:0, industria:0, revenda:0, delta:0, hasNew:false,
+    });
+    const e = byVend.get(k);
+    e.filiais.add(r.filialCode);
+    e.total += r.meta;
+    if (r.channel==='IND') e.industria += r.meta; else if (r.channel==='REV') e.revenda += r.meta;
+    const chg = changedByKey.get(r.key);
+    if (chg) e.delta += chg.delta;
+    if (addedKeys.has(r.key)) e.hasNew = true;
+  }
+  let list = [...byVend.values()];
+
+  const cols = [
+    {k:'vendedorNome', label:'Vendedor'},
+    {k:'gerente', label:'Gerente'},
+    {k:'filiais', label:'Plantas'},
+    {k:'industria', label:'Indústria', num:true},
+    {k:'revenda', label:'Revenda', num:true},
+    {k:'total', label:'Meta total', num:true},
+    {k:'delta', label:'Variação', num:true},
+  ];
+  const cmp = (a,b)=>{
+    let av = a[sortState.col], bv = b[sortState.col];
+    if (sortState.col==='filiais'){ av=a.filiais.size; bv=b.filiais.size; }
+    if (typeof av==='string') return av.localeCompare(bv)*sortState.dir;
+    return (av-bv)*sortState.dir;
+  };
+  list.sort(cmp);
+
+  const thead = document.querySelector('#table-vendedores thead');
+  thead.innerHTML = '<tr>'+cols.map(c=>`<th data-col="${c.k}" class="${sortState.col===c.k?'sorted':''}">${c.label} ${sortState.col===c.k?(sortState.dir===1?'↑':'↓'):''}</th>`).join('')+'</tr>';
+  thead.querySelectorAll('th').forEach(th=>{
+    th.onclick = ()=>{
+      const col = th.dataset.col;
+      if (sortState.col===col) sortState.dir *= -1; else { sortState.col=col; sortState.dir = col==='vendedorNome'||col==='gerente'?1:-1; }
+      renderVendedoresTable(rows, changedByKey, addedKeys, removedRows);
+    };
+  });
+
+  const tbody = document.querySelector('#table-vendedores tbody');
+  tbody.innerHTML = list.map(e=>{
+    let deltaHtml = '<span class="delta flat">—</span>';
+    if (showDiff && (e.delta!==0 || e.hasNew)){
+      const cls = e.delta>0?'up':e.delta<0?'down':'flat';
+      const arrow = cls==='up'?'▲':cls==='down'?'▼':'';
+      deltaHtml = `<span class="delta ${cls}">${arrow} ${fmtDelta(e.delta)}${e.hasNew?' <span class="delta new">novo</span>':''}</span>`;
+    }
+    const filiaisStr = [...e.filiais].join(', ');
+    return `<tr>
+      <td class="name ellipsis" style="max-width:150px" title="${e.vendedorNome||e.vendedorCode}">${e.vendedorNome||e.vendedorCode}</td>
+      <td class="ellipsis" style="max-width:110px" title="${e.gerente}">${e.gerente}</td>
+      <td class="ellipsis" style="max-width:130px" title="${filiaisStr}">${filiaisStr}</td>
+      <td class="num">${fmtM3(e.industria)}</td>
+      <td class="num">${fmtM3(e.revenda)}</td>
+      <td class="num">${fmtM3(e.total)}</td>
+      <td class="num">${deltaHtml}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('ranking-count').textContent = list.length+' vendedores';
+}
+
+/* =========================================================================
+   RENDER — diff / comparison panel
+   ========================================================================= */
+
+function renderDiffPanel(diff){
+  const statRow = document.getElementById('diff-stats');
+  const tbody = document.querySelector('#table-diff tbody');
+  if (!diff){
+    statRow.innerHTML = '<div class="empty-note">Esta é a primeira importação do mês — nada para comparar ainda.</div>';
+    tbody.innerHTML = '';
+    return;
+  }
+  statRow.innerHTML = `
+    <div class="stat-chip added"><div class="n">+${diff.added.length}</div><div class="l">Novos registros</div></div>
+    <div class="stat-chip removed"><div class="n">-${diff.removed.length}</div><div class="l">Removidos</div></div>
+    <div class="stat-chip changed"><div class="n">${diff.changed.length}</div><div class="l">Metas alteradas</div></div>
+    <div class="stat-chip unchanged"><div class="n">${diff.unchanged}</div><div class="l">Sem alteração</div></div>
+  `;
+  const rows = [];
+  diff.changed.forEach(c=>{
+    rows.push({type:'changed', row:c.row, before:c.before, after:c.after, delta:c.delta});
+  });
+  diff.added.forEach(r=>{
+    rows.push({type:'added', row:r, before:null, after:r.meta, delta:r.meta});
+  });
+  diff.removed.forEach(r=>{
+    rows.push({type:'removed', row:r, before:r.meta, after:null, delta:-r.meta});
+  });
+  rows.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+
+  if (!rows.length){
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-note">Nenhuma diferença entre as duas últimas importações.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(x=>{
+    const r = x.row;
+    const tag = r.channel==='IND' ? '<span class="tag tag-ind">IND</span>' : r.channel==='REV' ? '<span class="tag tag-rev">REV</span>' : '';
+    let deltaHtml;
+    if (x.type==='added') deltaHtml = `<span class="delta new">novo</span>`;
+    else if (x.type==='removed') deltaHtml = `<span class="delta removed">removido</span>`;
+    else { const cls = x.delta>0?'up':'down'; deltaHtml = `<span class="delta ${cls}">${cls==='up'?'▲':'▼'} ${fmtDelta(x.delta)}</span>`; }
+    return `<tr>
+      <td class="name ellipsis" title="${r.vendedorFull}">${r.vendedorFull}</td>
+      <td class="ellipsis" title="${r.filialFull}">${r.filialCode} ${tag}</td>
+      <td class="ellipsis" title="${r.linha}">${r.linha}</td>
+      <td class="num">${x.before!==null?fmtM3(x.before):'—'}</td>
+      <td class="num">${x.after!==null?fmtM3(x.after):'—'}</td>
+      <td class="num">${deltaHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* =========================================================================
+   RENDER — import history
+   ========================================================================= */
+
+function renderHistory(){
+  const ms = monthState();
+  const list = document.getElementById('history-list');
+  const countEl = document.getElementById('history-count');
+  if (!ms || !ms.imports.length){
+    list.innerHTML = '<div class="empty-note">Nenhuma importação registrada para este mês.</div>';
+    countEl.textContent = '';
+    return;
+  }
+  countEl.textContent = ms.imports.length+' importaç'+(ms.imports.length===1?'ão':'ões');
+  list.innerHTML = ms.imports.slice().reverse().map((imp,ri)=>{
+    const i = ms.imports.length-1-ri;
+    const isCurrent = i===ms.imports.length-1;
+    return `<div class="history-item ${isCurrent?'current':''}">
+      <span class="history-dot"></span>
+      <div class="history-main">
+        <div class="history-label">${imp.label}${isCurrent?' · atual':''}</div>
+        <div class="history-meta">${fmtDate(imp.importedAt)} · ${imp.fileName||'—'} · ${imp.rows.length} linhas</div>
+      </div>
+      <div class="history-total">${fmtM3(imp.totals?imp.totals.total:totals(imp.rows).total)} m³</div>
+    </div>`;
+  }).join('');
+}
+
+/* =========================================================================
+   RENDER — filters UI
+   ========================================================================= */
+
+function renderFilterChips(allRows){
+  const filiais = aggregateBy(allRows, r=>r.filialCode, r=>r.filialFull);
+  const chipsFilial = document.getElementById('chips-filial');
+  chipsFilial.innerHTML = filiais.map(f=>`<span class="chip ${filters.filiais.has(f.key)?'active':''}" data-code="${f.key}">${f.key}</span>`).join('');
+  chipsFilial.querySelectorAll('.chip').forEach(ch=>{
+    ch.onclick = ()=>{
+      const code = ch.dataset.code;
+      if (filters.filiais.has(code)) filters.filiais.delete(code); else filters.filiais.add(code);
+      renderAll();
+    };
+  });
+
+  const chipsCanal = document.getElementById('chips-canal');
+  const canais = [{k:'ALL',l:'Todos'},{k:'IND',l:'Indústria'},{k:'REV',l:'Revenda'}];
+  chipsCanal.innerHTML = canais.map(c=>`<span class="chip ${filters.canal===c.k?'active':''}" data-k="${c.k}">${c.l}</span>`).join('');
+  chipsCanal.querySelectorAll('.chip').forEach(ch=>{
+    ch.onclick = ()=>{ filters.canal = ch.dataset.k; renderAll(); };
+  });
+
+  const gerentes = aggregateBy(allRows, r=>r.gerente, r=>r.gerente);
+  const selGerente = document.getElementById('select-gerente');
+  selGerente.innerHTML = '<option value="ALL">Todos os gerentes</option>' +
+    gerentes.map(g=>`<option value="${g.key}" ${filters.gerente===g.key?'selected':''}>${g.key}</option>`).join('');
+  selGerente.onchange = ()=>{ filters.gerente = selGerente.value; renderAll(); };
+}
+
+/* =========================================================================
+   MAIN RENDER
+   ========================================================================= */
+
+function renderAll(){
+  renderMonthSelect();
+  renderImportBadge();
+
+  const imp = currentImport();
+  const prev = previousImport();
+
+  if (!imp){
+    document.getElementById('kpi-strip').innerHTML = '<div class="empty-note">Importe uma planilha de metas para começar.</div>';
+    ['chart-filial','chart-gerente','chart-linha'].forEach(id=>document.getElementById(id).innerHTML='');
+    document.querySelector('#table-vendedores tbody').innerHTML = '';
+    renderDiffPanel(null);
+    renderHistory();
+    return;
+  }
+
+  renderFilterChips(imp.rows);
+
+  const rows = applyFilters(imp.rows);
+  const prevRowsAll = prev ? prev.rows : null;
+  const prevRows = prev ? applyFilters(prev.rows) : null;
+
+  let diff = null;
+  if (prev){
+    diff = diffImports(prevRows, rows);
+    diff._prevTotal = totals(prevRows).total;
+    diff._prevKpis = totals(prevRows);
+  }
+
+  renderKPIs(rows, diff);
+
+  const byFilial = aggregateBy(rows, r=>r.filialCode, r=>r.filialFull);
+  renderStackedBarChart('chart-filial', byFilial);
+
+  const byGerente = aggregateBy(rows, r=>r.gerente, r=>r.gerente);
+  renderSingleBarChart('chart-gerente', byGerente, {color:'var(--accent)'});
+
+  const byLinha = aggregateBy(rows, r=>r.linha, r=>r.linha);
+  renderSingleBarChart('chart-linha', byLinha, {color:'var(--aqua)', limit:10});
+
+  const changedByKey = new Map();
+  const addedKeys = new Set();
+  if (diff){
+    diff.changed.forEach(c=>changedByKey.set(c.key,c));
+    diff.added.forEach(r=>addedKeys.add(r.key));
+  }
+  renderVendedoresTable(rows, changedByKey, addedKeys, diff?diff.removed:[]);
+
+  renderDiffPanel(diff);
+  renderHistory();
+}
+
+/* =========================================================================
+   IMPORT FLOW
+   ========================================================================= */
+
+const importOverlay = document.getElementById('import-overlay');
+const importBtn = document.getElementById('import-btn');
+const fileInput = document.getElementById('file-input');
+
+function openImportModal(title, sub, items){
+  document.getElementById('imr-title').textContent = title;
+  document.getElementById('imr-sub').textContent = sub;
+  document.getElementById('imr-list').innerHTML = items.map(i=>`<li>${i}</li>`).join('');
+  importOverlay.classList.add('show');
+}
+document.getElementById('import-close').onclick = ()=>importOverlay.classList.remove('show');
+importOverlay.addEventListener('click', e=>{ if (e.target===importOverlay) importOverlay.classList.remove('show'); });
+
+importBtn.addEventListener('click', ()=>fileInput.click());
+fileInput.addEventListener('change', ()=>{
+  const file = fileInput.files[0];
+  if (file) runImport(file);
+  fileInput.value = '';
+});
+
+async function runImport(file){
+  importBtn.classList.add('busy');
+  try {
+    if (typeof XLSX === 'undefined') throw new Error('Biblioteca de leitura de planilhas (SheetJS) não carregou — verifique a conexão.');
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array', cellDates:true});
+    const sheetName = findMetaVendedorSheet(wb);
+    if (!sheetName) throw new Error('Guia "Meta Vendedor" não encontrada nesta planilha. Confirme que o arquivo segue o mesmo modelo.');
+    const ws = wb.Sheets[sheetName];
+    // some exports carry a used-range that spans the whole sheet (1M+ rows) even
+    // though only a few hundred have data — cap it so sheet_to_json stays instant
+    let range = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : null;
+    if (range) range.e.r = Math.min(range.e.r, 5000);
+    const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true, range: range||undefined});
+    const rows = normalizeRows(aoa);
+    if (!rows.length) throw new Error('Nenhuma linha de meta válida encontrada na guia "Meta Vendedor".');
+
+    const monthKey = rows[0].anoMes || 'SEM-MES';
+    if (!STATE.months[monthKey]) STATE.months[monthKey] = { imports:[] };
+    const ms = STATE.months[monthKey];
+    const prevImport = ms.imports.length ? ms.imports[ms.imports.length-1] : null;
+
+    if (prevImport){
+      const diff = diffImports(prevImport.rows, rows);
+      if (diff.isIdentical){
+        openImportModal('Nenhuma alteração encontrada',
+          `A guia "Meta Vendedor" deste arquivo é idêntica à última importação de ${monthKey} (${prevImport.label}).`,
+          ['Nenhum novo registro foi salvo para evitar duplicar o histórico.']);
+        return;
+      }
+      const imp = {
+        id: 'imp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        importedAt: new Date().toISOString(),
+        fileName: file.name,
+        label: 'Revisão '+ms.imports.length,
+        rows, totals: totals(rows),
+      };
+      ms.imports.push(imp);
+      STATE.ui.lastMonth = monthKey;
+      saveState();
+      renderAll();
+      const items = [];
+      items.push(`<b>${diff.added.length}</b> novo(s) registro(s) de meta.`);
+      items.push(`<b>${diff.removed.length}</b> registro(s) removido(s).`);
+      items.push(`<b>${diff.changed.length}</b> meta(s) alterada(s).`);
+      items.push(`<b>${diff.unchanged}</b> sem alteração.`);
+      openImportModal('Importação concluída — ' + imp.label, `Comparado com "${prevImport.label}" (${fmtDate(prevImport.importedAt)}) — mês ${monthKey}.`, items);
+    } else {
+      const imp = {
+        id: 'imp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        importedAt: new Date().toISOString(),
+        fileName: file.name,
+        label: 'Meta inicial (planejada)',
+        rows, totals: totals(rows),
+      };
+      ms.imports.push(imp);
+      STATE.ui.lastMonth = monthKey;
+      saveState();
+      renderAll();
+      openImportModal('Importação concluída', `Primeira importação do mês ${monthKey}.`,
+        [`<b>${rows.length}</b> registros de meta carregados.`, `Meta total: <b>${fmtM3(totals(rows).total)} m³</b>.`]);
+    }
+  } catch (err){
+    console.error(err);
+    openImportModal('Falha na importação', '', [`<span style="color:var(--critical)">${(err&&err.message)||err}</span>`]);
+  } finally {
+    importBtn.classList.remove('busy');
+  }
+}
+
+/* =========================================================================
+   WIRE UP MISC + INIT
+   ========================================================================= */
+
+document.getElementById('search-vendedor').addEventListener('input', e=>{
+  filters.busca = stripAccents(e.target.value.toLowerCase()).trim();
+  renderAll();
+});
+document.getElementById('toggle-diff').addEventListener('change', e=>{
+  showDiff = e.target.checked;
+  renderAll();
+});
+window.addEventListener('scroll', positionTooltip, {passive:true});
+window.addEventListener('resize', positionTooltip);
+
+renderAll();
+</script>
+</body></html>
