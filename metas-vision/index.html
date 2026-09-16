@@ -34,15 +34,29 @@
   --font-ui:'IBM Plex Sans',system-ui,sans-serif;
   --font-mono:'IBM Plex Mono',ui-monospace,monospace;
   --ease:cubic-bezier(.16,1,.3,1);
+  --ease-3d:cubic-bezier(.31,1.44,.53,1);
 }
 *{box-sizing:border-box;}
 html,body{height:100%;}
 body{margin:0;background:var(--bg-void);color:var(--ink);font-family:var(--font-ui);-webkit-font-smoothing:antialiased;}
-#app{min-height:100%;display:flex;flex-direction:column;background:
-  radial-gradient(1100px 520px at 12% -8%, rgba(144,133,233,.10), transparent 60%),
-  radial-gradient(900px 480px at 100% 0%, rgba(57,135,229,.08), transparent 55%),
-  var(--bg-void);
+#app{min-height:100%;display:flex;flex-direction:column;position:relative;z-index:1;background:transparent;}
+
+/* ---------- living background ---------- */
+#bg-motion{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:var(--bg-void);}
+#bg-motion::after{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(1400px 900px at 50% -10%, rgba(255,255,255,.03), transparent 60%);
 }
+#bg-motion .blob{position:absolute;border-radius:50%;filter:blur(110px);opacity:.32;will-change:transform;}
+#bg-motion .blob-1{width:620px;height:620px;left:-140px;top:-180px;background:radial-gradient(circle,var(--accent),transparent 70%);animation:blobDrift1 38s ease-in-out infinite alternate;}
+#bg-motion .blob-2{width:560px;height:560px;right:-160px;top:6%;background:radial-gradient(circle,var(--ind),transparent 70%);animation:blobDrift2 44s ease-in-out infinite alternate;}
+#bg-motion .blob-3{width:540px;height:540px;left:22%;bottom:-260px;background:radial-gradient(circle,var(--rev),transparent 70%);animation:blobDrift3 50s ease-in-out infinite alternate;}
+#bg-motion .blob-4{width:420px;height:420px;right:12%;bottom:-180px;background:radial-gradient(circle,var(--aqua),transparent 70%);opacity:.22;animation:blobDrift4 34s ease-in-out infinite alternate;}
+@keyframes blobDrift1{from{transform:translate(0,0) scale(1);}to{transform:translate(100px,70px) scale(1.18);}}
+@keyframes blobDrift2{from{transform:translate(0,0) scale(1);}to{transform:translate(-80px,90px) scale(.88);}}
+@keyframes blobDrift3{from{transform:translate(0,0) scale(1);}to{transform:translate(70px,-60px) scale(1.12);}}
+@keyframes blobDrift4{from{transform:translate(0,0) scale(1);}to{transform:translate(-60px,-40px) scale(1.15);}}
+@media (prefers-reduced-motion: reduce){#bg-motion .blob{animation:none!important;}}
 ::selection{background:var(--accent-soft);}
 button{font-family:inherit;}
 a{color:inherit;}
@@ -55,7 +69,8 @@ a{color:inherit;}
 /* ---------- topbar ---------- */
 #topbar{
   flex:0 0 auto;display:flex;align-items:center;gap:18px;padding:0 20px;height:64px;
-  background:linear-gradient(180deg,var(--bg-panel-2),var(--bg-panel));
+  background:linear-gradient(180deg,rgba(22,29,37,.72),rgba(18,24,31,.72));
+  backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);
   border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30;
 }
 #topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
@@ -103,10 +118,30 @@ a{color:inherit;}
 .btn svg{width:15px;height:15px;flex:0 0 auto;}
 #file-input{display:none;}
 
+/* ---------- export menu ---------- */
+.menu-wrap{position:relative;flex:0 0 auto;}
+.menu-caret{width:11px!important;height:11px!important;opacity:.7;transition:transform .18s var(--ease);}
+.menu-wrap.open .menu-caret{transform:rotate(180deg);}
+.menu-pop{
+  position:absolute;top:calc(100% + 8px);right:0;min-width:270px;background:var(--bg-raised-2);
+  border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 20px 44px -14px rgba(0,0,0,.65);
+  opacity:0;transform:translateY(-6px) scale(.97);pointer-events:none;transition:opacity .16s var(--ease),transform .16s var(--ease);
+  z-index:40;
+}
+.menu-wrap.open .menu-pop{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+.menu-item{
+  display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;padding:9px 11px;border-radius:7px;
+  border:none;background:transparent;cursor:pointer;transition:background .12s;
+}
+.menu-item:hover{background:var(--accent-soft);}
+.menu-item-label{font-size:12.5px;font-weight:600;color:var(--ink);}
+.menu-item-sub{font-size:10.5px;color:var(--ink-faint);}
+
 /* ---------- KPI strip ---------- */
 #kpi-strip{
-  flex:0 0 auto;display:flex;gap:0;padding:0 20px;background:var(--bg-panel);border-bottom:1px solid var(--line);
-  overflow-x:auto;
+  flex:0 0 auto;display:flex;gap:0;padding:0 20px;background:rgba(18,24,31,.62);
+  backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);
+  border-bottom:1px solid var(--line);overflow-x:auto;
 }
 .kpi{
   display:flex;flex-direction:column;justify-content:center;gap:3px;padding:14px 20px;
@@ -114,7 +149,10 @@ a{color:inherit;}
 }
 .kpi:last-child{border-right:none;}
 .kpi-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap;}
-.kpi-value{font-family:var(--font-mono);font-size:19px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.kpi-value{font-family:var(--font-mono);font-size:19px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;
+  display:inline-block;animation:valuePop .7s var(--ease-3d);}
+@keyframes valuePop{0%{transform:scale(.92) translateY(2px);opacity:.35;}60%{transform:scale(1.035);opacity:1;}100%{transform:scale(1) translateY(0);}}
+@media (prefers-reduced-motion: reduce){.kpi-value{animation:none;}}
 .kpi-value small{font-size:11px;font-weight:400;color:var(--ink-dim);margin-left:3px;}
 .kpi-delta{font-family:var(--font-mono);font-size:11px;font-weight:600;display:flex;align-items:center;gap:3px;}
 .kpi-delta.up{color:var(--good);}
@@ -124,7 +162,8 @@ a{color:inherit;}
 
 /* ---------- filters ---------- */
 #filters{
-  flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 20px;background:var(--bg-panel-2);
+  flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 20px;background:rgba(22,29,37,.6);
+  backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);
   border-bottom:1px solid var(--line);flex-wrap:wrap;
 }
 .filter-label{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-right:2px;}
@@ -178,16 +217,30 @@ a{color:inherit;}
   font-size:12px;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   cursor:default;
 }
-.bar-track{position:relative;height:20px;border-radius:4px;background:var(--line-soft);overflow:hidden;}
+.bar-track{position:relative;height:20px;border-radius:4px;background:var(--line-soft);box-shadow:inset 0 1px 3px rgba(0,0,0,.45);}
 .bar-fill-wrap{
-  position:absolute;left:0;top:0;bottom:0;width:0;display:flex;border-radius:0 4px 4px 0;overflow:hidden;
-  transition:width 1s var(--ease);
+  position:absolute;left:0;top:0;bottom:0;width:0;transform-origin:left center;
+  filter:drop-shadow(0 2px 5px rgba(0,0,0,.4));
+  transition:width 1.15s var(--ease-3d), transform .3s var(--ease), filter .3s var(--ease);
 }
-.bar-seg{height:100%;flex:0 0 auto;transition:background-color .3s;}
+.bar-fill-clip{width:100%;height:100%;display:flex;border-radius:0 4px 4px 0;overflow:hidden;}
+.bar-seg{height:100%;flex:0 0 auto;position:relative;transition:background-color .3s;}
+.bar-seg::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,0) 45%, rgba(0,0,0,.16) 100%);
+}
 .bar-seg + .bar-seg{margin-left:2px;}
 .bar-row-value{font-family:var(--font-mono);font-size:12px;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums;min-width:64px;text-align:right;}
 .bar-row:hover .bar-row-label{color:var(--ink);}
 .bar-row:hover .bar-track{background:var(--line);}
+.bar-row:hover .bar-fill-wrap{
+  transform:perspective(400px) rotateX(6deg) scaleY(1.08);
+  filter:drop-shadow(0 7px 12px rgba(0,0,0,.55));
+}
+@media (prefers-reduced-motion: reduce){
+  .bar-fill-wrap{transition:width .3s linear;}
+  .bar-row:hover .bar-fill-wrap{transform:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4));}
+}
 
 /* ---------- tooltip ---------- */
 #tooltip{
@@ -293,6 +346,13 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
 .footer-note{padding:16px 20px 28px;text-align:center;font-size:11px;color:var(--ink-faint);}
 </style>
 
+<div id="bg-motion">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+  <div class="blob blob-4"></div>
+</div>
+
 <div id="app">
   <div id="topbar">
     <div class="brand">
@@ -302,6 +362,23 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
     <select id="month-select" class="month-select" title="Mês de referência (AnoMes)"></select>
     <div class="topbar-spacer"></div>
     <div id="import-badge" class="import-badge"></div>
+    <div class="menu-wrap" id="export-menu-wrap">
+      <button class="btn" id="export-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg>
+        Exportar Excel
+        <svg class="menu-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="menu-pop" id="export-menu-pop">
+        <button class="menu-item" id="export-all" type="button">
+          <span class="menu-item-label">Dados completos do mês</span>
+          <span class="menu-item-sub">Todas as linhas da importação atual, sem filtros</span>
+        </button>
+        <button class="menu-item" id="export-filtered" type="button">
+          <span class="menu-item-label">View atual (filtrada)</span>
+          <span class="menu-item-sub">Só o que está visível com os filtros aplicados</span>
+        </button>
+      </div>
+    </div>
     <button class="btn btn-primary" id="import-btn" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
       Importar planilha
@@ -769,8 +846,10 @@ function renderStackedBarChart(containerId, entries, opts){
       <div class="bar-row-label" title="${e.label}">${e.label}</div>
       <div class="bar-track">
         <div class="bar-fill-wrap" data-w="${(e.total/max*100).toFixed(2)}">
-          ${e.industria>0?`<div class="bar-seg" style="width:${(e.industria/e.total*100).toFixed(2)}%;background:var(--ind)"></div>`:''}
-          ${e.revenda>0?`<div class="bar-seg" style="width:${(e.revenda/e.total*100).toFixed(2)}%;background:var(--rev)"></div>`:''}
+          <div class="bar-fill-clip">
+            ${e.industria>0?`<div class="bar-seg" style="width:${(e.industria/e.total*100).toFixed(2)}%;background:var(--ind)"></div>`:''}
+            ${e.revenda>0?`<div class="bar-seg" style="width:${(e.revenda/e.total*100).toFixed(2)}%;background:var(--rev)"></div>`:''}
+          </div>
         </div>
       </div>
       <div class="bar-row-value">${fmtM3(e.total)} m³</div>
@@ -802,7 +881,9 @@ function renderSingleBarChart(containerId, entries, opts){
       <div class="bar-row-label" title="${e.label}">${e.label}</div>
       <div class="bar-track">
         <div class="bar-fill-wrap" data-w="${(e.total/max*100).toFixed(2)}">
-          <div class="bar-seg" style="width:100%;background:${color}"></div>
+          <div class="bar-fill-clip">
+            <div class="bar-seg" style="width:100%;background:${color}"></div>
+          </div>
         </div>
       </div>
       <div class="bar-row-value">${fmtM3(e.total)} m³</div>
@@ -1156,8 +1237,312 @@ async function runImport(file){
 }
 
 /* =========================================================================
+   EXCEL EXPORT (ExcelJS, loaded on demand — SheetJS's free build can't
+   write cell colors, ExcelJS can)
+   ========================================================================= */
+
+const EXPORT_COLORS = {
+  headerBg:'FF1D2731', headerText:'FFF4F6F8',
+  bandBg:'FFF4F6F8',
+  ind:'FF3987E5', indPastelBg:'FFDCEAFC', indPastelText:'FF184C8C',
+  rev:'FFD9772E', revPastelBg:'FFFBE7D6', revPastelText:'FF8A4413',
+  accent:'FF9085E9', accentPastelBg:'FFE9E7FB', accentPastelText:'FF4B3FA0',
+  goodBg:'FFDFF5E6', goodText:'FF0F7B34',
+  critBg:'FFFBE3E1', critText:'FF9A2C24',
+  removedBg:'FFE9EBEE', removedText:'FF6B7683',
+  totalBg:'FFEDEFF2',
+  white:'FFFFFFFF',
+};
+const M3_FMT = '#,##0';
+
+let exceljsLoadPromise = null;
+function ensureExcelJS(){
+  if (typeof ExcelJS!=='undefined') return Promise.resolve();
+  if (exceljsLoadPromise) return exceljsLoadPromise;
+  exceljsLoadPromise = new Promise((resolve,reject)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+    s.onload = ()=>resolve();
+    s.onerror = ()=>reject(new Error('Não foi possível carregar a biblioteca de exportação (ExcelJS) — verifique a conexão.'));
+    document.head.appendChild(s);
+  });
+  return exceljsLoadPromise;
+}
+
+function styleHeaderRow(row, bg){
+  row.eachCell(c=>{
+    c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:bg||EXPORT_COLORS.headerBg} };
+    c.font = { bold:true, color:{argb:EXPORT_COLORS.headerText}, size:11 };
+    c.alignment = { vertical:'middle' };
+  });
+  row.height = 20;
+}
+
+function addResumoSheet(wb, ctx){
+  const { rows, imp, prev, diff, scopeLabel, monthKey } = ctx;
+  const ws = wb.addWorksheet('Resumo', { properties:{ tabColor:{argb:EXPORT_COLORS.accent} } });
+  ws.columns = [{width:26},{width:22}];
+
+  ws.mergeCells('A1:B1');
+  ws.getCell('A1').value = 'Arauco Metas — Resumo de metas de vendas';
+  ws.getCell('A1').font = { bold:true, size:14, color:{argb:EXPORT_COLORS.white} };
+  ws.getCell('A1').fill = { type:'pattern', pattern:'solid', fgColor:{argb:EXPORT_COLORS.accent} };
+  ws.getCell('A1').alignment = { vertical:'middle' };
+  ws.getRow(1).height = 26;
+
+  const meta = [
+    ['Mês (AnoMes)', monthKey],
+    ['Escopo', scopeLabel],
+    ['Origem', `${imp.label} · ${imp.fileName||'—'}`],
+    ['Gerado em', fmtDate(new Date().toISOString())],
+  ];
+  let r = 3;
+  meta.forEach(([k,v])=>{
+    ws.getCell(`A${r}`).value = k;
+    ws.getCell(`A${r}`).font = { color:{argb:'FF6B7683'} };
+    ws.getCell(`B${r}`).value = v;
+    ws.getCell(`B${r}`).font = { bold:true };
+    r++;
+  });
+  r++;
+
+  const t = totals(rows);
+  ws.getCell(`A${r}`).value = 'Indicador';
+  ws.getCell(`B${r}`).value = 'Valor';
+  styleHeaderRow(ws.getRow(r));
+  r++;
+  const kpiRows = [
+    ['Meta total (m³)', t.total, null],
+    ['Indústria (m³)', t.industria, EXPORT_COLORS.indPastelBg],
+    ['Revenda (m³)', t.revenda, EXPORT_COLORS.revPastelBg],
+    ['Vendedores', t.vendedores, null],
+    ['Gerentes regionais', t.gerentes, null],
+    ['Plantas', t.filiais, null],
+    ['Linhas de material', t.linhas, null],
+  ];
+  kpiRows.forEach(([label,val,bg])=>{
+    ws.getCell(`A${r}`).value = label;
+    const c = ws.getCell(`B${r}`);
+    c.value = val;
+    if (typeof val==='number' && label.includes('m³')) c.numFmt = M3_FMT;
+    if (bg){ ws.getCell(`A${r}`).fill = {type:'pattern',pattern:'solid',fgColor:{argb:bg}}; c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:bg}}; }
+    r++;
+  });
+
+  if (prev && diff){
+    r++;
+    ws.mergeCells(`A${r}:B${r}`);
+    ws.getCell(`A${r}`).value = `Desde a importação anterior (${prev.label} · ${fmtDate(prev.importedAt)})`;
+    ws.getCell(`A${r}`).font = { bold:true };
+    r++;
+    const diffRows = [
+      ['Novos registros', diff.added.length, EXPORT_COLORS.goodBg],
+      ['Removidos', diff.removed.length, EXPORT_COLORS.critBg],
+      ['Metas alteradas', diff.changed.length, EXPORT_COLORS.accentPastelBg],
+      ['Sem alteração', diff.unchanged, null],
+    ];
+    diffRows.forEach(([label,val,bg])=>{
+      ws.getCell(`A${r}`).value = label;
+      const c = ws.getCell(`B${r}`);
+      c.value = val;
+      if (bg){ ws.getCell(`A${r}`).fill = {type:'pattern',pattern:'solid',fgColor:{argb:bg}}; c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:bg}}; }
+      r++;
+    });
+  }
+}
+
+function addDetailSheet(wb, rows, ctx){
+  const ws = wb.addWorksheet('Detalhado', { properties:{ tabColor:{argb:EXPORT_COLORS.headerBg} } });
+  const cols = [
+    { header:'Mês', key:'anoMes', width:9 },
+    { header:'Vendedor', key:'vendedorNome', width:24 },
+    { header:'Código', key:'vendedorCode', width:9 },
+    { header:'Gerente Regional', key:'gerente', width:20 },
+    { header:'Planta', key:'filialFull', width:22 },
+    { header:'Material', key:'linha', width:20 },
+    { header:'Canal', key:'canal', width:10 },
+    { header:'Meta (m³)', key:'meta', width:13 },
+  ];
+  if (ctx.diff){
+    cols.push({ header:'Antes (m³)', key:'before', width:13 });
+    cols.push({ header:'Variação (m³)', key:'delta', width:14 });
+  }
+  ws.columns = cols;
+  styleHeaderRow(ws.getRow(1));
+  ws.views = [{ state:'frozen', ySplit:1 }];
+
+  rows.forEach((r,i)=>{
+    const chg = ctx.diff ? ctx.diff.changedByKey.get(r.key) : null;
+    const isNew = ctx.diff ? ctx.diff.addedKeys.has(r.key) : false;
+    const rowData = {
+      anoMes:r.anoMes, vendedorNome:r.vendedorNome||r.vendedorCode, vendedorCode:r.vendedorCode,
+      gerente:r.gerente, filialFull:r.filialFull, linha:r.linha, canal:r.channel==='IND'?'Indústria':r.channel==='REV'?'Revenda':'—',
+      meta:r.meta,
+    };
+    if (ctx.diff){ rowData.before = chg ? chg.before : (isNew ? null : r.meta); rowData.delta = chg ? chg.delta : (isNew ? r.meta : 0); }
+    const row = ws.addRow(rowData);
+    row.getCell('meta').numFmt = M3_FMT;
+    if (i%2===1){ row.eachCell(c=>{ if (!c.fill||!c.fill.fgColor) c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:EXPORT_COLORS.bandBg}}; }); }
+    const canalCell = row.getCell('canal');
+    if (r.channel==='IND') canalCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:EXPORT_COLORS.ind}}, canalCell.font = {color:{argb:EXPORT_COLORS.white},bold:true};
+    else if (r.channel==='REV') canalCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb:EXPORT_COLORS.rev}}, canalCell.font = {color:{argb:EXPORT_COLORS.white},bold:true};
+    if (ctx.diff){
+      row.getCell('before').numFmt = M3_FMT;
+      const dCell = row.getCell('delta');
+      dCell.numFmt = '+#,##0;-#,##0;0';
+      if (chg || isNew){
+        const up = (chg?chg.delta:r.meta) > 0;
+        dCell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: up?EXPORT_COLORS.goodBg:EXPORT_COLORS.critBg}};
+        dCell.font = {color:{argb: up?EXPORT_COLORS.goodText:EXPORT_COLORS.critText}, bold:true};
+      }
+    }
+  });
+  ws.autoFilter = { from:{row:1,column:1}, to:{row:1,column:cols.length} };
+}
+
+function addGroupSheet(wb, title, entries, headerBg){
+  const ws = wb.addWorksheet(title, { properties:{ tabColor:{argb:headerBg} } });
+  ws.columns = [
+    { header:title.replace('Por ',''), key:'label', width:26 },
+    { header:'Indústria (m³)', key:'industria', width:16 },
+    { header:'Revenda (m³)', key:'revenda', width:16 },
+    { header:'Total (m³)', key:'total', width:15 },
+  ];
+  styleHeaderRow(ws.getRow(1), headerBg);
+  ws.getCell('B1').fill = {type:'pattern',pattern:'solid',fgColor:{argb:EXPORT_COLORS.ind}};
+  ws.getCell('C1').fill = {type:'pattern',pattern:'solid',fgColor:{argb:EXPORT_COLORS.rev}};
+  ws.views = [{ state:'frozen', ySplit:1 }];
+
+  let totInd=0, totRev=0, totAll=0;
+  entries.forEach((e,i)=>{
+    const row = ws.addRow({ label:e.label, industria:e.industria, revenda:e.revenda, total:e.total });
+    ['industria','revenda','total'].forEach(k=>row.getCell(k).numFmt = M3_FMT);
+    row.getCell('industria').fill = {type:'pattern',pattern:'solid',fgColor:{argb:EXPORT_COLORS.indPastelBg}};
+    row.getCell('revenda').fill = {type:'pattern',pattern:'solid',fgColor:{argb:EXPORT_COLORS.revPastelBg}};
+    if (i%2===1) row.getCell('label').fill = {type:'pattern',pattern:'solid',fgColor:{argb:EXPORT_COLORS.bandBg}};
+    totInd+=e.industria; totRev+=e.revenda; totAll+=e.total;
+  });
+  const totalRow = ws.addRow({ label:'Total geral', industria:totInd, revenda:totRev, total:totAll });
+  totalRow.eachCell(c=>{ c.font = {bold:true}; c.fill = {type:'pattern',pattern:'solid',fgColor:{argb:EXPORT_COLORS.totalBg}}; c.border = {top:{style:'thin',color:{argb:'FFB9BFC7'}}}; });
+  ['industria','revenda','total'].forEach(k=>totalRow.getCell(k).numFmt = M3_FMT);
+  ws.autoFilter = { from:{row:1,column:1}, to:{row:1,column:4} };
+}
+
+function addComparisonSheet(wb, diff, prev){
+  const ws = wb.addWorksheet('Comparação', { properties:{ tabColor:{argb:EXPORT_COLORS.accent} } });
+  ws.columns = [
+    { header:'Tipo', key:'tipo', width:12 },
+    { header:'Vendedor', key:'vendedor', width:24 },
+    { header:'Gerente Regional', key:'gerente', width:20 },
+    { header:'Planta', key:'planta', width:22 },
+    { header:'Material', key:'material', width:20 },
+    { header:'Canal', key:'canal', width:10 },
+    { header:'Antes (m³)', key:'antes', width:13 },
+    { header:'Depois (m³)', key:'depois', width:13 },
+    { header:'Variação (m³)', key:'variacao', width:14 },
+  ];
+  styleHeaderRow(ws.getRow(1));
+  ws.views = [{ state:'frozen', ySplit:1 }];
+
+  const entries = [];
+  diff.changed.forEach(c=>entries.push({tipo: c.delta>0?'Aumentou':'Diminuiu', row:c.row, antes:c.before, depois:c.after, variacao:c.delta}));
+  diff.added.forEach(r=>entries.push({tipo:'Novo', row:r, antes:null, depois:r.meta, variacao:r.meta}));
+  diff.removed.forEach(r=>entries.push({tipo:'Removido', row:r, antes:r.meta, depois:null, variacao:-r.meta}));
+  entries.sort((a,b)=>Math.abs(b.variacao)-Math.abs(a.variacao));
+
+  entries.forEach(e=>{
+    const r = e.row;
+    const row = ws.addRow({
+      tipo:e.tipo, vendedor:r.vendedorFull, gerente:r.gerente, planta:r.filialFull, material:r.linha,
+      canal:r.channel==='IND'?'Indústria':r.channel==='REV'?'Revenda':'—',
+      antes:e.antes, depois:e.depois, variacao:e.variacao,
+    });
+    ['antes','depois','variacao'].forEach(k=>row.getCell(k).numFmt = M3_FMT);
+    let bg, textColor;
+    if (e.tipo==='Novo'){ bg=EXPORT_COLORS.accentPastelBg; textColor=EXPORT_COLORS.accentPastelText; }
+    else if (e.tipo==='Removido'){ bg=EXPORT_COLORS.removedBg; textColor=EXPORT_COLORS.removedText; }
+    else if (e.tipo==='Aumentou'){ bg=EXPORT_COLORS.goodBg; textColor=EXPORT_COLORS.goodText; }
+    else { bg=EXPORT_COLORS.critBg; textColor=EXPORT_COLORS.critText; }
+    row.getCell('tipo').fill = {type:'pattern',pattern:'solid',fgColor:{argb:bg}};
+    row.getCell('tipo').font = {bold:true, color:{argb:textColor}};
+    row.getCell('variacao').font = {bold:true, color:{argb:textColor}};
+    if (e.tipo==='Removido') row.eachCell(c=>{ c.font = Object.assign({},c.font,{strike:true, color:{argb:EXPORT_COLORS.removedText}}); });
+  });
+  ws.autoFilter = { from:{row:1,column:1}, to:{row:1,column:9} };
+  if (!entries.length){
+    ws.getCell('A2').value = `Nenhuma diferença entre esta importação e "${prev.label}".`;
+  }
+}
+
+function downloadWorkbook(wb, filename){
+  return wb.xlsx.writeBuffer().then(buf=>{
+    const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  });
+}
+
+async function runExport(scope){
+  const exportBtn = document.getElementById('export-btn');
+  exportBtn.classList.add('busy');
+  closeExportMenu();
+  try {
+    const imp = currentImport();
+    if (!imp) throw new Error('Nenhuma importação disponível para exportar ainda.');
+    const monthKey = currentMonthKey();
+    const prev = previousImport();
+
+    const rows = scope==='filtered' ? applyFilters(imp.rows) : imp.rows;
+    const prevRows = prev ? (scope==='filtered' ? applyFilters(prev.rows) : prev.rows) : null;
+    let diff = null;
+    if (prev){
+      diff = diffImports(prevRows, rows);
+      diff.changedByKey = new Map(diff.changed.map(c=>[c.key,c]));
+      diff.addedKeys = new Set(diff.added.map(r=>r.key));
+    }
+
+    await ensureExcelJS();
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Arauco Metas Vision';
+    wb.created = new Date();
+
+    const scopeLabel = scope==='filtered' ? 'View filtrada (conforme filtros aplicados no dashboard)' : 'Dados completos do mês';
+    addResumoSheet(wb, { rows, imp, prev, diff, scopeLabel, monthKey });
+    addDetailSheet(wb, rows, { diff });
+    addGroupSheet(wb, 'Por Planta', aggregateBy(rows, r=>r.filialCode, r=>r.filialFull), EXPORT_COLORS.headerBg);
+    addGroupSheet(wb, 'Por Material', aggregateBy(rows, r=>r.linha, r=>r.linha), EXPORT_COLORS.headerBg);
+    addGroupSheet(wb, 'Por Gerente', aggregateBy(rows, r=>r.gerente, r=>r.gerente), EXPORT_COLORS.headerBg);
+    if (prev && diff) addComparisonSheet(wb, diff, prev);
+
+    const stamp = new Date().toISOString().slice(0,10);
+    const monthStamp = monthKey.replace('/','-');
+    const scopeStamp = scope==='filtered' ? 'filtrado' : 'completo';
+    await downloadWorkbook(wb, `Metas_Vendas_${monthStamp}_${scopeStamp}_${stamp}.xlsx`);
+  } catch (err){
+    console.error(err);
+    openImportModal('Falha na exportação', '', [`<span style="color:var(--critical)">${(err&&err.message)||err}</span>`]);
+  } finally {
+    exportBtn.classList.remove('busy');
+  }
+}
+
+/* =========================================================================
    WIRE UP MISC + INIT
    ========================================================================= */
+
+const exportMenuWrap = document.getElementById('export-menu-wrap');
+function closeExportMenu(){ exportMenuWrap.classList.remove('open'); }
+document.getElementById('export-btn').addEventListener('click', e=>{
+  e.stopPropagation();
+  exportMenuWrap.classList.toggle('open');
+});
+document.getElementById('export-all').addEventListener('click', ()=>runExport('all'));
+document.getElementById('export-filtered').addEventListener('click', ()=>runExport('filtered'));
+document.addEventListener('click', e=>{ if (!exportMenuWrap.contains(e.target)) closeExportMenu(); });
+document.addEventListener('keydown', e=>{ if (e.key==='Escape') closeExportMenu(); });
 
 document.getElementById('search-vendedor').addEventListener('input', e=>{
   filters.busca = stripAccents(e.target.value.toLowerCase()).trim();

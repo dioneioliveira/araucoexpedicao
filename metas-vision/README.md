@@ -21,6 +21,9 @@ python3 -m http.server 8080
 ## Stack
 
 - SheetJS/xlsx (via CDN) para importar a planilha `.xlsx`.
+- ExcelJS (via CDN, carregado sob demanda só ao clicar em "Exportar Excel")
+  para gerar o `.xlsx` de saída com cores e formatação — o SheetJS gratuito
+  não grava estilo de célula, só lê.
 - Sem dependências de build — HTML/CSS/JS puro em um único arquivo.
 - Sem servidor/backend: todo o histórico de importações fica salvo no
   `localStorage` do navegador (nada sai do dispositivo).
@@ -66,3 +69,17 @@ O importador procura uma guia cujo nome contenha "Meta" e "Vendedor" (ex.:
 - **Histórico de importações**: todas as versões importadas por mês, com
   data/hora, arquivo de origem e meta total.
 - **Filtros**: planta, canal, gerente e busca por vendedor/material.
+- **Exportar Excel**: gera um `.xlsx` tabelado e colorido, com "dados
+  completos do mês" ou só a "view atual" (respeitando os filtros aplicados
+  na tela). Sai com várias guias:
+  - **Resumo** — indicadores gerais e contagem de mudanças desde a última
+    importação.
+  - **Detalhado** — uma linha por vendedor/planta/material/canal, com a
+    coluna Canal colorida (azul = Indústria, laranja = Revenda) e, quando há
+    importação anterior, colunas de antes/variação também coloridas.
+  - **Por Planta**, **Por Material**, **Por Gerente** — tabelas dinâmicas
+    com Indústria/Revenda/Total, mesma coloração por canal.
+  - **Comparação** — só aparece quando existe uma importação anterior no
+    mesmo mês: lista o que foi alterado, criado ou removido, com cor por
+    tipo (verde = aumentou, vermelho = diminuiu, roxo = novo, cinza =
+    removido).
