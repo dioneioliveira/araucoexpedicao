@@ -81,6 +81,15 @@ a{color:inherit;}
 .brand-sub{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.09em;text-transform:uppercase;
   border-left:1px solid var(--line);padding-left:9px;white-space:nowrap;}
 
+/* ---------- screen tabs ---------- */
+.screen-tabs{display:flex;gap:2px;background:var(--bg-raised);border:1px solid var(--line);border-radius:9px;padding:2px;flex:0 0 auto;}
+.screen-tab{
+  appearance:none;border:none;background:transparent;color:var(--ink-dim);font-family:var(--font-ui);font-size:12px;font-weight:600;
+  padding:7px 13px;border-radius:7px;cursor:pointer;transition:background .18s var(--ease),color .18s var(--ease);white-space:nowrap;
+}
+.screen-tab:hover{color:var(--ink);}
+.screen-tab.active{background:linear-gradient(180deg,var(--accent),#7166d6);color:#0d0a1f;}
+
 .month-select, .top-select{
   appearance:none;background:var(--bg-raised);border:1px solid var(--line);color:var(--ink);
   font-family:var(--font-mono);font-size:12px;font-weight:600;letter-spacing:.03em;
@@ -191,6 +200,10 @@ a{color:inherit;}
 }
 .toggle-compare:hover{border-color:var(--line);}
 .toggle-compare input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;}
+.closed-month-note{
+  font-family:var(--font-mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.03em;
+  padding:6px 10px;border:1px dashed var(--line);border-radius:7px;white-space:nowrap;
+}
 
 /* ---------- main layout ---------- */
 #main{flex:1 1 auto;padding:20px;display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:start;}
@@ -344,6 +357,44 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
 .fade-in{animation:fadeIn .35s var(--ease);}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 .footer-note{padding:16px 20px 28px;text-align:center;font-size:11px;color:var(--ink-faint);}
+
+/* ---------- screen: histórico / control room ---------- */
+#screen-history{
+  background:linear-gradient(180deg, rgba(3,5,7,.94), rgba(3,5,7,.98) 40%);
+  min-height:calc(100vh - 64px);
+}
+#history-kpi-strip{
+  display:flex;gap:0;padding:0 20px;background:rgba(6,9,12,.55);
+  backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);
+  border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;
+}
+#history-filters{
+  display:flex;align-items:center;gap:10px;padding:12px 20px;background:rgba(6,9,12,.45);
+  backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);
+  border-bottom:1px solid rgba(255,255,255,.06);flex-wrap:wrap;
+}
+#history-main{padding:20px;display:grid;grid-template-columns:1fr;gap:18px;}
+
+.panel-glass{
+  background:rgba(16,21,28,.5);backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);
+  border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:20px 22px;
+  box-shadow:0 24px 60px -24px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.05);
+  animation:panelIn .5s var(--ease) backwards;
+}
+
+#history-chart{width:100%;}
+#history-chart svg{width:100%;height:auto;display:block;overflow:visible;}
+.hchart-grid{stroke:rgba(255,255,255,.07);stroke-width:1;}
+.hchart-axis-text{font-family:var(--font-mono);font-size:10px;fill:var(--ink-faint);}
+.hchart-line-glow{fill:none;stroke-width:7;opacity:.45;}
+.hchart-line{fill:none;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round;}
+.hchart-dot-glow{opacity:.55;}
+.hchart-dot{stroke:rgba(5,7,9,.9);stroke-width:1.5;cursor:pointer;}
+.hchart-hit{fill:transparent;cursor:pointer;}
+.hchart-empty{fill:var(--ink-faint);font-family:var(--font-ui);font-size:13px;}
+
+.hist-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-dim);font-family:var(--font-mono);cursor:default;}
+.hist-legend-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
 </style>
 
 <div id="bg-motion">
@@ -358,6 +409,10 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
     <div class="brand">
       <span class="brand-mark">Arauco <b>Metas</b></span>
       <span class="brand-sub">Vendas · Vision</span>
+    </div>
+    <div class="screen-tabs" id="screen-tabs">
+      <button class="screen-tab active" data-screen="current" type="button">Mês atual</button>
+      <button class="screen-tab" data-screen="history" type="button">Histórico</button>
     </div>
     <select id="month-select" class="month-select" title="Mês de referência (AnoMes)"></select>
     <div class="topbar-spacer"></div>
@@ -386,6 +441,7 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
     <input type="file" id="file-input" accept=".xlsx,.xls">
   </div>
 
+  <div id="screen-current">
   <div id="kpi-strip"></div>
 
   <div id="filters">
@@ -400,7 +456,8 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
       <input type="text" id="search-vendedor" placeholder="Buscar vendedor ou material…">
     </div>
     <div class="filters-spacer"></div>
-    <label class="toggle-compare"><input type="checkbox" id="toggle-diff" checked> Destacar variações desde a importação anterior</label>
+    <label class="toggle-compare" id="toggle-diff-label"><input type="checkbox" id="toggle-diff" checked> Destacar variações desde a importação anterior</label>
+    <span class="closed-month-note" id="closed-month-note" hidden>Mês encerrado · exibindo apenas os registros finais</span>
   </div>
 
   <div id="main">
@@ -458,7 +515,7 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
 
       <div class="panel" style="animation-delay:.12s">
         <div class="panel-head">
-          <span class="panel-title">Histórico de importações</span>
+          <span class="panel-title">Importações deste mês</span>
           <span class="panel-sub" id="history-count"></span>
         </div>
         <div class="history-list" id="history-list"></div>
@@ -467,6 +524,51 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
   </div>
 
   <div class="footer-note">Dados armazenados localmente no navegador (localStorage) · nenhuma informação sai deste dispositivo</div>
+  </div>
+
+  <div id="screen-history" hidden>
+    <div id="history-kpi-strip"></div>
+
+    <div id="history-filters">
+      <span class="filter-label">Planta</span>
+      <div class="chip-row" id="hist-chips-filial"></div>
+      <span class="filter-label">Canal</span>
+      <div class="chip-row" id="hist-chips-canal"></div>
+      <span class="filter-label">Gerente</span>
+      <select id="hist-select-gerente" class="top-select"></select>
+      <span class="filter-label">Agrupar por</span>
+      <select id="hist-select-groupby" class="top-select">
+        <option value="total">Total</option>
+        <option value="canal">Canal (Indústria/Revenda)</option>
+        <option value="planta">Planta</option>
+        <option value="gerente">Gerente regional</option>
+        <option value="material">Tipo de material</option>
+      </select>
+      <div class="filters-spacer"></div>
+    </div>
+
+    <div id="history-main">
+      <div class="panel panel-glass" style="animation-delay:.02s">
+        <div class="panel-head">
+          <span class="panel-title">Evolução da meta ao longo dos meses</span>
+          <div class="legend" id="history-legend"></div>
+        </div>
+        <div id="history-chart"></div>
+      </div>
+
+      <div class="panel panel-glass" style="animation-delay:.06s">
+        <div class="panel-head"><span class="panel-title">Registros por mês</span></div>
+        <div class="table-wrap">
+          <table class="data-table" id="table-history">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">Registros finais por mês — o histórico de alterações fica só no mês mais atual (aba "Mês atual")</div>
+  </div>
 </div>
 
 <div id="tooltip"></div>
@@ -738,6 +840,18 @@ function currentMonthKey(){
   months.sort();
   return months[months.length-1];
 }
+// the most recent AnoMes across every month ever imported — only this one
+// shows alteration/diff tracking; earlier months display final records only
+function latestMonthKey(){
+  const months = Object.keys(STATE.months);
+  if (!months.length) return null;
+  months.sort();
+  return months[months.length-1];
+}
+function isViewingLatestMonth(){
+  const cur = currentMonthKey();
+  return cur!==null && cur===latestMonthKey();
+}
 function monthState(){
   const mk = currentMonthKey();
   return mk ? STATE.months[mk] : null;
@@ -785,7 +899,9 @@ function renderImportBadge(){
   const prev = previousImport();
   if (!imp){ badge.innerHTML = 'Nenhuma importação ainda'; return; }
   let diffHtml = '';
-  if (prev){
+  if (!isViewingLatestMonth()){
+    diffHtml = `<span class="diff-pill" style="background:var(--bg-raised-2);color:var(--ink-faint)">mês encerrado</span>`;
+  } else if (prev){
     const d = diffImports(prev.rows, imp.rows);
     const changes = d.added.length + d.removed.length + d.changed.length;
     if (changes>0) diffHtml = `<span class="diff-pill">${changes} alteraç${changes===1?'ão':'ões'}</span>`;
@@ -983,7 +1099,9 @@ function renderDiffPanel(diff){
   const statRow = document.getElementById('diff-stats');
   const tbody = document.querySelector('#table-diff tbody');
   if (!diff){
-    statRow.innerHTML = '<div class="empty-note">Esta é a primeira importação do mês — nada para comparar ainda.</div>';
+    statRow.innerHTML = isViewingLatestMonth()
+      ? '<div class="empty-note">Esta é a primeira importação do mês — nada para comparar ainda.</div>'
+      : '<div class="empty-note">Mês encerrado — exibindo apenas os registros finais, sem histórico de alterações. Veja a aba "Histórico" para a evolução entre meses.</div>';
     tbody.innerHTML = '';
     return;
   }
@@ -1108,12 +1226,15 @@ function renderAll(){
 
   renderFilterChips(imp.rows);
 
+  const isLatest = isViewingLatestMonth();
+  document.getElementById('toggle-diff-label').hidden = !isLatest;
+  document.getElementById('closed-month-note').hidden = isLatest;
+
   const rows = applyFilters(imp.rows);
-  const prevRowsAll = prev ? prev.rows : null;
-  const prevRows = prev ? applyFilters(prev.rows) : null;
+  const prevRows = (prev && isLatest) ? applyFilters(prev.rows) : null;
 
   let diff = null;
-  if (prev){
+  if (prevRows){
     diff = diffImports(prevRows, rows);
     diff._prevTotal = totals(prevRows).total;
     diff._prevKpis = totals(prevRows);
@@ -1140,6 +1261,322 @@ function renderAll(){
 
   renderDiffPanel(diff);
   renderHistory();
+}
+
+/* =========================================================================
+   SCREEN: HISTÓRICO — CONTROL ROOM (multi-month trend, records only)
+   Every month here shows only its LATEST import — no revision/diff detail;
+   that level of detail lives exclusively in the "Mês atual" screen, and
+   only for the most recently imported month.
+   ========================================================================= */
+
+const historyFilters = { filiais: new Set(), canal: 'ALL', gerente: 'ALL' };
+
+const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+function fmtMonthLabel(anoMes){
+  const parts = String(anoMes).split('/');
+  const idx = parseInt(parts[1],10)-1;
+  return (MESES_PT[idx]||parts[1])+'/'+parts[0].slice(2);
+}
+
+function buildMonthlySnapshots(){
+  return Object.keys(STATE.months).sort().map(mk=>{
+    const ms = STATE.months[mk];
+    const imp = ms.imports[ms.imports.length-1];
+    return { monthKey:mk, rows:imp.rows, importedAt:imp.importedAt, label:imp.label };
+  });
+}
+
+function applyHistoryFilters(rows){
+  return rows.filter(r=>{
+    if (historyFilters.filiais.size && !historyFilters.filiais.has(r.filialCode)) return false;
+    if (historyFilters.canal!=='ALL' && r.channel!==historyFilters.canal) return false;
+    if (historyFilters.gerente!=='ALL' && r.gerente!==historyFilters.gerente) return false;
+    return true;
+  });
+}
+
+const HIST_PALETTE = ['#3987e5','#d9772e','#22b483','#c98500','#d55181','#9085e9'];
+const HIST_OTHER_COLOR = '#5b6774';
+let histColorMaps = null;
+
+// colors are assigned once from the FULL, unfiltered history (ranked by
+// overall volume) so an entity always keeps its color even as filters
+// change which entities are on screen — never repaint survivors
+function buildStableColorMap(dimKeyFn, cap){
+  const totalsByKey = new Map();
+  buildMonthlySnapshots().forEach(snap=>snap.rows.forEach(r=>{
+    const k = dimKeyFn(r);
+    totalsByKey.set(k, (totalsByKey.get(k)||0)+r.meta);
+  }));
+  const ranked = [...totalsByKey.keys()].sort((a,b)=>totalsByKey.get(b)-totalsByKey.get(a));
+  const map = new Map();
+  ranked.forEach((k,i)=>map.set(k, i<cap ? HIST_PALETTE[i%HIST_PALETTE.length] : HIST_OTHER_COLOR));
+  return map;
+}
+function ensureHistColorMaps(){
+  if (histColorMaps) return histColorMaps;
+  histColorMaps = {
+    planta: buildStableColorMap(r=>r.filialCode, 6),
+    gerente: buildStableColorMap(r=>r.gerente, 6),
+    material: buildStableColorMap(r=>r.linha, 5),
+  };
+  return histColorMaps;
+}
+
+function computeGroupedSeries(snapshots, groupBy){
+  const months = snapshots.map(s=>({key:s.monthKey, label:fmtMonthLabel(s.monthKey)}));
+
+  if (groupBy==='total'){
+    const points = snapshots.map(s=>totals(applyHistoryFilters(s.rows)).total);
+    return { months, series:[{ key:'total', label:'Meta total', color:'var(--accent)', points }] };
+  }
+  if (groupBy==='canal'){
+    const points = snapshots.map(s=>totals(applyHistoryFilters(s.rows)));
+    return { months, series:[
+      { key:'IND', label:'Indústria', color:'var(--ind)', points:points.map(t=>t.industria) },
+      { key:'REV', label:'Revenda', color:'var(--rev)', points:points.map(t=>t.revenda) },
+    ]};
+  }
+
+  const dimFn = groupBy==='planta' ? r=>r.filialCode : groupBy==='gerente' ? r=>r.gerente : r=>r.linha;
+  const labelFn = groupBy==='planta' ? r=>r.filialFull : groupBy==='gerente' ? r=>r.gerente : r=>r.linha;
+  const colorMap = ensureHistColorMaps()[groupBy];
+  const cap = groupBy==='material' ? 5 : 6;
+
+  const totalsByKey = new Map();
+  const labelByKey = new Map();
+  snapshots.forEach(s=>applyHistoryFilters(s.rows).forEach(r=>{
+    const k = dimFn(r);
+    totalsByKey.set(k, (totalsByKey.get(k)||0)+r.meta);
+    if (!labelByKey.has(k)) labelByKey.set(k, labelFn(r));
+  }));
+  const ranked = [...totalsByKey.keys()].sort((a,b)=>totalsByKey.get(b)-totalsByKey.get(a));
+  const shown = ranked.slice(0,cap);
+  const hasOther = ranked.length>cap;
+
+  const series = shown.map(k=>({
+    key:k, label:labelByKey.get(k), color: colorMap.get(k)||HIST_OTHER_COLOR,
+    points: snapshots.map(s=>{
+      const rows = applyHistoryFilters(s.rows).filter(r=>dimFn(r)===k);
+      return rows.length ? totals(rows).total : null;
+    }),
+  }));
+  if (hasOther){
+    series.push({
+      key:'OUTROS', label:'Outros', color:HIST_OTHER_COLOR,
+      points: snapshots.map(s=>{
+        const rows = applyHistoryFilters(s.rows).filter(r=>!shown.includes(dimFn(r)));
+        return rows.length ? totals(rows).total : null;
+      }),
+    });
+  }
+  return { months, series };
+}
+
+function catmullRomPath(pts){
+  if (!pts.length) return '';
+  if (pts.length===1) return `M${pts[0].x},${pts[0].y}`;
+  let d = `M${pts[0].x},${pts[0].y}`;
+  for (let i=0;i<pts.length-1;i++){
+    const p0 = pts[i-1]||pts[i], p1 = pts[i], p2 = pts[i+1], p3 = pts[i+2]||p2;
+    const c1x = p1.x+(p2.x-p0.x)/6, c1y = p1.y+(p2.y-p0.y)/6;
+    const c2x = p2.x-(p3.x-p1.x)/6, c2y = p2.y-(p3.y-p1.y)/6;
+    d += ` C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+  }
+  return d;
+}
+function buildLineSegments(xs, values, yFn){
+  const segments = []; let cur = [];
+  values.forEach((v,i)=>{
+    if (v===null || v===undefined){ if (cur.length) segments.push(cur); cur=[]; }
+    else cur.push({x:xs[i], y:yFn(v)});
+  });
+  if (cur.length) segments.push(cur);
+  return segments;
+}
+function resolveColor(c){
+  if (!c.startsWith('var(')) return c;
+  const varName = c.slice(4,-1).trim();
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || '#9085e9';
+}
+
+function renderLineChart(containerId, legendId, data){
+  const el = document.getElementById(containerId);
+  const legendEl = document.getElementById(legendId);
+  const { months, series } = data;
+
+  if (!months.length || series.every(s=>s.points.every(p=>p===null||p===undefined))){
+    el.innerHTML = '<div class="hchart-empty" style="padding:60px 0;text-align:center">Sem dados para os filtros atuais.</div>';
+    if (legendEl) legendEl.innerHTML = '';
+    return;
+  }
+
+  const W=960, H=340, padL=58, padR=20, padT=18, padB=36;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+
+  let maxVal = 0;
+  series.forEach(s=>s.points.forEach(v=>{ if (typeof v==='number') maxVal = Math.max(maxVal, v); }));
+  if (maxVal<=0) maxVal = 1;
+  const yMax = maxVal*1.15;
+  const xStep = months.length>1 ? plotW/(months.length-1) : 0;
+  const xs = months.map((m,i)=> months.length>1 ? padL+i*xStep : padL+plotW/2);
+  const yOf = v => padT + plotH - (v/yMax)*plotH;
+
+  let gridHtml = '';
+  for (let t=0;t<=4;t++){
+    const v = (yMax/4)*t;
+    const y = yOf(v);
+    gridHtml += `<line class="hchart-grid" x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}"/>`;
+    gridHtml += `<text class="hchart-axis-text" x="${padL-8}" y="${(y+3.5).toFixed(1)}" text-anchor="end">${fmtM3(v)}</text>`;
+  }
+  const xLabelsHtml = months.map((m,i)=>`<text class="hchart-axis-text" x="${xs[i].toFixed(1)}" y="${H-12}" text-anchor="middle">${m.label}</text>`).join('');
+
+  let linesHtml = '', dotsHtml = '', hitHtml = '';
+  const tooltipData = [];
+  series.forEach((s,si)=>{
+    const color = resolveColor(s.color);
+    buildLineSegments(xs, s.points, yOf).forEach(seg=>{
+      const d = catmullRomPath(seg);
+      linesHtml += `<path class="hchart-line-glow" d="${d}" stroke="${color}"></path>`;
+      linesHtml += `<path class="hchart-line" d="${d}" stroke="${color}"></path>`;
+    });
+    s.points.forEach((v,i)=>{
+      if (v===null || v===undefined) return;
+      const cx = xs[i], cy = yOf(v), id = `hdot-${si}-${i}`;
+      dotsHtml += `<circle class="hchart-dot-glow" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7" fill="${color}"></circle>`;
+      dotsHtml += `<circle class="hchart-dot" id="${id}" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4" fill="${color}"></circle>`;
+      hitHtml += `<circle class="hchart-hit" data-id="${id}" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="12"></circle>`;
+      tooltipData.push({ id, month: months[i].label, label: s.label, value: v });
+    });
+  });
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${gridHtml}${linesHtml}${dotsHtml}${xLabelsHtml}${hitHtml}
+  </svg>`;
+
+  tooltipData.forEach(td=>{
+    const hit = el.querySelector(`.hchart-hit[data-id="${td.id}"]`);
+    if (!hit) return;
+    wireTooltip(hit, ()=>`
+      <div class="tt-title">${td.label}</div>
+      <div class="tt-row"><span>${td.month}</span><b>${fmtM3(td.value)} m³</b></div>
+    `);
+  });
+
+  if (legendEl) legendEl.innerHTML = series.length>1
+    ? series.map(s=>`<span class="hist-legend-item"><span class="hist-legend-dot" style="background:${resolveColor(s.color)}"></span>${s.label}</span>`).join('')
+    : '';
+}
+
+function renderHistoryKPIs(snapshots){
+  const strip = document.getElementById('history-kpi-strip');
+  if (!snapshots.length){
+    strip.innerHTML = '<div class="empty-note">Nenhum mês importado ainda.</div>';
+    return;
+  }
+  const filteredTotals = snapshots.map(s=>totals(applyHistoryFilters(s.rows)).total);
+  const last = filteredTotals[filteredTotals.length-1];
+  const prevVal = filteredTotals.length>1 ? filteredTotals[filteredTotals.length-2] : null;
+
+  let deltaHtml = '';
+  if (prevVal!==null){
+    const d = last-prevVal;
+    const pct = prevVal!==0 ? d/prevVal*100 : 0;
+    const cls = Math.abs(d)<DIFF_EPS?'flat':(d>0?'up':'down');
+    const arrow = cls==='up'?'▲':cls==='down'?'▼':'—';
+    deltaHtml = `<div class="kpi-delta ${cls}">${arrow} ${fmtDelta(d)} <span style="opacity:.7">(${fmtPct.format(pct)}%)</span></div>`;
+  }
+
+  const kpis = [
+    {label:'Meses registrados', value:snapshots.length, fmt:v=>fmtInt.format(v)},
+    {label:'Primeiro mês', raw:fmtMonthLabel(snapshots[0].monthKey)},
+    {label:'Mês mais recente', raw:fmtMonthLabel(snapshots[snapshots.length-1].monthKey)},
+    {label:'Meta no mês mais recente', value:last, fmt:v=>fmtM3(v)+' m³', deltaHtml},
+  ];
+  strip.innerHTML = kpis.map((k,i)=>`
+    <div class="kpi">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value" id="hkpi-val-${i}">${k.raw!==undefined?k.raw:'0'}</div>
+      ${k.deltaHtml||''}
+    </div>
+  `).join('');
+  kpis.forEach((k,i)=>{
+    if (k.value===undefined) return;
+    animateNumber(document.getElementById('hkpi-val-'+i), k.value, {fmt:k.fmt});
+  });
+}
+
+function renderHistoryTable(snapshots){
+  const thead = document.querySelector('#table-history thead');
+  const tbody = document.querySelector('#table-history tbody');
+  thead.innerHTML = '<tr><th>Mês</th><th>Meta total (m³)</th><th>Indústria (m³)</th><th>Revenda (m³)</th><th>Vendedores</th><th>Registro importado</th></tr>';
+  if (!snapshots.length){ tbody.innerHTML=''; return; }
+  tbody.innerHTML = snapshots.slice().reverse().map(s=>{
+    const t = totals(applyHistoryFilters(s.rows));
+    return `<tr>
+      <td class="name">${fmtMonthLabel(s.monthKey)}</td>
+      <td class="num">${fmtM3(t.total)}</td>
+      <td class="num">${fmtM3(t.industria)}</td>
+      <td class="num">${fmtM3(t.revenda)}</td>
+      <td class="num">${t.vendedores}</td>
+      <td>${s.label}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderHistoryFilterChips(){
+  const allRows = [];
+  buildMonthlySnapshots().forEach(s=>allRows.push(...s.rows));
+
+  const filiais = aggregateBy(allRows, r=>r.filialCode, r=>r.filialFull);
+  const chipsFilial = document.getElementById('hist-chips-filial');
+  chipsFilial.innerHTML = filiais.map(f=>`<span class="chip ${historyFilters.filiais.has(f.key)?'active':''}" data-code="${f.key}">${f.key}</span>`).join('');
+  chipsFilial.querySelectorAll('.chip').forEach(ch=>{
+    ch.onclick = ()=>{
+      const code = ch.dataset.code;
+      if (historyFilters.filiais.has(code)) historyFilters.filiais.delete(code); else historyFilters.filiais.add(code);
+      renderHistoryScreen();
+    };
+  });
+
+  const chipsCanal = document.getElementById('hist-chips-canal');
+  const canais = [{k:'ALL',l:'Todos'},{k:'IND',l:'Indústria'},{k:'REV',l:'Revenda'}];
+  chipsCanal.innerHTML = canais.map(c=>`<span class="chip ${historyFilters.canal===c.k?'active':''}" data-k="${c.k}">${c.l}</span>`).join('');
+  chipsCanal.querySelectorAll('.chip').forEach(ch=>{
+    ch.onclick = ()=>{ historyFilters.canal = ch.dataset.k; renderHistoryScreen(); };
+  });
+
+  const gerentes = aggregateBy(allRows, r=>r.gerente, r=>r.gerente);
+  const selGerente = document.getElementById('hist-select-gerente');
+  selGerente.innerHTML = '<option value="ALL">Todos os gerentes</option>' +
+    gerentes.map(g=>`<option value="${g.key}" ${historyFilters.gerente===g.key?'selected':''}>${g.key}</option>`).join('');
+  selGerente.onchange = ()=>{ historyFilters.gerente = selGerente.value; renderHistoryScreen(); };
+}
+
+function renderHistoryScreen(){
+  histColorMaps = null;
+  const snapshots = buildMonthlySnapshots();
+  renderHistoryFilterChips();
+  renderHistoryKPIs(snapshots);
+
+  const chartPanel = document.getElementById('history-chart').parentElement;
+  let note = chartPanel.querySelector('.hist-single-month-note');
+  if (snapshots.length<2){
+    if (!note){
+      note = document.createElement('div');
+      note.className = 'hist-single-month-note empty-note';
+      chartPanel.insertBefore(note, document.getElementById('history-chart'));
+    }
+    note.textContent = 'Ainda há só um mês registrado — a evolução aparece a partir do segundo mês importado.';
+    note.style.display = '';
+  } else if (note){
+    note.style.display = 'none';
+  }
+
+  const groupBy = document.getElementById('hist-select-groupby').value;
+  renderLineChart('history-chart', 'history-legend', computeGroupedSeries(snapshots, groupBy));
+  renderHistoryTable(snapshots);
 }
 
 /* =========================================================================
@@ -1207,6 +1644,7 @@ async function runImport(file){
       STATE.ui.lastMonth = monthKey;
       saveState();
       renderAll();
+      renderHistoryScreen();
       const items = [];
       items.push(`<b>${diff.added.length}</b> novo(s) registro(s) de meta.`);
       items.push(`<b>${diff.removed.length}</b> registro(s) removido(s).`);
@@ -1225,6 +1663,7 @@ async function runImport(file){
       STATE.ui.lastMonth = monthKey;
       saveState();
       renderAll();
+      renderHistoryScreen();
       openImportModal('Importação concluída', `Primeira importação do mês ${monthKey}.`,
         [`<b>${rows.length}</b> registros de meta carregados.`, `Meta total: <b>${fmtM3(totals(rows).total)} m³</b>.`]);
     }
@@ -1552,6 +1991,23 @@ document.getElementById('toggle-diff').addEventListener('change', e=>{
   showDiff = e.target.checked;
   renderAll();
 });
+
+let activeScreen = 'current';
+function switchScreen(screen){
+  if (screen===activeScreen) return;
+  activeScreen = screen;
+  document.querySelectorAll('.screen-tab').forEach(t=>t.classList.toggle('active', t.dataset.screen===screen));
+  document.getElementById('screen-current').hidden = screen!=='current';
+  document.getElementById('screen-history').hidden = screen!=='history';
+  document.getElementById('month-select').style.display = screen==='current' ? '' : 'none';
+  hideTooltip();
+  if (screen==='history') renderHistoryScreen();
+}
+document.querySelectorAll('.screen-tab').forEach(t=>{
+  t.addEventListener('click', ()=>switchScreen(t.dataset.screen));
+});
+document.getElementById('hist-select-groupby').addEventListener('change', renderHistoryScreen);
+
 window.addEventListener('scroll', positionTooltip, {passive:true});
 window.addEventListener('resize', positionTooltip);
 

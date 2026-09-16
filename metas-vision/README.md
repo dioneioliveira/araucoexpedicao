@@ -6,6 +6,19 @@ importação, compara automaticamente com a última planilha importada no mesmo
 mês e destaca o que mudou — útil porque a meta inicial (planejada) costuma
 ser ajustada ao longo do mês.
 
+Tem duas telas (abas no topo):
+
+- **Mês atual** — o dashboard operacional: KPIs, gráficos, ranking de
+  vendedores e o detalhamento de alterações (o que mudou desde a última
+  importação). O rastreamento de alterações só aparece aqui, e só quando o
+  mês selecionado é o mês mais recente já importado — abrir um mês anterior
+  mostra apenas os registros finais dele, sem indicar o que mudou.
+- **Histórico** — um painel "control room" com a evolução mês a mês de todos
+  os meses já importados (linhas com brilho/glow, filtros dinâmicos de
+  planta/canal/gerente e agrupamento por canal/planta/gerente/material). Cada
+  mês entra aqui só com seu registro final (a última importação daquele mês),
+  nunca com o passo a passo de revisões.
+
 Portado a partir dos Artifacts do Claude: `index.html`.
 
 ## Como rodar localmente
@@ -65,10 +78,16 @@ O importador procura uma guia cujo nome contenha "Meta" e "Vendedor" (ex.:
 - **Ranking de vendedores**: tabela ordenável com meta por canal e variação
   desde a última importação.
 - **Painel "O que mudou"**: lista detalhada de metas alteradas, novas e
-  removidas entre as duas últimas importações do mês.
-- **Histórico de importações**: todas as versões importadas por mês, com
-  data/hora, arquivo de origem e meta total.
+  removidas entre as duas últimas importações do mês — só no mês mais
+  recente (veja "Duas telas" acima).
+- **Importações deste mês**: todas as versões importadas do mês selecionado,
+  com data/hora, arquivo de origem e meta total.
 - **Filtros**: planta, canal, gerente e busca por vendedor/material.
+- **Aba Histórico**: gráfico de linha com brilho mostrando a evolução da
+  meta entre todos os meses já importados (cada mês conta com seu registro
+  final), com os mesmos filtros de planta/canal/gerente e um seletor para
+  agrupar as linhas por canal, planta, gerente regional ou tipo de material
+  (com até 5–6 linhas coloridas + "Outros" quando há mais entidades).
 - **Exportar Excel**: gera um `.xlsx` tabelado e colorido, com "dados
   completos do mês" ou só a "view atual" (respeitando os filtros aplicados
   na tela). Sai com várias guias:
