@@ -63,6 +63,11 @@ O importador procura uma guia cujo nome contenha "Meta" e "Vendedor" (ex.:
   **Indústria (m³)** / **Revenda (m³)** vem preenchida.
 - Se a coluna **META (m³)** (ajuste manual) vier preenchida, ela substitui a
   **Meta** original naquela linha.
+- Se duas linhas tiverem exatamente o mesmo vendedor + gerente + planta +
+  material + canal, elas são somadas automaticamente numa só (o importador
+  avisa quantas linhas foram fundidas) — evita que uma linha duplicada por
+  engano (ex. copiar uma linha existente para lançar um acréscimo) derrube o
+  cálculo de variação.
 
 ## Funcionalidades
 
@@ -76,7 +81,10 @@ O importador procura uma guia cujo nome contenha "Meta" e "Vendedor" (ex.:
 - **Gráficos**: meta por planta (Indústria x Revenda empilhado), por gerente
   regional e por tipo de material.
 - **Ranking de vendedores**: tabela ordenável com meta por canal e variação
-  desde a última importação.
+  desde a última importação. Tem dois modos — **Agrupado** (padrão, soma
+  tudo por vendedor) e **Detalhado** (uma linha por planta/material/canal,
+  sem agrupar) — combinado com a busca por vendedor, dá pra ver todas as
+  metas de uma pessoa separadas, uma por uma.
 - **Painel "O que mudou"**: lista detalhada de metas alteradas, novas e
   removidas entre as duas últimas importações do mês — só no mês mais
   recente (veja "Duas telas" acima).

@@ -485,7 +485,13 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
 
       <div class="panel" style="animation-delay:.06s">
         <div class="panel-head">
-          <span class="panel-title">Ranking de vendedores</span>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="panel-title">Ranking de vendedores</span>
+            <div class="chip-row" id="ranking-mode-toggle">
+              <span class="chip active" data-mode="grouped">Agrupado</span>
+              <span class="chip" data-mode="detailed">Detalhado</span>
+            </div>
+          </div>
           <span class="panel-sub" id="ranking-count"></span>
         </div>
         <div class="table-wrap">
@@ -684,7 +690,31 @@ function normalizeRows(aoa){
       industria, revenda,
     });
   }
-  return rows;
+  return mergeDuplicateKeys(rows);
+}
+
+// two spreadsheet rows can legitimately (or by accident, e.g. a copy-pasted
+// row meant to add an increment) share the same vendedor+gerente+planta+
+// material+canal key. Every downstream consumer treats `key` as unique
+// (diffImports builds a Map keyed by it, which silently drops all but the
+// last row on a collision) — so duplicates are summed into one row here,
+// once, right after parsing, instead of corrupting comparisons later.
+function mergeDuplicateKeys(rows){
+  const byKey = new Map();
+  let mergedCount = 0;
+  for (const r of rows){
+    const existing = byKey.get(r.key);
+    if (!existing){ byKey.set(r.key, {...r}); continue; }
+    existing.meta += r.meta;
+    existing.metaBase += r.metaBase;
+    if (r.metaAjustada!==null) existing.metaAjustada = (existing.metaAjustada||0) + r.metaAjustada;
+    if (r.industria!==null) existing.industria = (existing.industria||0) + r.industria;
+    if (r.revenda!==null) existing.revenda = (existing.revenda||0) + r.revenda;
+    mergedCount++;
+  }
+  const merged = [...byKey.values()];
+  merged.mergedDuplicates = mergedCount;
+  return merged;
 }
 
 function totals(rows){
@@ -848,6 +878,7 @@ function wireTooltip(el, htmlFn){
 
 const filters = { filiais: new Set(), canal: 'ALL', gerente: 'ALL', busca: '' };
 let showDiff = true;
+let rankingMode = 'grouped';
 
 function currentMonthKey(){
   const months = Object.keys(STATE.months);
@@ -890,7 +921,7 @@ function applyFilters(rows){
     if (filters.gerente!=='ALL' && r.gerente!==filters.gerente) return false;
     if (filters.busca){
       const q = filters.busca;
-      const hay = (r.vendedorFull+' '+r.linha+' '+r.gerente).toLowerCase();
+      const hay = stripAccents(r.vendedorFull+' '+r.linha+' '+r.gerente).toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -1108,6 +1139,67 @@ function renderVendedoresTable(rows, changedByKey, addedKeys, removedRows){
   document.getElementById('ranking-count').textContent = list.length+' vendedores';
 }
 
+let detailSortState = { col:'meta', dir:-1 };
+
+// itemized view: one row per vendor+gerente+planta+material+canal combo,
+// never summed together — lets the vendor search surface every individual
+// meta line separately instead of the grouped-by-vendor rollup above
+function renderVendedoresTableDetailed(rows, changedByKey, addedKeys){
+  const cols = [
+    {k:'vendedorNome', label:'Vendedor'},
+    {k:'gerente', label:'Gerente'},
+    {k:'filialFull', label:'Planta'},
+    {k:'linha', label:'Material'},
+    {k:'channel', label:'Canal'},
+    {k:'meta', label:'Meta (m³)', num:true},
+    {k:'delta', label:'Variação', num:true},
+  ];
+  const list = rows.map(r=>{
+    const chg = changedByKey.get(r.key);
+    return { r, delta: chg?chg.delta:0, isNew: addedKeys.has(r.key) };
+  });
+  const cmp = (a,b)=>{
+    const col = detailSortState.col;
+    let av = col==='delta' ? a.delta : a.r[col];
+    let bv = col==='delta' ? b.delta : b.r[col];
+    if (typeof av==='string') return av.localeCompare(bv)*detailSortState.dir;
+    return (av-bv)*detailSortState.dir;
+  };
+  list.sort(cmp);
+
+  const thead = document.querySelector('#table-vendedores thead');
+  thead.innerHTML = '<tr>'+cols.map(c=>`<th data-col="${c.k}" class="${detailSortState.col===c.k?'sorted':''}">${c.label} ${detailSortState.col===c.k?(detailSortState.dir===1?'↑':'↓'):''}</th>`).join('')+'</tr>';
+  thead.querySelectorAll('th').forEach(th=>{
+    th.onclick = ()=>{
+      const col = th.dataset.col;
+      if (detailSortState.col===col) detailSortState.dir *= -1; else { detailSortState.col=col; detailSortState.dir = col==='meta'||col==='delta'?-1:1; }
+      renderVendedoresTableDetailed(rows, changedByKey, addedKeys);
+    };
+  });
+
+  const tbody = document.querySelector('#table-vendedores tbody');
+  tbody.innerHTML = list.map(({r,delta,isNew})=>{
+    let deltaHtml = '<span class="delta flat">—</span>';
+    if (showDiff && (delta!==0 || isNew)){
+      const cls = delta>0?'up':delta<0?'down':'flat';
+      const arrow = cls==='up'?'▲':cls==='down'?'▼':'';
+      deltaHtml = `<span class="delta ${cls}">${arrow} ${fmtDelta(delta)}${isNew?' <span class="delta new">novo</span>':''}</span>`;
+    }
+    const tag = r.channel==='IND' ? '<span class="tag tag-ind">IND</span>' : r.channel==='REV' ? '<span class="tag tag-rev">REV</span>' : '—';
+    return `<tr>
+      <td class="name ellipsis" style="max-width:150px" title="${r.vendedorFull}">${r.vendedorNome||r.vendedorCode}</td>
+      <td class="ellipsis" style="max-width:110px" title="${r.gerente}">${r.gerente}</td>
+      <td class="ellipsis" style="max-width:110px" title="${r.filialFull}">${r.filialCode}</td>
+      <td class="ellipsis" style="max-width:150px" title="${r.linha}">${r.linha}</td>
+      <td>${tag}</td>
+      <td class="num">${fmtM3(r.meta)}</td>
+      <td class="num">${deltaHtml}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('ranking-count').textContent = list.length+' registros';
+}
+
 /* =========================================================================
    RENDER — diff / comparison panel
    ========================================================================= */
@@ -1274,7 +1366,8 @@ function renderAll(){
     diff.changed.forEach(c=>changedByKey.set(c.key,c));
     diff.added.forEach(r=>addedKeys.add(r.key));
   }
-  renderVendedoresTable(rows, changedByKey, addedKeys, diff?diff.removed:[]);
+  if (rankingMode==='detailed') renderVendedoresTableDetailed(rows, changedByKey, addedKeys);
+  else renderVendedoresTable(rows, changedByKey, addedKeys, diff?diff.removed:[]);
 
   renderDiffPanel(diff);
   renderHistory();
@@ -1738,6 +1831,7 @@ async function runImport(file){
       renderAll();
       renderHistoryScreen();
       const items = [];
+      if (rows.mergedDuplicates) items.push(`<b>${rows.mergedDuplicates}</b> linha(s) duplicada(s) (mesmo vendedor/planta/material/canal) foram somadas automaticamente.`);
       items.push(`<b>${diff.added.length}</b> novo(s) registro(s) de meta.`);
       items.push(`<b>${diff.removed.length}</b> registro(s) removido(s).`);
       items.push(`<b>${diff.changed.length}</b> meta(s) alterada(s).`);
@@ -1756,8 +1850,9 @@ async function runImport(file){
       saveState();
       renderAll();
       renderHistoryScreen();
-      openImportModal('Importação concluída', `Primeira importação do mês ${monthKey}.`,
-        [`<b>${rows.length}</b> registros de meta carregados.`, `Meta total: <b>${fmtM3(totals(rows).total)} m³</b>.`]);
+      { const firstItems = [`<b>${rows.length}</b> registros de meta carregados.`, `Meta total: <b>${fmtM3(totals(rows).total)} m³</b>.`];
+        if (rows.mergedDuplicates) firstItems.push(`<b>${rows.mergedDuplicates}</b> linha(s) duplicada(s) (mesmo vendedor/planta/material/canal) foram somadas automaticamente.`);
+        openImportModal('Importação concluída', `Primeira importação do mês ${monthKey}.`, firstItems); }
     }
   } catch (err){
     console.error(err);
@@ -2082,6 +2177,13 @@ document.getElementById('search-vendedor').addEventListener('input', e=>{
 document.getElementById('toggle-diff').addEventListener('change', e=>{
   showDiff = e.target.checked;
   renderAll();
+});
+document.querySelectorAll('#ranking-mode-toggle .chip').forEach(ch=>{
+  ch.addEventListener('click', ()=>{
+    rankingMode = ch.dataset.mode;
+    document.querySelectorAll('#ranking-mode-toggle .chip').forEach(c=>c.classList.toggle('active', c===ch));
+    renderAll();
+  });
 });
 
 let activeScreen = 'current';
