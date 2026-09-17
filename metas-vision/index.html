@@ -12,7 +12,7 @@
   --line-soft:#1c2530;
   --ink:#e8edf3;
   --ink-dim:#96a4b3;
-  --ink-faint:#576675;
+  --ink-faint:#899aad;
   --accent:#9085e9;
   --accent-soft:rgba(144,133,233,.16);
   --accent-ink:#0a0e13;
@@ -290,8 +290,8 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
 #table-diff th:nth-child(5),#table-diff td:nth-child(5){width:11%;}
 #table-diff th:nth-child(6),#table-diff td:nth-child(6){width:16%;}
 .tag{display:inline-block;font-family:var(--font-mono);font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.03em;}
-.tag-ind{background:var(--ind-soft);color:var(--ind);}
-.tag-rev{background:var(--rev-soft);color:var(--rev);}
+.tag-ind{background:var(--ind-soft);color:#5598e7;}
+.tag-rev{background:var(--rev-soft);color:#e29253;}
 .delta{font-family:var(--font-mono);font-weight:600;display:inline-flex;align-items:center;gap:3px;}
 .delta.up{color:var(--good);}
 .delta.down{color:var(--critical);}
@@ -384,17 +384,27 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
 
 #history-chart{width:100%;}
 #history-chart svg{width:100%;height:auto;display:block;overflow:visible;}
-.hchart-grid{stroke:rgba(255,255,255,.07);stroke-width:1;}
-.hchart-axis-text{font-family:var(--font-mono);font-size:10px;fill:var(--ink-faint);}
-.hchart-line-glow{fill:none;stroke-width:7;opacity:.45;}
-.hchart-line{fill:none;stroke-width:2.25;stroke-linecap:round;stroke-linejoin:round;}
+.hchart-grid{stroke:rgba(255,255,255,.16);stroke-width:1;}
+.hchart-grid.baseline{stroke:rgba(255,255,255,.32);}
+.hchart-axis-text{font-family:var(--font-mono);font-size:10.5px;fill:var(--ink-dim);}
+.hchart-line-glow{fill:none;opacity:.45;}
+.hchart-line{fill:none;stroke-linecap:round;stroke-linejoin:round;}
 .hchart-dot-glow{opacity:.55;}
 .hchart-dot{stroke:rgba(5,7,9,.9);stroke-width:1.5;cursor:pointer;}
 .hchart-hit{fill:transparent;cursor:pointer;}
 .hchart-empty{fill:var(--ink-faint);font-family:var(--font-ui);font-size:13px;}
 
 .hist-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-dim);font-family:var(--font-mono);cursor:default;}
+.hist-legend-item.context{color:var(--ink-faint);}
 .hist-legend-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+.hist-legend-dot.context{background:transparent!important;border:1.5px dashed var(--ink-faint);}
+
+.filter-summary{
+  display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;color:var(--accent);
+  background:var(--accent-soft);border:1px solid rgba(144,133,233,.3);border-radius:7px;
+  padding:6px 11px;margin:-6px 0 14px;width:fit-content;
+}
+.filter-summary b{font-weight:700;}
 </style>
 
 <div id="bg-motion">
@@ -414,7 +424,7 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
       <button class="screen-tab active" data-screen="current" type="button">Mês atual</button>
       <button class="screen-tab" data-screen="history" type="button">Histórico</button>
     </div>
-    <select id="month-select" class="month-select" title="Mês de referência (AnoMes)"></select>
+    <select id="month-select" class="month-select" title="Mês de referência (formato Ano/Mês)"></select>
     <div class="topbar-spacer"></div>
     <div id="import-badge" class="import-badge"></div>
     <div class="menu-wrap" id="export-menu-wrap">
@@ -429,7 +439,7 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
           <span class="menu-item-sub">Todas as linhas da importação atual, sem filtros</span>
         </button>
         <button class="menu-item" id="export-filtered" type="button">
-          <span class="menu-item-label">View atual (filtrada)</span>
+          <span class="menu-item-label">Visualização atual (filtrada)</span>
           <span class="menu-item-sub">Só o que está visível com os filtros aplicados</span>
         </button>
       </div>
@@ -553,6 +563,7 @@ table.data-table td.ellipsis{max-width:120px;overflow:hidden;text-overflow:ellip
           <span class="panel-title">Evolução da meta ao longo dos meses</span>
           <div class="legend" id="history-legend"></div>
         </div>
+        <div class="filter-summary" id="history-filter-summary" hidden></div>
         <div id="history-chart"></div>
       </div>
 
@@ -632,13 +643,18 @@ function findHeaderRowIndex(aoa){
   return -1;
 }
 
+const COLUMN_DISPLAY_NAME = {
+  anoMes:'AnoMes', vendedor:'Vendedor', gerente:'Gerente Regional',
+  filial:'Filial', linha:'Linha', meta:'Meta',
+};
+
 function normalizeRows(aoa){
   const headerRowIdx = findHeaderRowIndex(aoa);
   if (headerRowIdx<0) throw new Error('Cabeçalho da guia "Meta Vendedor" não encontrado (esperado colunas AnoMes/Vendedor).');
   const idx = mapHeaders(aoa[headerRowIdx]);
   const required = ['anoMes','vendedor','gerente','filial','linha','meta'];
   for (const k of required){
-    if (idx[k]===undefined) throw new Error('Coluna obrigatória ausente na guia "Meta Vendedor": '+k);
+    if (idx[k]===undefined) throw new Error('Coluna obrigatória ausente na guia "Meta Vendedor": '+(COLUMN_DISPLAY_NAME[k]||k));
   }
   const rows = [];
   for (let r=headerRowIdx+1; r<aoa.length; r++){
@@ -921,7 +937,7 @@ function renderKPIs(rows, diff){
     const pct = prevVal!==0 ? d/prevVal : 0;
     const cls = Math.abs(d)<DIFF_EPS ? 'flat' : (d>0?'up':'down');
     const arrow = cls==='up'?'▲':cls==='down'?'▼':'—';
-    return `<div class="kpi-delta ${cls}">${arrow} ${fmtDelta(d)} <span style="opacity:.7">(${fmtPct.format(pct*100)}%)</span></div>`;
+    return `<div class="kpi-delta ${cls}">${arrow} ${fmtDelta(d)} <span>(${fmtPct.format(pct*100)}%)</span></div>`;
   }
 
   const kpis = [
@@ -929,7 +945,8 @@ function renderKPIs(rows, diff){
     {label:'Indústria', value:t.industria, fmt:v=>fmtM3(v)+' m³', dot:'var(--ind)', prev: diff?diff._prevKpis.industria:null},
     {label:'Revenda', value:t.revenda, fmt:v=>fmtM3(v)+' m³', dot:'var(--rev)', prev: diff?diff._prevKpis.revenda:null},
     {label:'Vendedores', value:t.vendedores, fmt:v=>fmtInt.format(Math.round(v))},
-    {label:'Gerentes / Plantas', value:null, raw:`${t.gerentes} / ${t.filiais}`},
+    {label:'Gerentes', value:t.gerentes, fmt:v=>fmtInt.format(Math.round(v))},
+    {label:'Plantas', value:t.filiais, fmt:v=>fmtInt.format(Math.round(v))},
     {label:'Linhas de material', value:t.linhas, fmt:v=>fmtInt.format(Math.round(v))},
   ];
 
@@ -1297,7 +1314,7 @@ function applyHistoryFilters(rows){
 }
 
 const HIST_PALETTE = ['#3987e5','#d9772e','#22b483','#c98500','#d55181','#9085e9'];
-const HIST_OTHER_COLOR = '#5b6774';
+const HIST_OTHER_COLOR = '#8592a0';
 let histColorMaps = null;
 
 // colors are assigned once from the FULL, unfiltered history (ranked by
@@ -1324,19 +1341,27 @@ function ensureHistColorMaps(){
   return histColorMaps;
 }
 
+function isHistoryFiltered(){
+  return historyFilters.filiais.size>0 || historyFilters.canal!=='ALL' || historyFilters.gerente!=='ALL';
+}
+
 function computeGroupedSeries(snapshots, groupBy){
   const months = snapshots.map(s=>({key:s.monthKey, label:fmtMonthLabel(s.monthKey)}));
+  const filtered = isHistoryFiltered();
+  let series;
 
   if (groupBy==='total'){
     const points = snapshots.map(s=>totals(applyHistoryFilters(s.rows)).total);
-    return { months, series:[{ key:'total', label:'Meta total', color:'var(--accent)', points }] };
+    series = [{ key:'total', label: filtered?'Total filtrado':'Meta total', color:'var(--accent)', points, emphasis:filtered }];
+    return finalizeSeries(months, series, snapshots, filtered);
   }
   if (groupBy==='canal'){
     const points = snapshots.map(s=>totals(applyHistoryFilters(s.rows)));
-    return { months, series:[
-      { key:'IND', label:'Indústria', color:'var(--ind)', points:points.map(t=>t.industria) },
-      { key:'REV', label:'Revenda', color:'var(--rev)', points:points.map(t=>t.revenda) },
-    ]};
+    series = [
+      { key:'IND', label:'Indústria', color:'var(--ind)', points:points.map(t=>t.industria), emphasis:filtered },
+      { key:'REV', label:'Revenda', color:'var(--rev)', points:points.map(t=>t.revenda), emphasis:filtered },
+    ];
+    return finalizeSeries(months, series, snapshots, filtered);
   }
 
   const dimFn = groupBy==='planta' ? r=>r.filialCode : groupBy==='gerente' ? r=>r.gerente : r=>r.linha;
@@ -1355,8 +1380,8 @@ function computeGroupedSeries(snapshots, groupBy){
   const shown = ranked.slice(0,cap);
   const hasOther = ranked.length>cap;
 
-  const series = shown.map(k=>({
-    key:k, label:labelByKey.get(k), color: colorMap.get(k)||HIST_OTHER_COLOR,
+  series = shown.map(k=>({
+    key:k, label:labelByKey.get(k), color: colorMap.get(k)||HIST_OTHER_COLOR, emphasis:filtered,
     points: snapshots.map(s=>{
       const rows = applyHistoryFilters(s.rows).filter(r=>dimFn(r)===k);
       return rows.length ? totals(rows).total : null;
@@ -1364,11 +1389,24 @@ function computeGroupedSeries(snapshots, groupBy){
   }));
   if (hasOther){
     series.push({
-      key:'OUTROS', label:'Outros', color:HIST_OTHER_COLOR,
+      key:'OUTROS', label:'Outros', color:HIST_OTHER_COLOR, emphasis:filtered,
       points: snapshots.map(s=>{
         const rows = applyHistoryFilters(s.rows).filter(r=>!shown.includes(dimFn(r)));
         return rows.length ? totals(rows).total : null;
       }),
+    });
+  }
+  return finalizeSeries(months, series, snapshots, filtered);
+}
+
+// when a filter narrows the data, prepend a muted "grand total, no filter"
+// line as a backdrop for scale/context, and mark the real series for the
+// extra visual emphasis renderLineChart gives them in that situation
+function finalizeSeries(months, series, snapshots, filtered){
+  if (filtered){
+    series.unshift({
+      key:'__CONTEXT_TOTAL__', label:'Total geral (sem filtro)', color:'context', context:true,
+      points: snapshots.map(s=>totals(s.rows).total),
     });
   }
   return { months, series };
@@ -1401,6 +1439,36 @@ function resolveColor(c){
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || '#9085e9';
 }
 
+// classic Heckbert "nice numbers" tick step — rounds to 1/2/5 x 10^n so
+// axis labels read as clean numbers (0 / 40.000 / 80.000...) instead of
+// arbitrary fractions of the data's max value
+function niceNumber(range, round){
+  const exponent = Math.floor(Math.log10(range));
+  const fraction = range / Math.pow(10, exponent);
+  let niceFraction;
+  if (round){
+    if (fraction<1.5) niceFraction = 1;
+    else if (fraction<3) niceFraction = 2;
+    else if (fraction<7) niceFraction = 5;
+    else niceFraction = 10;
+  } else {
+    if (fraction<=1) niceFraction = 1;
+    else if (fraction<=2) niceFraction = 2;
+    else if (fraction<=5) niceFraction = 5;
+    else niceFraction = 10;
+  }
+  return niceFraction * Math.pow(10, exponent);
+}
+function niceTicks(maxVal, tickCountTarget){
+  if (maxVal<=0) maxVal = 1;
+  const niceRange = niceNumber(maxVal*1.08, false);
+  const step = niceNumber(niceRange/(tickCountTarget-1), true);
+  const niceMax = Math.ceil((maxVal*1.02)/step)*step;
+  const ticks = [];
+  for (let v=0; v<=niceMax+step*0.5; v+=step) ticks.push(Math.round(v*100)/100);
+  return { max:niceMax, step, ticks };
+}
+
 function renderLineChart(containerId, legendId, data){
   const el = document.getElementById(containerId);
   const legendEl = document.getElementById(legendId);
@@ -1412,40 +1480,48 @@ function renderLineChart(containerId, legendId, data){
     return;
   }
 
-  const W=960, H=340, padL=58, padR=20, padT=18, padB=36;
+  const W=960, H=340, padL=64, padR=20, padT=18, padB=36;
   const plotW=W-padL-padR, plotH=H-padT-padB;
 
   let maxVal = 0;
   series.forEach(s=>s.points.forEach(v=>{ if (typeof v==='number') maxVal = Math.max(maxVal, v); }));
-  if (maxVal<=0) maxVal = 1;
-  const yMax = maxVal*1.15;
+  const { max:yMax, ticks } = niceTicks(maxVal, 5);
   const xStep = months.length>1 ? plotW/(months.length-1) : 0;
   const xs = months.map((m,i)=> months.length>1 ? padL+i*xStep : padL+plotW/2);
   const yOf = v => padT + plotH - (v/yMax)*plotH;
 
   let gridHtml = '';
-  for (let t=0;t<=4;t++){
-    const v = (yMax/4)*t;
+  ticks.forEach(v=>{
     const y = yOf(v);
-    gridHtml += `<line class="hchart-grid" x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}"/>`;
+    const isBaseline = v===0;
+    gridHtml += `<line class="hchart-grid${isBaseline?' baseline':''}" x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}"/>`;
     gridHtml += `<text class="hchart-axis-text" x="${padL-8}" y="${(y+3.5).toFixed(1)}" text-anchor="end">${fmtM3(v)}</text>`;
-  }
+  });
   const xLabelsHtml = months.map((m,i)=>`<text class="hchart-axis-text" x="${xs[i].toFixed(1)}" y="${H-12}" text-anchor="middle">${m.label}</text>`).join('');
 
+  const CONTEXT_COLOR = '#899aad';
   let linesHtml = '', dotsHtml = '', hitHtml = '';
   const tooltipData = [];
   series.forEach((s,si)=>{
-    const color = resolveColor(s.color);
+    const color = s.context ? CONTEXT_COLOR : resolveColor(s.color);
+    const lineWidth = s.context ? 1.75 : (s.emphasis ? 2.75 : 2.25);
+    const dotR = s.context ? 3 : 4;
+    const dashAttr = s.context ? ' stroke-dasharray="5,4"' : '';
     buildLineSegments(xs, s.points, yOf).forEach(seg=>{
       const d = catmullRomPath(seg);
-      linesHtml += `<path class="hchart-line-glow" d="${d}" stroke="${color}"></path>`;
-      linesHtml += `<path class="hchart-line" d="${d}" stroke="${color}"></path>`;
+      if (!s.context){
+        const glowWidth = s.emphasis ? 9 : 7;
+        linesHtml += `<path class="hchart-line-glow" d="${d}" stroke="${color}" stroke-width="${glowWidth}"></path>`;
+      }
+      linesHtml += `<path class="hchart-line" d="${d}" stroke="${color}" stroke-width="${lineWidth}"${dashAttr} style="opacity:${s.context?.7:1}"></path>`;
     });
     s.points.forEach((v,i)=>{
       if (v===null || v===undefined) return;
       const cx = xs[i], cy = yOf(v), id = `hdot-${si}-${i}`;
-      dotsHtml += `<circle class="hchart-dot-glow" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7" fill="${color}"></circle>`;
-      dotsHtml += `<circle class="hchart-dot" id="${id}" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4" fill="${color}"></circle>`;
+      if (!s.context){
+        dotsHtml += `<circle class="hchart-dot-glow" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${s.emphasis?8:7}" fill="${color}"></circle>`;
+      }
+      dotsHtml += `<circle class="hchart-dot" id="${id}" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${dotR}" fill="${color}" style="opacity:${s.context?.85:1}"></circle>`;
       hitHtml += `<circle class="hchart-hit" data-id="${id}" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="12"></circle>`;
       tooltipData.push({ id, month: months[i].label, label: s.label, value: v });
     });
@@ -1465,7 +1541,10 @@ function renderLineChart(containerId, legendId, data){
   });
 
   if (legendEl) legendEl.innerHTML = series.length>1
-    ? series.map(s=>`<span class="hist-legend-item"><span class="hist-legend-dot" style="background:${resolveColor(s.color)}"></span>${s.label}</span>`).join('')
+    ? series.map(s=>s.context
+        ? `<span class="hist-legend-item context"><span class="hist-legend-dot context"></span>${s.label}</span>`
+        : `<span class="hist-legend-item"><span class="hist-legend-dot" style="background:${resolveColor(s.color)}"></span>${s.label}</span>`
+      ).join('')
     : '';
 }
 
@@ -1485,14 +1564,15 @@ function renderHistoryKPIs(snapshots){
     const pct = prevVal!==0 ? d/prevVal*100 : 0;
     const cls = Math.abs(d)<DIFF_EPS?'flat':(d>0?'up':'down');
     const arrow = cls==='up'?'▲':cls==='down'?'▼':'—';
-    deltaHtml = `<div class="kpi-delta ${cls}">${arrow} ${fmtDelta(d)} <span style="opacity:.7">(${fmtPct.format(pct)}%)</span></div>`;
+    deltaHtml = `<div class="kpi-delta ${cls}">${arrow} ${fmtDelta(d)} <span>(${fmtPct.format(pct)}%)</span></div>`;
   }
 
+  const filtered = isHistoryFiltered();
   const kpis = [
     {label:'Meses registrados', value:snapshots.length, fmt:v=>fmtInt.format(v)},
     {label:'Primeiro mês', raw:fmtMonthLabel(snapshots[0].monthKey)},
     {label:'Mês mais recente', raw:fmtMonthLabel(snapshots[snapshots.length-1].monthKey)},
-    {label:'Meta no mês mais recente', value:last, fmt:v=>fmtM3(v)+' m³', deltaHtml},
+    {label: filtered?'Meta filtrada no mês mais recente':'Meta no mês mais recente', value:last, fmt:v=>fmtM3(v)+' m³', deltaHtml},
   ];
   strip.innerHTML = kpis.map((k,i)=>`
     <div class="kpi">
@@ -1523,6 +1603,17 @@ function renderHistoryTable(snapshots){
       <td>${s.label}</td>
     </tr>`;
   }).join('');
+}
+
+function renderHistoryFilterSummary(){
+  const el = document.getElementById('history-filter-summary');
+  const parts = [];
+  if (historyFilters.filiais.size) parts.push('Planta '+[...historyFilters.filiais].join(', '));
+  if (historyFilters.canal!=='ALL') parts.push('Canal '+(historyFilters.canal==='IND'?'Indústria':'Revenda'));
+  if (historyFilters.gerente!=='ALL') parts.push('Gerente '+historyFilters.gerente);
+  if (!parts.length){ el.hidden = true; el.innerHTML=''; return; }
+  el.hidden = false;
+  el.innerHTML = `Mostrando apenas: <b>${parts.join(' · ')}</b> — a linha cinza tracejada é o total geral, sem filtro.`;
 }
 
 function renderHistoryFilterChips(){
@@ -1558,6 +1649,7 @@ function renderHistoryScreen(){
   histColorMaps = null;
   const snapshots = buildMonthlySnapshots();
   renderHistoryFilterChips();
+  renderHistoryFilterSummary();
   renderHistoryKPIs(snapshots);
 
   const chartPanel = document.getElementById('history-chart').parentElement;
@@ -1948,7 +2040,7 @@ async function runExport(scope){
     wb.creator = 'Arauco Metas Vision';
     wb.created = new Date();
 
-    const scopeLabel = scope==='filtered' ? 'View filtrada (conforme filtros aplicados no dashboard)' : 'Dados completos do mês';
+    const scopeLabel = scope==='filtered' ? 'Visualização filtrada (conforme filtros aplicados no painel)' : 'Dados completos do mês';
     addResumoSheet(wb, { rows, imp, prev, diff, scopeLabel, monthKey });
     addDetailSheet(wb, rows, { diff });
     addGroupSheet(wb, 'Por Planta', aggregateBy(rows, r=>r.filialCode, r=>r.filialFull), EXPORT_COLORS.headerBg);
