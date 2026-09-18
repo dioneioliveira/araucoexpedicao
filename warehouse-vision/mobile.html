@@ -310,6 +310,7 @@
     color:var(--accent);font-family:var(--font-ui);font-weight:600;font-size:13px;padding:11px;border-radius:9px;
     cursor:pointer;flex:0 0 auto;
   }
+  .focus-btn.block-active{border-color:var(--occ-over);background:rgba(226,84,60,.14);color:var(--occ-over);}
 
   /* info sheet */
   #info-pop h4{margin:0 0 8px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);}
@@ -509,6 +510,10 @@
             <span>Só acima da capacidade</span>
             <label class="switch"><input type="checkbox" id="over-only"><span class="track"></span><span class="knob"></span></label>
           </div>
+          <div class="toggle-row" style="margin-top:9px;">
+            <span>Cores por ocupação</span>
+            <label class="switch"><input type="checkbox" id="occupancy-colors" checked><span class="track"></span><span class="knob"></span></label>
+          </div>
         </div>
         <div class="ctrl-block">
           <div class="ctrl-title">Legenda</div>
@@ -555,6 +560,7 @@
         <div class="occ-meter"><span id="d-meter"></span></div>
         <div class="detail-note" id="d-note" style="margin-top:13px;"></div>
         <button class="focus-btn" id="d-focus">Focar câmera nesta posição</button>
+        <button class="focus-btn" id="d-block" style="margin-top:8px;">Bloquear posição</button>
       </div>
     </div>
 
@@ -698,6 +704,8 @@ const COLORS = {
   clsNone: 0x6b7480,
   clsUnclassified: 0x454c54,
   unreg:   0x5b4a4a,
+  blocked: 0x1c1c22,
+  neutralFill: 0x4a6472,
   shell:   0x79d8e8,
   hi:      0xffe9b0,
   floor:   0x141c24,
@@ -760,7 +768,11 @@ function ageColor(b){
   return bucket ? bucket.color : COLORS.unreg;
 }
 function computeFillBaseColor(b){
-  if (state.mode === 'plant') return occupancyColor(b.occupancy);
+  // A blocked position shows none of its usual status/occupancy/class color
+  // in any mode -- just the fixed "blocked" tone -- since it carries no
+  // meaningful capacity/occupancy data while blocked.
+  if (b.blocked) return COLORS.blocked;
+  if (state.mode === 'plant') return state.occupancyColors ? occupancyColor(b.occupancy) : COLORS.neutralFill;
   if (state.mode === 'age') return ageColor(b);
   return b.status === 'over' ? COLORS.occOver : classColor(b.cls, b.naoFaturavel);
 }
@@ -1123,6 +1135,7 @@ const state = {
   selected: null,
   view: 'free',
   searchQuery: '', // active material search: while set, overrides the class/over-only filters below
+  occupancyColors: true, // Planta 3D mode's occupancy gradient -- off falls back to one flat neutral tone, so filters don't stack on top of a busy color gradient
 };
 
 const chipRow = document.getElementById('filter-chips');
@@ -1142,6 +1155,10 @@ document.getElementById('over-only').addEventListener('change', (e)=>{
   state.overOnly = e.target.checked;
   applyVisualState();
 });
+document.getElementById('occupancy-colors').addEventListener('change', (e)=>{
+  state.occupancyColors = e.target.checked;
+  applyVisualState();
+});
 
 function renderLegend(){
   const body = document.getElementById('legend-body');
@@ -1153,6 +1170,7 @@ function renderLegend(){
       <div class="legend-row"><span class="legend-swatch" style="background:#e2543c"></span>Acima da capacidade</div>
       <div class="legend-row"><span class="legend-swatch" style="background:transparent;border-color:#79d8e8"></span>Vazia</div>
       <div class="legend-row"><span class="legend-swatch hatched"></span>Sem cadastro</div>
+      <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.blocked)}"></span>Bloqueada</div>
     `;
   } else if (state.mode === 'age'){
     body.innerHTML = AGE_BUCKETS.map(b =>
@@ -1161,6 +1179,7 @@ function renderLegend(){
       <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.unreg)}"></span>Sem data de entrada</div>
       <div class="legend-row"><span class="legend-swatch" style="background:transparent;border-color:#79d8e8"></span>Vazia</div>
       <div class="legend-row"><span class="legend-swatch hatched"></span>Sem cadastro</div>
+      <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.blocked)}"></span>Bloqueada</div>
     `;
   } else {
     body.innerHTML = `
@@ -1172,6 +1191,7 @@ function renderLegend(){
       <div class="legend-row"><span class="legend-swatch" style="background:#e2543c"></span>Acima da capacidade</div>
       <div class="legend-row"><span class="legend-swatch" style="background:transparent;border-color:#79d8e8"></span>Vazia</div>
       <div class="legend-row"><span class="legend-swatch hatched"></span>Sem cadastro</div>
+      <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.blocked)}"></span>Bloqueada</div>
     `;
   }
 }
@@ -1758,6 +1778,7 @@ const STATUS_INFO = {
   empty: {label:'Vazia', color:'var(--ink-faint)'},
   unregistered: {label:'Sem cadastro', color:'var(--unreg)'},
 };
+const BLOCKED_PILL = {label:'Bloqueada', color:'#ff8f7a'};
 function showDetail(code){
   const rec = registry.get(code);
   if (rec) { showBoxDetail(rec); return; }
@@ -1770,8 +1791,33 @@ function showBoxDetail(rec){
   panel.classList.add('open');
   document.getElementById('d-code').textContent = b.code;
   document.getElementById('d-aisle').textContent = `Rua ${b.aisle} · posição ${b.number} · ${b.width.toFixed(2)}×${b.depth.toFixed(2)} m`;
-  const st = STATUS_INFO[b.status];
   const pill = document.getElementById('d-status');
+  const blockBtn = document.getElementById('d-block');
+  blockBtn.style.display = '';
+
+  if (b.blocked){
+    // A blocked position shows no status/capacity/occupancy/class info at
+    // all -- only the block reason -- until it's unblocked again.
+    pill.textContent = BLOCKED_PILL.label;
+    pill.style.background = 'rgba(226,84,60,.22)';
+    pill.style.color = BLOCKED_PILL.color;
+    document.getElementById('d-cap').textContent = '—';
+    document.getElementById('d-occ').textContent = '—';
+    document.getElementById('d-pct').textContent = '—';
+    document.getElementById('d-cls').textContent = '—';
+    const meter = document.getElementById('d-meter');
+    meter.style.width = '0%';
+    meter.style.background = 'transparent';
+    const note = document.getElementById('d-note');
+    note.innerHTML = `<b style="color:${BLOCKED_PILL.color}">Motivo do bloqueio:</b> ${b.blockReason || '—'}`;
+    blockBtn.textContent = 'Desbloquear posição';
+    blockBtn.classList.add('block-active');
+    setTag(b.code, 'bloqueada');
+    tagSprite.visible = true;
+    return;
+  }
+
+  const st = STATUS_INFO[b.status];
   pill.textContent = st.label;
   pill.style.background = b.status==='over' ? 'rgba(226,84,60,.18)' : b.status==='empty' ? 'rgba(150,164,179,.14)' : b.status==='unregistered' ? 'rgba(91,74,74,.35)' : 'rgba(213,217,79,.16)';
   pill.style.color = st.color;
@@ -1798,6 +1844,8 @@ function showBoxDetail(rec){
     note.innerHTML = `<span class="sku">${b.sku}</span> · ${b.item} · ${b.qty} chapas · área ${b.area || '—'}${ageNote}`;
   }
 
+  blockBtn.textContent = 'Bloquear posição';
+  blockBtn.classList.remove('block-active');
   setTag(b.code, b.cls ? `Classe ${b.cls} · ${fmt(b.occupancy*100)}%` : (b.status==='empty' ? 'vazia' : 'sem cadastro'));
   tagSprite.visible = true;
 }
@@ -1805,6 +1853,7 @@ function showProdDetail(rec){
   const d = rec.data;
   const panel = document.getElementById('detail');
   panel.classList.add('open');
+  document.getElementById('d-block').style.display = 'none';
   document.getElementById('d-code').textContent = d.sku;
   document.getElementById('d-aisle').textContent = `Linha de produção${d.item ? ' · '+d.item : ''}`;
   const pill = document.getElementById('d-status');
@@ -1833,6 +1882,27 @@ document.getElementById('d-focus').addEventListener('click', ()=>{
   const rec = getRec(state.selected);
   if (!rec) return;
   focusPoint(rec.data.x, rec.data.z, state.selected);
+});
+document.getElementById('d-block').addEventListener('click', ()=>{
+  if (!state.selected) return;
+  const b = boxByCode.get(state.selected);
+  if (!b) return; // production items (no fixed position) can't be blocked
+  if (b.blocked){
+    b.blocked = false;
+    b.blockReason = null;
+  } else {
+    const reason = prompt('Motivo do bloqueio desta posição:', '');
+    if (reason == null) return; // cancelled
+    if (!reason.trim()){ alert('Informe um motivo para bloquear a posição.'); return; }
+    b.blocked = true;
+    b.blockReason = reason.trim();
+  }
+  rebuildBoxRecord(b.code);
+  applyVisualState();
+  computeAndRenderKPIs();
+  if (state.mode === 'kpis') renderKpiDashboard();
+  persistActivePlant();
+  showDetail(b.code);
 });
 
 /* ================= search ================= */
