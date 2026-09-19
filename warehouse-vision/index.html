@@ -102,6 +102,16 @@
     border-radius:3px;
     white-space:nowrap;
   }
+  #unclassified-badge{
+    background:var(--occ-over);
+    color:#fff;
+    cursor:pointer;
+    border:none;
+  }
+  /* .example-tag is hidden below 2000px (see media query above) to save
+     topbar space -- this badge is the fix for a classification gap that
+     stays unfindable otherwise, so it must stay visible at every width. */
+  #unclassified-badge:not([hidden]){ display:inline-block; }
 
   .kpi-strip{display:flex;align-items:stretch;gap:0;flex:1 1 auto;min-width:0;overflow:hidden;}
   .kpi{
@@ -406,6 +416,7 @@
       <span class="brand-sub" id="plant-name">PB26</span>
     </div>
     <span class="example-tag" id="import-status-tag">Estoque não carregado</span>
+    <button class="example-tag" id="unclassified-badge" hidden title="Baixar planilha de SKUs sem Curva ABC cadastrada"></button>
 
     <div class="kpi-strip" id="kpi-strip"></div>
 
@@ -2510,16 +2521,29 @@ document.getElementById('import-report-close').addEventListener('click', ()=>{ i
 
 /* "Baixar planilha de pendências" -- a bare SKU/Descrição sheet for every
    material MB52 saw in stock that "cadastros" never gave a Curva ABC to,
-   ready to fill in and bring back into the workbook's cadastros guide. */
+   ready to fill in and bring back into the workbook's cadastros guide.
+   Kept reachable two ways: the one-shot report toast button (immediate
+   feedback right after an import) and a persistent topbar badge that
+   survives closing the toast, switching plants and reloading the page --
+   the underlying classification gap doesn't go away just because the toast
+   was dismissed, so neither should the way to fix it. */
 let pendingUnclassified = null;
 function setUnclassifiedExport(unclassifiedMap){
   const btn = document.getElementById('import-report-export-btn');
-  if (!btn) return;
+  const badge = document.getElementById('unclassified-badge');
   pendingUnclassified = (unclassifiedMap && unclassifiedMap.size) ? unclassifiedMap : null;
-  btn.hidden = !pendingUnclassified;
-  if (pendingUnclassified) btn.textContent = `Baixar planilha de pendências (${pendingUnclassified.size} item${pendingUnclassified.size===1?'':'s'} sem curva ABC)`;
+  const label = pendingUnclassified ? `${pendingUnclassified.size} item${pendingUnclassified.size===1?'':'s'} sem curva ABC` : '';
+  if (btn){
+    btn.hidden = !pendingUnclassified;
+    if (pendingUnclassified) btn.textContent = `Baixar planilha de pendências (${label})`;
+  }
+  if (badge){
+    badge.hidden = !pendingUnclassified;
+    if (pendingUnclassified) badge.textContent = `⬇ ${label}`;
+  }
+  DATA.unclassified = pendingUnclassified ? [...pendingUnclassified.entries()] : [];
 }
-document.getElementById('import-report-export-btn').addEventListener('click', ()=>{
+function downloadUnclassifiedSheet(){
   if (!pendingUnclassified || typeof XLSX === 'undefined') return;
   const aoa = [['SKU', 'Descrição']];
   for (const [sku, texto] of pendingUnclassified) aoa.push([sku, texto || '']);
@@ -2527,7 +2551,9 @@ document.getElementById('import-report-export-btn').addEventListener('click', ()
   const outWb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(outWb, ws, 'cadastros_pendentes');
   XLSX.writeFile(outWb, `${DATA.name}_itens_sem_curva_abc.xlsx`);
-});
+}
+document.getElementById('import-report-export-btn').addEventListener('click', downloadUnclassifiedSheet);
+document.getElementById('unclassified-badge').addEventListener('click', downloadUnclassifiedSheet);
 importFileInput.addEventListener('change', (e)=>{
   const file = e.target.files && e.target.files[0];
   if (!file) return;
@@ -3002,6 +3028,10 @@ renderLegend();
 updateInfoPop();
 updateImportStatusTag();
 renderFamiliaFilter();
+// Restore the "itens sem curva ABC" badge across reloads/plant switches --
+// DATA.unclassified rides along in the same localStorage blob as everything
+// else (see persistActivePlant / setUnclassifiedExport).
+if (DATA.unclassified && DATA.unclassified.length) setUnclassifiedExport(new Map(DATA.unclassified));
 
 /* ================= resize ================= */
 function resize(){
