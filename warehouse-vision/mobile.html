@@ -315,6 +315,16 @@
     border-radius:8px;padding:10px 11px;line-height:1.5;flex:0 0 auto;
   }
   .detail-note .sku{font-family:var(--font-mono);color:var(--accent);}
+  .detail-skus{
+    font-size:12px;color:var(--ink-dim);background:var(--bg-panel-2);border:1px solid var(--line-soft);
+    border-radius:8px;padding:10px 11px;margin-top:8px;flex:0 0 auto;
+  }
+  .detail-skus-title{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;}
+  .detail-sku-row{display:flex;align-items:baseline;gap:8px;padding:5px 0;flex-wrap:wrap;}
+  .detail-sku-row + .detail-sku-row{border-top:1px solid var(--line-soft);}
+  .detail-sku-row .sku{font-family:var(--font-mono);color:var(--accent);flex:0 0 auto;}
+  .detail-sku-item{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-dim);}
+  .detail-sku-vol{flex:0 0 auto;font-family:var(--font-mono);color:var(--ink);white-space:nowrap;}
   .focus-btn{
     width:100%;margin-top:12px;appearance:none;border:1px solid var(--accent);background:var(--accent-soft);
     color:var(--accent);font-family:var(--font-ui);font-weight:600;font-size:13px;padding:11px;border-radius:9px;
@@ -578,6 +588,7 @@
         </div>
         <div class="occ-meter"><span id="d-meter"></span></div>
         <div class="detail-note" id="d-note" style="margin-top:13px;"></div>
+        <div class="detail-skus" id="d-skus" hidden></div>
         <button class="focus-btn" id="d-focus">Focar câmera nesta posição</button>
         <button class="focus-btn" id="d-block" style="margin-top:8px;">Bloquear posição</button>
       </div>
@@ -825,6 +836,7 @@ const BASELINE_PROD_ITEMS = Array.isArray(DATA.prodItems) ? DATA.prodItems : [];
 const BASELINE_STOCK = new Map(boxes.map(b => [b.code, {
   occupied: b.occupied, occupancy: b.occupancy, status: b.status, cls: b.cls, familia: b.familia || null,
   naoFaturavel: b.naoFaturavel, sku: b.sku, item: b.item, qty: b.qty, mixed: b.mixed, entryDate: b.entryDate,
+  skuBreakdown: b.skuBreakdown || [],
 }]));
 
 function computeAndRenderKPIs(){
@@ -1885,6 +1897,8 @@ function showBoxDetail(rec){
     meter.style.background = 'transparent';
     const note = document.getElementById('d-note');
     note.innerHTML = `<b style="color:${BLOCKED_PILL.color}">Motivo do bloqueio:</b> ${b.blockReason || '—'}`;
+    const skusEl = document.getElementById('d-skus');
+    if (skusEl){ skusEl.hidden = true; skusEl.innerHTML = ''; }
     blockBtn.textContent = 'Desbloquear posição';
     blockBtn.classList.add('block-active');
     setTag(b.code, 'bloqueada');
@@ -1920,6 +1934,24 @@ function showBoxDetail(rec){
     note.innerHTML = `<span class="sku">${b.sku}</span> · ${b.item} · ${b.qty} chapas · área ${b.area || '—'}${familiaNote}${ageNote}`;
   }
 
+  const skusEl = document.getElementById('d-skus');
+  if (skusEl){
+    if (b.mixed && b.skuBreakdown && b.skuBreakdown.length > 1){
+      const totalVol = b.skuBreakdown.reduce((s,x)=>s+x.vol, 0) || 1;
+      skusEl.innerHTML = `<div class="detail-skus-title">Materiais nesta posição (${b.skuBreakdown.length})</div>` +
+        b.skuBreakdown.map(x => `
+          <div class="detail-sku-row">
+            <span class="sku">${x.sku}</span>
+            <span class="detail-sku-item">${x.texto || '—'}</span>
+            <span class="detail-sku-vol">${fmt(x.vol,2)} m³ · ${Math.round(x.vol/totalVol*100)}%</span>
+          </div>`).join('');
+      skusEl.hidden = false;
+    } else {
+      skusEl.innerHTML = '';
+      skusEl.hidden = true;
+    }
+  }
+
   blockBtn.textContent = 'Bloquear posição';
   blockBtn.classList.remove('block-active');
   setTag(b.code, b.cls ? `Classe ${b.cls} · ${fmt(b.occupancy*100)}%` : (b.status==='empty' ? 'vazia' : 'sem cadastro'));
@@ -1930,6 +1962,8 @@ function showProdDetail(rec){
   const panel = document.getElementById('detail');
   panel.classList.add('open');
   document.getElementById('d-block').style.display = 'none';
+  const prodSkusEl = document.getElementById('d-skus');
+  if (prodSkusEl){ prodSkusEl.hidden = true; prodSkusEl.innerHTML = ''; }
   document.getElementById('d-code').textContent = d.sku;
   document.getElementById('d-aisle').textContent = `Linha de produção${d.item ? ' · '+d.item : ''}`;
   const pill = document.getElementById('d-status');
@@ -2415,10 +2449,19 @@ function parseSheetVolumeM3(desc){
    materials MB52 saw that "cadastros" never classified, and `unmatchedPos`
    (Map posDepósit-text -> count) for LX02 positions that don't correspond
    to any digitized box (staging/quality areas, "INU", raw depot numbers…). */
-function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, report}){
+function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap, report}){
   const result = {byBox: new Map(), prodItems: [], unclassified: new Map(), unmatchedPos: new Map()};
   if (!mb52Rows.length){ report.warn('Guia "MB52" está vazia.'); return result; }
   if (!lx02Rows.length){ report.warn('Guia "LX02" está vazia — nenhuma posição pôde ser localizada.'); }
+
+  // Only a position registered in "capacidade" (capacity > 0) counts as a
+  // real floor position -- everything else (auxiliary/quality/marketing
+  // codes, or a digitized placeholder box with no capacity registered yet)
+  // is disregarded, never counted into occupied volume. Falls back to the
+  // older boxByCode-only check when "capacidade" itself is missing/empty,
+  // so a workbook without that guide doesn't zero out every position.
+  const hasCapMap = capMap && Object.keys(capMap).length > 0;
+  const isRegisteredBoxPos = (pos) => hasCapMap && Number(capMap[pos]) > 0;
 
   const mb52Keys = Object.keys(mb52Rows[0]);
   const matKey = findKey(mb52Keys, ['material']);
@@ -2440,11 +2483,21 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, report}
       report.err(`Guia "LX02": não foi possível identificar as colunas (lote: ${loteKeyLX||'não achada'}, posição: ${posKey||'não achada'}).`);
     } else {
       report.info(`Guia "LX02": lote "${loteKeyLX}", posição "${posKey}".`);
+      const posByLoteLocked = new Set(); // lotes already holding a registered/status position -- never overwritten
       for (const row of lx02Rows){
         const lote = row[loteKeyLX];
         if (lote == null || lote === '') continue;
-        if (posByLote.has(lote)) continue; // first occurrence wins -- same lote/position pairs repeat across movement rows
-        posByLote.set(lote, String(row[posKey]||'').trim().toUpperCase());
+        if (posByLoteLocked.has(lote)) continue;
+        const pos = String(row[posKey]||'').trim().toUpperCase();
+        const isGood = pos === 'EM-PEDIDO' || isEmProducao(pos) || isRegisteredBoxPos(pos);
+        // Same lote/position pairs repeat across movement rows, and a lote
+        // can genuinely show more than one distinct position over time --
+        // when that happens, trust a registered/status position over an
+        // unmapped/auxiliary-area one regardless of row order. Keep the
+        // first-seen row as a fallback for lotes where none ever qualify.
+        if (posByLote.has(lote) && !isGood) continue;
+        posByLote.set(lote, pos);
+        if (isGood) posByLoteLocked.add(lote);
       }
     }
   }
@@ -2471,6 +2524,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, report}
     report.warn('Guia "MB51" não encontrada — dias em estoque ficarão indisponíveis.');
   }
 
+  const textoBySku = new Map();
   let posMatched = 0, emPedido = 0, emProducao = 0, semLote = 0, semDimensao = 0;
   for (const row of mb52Rows){
     const material = String(row[matKey]||'').trim().toUpperCase();
@@ -2478,6 +2532,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, report}
     const qty = Number(row[qtyKey]) || 0;
     if (!material || qty <= 0) continue;
     const texto = txtKey ? String(row[txtKey]||'').trim() : '';
+    if (texto) textoBySku.set(material, texto);
     const m3PerChapa = parseSheetVolumeM3(texto);
     // A material whose description doesn't spell out LxWxT (hardware,
     // consumables, non-standard text) has no reliable way to become m³ here
@@ -2499,7 +2554,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, report}
       result.prodItems.push({sku:material, item:texto, qty, volume});
       emProducao++; continue;
     }
-    if (!boxByCode.has(pos)){
+    if (!boxByCode.has(pos) || (hasCapMap && !isRegisteredBoxPos(pos))){
       result.unmatchedPos.set(pos, (result.unmatchedPos.get(pos)||0) + 1);
       continue;
     }
@@ -2520,6 +2575,12 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, report}
     acc.cls = cadastros.clsBySku[bestSku] || null;
     acc.familia = cadastros.familiaBySku[bestSku] || null;
     acc.mixed = acc.skus.size > 1;
+    // Full per-material breakdown, kept alongside the single dominant SKU --
+    // the 3D box surface still shows only the dominant one; this is what
+    // lets the detail panel list every material on click.
+    acc.skuBreakdown = [...acc.skus.entries()]
+      .map(([sku, vol]) => ({sku, vol, texto: textoBySku.get(sku) || cadastros.textoBySku[sku] || ''}))
+      .sort((a,b) => b.vol - a.vol);
   }
 
   report.info(`Cruzamento MB52 × LX02 × MB51: ${posMatched} lote(s) posicionados, ${emProducao} em produção, ${emPedido} em pedido (ainda não recebidos), ${semLote} sem posição encontrada em LX02.`);
@@ -2719,7 +2780,7 @@ async function runImport(file){
         mb52Rows: sheetRows(wb, mb52Name),
         lx02Rows: sheetRows(wb, lx02Name),
         mb51Rows: mb51Name ? sheetRows(wb, mb51Name) : [],
-        cadastros, report,
+        cadastros, capMap, report,
       });
       hasEst = true;
       unclassified = stock.unclassified;
@@ -2779,7 +2840,7 @@ function applyImportedData({report, capMap, stock, clsBySku, familiaBySku, hasCa
     boxes.forEach(b=>{
       if (b.status === 'unregistered') return;
       if (b.status === 'filled' || b.status === 'over') changed.add(b.code);
-      b.occupied = 0; b.occupancy = 0; b.status = 'empty'; b.cls = null; b.familia = null; b.naoFaturavel = false; b.sku = null; b.item = null; b.qty = 0; b.mixed = false; b.entryDate = null;
+      b.occupied = 0; b.occupancy = 0; b.status = 'empty'; b.cls = null; b.familia = null; b.naoFaturavel = false; b.sku = null; b.item = null; b.qty = 0; b.mixed = false; b.entryDate = null; b.skuBreakdown = [];
     });
     for (const [code, acc] of stock.byBox){
       const b = boxByCode.get(code);
@@ -2795,6 +2856,7 @@ function applyImportedData({report, capMap, stock, clsBySku, familiaBySku, hasCa
       b.qty = acc.qty;
       b.mixed = !!acc.mixed;
       b.entryDate = acc.entryDate != null ? acc.entryDate : null;
+      b.skuBreakdown = acc.skuBreakdown || [];
       changed.add(code);
       if (b.status === 'over') over++; else filled++;
       if (acc.mixed) mixedWarn.push(code);
@@ -3049,8 +3111,9 @@ function clearDemoData(){
       if (base){
         b.occupied = base.occupied; b.occupancy = base.occupancy; b.status = base.status; b.cls = base.cls; b.familia = base.familia;
         b.naoFaturavel = base.naoFaturavel; b.sku = base.sku; b.item = base.item; b.qty = base.qty; b.mixed = base.mixed; b.entryDate = base.entryDate;
+        b.skuBreakdown = base.skuBreakdown || [];
       } else {
-        b.occupied = 0; b.occupancy = 0; b.status = 'empty'; b.cls = null; b.familia = null; b.naoFaturavel = false; b.sku = null; b.item = null; b.qty = 0; b.mixed = false; b.entryDate = null;
+        b.occupied = 0; b.occupancy = 0; b.status = 'empty'; b.cls = null; b.familia = null; b.naoFaturavel = false; b.sku = null; b.item = null; b.qty = 0; b.mixed = false; b.entryDate = null; b.skuBreakdown = [];
       }
     });
     changed.forEach(code=>rebuildBoxRecord(code));
