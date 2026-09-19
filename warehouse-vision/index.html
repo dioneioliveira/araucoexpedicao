@@ -1299,6 +1299,25 @@ function makeFloorLabel(text, {color='#e6f4f8', outline='#0a0e13', size=1.0, wei
   return mesh;
 }
 
+function makeBlockedMarker(width, depth, color='#ff8f7a'){
+  const px = 64;
+  const w = Math.max(32, Math.round(width*px)), h = Math.max(32, Math.round(depth*px));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  const pad = Math.min(w,h)*0.12;
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(3, Math.min(w,h)*0.09); ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pad,pad); ctx.lineTo(w-pad,h-pad);
+  ctx.moveTo(w-pad,pad); ctx.lineTo(pad,h-pad);
+  ctx.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({map:tex, transparent:true, depthWrite:false});
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), mat);
+  mesh.rotation.x = -Math.PI/2;
+  return mesh;
+}
+
 /* zones */
 const ZONE_STYLE = {
   shipping:{color:COLORS.zoneShip, edge:COLORS.zoneShipEdge, opacity:0.62},
@@ -1414,7 +1433,22 @@ function buildBoxGroup(b){
     group.add(floorFamilia);
   }
 
-  return {group, shell, shellMat, fill, fillMat, fillEdges, shellEdges, floorCode, floorFamilia, baseFillColor: fill?fill.material.color.getHex():null};
+  // Blocked positions get a big diagonal X sitting above the shell so
+  // they're obvious in the 3D view without clicking in -- rebuilt fresh
+  // here rather than toggled, since block/unblock already rebuilds the
+  // whole box group (see the #d-block click handler).
+  let blockedMarker = null;
+  if (b.blocked){
+    // A blocked position can still carry stock data (blocked for a quality
+    // hold, say), so the fill mesh can reach above the shell for an
+    // over-capacity box -- sit the X above whichever is taller.
+    const fillTop = fill ? fill.position.y + fill.geometry.parameters.height/2 : 0;
+    blockedMarker = makeBlockedMarker(b.width*0.82, b.depth*0.82);
+    blockedMarker.position.set(0, Math.max(SHELL_HEIGHT, fillTop) + 0.06, 0);
+    group.add(blockedMarker);
+  }
+
+  return {group, shell, shellMat, fill, fillMat, fillEdges, shellEdges, floorCode, floorFamilia, blockedMarker, baseFillColor: fill?fill.material.color.getHex():null};
 }
 
 function disposeObject3D(obj){
@@ -1570,6 +1604,9 @@ function applyVisualState(){
       // família stamp sits on TOP of the color fill, shown regardless of
       // material visibility -- controlled only by the showFamilia toggle.
       rec.floorFamilia.visible = state.showFamilia;
+    }
+    if (rec.blockedMarker){
+      rec.blockedMarker.visible = !!b.blocked;
     }
   });
 }
@@ -2362,9 +2399,17 @@ function computeCadastrosFromRows(rows, report){
    chapas count into m³ without needing a separate per-material m³ table. */
 function parseSheetVolumeM3(desc){
   if (!desc) return null;
-  const m = String(desc).match(/(\d+)\s*[xX]\s*(\d+)\s*[xX]\s*(\d+(?:[.,]\d+)?)\s*MM/);
+  const text = String(desc);
+  // Moldura descriptions ("MOL ...") encode LxWxT the same way as panels
+  // but without the "MM" unit suffix -- still millimeters, just implicit,
+  // terminated by end-of-string, a "-X" suffix, or a "/CODE" suffix instead.
+  const isMoldura = /^MOL\b/i.test(text.trim());
+  const re = isMoldura
+    ? /(\d+)\s*[xX]\s*(\d+(?:[.,]\d+)?)\s*[xX]\s*(\d+(?:[.,]\d+)?)/
+    : /(\d+)\s*[xX]\s*(\d+)\s*[xX]\s*(\d+(?:[.,]\d+)?)\s*MM/;
+  const m = text.match(re);
   if (!m) return null;
-  const L = Number(m[1])/1000, W = Number(m[2])/1000, T = Number(m[3].replace(',','.'))/1000;
+  const L = Number(m[1])/1000, W = Number(m[2].replace(',','.'))/1000, T = Number(m[3].replace(',','.'))/1000;
   const v = L*W*T;
   return Number.isFinite(v) && v > 0 ? v : null;
 }
