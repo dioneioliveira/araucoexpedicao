@@ -1426,9 +1426,19 @@ DATA.zones.forEach(z=>{
    zone's width vs depth) so the text runs down the corridor instead of
    reading sideways and spilling into the neighboring rows of boxes on a
    narrow, vertical aisle. */
-const aisleZoneByLabel = new Map(DATA.zones.filter(z=>z.kind==='aisle').map(z=>[z.label, z]));
+const aisleZones = DATA.zones.filter(z=>z.kind==='aisle');
 DATA.aisleLabels.forEach(a=>{
-  const zone = aisleZoneByLabel.get(`RUA ${a.aisle}`);
+  // Match by nearest zone position, not by label text -- some plants
+  // (PB25) store a bare letter as the zone label instead of the "RUA X"
+  // text used for the floor label, and a single letter can legitimately
+  // span more than one zone rectangle (e.g. two "H" segments in PB25)
+  // that only differ by position, not by label. Every plant's aisleLabels
+  // entry shares its zone's exact x/z, so nearest-match is exact.
+  let zone = null, bestDist = Infinity;
+  for (const z of aisleZones){
+    const dist = (z.x-a.x)**2 + (z.z-a.z)**2;
+    if (dist < bestDist){ bestDist = dist; zone = z; }
+  }
   const vertical = !!zone && zone.depth > zone.width;
   const label = makeFloorLabel(`RUA ${a.aisle}`, {color:'#e6f4f8', size:1.9});
   label.position.set(a.x, 0.05, a.z);
@@ -1691,6 +1701,15 @@ applyVisualState();
 const target = new THREE.Vector3(DATA.width/2, 0, DATA.depth/2);
 let radius, theta, phi;
 function setSpherical(r,t,p){ radius=r; theta=t; phi=p; }
+// theta accumulates freely across repeated drags (never wrapped, so a
+// user orbiting several full turns in one direction ends up with a large
+// magnitude) -- when animating toward a goal, take the shortest angular
+// path instead of a raw linear delta, or the camera visibly spins through
+// however many extra full revolutions theta has piled up before settling.
+function shortestAngleDelta(from, to){
+  const twoPi = Math.PI*2;
+  return ((to - from + Math.PI) % twoPi + twoPi) % twoPi - Math.PI;
+}
 function homeSpherical(){
   return {r: span*1.15, t: Math.PI*0.22, p: Math.PI*0.34};
 }
@@ -3250,7 +3269,7 @@ renderer.setAnimationLoop(()=>{
     const k = REDUCED_MOTION ? 1 : 1 - Math.exp(-4.2*dt);
     target.lerp(goal.target, k);
     radius += (goal.radius - radius)*k;
-    theta += (goal.theta - theta)*k;
+    theta += shortestAngleDelta(theta, goal.theta)*k;
     phi += (goal.phi - phi)*k;
     if (Math.abs(radius-goal.radius) < 0.02 && target.distanceTo(goal.target) < 0.02) goal = null;
   }
