@@ -89,29 +89,24 @@ h4.grp:first-of-type{border-top:none;padding-top:0;margin-top:0;}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#04141a;}
 .btn.small{flex:none;padding:6px 10px;font-size:11px;}
 
-/* plaqueta de capacidade */
-#plate{background:linear-gradient(180deg,#c7ccd1,#a9afb6);border-radius:6px;padding:2px;
-  box-shadow:0 6px 18px #0007, inset 0 0 0 1px #7d838a;position:relative;}
-#plate .rivet{position:absolute;width:9px;height:9px;border-radius:50%;
-  background:radial-gradient(circle at 35% 30%,#eee,#8b8f94 70%);box-shadow:inset 0 0 2px #0006;}
-#plate .rv-tl{top:6px;left:6px;} #plate .rv-tr{top:6px;right:6px;}
-#plate .rv-bl{bottom:6px;left:6px;} #plate .rv-br{bottom:6px;right:6px;}
-#plate-inner{background:#b8bdc2;border:1px solid #83898f;border-radius:4px;padding:14px 16px 12px;
-  color:#171a1d;font-family:'Courier New',Courier,monospace;}
-#plate-inner h5{margin:0 0 2px;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:#171a1d;}
-#plate-inner .plate-sub{font-size:9.5px;color:#4a5056;margin-bottom:8px;letter-spacing:.03em;}
-.plate-row{display:flex;justify-content:space-between;font-size:10.5px;padding:2.5px 0;border-bottom:1px dotted #6b7176;}
-.plate-row b{font-weight:700;}
-.plate-hr{border:none;border-top:2px solid #4a5056;margin:8px 0;}
-.plate-diagram{display:flex;justify-content:center;margin:8px 0;}
-.plate-table{width:100%;border-collapse:collapse;font-size:10px;margin:6px 0;}
-.plate-table th,.plate-table td{border:1px solid #6b7176;padding:3px 5px;text-align:center;}
-.plate-table th{background:#9ba1a6;font-weight:700;}
-.plate-table td.hl{background:#7fbf9c88;font-weight:700;}
-.plate-warn{margin-top:8px;padding:6px 8px;background:#fff2b3;border:1.5px solid #171a1d;border-radius:3px;
-  font-size:9.5px;font-weight:700;text-align:center;letter-spacing:.02em;}
-.plate-logo{font-weight:800;font-size:13px;letter-spacing:.02em;border:2px solid #171a1d;border-radius:4px;
-  padding:2px 8px;display:inline-block;}
+/* plaqueta de capacidade — estilo placa de metal escovado escura, como uma plaqueta real */
+#plate{background:radial-gradient(120% 140% at 25% 15%,#3a3d40,#1c1e20 60%);border-radius:18px;padding:3px;
+  box-shadow:0 8px 24px #000a, inset 0 0 0 1px #55585b, inset 0 1px 2px #fff2;position:relative;}
+#plate-inner{border-radius:15px;padding:16px 18px 14px;color:#dfe1e3;
+  font-family:Georgia,'Times New Roman',serif;}
+#plate-inner h5{margin:0 0 2px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#f2f3f4;
+  text-shadow:0 1px 0 #000, 0 -1px 0 #ffffff22;}
+#plate-inner .plate-sub{font-size:9.5px;color:#9a9d9f;margin-bottom:6px;letter-spacing:.03em;font-family:Arial,sans-serif;}
+.plate-row{display:flex;justify-content:space-between;font-size:10.5px;padding:2.5px 0;border-bottom:1px dotted #55585b;
+  font-family:Arial,sans-serif;}
+.plate-row b{font-weight:700;color:#f2f3f4;}
+.plate-hr{border:none;border-top:1px solid #55585b;margin:8px 0;}
+.plate-chart-wrap{margin:6px 0 4px;}
+.plate-chart-cap{font-size:9px;color:#9a9d9f;text-align:center;margin-top:2px;font-family:Arial,sans-serif;}
+.plate-warn{margin-top:8px;padding:6px 8px;background:#2a2c2e;border:1.5px solid #6b6e70;border-radius:4px;
+  font-size:9.5px;font-weight:700;text-align:center;letter-spacing:.02em;color:#f2c94c;font-family:Arial,sans-serif;}
+.plate-logo{font-weight:800;font-size:13px;letter-spacing:.02em;border:2px solid #8a8d8f;border-radius:4px;
+  padding:2px 8px;display:inline-block;color:#f2f3f4;}
 
 /* cenários */
 .scenario{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;
@@ -147,6 +142,12 @@ h4.grp:first-of-type{border-top:none;padding-top:0;margin-top:0;}
 .card p{font-size:13.5px;line-height:1.6;color:var(--text-dim);margin:8px 0;}
 .card ul{margin:8px 0;padding-left:20px;font-size:13px;color:var(--text-dim);line-height:1.7;}
 .card b{color:var(--text);}
+.intro-hero{display:flex;gap:20px;align-items:center;margin-bottom:4px;}
+.intro-hero img{width:150px;height:150px;object-fit:contain;flex:none;background:#fff;border-radius:12px;
+  border:1px solid var(--line);padding:6px;}
+.intro-hero .kicker{margin-bottom:6px;}
+.intro-hero h1{margin-bottom:8px;}
+@media (max-width:560px){ .intro-hero{flex-direction:column;} .intro-hero img{width:120px;height:120px;} }
 
 #reason-box{font-size:12.5px;line-height:1.6;color:var(--text);background:var(--panel2);border:1px solid var(--line-soft);
   border-radius:9px;padding:10px 12px;margin-top:8px;display:none;}
@@ -282,9 +283,15 @@ h4.grp:first-of-type{border-top:none;padding-top:0;margin-top:0;}
       </div>
 
       <div class="tabpane" id="pane-plate">
-        <div class="note" style="margin-bottom:12px;">Assim é lida a plaqueta de identificação de uma empilhadeira real —
-        os valores abaixo acompanham a configuração atual da aba Configurar.</div>
+        <div class="note" style="margin-bottom:12px;">Modelo baseado numa plaqueta real (foto abaixo) — o gráfico em
+        leque mostra a capacidade em cada centro de carga, para cada altura de mastro disponível. Os valores
+        acompanham a configuração atual da aba Configurar.</div>
         <div id="plate"></div>
+        <div style="margin-top:14px;text-align:center;">
+          <img src="assets/plate-reference.jpg" alt="Foto de referência de uma plaqueta de capacidade real"
+            style="max-width:100%;border-radius:8px;border:1px solid var(--line);">
+          <div class="note" style="margin-top:6px;">Referência: plaqueta real usada como modelo para o gráfico acima.</div>
+        </div>
       </div>
 
       <div class="tabpane" id="pane-scenarios">
@@ -315,11 +322,16 @@ h4.grp:first-of-type{border-top:none;padding-top:0;margin-top:0;}
 
 <div id="intro-screen">
   <div class="card">
-    <div class="kicker">Apoio ao treinamento de NR-11 — uso educacional</div>
-    <h1>Simulador de Estabilidade da Empilhadeira</h1>
-    <p>Uma ferramenta visual para explicar, em três vistas técnicas (lateral, frontal e superior), por que uma
-    empilhadeira tomba: o <b>triângulo de estabilidade</b>, o <b>centro de carga</b> e os efeitos de elevar,
-    inclinar, acelerar, frear e fazer curvas.</p>
+    <div class="intro-hero">
+      <img src="assets/forklift-photo.png" alt="Empilhadeira contrabalançada, ilustração de referência">
+      <div>
+        <div class="kicker">Apoio ao treinamento de NR-11 — uso educacional</div>
+        <h1>Simulador de Estabilidade da Empilhadeira</h1>
+        <p>Uma ferramenta visual para explicar, em três vistas técnicas (lateral, frontal e superior), por que uma
+        empilhadeira tomba: o <b>triângulo de estabilidade</b>, o <b>centro de carga</b> e os efeitos de elevar,
+        inclinar, acelerar, frear e fazer curvas.</p>
+      </div>
+    </div>
     <ul>
       <li>Use a aba <b>Configurar</b> para ajustar peso, centro de carga, altura de elevação, inclinação do mastro
       e condições dinâmicas (frenagem/curva) — as três vistas e o status no topo reagem em tempo real.</li>
@@ -1219,34 +1231,28 @@ $("btn-reset-config").addEventListener("click", ()=>{
    Plaqueta de capacidade (mock realista, calculado a partir do spec atual)
    ============================================================ */
 const PLATE_MODEL_LABEL = {eletrica15:"série 15E", glp25:"série 25C", pesada35:"série 35C"};
+// alturas de mastro de referência mostradas no gráfico em leque (mm), independente do slider de elevação atual —
+// assim como uma plaqueta real mostra várias opções de mastro disponíveis para o mesmo modelo de empilhadeira.
+const PLATE_MAST_HEIGHTS_MM = [3000, 4000, 5000, 6000, 7000];
 function renderPlate(){
   const el = $("plate");
   if (!el) return;
-  const lcRows = [300,500,700,900,1100].map(lc=>({lc, cap:Math.round(staticCapacityAt(lc)/10)*10}));
   const modelTag = PLATE_MODEL_LABEL[selPreset.value] || "personalizado";
   const tireLabel = spec.frontWheelDiaMm>=520? "Maciço (cushion)" : "Pneumático maciço";
   el.innerHTML = `
-    <div class="rivet rv-tl"></div><div class="rivet rv-tr"></div>
-    <div class="rivet rv-bl"></div><div class="rivet rv-br"></div>
     <div id="plate-inner">
       <div class="plate-row" style="border-bottom:none;align-items:center;">
         <span class="plate-logo">FL&nbsp;SIM</span>
-        <span style="text-align:right;font-size:10px;line-height:1.4;">
+        <span style="text-align:right;font-size:10px;line-height:1.4;color:#c7c9cb;">
           Nº de série: SIM-${fmt(spec.ratedCapacityKg)}-01<br>Modelo: ${modelTag}
         </span>
       </div>
       <h5>Plaqueta de capacidade</h5>
       <div class="plate-sub">equipamento simulado — apenas para fins de treinamento</div>
-      <div class="plate-diagram">${plateDiagramSvg()}</div>
-      <table class="plate-table">
-        <tr><th>Centro de carga (mm)</th>${lcRows.map(r=>'<th>'+fmt(r.lc)+'</th>').join('')}</tr>
-        <tr><th>Capacidade (kg)</th>${lcRows.map(r=>{
-          const isRated = Math.abs(r.lc-spec.ratedLoadCenterMm)<50;
-          return '<td'+(isRated?' class="hl"':'')+'>'+fmt(r.cap)+'</td>';
-        }).join('')}</tr>
-      </table>
-      <div class="plate-row"><span>Capacidade nominal Q</span><b>${fmt(spec.ratedCapacityKg)} kg @ ${fmt(spec.ratedLoadCenterMm)} mm</b></div>
+      <div class="plate-chart-wrap">${plateChartSvg()}</div>
+      <div class="plate-chart-cap">capacidade (kg) × centro de carga (mm), por altura de mastro instalada</div>
       <hr class="plate-hr">
+      <div class="plate-row"><span>Capacidade nominal Q</span><b>${fmt(spec.ratedCapacityKg)} kg @ ${fmt(spec.ratedLoadCenterMm)} mm</b></div>
       <div class="plate-row"><span>Tara (peso próprio)</span><b>${fmt(spec.vehicleWeightKg)} kg</b></div>
       <div class="plate-row"><span>Entre-eixos</span><b>${fmt(spec.wheelbaseMm)} mm</b></div>
       <div class="plate-row"><span>Bitola dianteira</span><b>${fmt(spec.trackWidthMm)} mm</b></div>
@@ -1256,24 +1262,56 @@ function renderPlate(){
       <div class="plate-warn">⚠ NÃO EXCEDER A CAPACIDADE NOMINAL PARA CADA CENTRO DE CARGA E ALTURA DE ELEVAÇÃO</div>
     </div>`;
 }
-function plateDiagramSvg(){
-  const c = spec.ratedLoadCenterMm;
-  return `<svg width="220" height="72" viewBox="0 0 220 72" xmlns="http://www.w3.org/2000/svg">
-    <line x1="8" y1="60" x2="212" y2="60" stroke="#4a5056" stroke-width="1.5"/>
-    <rect x="16" y="46" width="34" height="14" fill="none" stroke="#171a1d" stroke-width="2"/>
-    <line x1="16" y1="53" x2="10" y2="53" stroke="#171a1d" stroke-width="2"/>
-    <rect x="50" y="24" width="46" height="30" fill="#171a1d" opacity="0.15" stroke="#171a1d" stroke-width="2"/>
-    <line x1="50" y1="18" x2="50" y2="60" stroke="#171a1d" stroke-width="1" stroke-dasharray="2,2"/>
-    <line x1="73" y1="18" x2="73" y2="24" stroke="#171a1d" stroke-width="1"/>
-    <line x1="50" y1="18" x2="96" y2="18" stroke="#171a1d" stroke-width="1"/>
-    <path d="M50 18 l6 -3 v6 z" fill="#171a1d"/>
-    <path d="M96 18 l-6 -3 v6 z" fill="#171a1d"/>
-    <text x="73" y="14" font-size="9" text-anchor="middle" fill="#171a1d" font-family="Courier New">c = ${fmt(c)} mm</text>
-    <line x1="104" y1="10" x2="104" y2="60" stroke="#171a1d" stroke-width="1" stroke-dasharray="2,2"/>
-    <path d="M104 10 l-3 6 h6 z" fill="#171a1d"/>
-    <path d="M104 60 l-3 -6 h6 z" fill="#171a1d"/>
-    <text x="110" y="36" font-size="9" fill="#171a1d" font-family="Courier New">h</text>
-  </svg>`;
+// Gráfico em leque inspirado numa plaqueta real: uma curva de capacidade x centro de carga para cada altura de
+// mastro de referência (o derating estrutural por altura reduz mais as curvas de mastros mais altos).
+function plateChartSvg(){
+  const W=300,H=190, padL=40,padR=30,padT=14,padB=28;
+  const lcMin=400, lcMax=1300;
+  const heightFactor = hM => hM<=3.0 ? 1 : clamp(1-(hM-3.0)*0.12, 0.4, 1);
+  const capMax = staticCapacityAt(lcMin)*heightFactor(3.0)*1.05;
+  const xw=W-padL-padR, yh=H-padT-padB;
+  const xOf = lc => padL+(lc-lcMin)/(lcMax-lcMin)*xw;
+  const yOf = cap => padT+yh-clamp(cap/capMax,0,1)*yh;
+
+  let svg = `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="Arial,sans-serif">`;
+  // eixos
+  svg += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+yh}" stroke="#8a8d8f" stroke-width="1"/>`;
+  svg += `<line x1="${padL}" y1="${padT+yh}" x2="${padL+xw}" y2="${padT+yh}" stroke="#8a8d8f" stroke-width="1"/>`;
+  svg += `<text x="${padL-6}" y="${padT-2}" font-size="10" font-weight="700" fill="#e8eaec" text-anchor="middle">kg</text>`;
+  svg += `<text x="${padL+xw+8}" y="${padT+yh+4}" font-size="10" font-weight="700" fill="#e8eaec">mm</text>`;
+  // grade vertical nas marcas de centro de carga (como na plaqueta real)
+  [500,600,700,800,900,1000,1100,1200].forEach(lc=>{
+    if (lc<lcMin||lc>lcMax) return;
+    const x=xOf(lc);
+    svg += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT+yh}" stroke="#4a4d4f" stroke-width="0.6"/>`;
+    svg += `<text x="${x}" y="${padT+yh+13}" font-size="7.5" fill="#a6a9ab" text-anchor="middle">${lc}</text>`;
+  });
+  // marcas do eixo y
+  for (let g=0; g<=1.0001; g+=0.25){
+    const y = padT+yh-g*yh;
+    svg += `<line x1="${padL-3}" y1="${y}" x2="${padL}" y2="${y}" stroke="#8a8d8f" stroke-width="1"/>`;
+    svg += `<text x="${padL-6}" y="${y+3}" font-size="7.5" fill="#a6a9ab" text-anchor="end">${fmt(g*capMax)}</text>`;
+  }
+  // curvas em leque, uma por altura de mastro de referência
+  PLATE_MAST_HEIGHTS_MM.forEach((hMm,i)=>{
+    const hM = hMm/1000;
+    const f = heightFactor(hM);
+    let d="";
+    for (let lc=lcMin; lc<=lcMax; lc+=25){
+      const cap = staticCapacityAt(lc)*f;
+      const x=xOf(lc), y=yOf(cap);
+      d += (lc===lcMin? "M":"L")+x.toFixed(1)+","+y.toFixed(1)+" ";
+    }
+    const isCurrent = Math.abs(hMm-Math.round(op.liftHeightMm/1000)*1000)<600 || (i===0 && op.liftHeightMm<3000);
+    svg += `<path d="${d}" fill="none" stroke="${isCurrent?'#f2c94c':'#d7d9db'}" stroke-width="${isCurrent?2:1.1}" opacity="${isCurrent?1:0.75}"/>`;
+    const endCap = staticCapacityAt(lcMax)*f;
+    svg += `<text x="${padL+xw+2}" y="${yOf(endCap)+3}" font-size="7" fill="${isCurrent?'#f2c94c':'#a6a9ab'}">${hMm}</text>`;
+  });
+  // ponto da carga configurada
+  const px=xOf(clamp(load.loadCenterMm,lcMin,lcMax)), py=yOf(load.weightKg);
+  svg += `<circle cx="${px}" cy="${py}" r="3.4" fill="#5ec9e8" stroke="#0a0d10" stroke-width="1"/>`;
+  svg += `</svg>`;
+  return svg;
 }
 
 /* ============================================================

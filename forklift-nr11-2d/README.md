@@ -30,9 +30,10 @@ python3 -m http.server 8080
   e o transporte correto) para carregar com um clique e discutir com a turma.
 - **NR-11**: resumo de apoio didático dos pontos centrais da norma (Anexo II) relacionados à operação de
   empilhadeiras.
-- **Plaqueta**: uma plaqueta de capacidade em estilo realista (placa metálica, rebites, tabela de capacidade por
-  centro de carga, tara, entre-eixos, ângulos de inclinação, pneus) que acompanha a configuração atual — serve para
-  treinar a leitura de uma plaqueta real.
+- **Plaqueta**: uma plaqueta de capacidade em estilo placa de metal escovado escura, modelada a partir de uma foto
+  real de plaqueta (incluída na própria aba para comparação), com o clássico gráfico em leque — uma curva de
+  capacidade x centro de carga para cada altura de mastro de referência —, além de tara, entre-eixos, ângulos de
+  inclinação e pneus. Tudo calculado a partir da configuração atual, para treinar a leitura de uma plaqueta real.
 - **Checklist**: simulação da inspeção pré-uso diária (não altera a simulação — reforço de hábito operacional).
 - **🖥 Modo apresentação**: amplia toda a página para leitura à distância (projetor).
 - **❓ Sobre / Como usar**: reabre a tela de instruções a qualquer momento.
@@ -70,5 +71,7 @@ conteúdo de apoio didático; consulte sempre o texto oficial vigente da norma.
 
 ## Stack
 
-- HTML/CSS/JS puro, sem build e sem bibliotecas externas — todo o desenho é feito em `<canvas>` 2D.
-- Um único arquivo (`index.html`).
+- HTML/CSS/JS puro, sem build e sem bibliotecas externas — todo o desenho é feito em `<canvas>` 2D e SVG inline.
+- `index.html` + uma pasta `assets/` com duas imagens de referência (uma foto ilustrativa de empilhadeira, exibida
+  na tela inicial, e a foto de uma plaqueta real, usada como modelo do gráfico em leque e exibida para comparação na
+  aba Plaqueta) — únicos arquivos externos ao HTML, ambos locais (nenhuma dependência de internet).
