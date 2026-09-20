@@ -1404,11 +1404,20 @@ DATA.zones.forEach(z=>{
   mesh.position.set(z.x, z.kind==='aisle'?0.004:0.01, z.z);
   mesh.userData.isGround = true;
   scene.add(mesh);
-  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({color:style.edge, transparent:true, opacity:0.55}));
-  edges.rotation.copy(mesh.rotation);
-  edges.position.copy(mesh.position);
-  edges.position.y += 0.001;
-  scene.add(edges);
+  // Aisle zones skip the border on purpose -- each one used to get its own
+  // full 4-sided outline with no merging between neighbors, so wherever
+  // two corridors met or crossed (or just sat close together) their edges
+  // drew right next to each other as a visible seam, making the aisle
+  // network read as separate boxed-in rectangles instead of one open,
+  // continuous floor. Production/support/shipping zones keep their border
+  // since those really are distinct, bounded areas worth outlining.
+  if (z.kind !== 'aisle'){
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({color:style.edge, transparent:true, opacity:0.55}));
+    edges.rotation.copy(mesh.rotation);
+    edges.position.copy(mesh.position);
+    edges.position.y += 0.001;
+    scene.add(edges);
+  }
 
   if (z.kind === 'shipping'){
     const label = makeFloorLabel(z.label || 'EMBARQUE E ENLONAMENTO', {color:'#fff0df', size:Math.min(2.2, z.depth*0.85)});
