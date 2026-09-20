@@ -1443,7 +1443,7 @@ function buildBoxGroup(b){
     // hold, say), so the fill mesh can reach above the shell for an
     // over-capacity box -- sit the X above whichever is taller.
     const fillTop = fill ? fill.position.y + fill.geometry.parameters.height/2 : 0;
-    blockedMarker = makeBlockedMarker(b.width*0.82, b.depth*0.82);
+    blockedMarker = makeBlockedMarker(Math.max(0.3, b.width*0.82), Math.max(0.3, b.depth*0.82));
     blockedMarker.position.set(0, Math.max(SHELL_HEIGHT, fillTop) + 0.06, 0);
     group.add(blockedMarker);
   }
@@ -1593,11 +1593,14 @@ function applyVisualState(){
       rec.fillEdges.material.color.set(color);
       rec.fillEdges.visible = matVisible && posVisible;
     }
+    const familiaShown = !!(rec.floorFamilia && state.showFamilia);
     if (rec.floorCode){
       // show the position's code whenever there's no material on display
       // there right now -- a genuinely empty/unregistered slot, or a
-      // filled/over position whose material the active filters are hiding.
-      rec.floorCode.visible = posVisible && !matVisible;
+      // filled/over position whose material the active filters are hiding
+      // -- but not when the família stamp is already occupying the same
+      // spot on the floor, since the two would render superimposed.
+      rec.floorCode.visible = posVisible && !matVisible && !familiaShown;
       rec.floorCode.material.opacity = posVisible ? 1 : 0.15;
     }
     if (rec.floorFamilia){
@@ -1606,7 +1609,10 @@ function applyVisualState(){
       rec.floorFamilia.visible = state.showFamilia;
     }
     if (rec.blockedMarker){
-      rec.blockedMarker.visible = !!b.blocked;
+      // Follow the same "Vazios" position filter as the shell/edges/fill,
+      // so a blocked-but-empty slot's X disappears along with the rest of
+      // the empties instead of floating with nothing visible beneath it.
+      rec.blockedMarker.visible = !!b.blocked && posVisible;
     }
   });
 }
@@ -1839,6 +1845,10 @@ function showDetail(code){
   if (rec) { showBoxDetail(rec); return; }
   const prec = prodRegistry.get(code);
   if (prec) { showProdDetail(prec); return; }
+  // Neither registry has this code anymore -- typically a "em produção"
+  // marker whose SKU dropped out on a re-import/demo toggle. Close the
+  // panel instead of leaving it open showing data that no longer exists.
+  clearSelection();
 }
 function showBoxDetail(rec){
   const b = rec.data;
@@ -2438,6 +2448,11 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
   // so a workbook without that guide doesn't zero out every position.
   const hasCapMap = capMap && Object.keys(capMap).length > 0;
   const isRegisteredBoxPos = (pos) => hasCapMap && Number(capMap[pos]) > 0;
+  // Every other join key here (material, position) is normalized before
+  // use -- lote wasn't, so the same lot stored as text in one guide and as
+  // a number in another (or with stray whitespace) would silently fail to
+  // join, understating occupied stock with no error surfaced.
+  const normLote = (v) => (v == null || v === '') ? '' : String(v).trim().toUpperCase();
 
   const mb52Keys = Object.keys(mb52Rows[0]);
   const matKey = findKey(mb52Keys, ['material']);
@@ -2459,21 +2474,25 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
       report.err(`Guia "LX02": não foi possível identificar as colunas (lote: ${loteKeyLX||'não achada'}, posição: ${posKey||'não achada'}).`);
     } else {
       report.info(`Guia "LX02": lote "${loteKeyLX}", posição "${posKey}".`);
-      const posByLoteLocked = new Set(); // lotes already holding a registered/status position -- never overwritten
+      const posByLoteTier = new Map(); // lote -> priority tier currently locked in (0=unmapped fallback, 1=status, 2=registered position)
       for (const row of lx02Rows){
-        const lote = row[loteKeyLX];
-        if (lote == null || lote === '') continue;
-        if (posByLoteLocked.has(lote)) continue;
+        const lote = normLote(row[loteKeyLX]);
+        if (!lote) continue;
         const pos = String(row[posKey]||'').trim().toUpperCase();
-        const isGood = pos === 'EM-PEDIDO' || isEmProducao(pos) || isRegisteredBoxPos(pos);
+        const tier = isRegisteredBoxPos(pos) ? 2 : (pos === 'EM-PEDIDO' || isEmProducao(pos)) ? 1 : 0;
         // Same lote/position pairs repeat across movement rows, and a lote
         // can genuinely show more than one distinct position over time --
-        // when that happens, trust a registered/status position over an
-        // unmapped/auxiliary-area one regardless of row order. Keep the
-        // first-seen row as a fallback for lotes where none ever qualify.
-        if (posByLote.has(lote) && !isGood) continue;
-        posByLote.set(lote, pos);
-        if (isGood) posByLoteLocked.add(lote);
+        // when that happens, a real registered position always outranks a
+        // status placeholder (so a stale "em pedido"/"em produção" row
+        // never suppresses a lot that's since been received into a real
+        // box), which in turn outranks an unmapped/auxiliary-area code.
+        // Only a strictly higher tier overwrites what's already locked in,
+        // so a registered position can still *upgrade* an earlier
+        // status-only lock, but nothing downgrades it afterward.
+        if (tier > (posByLoteTier.get(lote) ?? -1)){
+          posByLote.set(lote, pos);
+          posByLoteTier.set(lote, tier);
+        }
       }
     }
   }
@@ -2486,8 +2505,8 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     if (loteKeyMB51 && dateKey){
       report.info(`Guia "MB51": lote "${loteKeyMB51}", data "${dateKey}".`);
       for (const row of mb51Rows){
-        const lote = row[loteKeyMB51];
-        if (lote == null || lote === '') continue;
+        const lote = normLote(row[loteKeyMB51]);
+        if (!lote) continue;
         const d = excelSerialToDate(row[dateKey]);
         if (!d) continue;
         const ts = d.getTime();
@@ -2504,7 +2523,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
   let posMatched = 0, emPedido = 0, emProducao = 0, semLote = 0, semDimensao = 0;
   for (const row of mb52Rows){
     const material = String(row[matKey]||'').trim().toUpperCase();
-    const lote = row[loteKeyMB52];
+    const lote = normLote(row[loteKeyMB52]);
     const qty = Number(row[qtyKey]) || 0;
     if (!material || qty <= 0) continue;
     const texto = txtKey ? String(row[txtKey]||'').trim() : '';
@@ -2523,7 +2542,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     const familia = cadastros.familiaBySku[material] || null;
     if (!cls) result.unclassified.set(material, texto || cadastros.textoBySku[material] || '');
 
-    const pos = lote != null ? posByLote.get(lote) : undefined;
+    const pos = lote ? posByLote.get(lote) : undefined;
     if (pos === undefined){ semLote++; continue; } // lote not found in LX02 at all
     if (pos === 'EM-PEDIDO'){ emPedido++; continue; } // ordered but not yet physically received
     if (isEmProducao(pos)){
@@ -2541,7 +2560,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     acc.volume += volume;
     acc.skus.set(material, (acc.skus.get(material)||0) + volume);
     if (!acc.item && texto) acc.item = texto;
-    const entryTs = lote != null ? dateByLote.get(lote) : null;
+    const entryTs = lote ? dateByLote.get(lote) : null;
     if (entryTs != null && (acc.entryDate == null || entryTs < acc.entryDate)) acc.entryDate = entryTs;
   }
   for (const [, acc] of result.byBox){
