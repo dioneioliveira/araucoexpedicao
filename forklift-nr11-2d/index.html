@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Estabilidade da Empilhadeira — Apoio à NR-11</title>
+<style>
+:root{
+  --bg:#0a0e13; --panel:#121821; --panel2:#0d1219; --line:#26313f; --line-soft:#1b2531;
+  --text:#e7edf3; --text-dim:#93a2b3; --text-faint:#5c6b7d;
+  --accent:#3fb6d8; --accent-soft:#3fb6d833;
+  --ok:#55c99a; --ok-soft:#55c99a26; --warn:#d5d94f; --warn-soft:#d5d94f26;
+  --danger:#e2543c; --danger-soft:#e2543c26;
+  --yellow:#f2a93b;
+  font-size:15px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);min-height:100%;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+::-webkit-scrollbar{width:8px;height:8px;} ::-webkit-scrollbar-thumb{background:#26313f;border-radius:8px;}
+
+a{color:var(--accent);}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;}
+button{font-family:inherit;}
+
+/* ---------------- header ---------------- */
+#app-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px;
+  border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:20;flex-wrap:wrap;}
+#app-header h1{font-size:16px;margin:0;}
+#app-header .sub{font-size:11.5px;color:var(--text-faint);}
+#header-actions{display:flex;gap:8px;}
+.chip-btn{padding:8px 14px;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  color:var(--text);font-size:12.5px;cursor:pointer;font-weight:600;white-space:nowrap;}
+.chip-btn:hover{border-color:var(--accent);}
+.chip-btn.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+
+/* ---------------- status banner ---------------- */
+#status-bar{margin:14px 18px 0;padding:14px 18px;border-radius:12px;display:flex;align-items:center;
+  gap:16px;flex-wrap:wrap;border:1px solid var(--line);transition:background-color .2s, border-color .2s;}
+#status-bar.st-ok{background:var(--ok-soft);border-color:var(--ok);}
+#status-bar.st-warn{background:var(--warn-soft);border-color:var(--warn);}
+#status-bar.st-danger{background:var(--danger-soft);border-color:var(--danger);animation:pulseBg 0.9s infinite alternate;}
+@keyframes pulseBg{from{filter:brightness(1);}to{filter:brightness(1.35);}}
+#status-icon{font-size:26px;line-height:1;}
+#status-title{font-size:16px;font-weight:800;letter-spacing:.01em;}
+#status-detail{font-size:12.5px;color:var(--text-dim);}
+#status-metrics{margin-left:auto;display:flex;gap:22px;flex-wrap:wrap;}
+.metric{text-align:right;}
+.metric .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);}
+.metric .val{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;}
+.metric .val.ok{color:var(--ok);} .metric .val.warn{color:var(--warn);} .metric .val.danger{color:var(--danger);}
+
+/* ---------------- main layout ---------------- */
+#main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,420px);gap:16px;padding:16px 18px 28px;
+  align-items:start;}
+#views-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.view-card{padding:12px 14px 14px;}
+.view-card .vh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+.view-card h3{margin:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-faint);}
+.view-card .vnote{font-size:10.5px;color:var(--text-faint);}
+.view-card canvas{display:block;width:100%;height:auto;background:var(--panel2);border-radius:8px;border:1px solid var(--line-soft);}
+#card-top{grid-column:1/-1;}
+#card-chart{grid-column:1/-1;}
+
+/* ---------------- sidebar ---------------- */
+#sidebar{position:sticky;top:70px;display:flex;flex-direction:column;gap:12px;}
+#tabs{display:flex;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:4px;}
+.tab-btn{flex:1;padding:8px 6px;border:none;background:transparent;color:var(--text-dim);border-radius:7px;
+  font-size:12px;font-weight:700;cursor:pointer;}
+.tab-btn.active{background:var(--accent);color:#04141a;}
+.tabpane{display:none;padding:14px 16px;max-height:calc(100vh - 190px);overflow-y:auto;}
+.tabpane.active{display:block;}
+
+.field{margin:12px 0;}
+.field label{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:5px;gap:8px;}
+.field label span.v{color:var(--text);font-weight:700;white-space:nowrap;}
+.field input[type=range]{width:100%;accent-color:var(--accent);}
+.field select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  border-radius:7px;padding:7px 8px;font-size:12.5px;}
+h4.grp{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);
+  margin:18px 0 8px;border-top:1px solid var(--line-soft);padding-top:14px;}
+h4.grp:first-of-type{border-top:none;padding-top:0;margin-top:0;}
+.note{font-size:11px;color:var(--text-faint);line-height:1.55;margin-top:4px;}
+.btnrow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.btn{flex:1;min-width:90px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--text);font-size:12px;font-weight:700;cursor:pointer;text-align:center;}
+.btn:hover{border-color:var(--accent);}
+.btn.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#04141a;}
+.btn.small{flex:none;padding:6px 10px;font-size:11px;}
+
+/* cenários */
+.scenario{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;
+  background:var(--panel2);}
+.scenario:hover{border-color:var(--accent);}
+.scenario.active{border-color:var(--accent);background:var(--accent-soft);}
+.scenario .stitle{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px;}
+.scenario .sdesc{font-size:11px;color:var(--text-dim);margin-top:3px;line-height:1.5;}
+.badge{display:inline-block;font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:5px;text-transform:uppercase;}
+.badge.ok{background:var(--ok-soft);color:var(--ok);} .badge.warn{background:var(--warn-soft);color:var(--warn);}
+.badge.danger{background:var(--danger-soft);color:var(--danger);}
+
+/* nr11 */
+#nr11-pane ul{margin:6px 0 14px;padding-left:18px;font-size:12.5px;line-height:1.65;color:var(--text-dim);}
+#nr11-pane li{margin-bottom:8px;}
+#nr11-pane li.hl{color:var(--text);background:var(--accent-soft);border-radius:6px;padding:4px 8px;margin-left:-8px;
+  list-style-position:inside;}
+.disclaimer{font-size:10.5px;color:var(--text-faint);line-height:1.55;background:var(--panel2);border:1px solid var(--line-soft);
+  border-radius:8px;padding:8px 10px;margin-bottom:12px;}
+
+/* checklist */
+.chk-item{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px;}
+.chk-item input{width:17px;height:17px;accent-color:var(--ok);flex:none;}
+.chk-item.checked span{color:var(--text-faint);text-decoration:line-through;}
+#chk-progress{font-size:11px;color:var(--text-dim);margin:8px 0;}
+
+/* overlays */
+#intro-screen{position:fixed;inset:0;z-index:50;background:#05080cee;display:flex;align-items:center;justify-content:center;}
+.card{max-width:680px;width:92%;background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:28px 32px;max-height:88vh;overflow-y:auto;}
+.card h1{font-size:21px;margin:0 0 4px;}
+.card .kicker{color:var(--accent);font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;}
+.card p{font-size:13.5px;line-height:1.6;color:var(--text-dim);margin:8px 0;}
+.card ul{margin:8px 0;padding-left:20px;font-size:13px;color:var(--text-dim);line-height:1.7;}
+.card b{color:var(--text);}
+
+#reason-box{font-size:12.5px;line-height:1.6;color:var(--text);background:var(--panel2);border:1px solid var(--line-soft);
+  border-radius:9px;padding:10px 12px;margin-top:8px;display:none;}
+#reason-box.show{display:block;}
+
+@media (max-width:1050px){
+  #main{grid-template-columns:1fr;}
+  #sidebar{position:static;}
+  #views-grid{grid-template-columns:1fr;}
+  #card-top, #card-chart{grid-column:auto;}
+  #status-metrics{margin-left:0;width:100%;justify-content:space-between;}
+  #cv-top{height:340px;}
+  #cv-chart{height:280px;}
+}
+</style>
+</head>
+<body>
+
+<div id="app-header">
+  <div>
+    <h1>Simulador de Estabilidade da Empilhadeira</h1>
+    <div class="sub">Vistas lateral, frontal e superior — apoio ao treinamento de NR-11 (Anexo II)</div>
+  </div>
+  <div id="header-actions">
+    <button class="chip-btn" id="btn-help">❓ Sobre / Como usar</button>
+    <button class="chip-btn" id="btn-presentation">🖥 Modo apresentação</button>
+  </div>
+</div>
+
+<div id="status-bar" class="panel st-ok">
+  <div id="status-icon">✅</div>
+  <div>
+    <div id="status-title">ESTÁVEL</div>
+    <div id="status-detail">O centro de gravidade combinado está dentro do triângulo de estabilidade.</div>
+  </div>
+  <div id="status-metrics">
+    <div class="metric"><div class="lbl">Capacidade utilizada</div><div class="val ok" id="m-capacity">0%</div></div>
+    <div class="metric"><div class="lbl">Margem de estabilidade</div><div class="val ok" id="m-margin">100%</div></div>
+    <div class="metric"><div class="lbl">Peso da carga</div><div class="val" id="m-weight">1000 kg</div></div>
+    <div class="metric"><div class="lbl">Capacidade no centro de carga</div><div class="val" id="m-cap-at-lc">2500 kg</div></div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="views-grid">
+    <div class="view-card panel">
+      <div class="vh"><h3>Vista lateral</h3><span class="vnote">tombamento p/ frente ou trás</span></div>
+      <canvas id="cv-side" width="620" height="360"></canvas>
+    </div>
+    <div class="view-card panel">
+      <div class="vh"><h3>Vista frontal</h3><span class="vnote">tombamento lateral</span></div>
+      <canvas id="cv-front" width="620" height="360"></canvas>
+    </div>
+    <div class="view-card panel" id="card-top">
+      <div class="vh"><h3>Vista superior — triângulo de estabilidade</h3><span class="vnote">o teste completo (2D)</span></div>
+      <canvas id="cv-top" width="900" height="380"></canvas>
+    </div>
+    <div class="view-card panel" id="card-chart">
+      <div class="vh"><h3>Capacidade x centro de carga</h3><span class="vnote">o que diz a plaqueta</span></div>
+      <canvas id="cv-chart" width="900" height="300"></canvas>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div id="tabs">
+      <button class="tab-btn active" data-tab="config">Configurar</button>
+      <button class="tab-btn" data-tab="scenarios">Cenários</button>
+      <button class="tab-btn" data-tab="nr11">NR-11</button>
+      <button class="tab-btn" data-tab="checklist">Checklist</button>
+    </div>
+
+    <div class="panel" style="padding:0;">
+      <div class="tabpane active" id="pane-config">
+        <h4 class="grp">Modelo de empilhadeira</h4>
+        <div class="field">
+          <label>Modelo</label>
+          <select id="sel-preset">
+            <option value="eletrica15">Elétrica 1,5 t (contrabalanço)</option>
+            <option value="glp25" selected>GLP 2,5 t (contrabalanço)</option>
+            <option value="pesada35">Diesel 3,5 t (grande porte)</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+        <div class="field"><label>Capacidade nominal (plaqueta) <span class="v" id="lbl-ratedcap"></span></label>
+          <input type="range" id="in-ratedcap" min="500" max="6000" step="50"></div>
+        <div class="field"><label>Centro de carga nominal (padrão de fábrica) <span class="v" id="lbl-ratedlc"></span></label>
+          <input type="range" id="in-ratedlc" min="300" max="900" step="10"></div>
+
+        <h4 class="grp">Carga sobre os garfos</h4>
+        <div class="field">
+          <label>Tipo de carga (predefinição)</label>
+          <select id="sel-loadtype">
+            <option value="pallet">Palete padrão</option>
+            <option value="fardo">Fardo leve e volumoso</option>
+            <option value="tambor">Tambor / carga densa e baixa</option>
+            <option value="longa">Carga longa (centro de carga distante)</option>
+            <option value="custom" selected>Personalizado</option>
+          </select>
+        </div>
+        <div class="field"><label>Peso da carga <span class="v" id="lbl-loadw"></span></label>
+          <input type="range" id="in-loadw" min="0" max="6000" step="25"></div>
+        <div class="field"><label>Centro de carga (face dos garfos → CG da carga) <span class="v" id="lbl-loadlc"></span></label>
+          <input type="range" id="in-loadlc" min="150" max="1300" step="10"></div>
+        <div class="field"><label>Altura própria da carga <span class="v" id="lbl-loadh"></span></label>
+          <input type="range" id="in-loadh" min="100" max="1800" step="10"></div>
+        <div class="field"><label>Deslocamento lateral do centro de gravidade <span class="v" id="lbl-loadlat"></span></label>
+          <input type="range" id="in-loadlat" min="-500" max="500" step="10"></div>
+
+        <h4 class="grp">Operação (mastro e deslocamento)</h4>
+        <div class="field"><label>Altura de elevação dos garfos <span class="v" id="lbl-lift"></span></label>
+          <input type="range" id="in-lift" min="0" max="4700" step="10"></div>
+        <div class="field"><label>Inclinação do mastro <span class="v" id="lbl-tilt"></span></label>
+          <input type="range" id="in-tilt" min="-6" max="12" step="0.5"></div>
+
+        <h4 class="grp">Condição dinâmica simulada</h4>
+        <div class="field"><label>Frenagem (–) / Aceleração (+) <span class="v" id="lbl-accel"></span></label>
+          <input type="range" id="in-accel" min="-0.5" max="0.3" step="0.01"></div>
+        <div class="field"><label>Força de curva — esquerda (–) / direita (+) <span class="v" id="lbl-lateralg"></span></label>
+          <input type="range" id="in-lateralg" min="-0.4" max="0.4" step="0.01"></div>
+        <div class="btnrow">
+          <div class="btn small" id="btn-cond-none">Nenhuma</div>
+          <div class="btn small" id="btn-cond-brake">Frenagem brusca</div>
+          <div class="btn small" id="btn-cond-turn">Curva fechada</div>
+        </div>
+
+        <h4 class="grp">Opções</h4>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-dim);cursor:pointer;">
+          <input type="checkbox" id="chk-derate" style="width:16px;height:16px;accent-color:var(--accent);">
+          Derating estrutural acima de 3 m de elevação
+        </label>
+        <div class="btnrow"><div class="btn" id="btn-reset-config">Restaurar padrão</div></div>
+      </div>
+
+      <div class="tabpane" id="pane-scenarios">
+        <div class="note" style="margin-bottom:10px;">Clique em um cenário para carregar a configuração e discutir com a turma.</div>
+        <div id="scenario-list"></div>
+      </div>
+
+      <div class="tabpane" id="pane-nr11">
+        <div class="disclaimer">Resumo de apoio didático sobre pontos centrais da NR-11 (Anexo II — Empilhadeiras)
+        para uso em treinamento. Consulte sempre o texto oficial vigente da norma e o manual do fabricante do
+        equipamento utilizado.</div>
+        <ul id="nr11-list"></ul>
+      </div>
+
+      <div class="tabpane" id="pane-checklist">
+        <div class="note">Checklist de inspeção pré-uso (não altera a simulação — reforço de hábito operacional).</div>
+        <div id="chk-progress"></div>
+        <div id="chk-list"></div>
+        <div class="btnrow"><div class="btn" id="btn-chk-reset">Reiniciar checklist</div></div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:12px 14px;">
+      <div id="reason-box"></div>
+    </div>
+  </div>
+</div>
+
+<div id="intro-screen">
+  <div class="card">
+    <div class="kicker">Apoio ao treinamento de NR-11 — uso educacional</div>
+    <h1>Simulador de Estabilidade da Empilhadeira</h1>
+    <p>Uma ferramenta visual para explicar, em três vistas técnicas (lateral, frontal e superior), por que uma
+    empilhadeira tomba: o <b>triângulo de estabilidade</b>, o <b>centro de carga</b> e os efeitos de elevar,
+    inclinar, acelerar, frear e fazer curvas.</p>
+    <ul>
+      <li>Use a aba <b>Configurar</b> para ajustar peso, centro de carga, altura de elevação, inclinação do mastro
+      e condições dinâmicas (frenagem/curva) — as três vistas e o status no topo reagem em tempo real.</li>
+      <li>Use a aba <b>Cenários</b> para carregar situações prontas de risco (sobrecarga, centro de carga deslocado,
+      frenagem com carga elevada, curva fechada) e discutir cada uma com a turma.</li>
+      <li>Use a aba <b>NR-11</b> para revisar os pontos-chave da norma e a aba <b>Checklist</b> para simular a
+      inspeção pré-uso.</li>
+      <li>A barra no topo mostra o estado atual: <b>estável</b>, <b>margem reduzida</b> ou <b>tombamento</b> — e as
+      vistas se inclinam para ilustrar a queda quando o limite é ultrapassado.</li>
+    </ul>
+    <div class="btnrow"><div class="btn primary" id="btn-start" style="padding:12px;">Começar</div></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Utilidades
+   ============================================================ */
+const deg2rad = d => d*Math.PI/180;
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+const lerp = (a,b,t) => a+(b-a)*t;
+const fmt = n => Math.round(n).toLocaleString("pt-BR");
+
+/* ============================================================
+   Especificação da empilhadeira (plaqueta de identificação)
+   ============================================================ */
+const PRESETS = {
+  eletrica15: {ratedCapacityKg:1500, ratedLoadCenterMm:500, vehicleWeightKg:2600,
+    maxLiftHeightMm:4000, wheelbaseMm:1500, frontOverhangMm:400, trackWidthMm:950,
+    maxForwardTiltDeg:5, maxBackwardTiltDeg:8},
+  glp25: {ratedCapacityKg:2500, ratedLoadCenterMm:500, vehicleWeightKg:3800,
+    maxLiftHeightMm:4700, wheelbaseMm:1650, frontOverhangMm:450, trackWidthMm:1000,
+    maxForwardTiltDeg:6, maxBackwardTiltDeg:10},
+  pesada35: {ratedCapacityKg:3500, ratedLoadCenterMm:600, vehicleWeightKg:5400,
+    maxLiftHeightMm:5500, wheelbaseMm:1800, frontOverhangMm:500, trackWidthMm:1100,
+    maxForwardTiltDeg:6, maxBackwardTiltDeg:12},
+};
+const SAFETY_FACTOR = 1.6;
+
+const LOAD_TYPES = {
+  pallet: {weightKg:1000, loadCenterMm:500, heightMm:500, lateralMm:0},
+  fardo:  {weightKg:450,  loadCenterMm:550, heightMm:1400, lateralMm:0},
+  tambor: {weightKg:900,  loadCenterMm:420, heightMm:900,  lateralMm:0},
+  longa:  {weightKg:1200, loadCenterMm:1050, heightMm:400, lateralMm:0},
+};
+
+let spec = {...PRESETS.glp25};
+const load = {weightKg:1000, loadCenterMm:500, heightMm:500, lateralMm:0};
+const op = {liftHeightMm:300, tiltDeg:4, accelG:0, lateralG:0, derate:false};
+
+function ownArmM(){
+  return SAFETY_FACTOR*spec.ratedCapacityKg*((spec.frontOverhangMm+spec.ratedLoadCenterMm)/1000)/spec.vehicleWeightKg;
+}
+function staticCapacityAt(loadCenterMm){
+  const armM = (spec.frontOverhangMm+loadCenterMm)/1000;
+  return (spec.vehicleWeightKg*ownArmM())/(SAFETY_FACTOR*armM);
+}
+function heightDerateFactor(heightM){
+  if (!op.derate) return 1;
+  const thresholdM = 3.0;
+  if (heightM<=thresholdM) return 1;
+  return clamp(1-(heightM-thresholdM)*0.12, 0.4, 1);
+}
+
+/* ============================================================
+   Cálculo de estabilidade (estático + efeitos dinâmicos simulados)
+   ============================================================ */
+function computeStability(){
+  const wbM = spec.wheelbaseMm/1000, foM = spec.frontOverhangMm/1000, twM = spec.trackWidthMm/1000;
+  const ownArm = ownArmM();
+  const ownWeight = spec.vehicleWeightKg;
+  const loadWeight = load.weightKg;
+  const liftM = op.liftHeightMm/1000;
+  const forkHeight = liftM + 0.35;
+  const loadCgHeight = forkHeight + load.heightMm/2000;
+  const loadArmStatic = foM + load.loadCenterMm/1000;
+
+  const tiltShift = -Math.sin(deg2rad(op.tiltDeg))*forkHeight;
+  const brakingShift = -(op.accelG)*loadCgHeight;
+  const loadArmDynamic = loadArmStatic + tiltShift + brakingShift;
+
+  const totalWeight = ownWeight + loadWeight;
+  const combinedY = (ownWeight*(-ownArm) + loadWeight*loadArmDynamic) / totalWeight;
+
+  const systemCgHeight = (ownWeight*0.6 + loadWeight*loadCgHeight)/totalWeight;
+  const turnShift = -(op.lateralG)*systemCgHeight;
+  const combinedX = (loadWeight*(load.lateralMm/1000))/totalWeight + turnShift;
+
+  const A = {x: twM/2, y:0};
+  const B = {x:-twM/2, y:0};
+  const C = {x:0, y:-wbM};
+  function edgeSigned(P,Q,pt){ return (Q.x-P.x)*(pt.y-P.y) - (Q.y-P.y)*(pt.x-P.x); }
+  function edgeDist(P,Q,pt){ const len=Math.hypot(Q.x-P.x,Q.y-P.y)||1; return edgeSigned(P,Q,pt)/len; }
+  const pt = {x:combinedX, y:combinedY};
+  const areaSign = Math.sign(edgeSigned(A,B,C)) || 1;
+  const dAB = edgeDist(A,B,pt)*areaSign; // aresta dianteira -> tombamento p/ frente se negativo
+  const dBC = edgeDist(B,C,pt)*areaSign; // lado esquerdo
+  const dCA = edgeDist(C,A,pt)*areaSign; // lado direito
+  const minMargin = Math.min(dAB,dBC,dCA);
+
+  const capAtLC = staticCapacityAt(load.loadCenterMm) * heightDerateFactor(liftM);
+  const overloaded = loadWeight > capAtLC;
+
+  let tipEdge = null;
+  if (minMargin<0){
+    if (dAB<=dBC && dAB<=dCA) tipEdge = "forward";
+    else if (dBC<dCA) tipEdge = "left";
+    else tipEdge = "right";
+  }
+
+  return {A,B,C,pt, dAB,dBC,dCA, minMargin, combinedX, combinedY, capAtLC, overloaded, tipEdge,
+          wbM, foM, twM, forkHeight, loadCgHeight, ownArm, totalWeight};
+}
+// 0% assim que sai do triângulo (nunca mostra uma margem "alta" enganosa durante um tombamento)
+function marginPercent(stab){
+  return stab.minMargin<0 ? 0 : clamp(100*stab.minMargin/0.4, 0, 100);
+}
+
+/* ============================================================
+   Estado visual (com suavização por interpolação)
+   ============================================================ */
+const display = { liftM:0.3, tiltDeg:4, loadCenterM:0.5, lateralM:0, loadHeightM:0.5,
+                   tipForward:0, tipLeft:0, tipRight:0 };
+
+function targetFromState(){
+  return { liftM: op.liftHeightMm/1000, tiltDeg: op.tiltDeg, loadCenterM: load.loadCenterMm/1000,
+           lateralM: load.lateralMm/1000, loadHeightM: load.heightMm/1000 };
+}
+
+/* ============================================================
+   Canvas helpers
+   ============================================================ */
+function setupHiDPI(canvas){
+  const ratio = Math.min(window.devicePixelRatio||1, 2);
+  const w = canvas.clientWidth || canvas.width;
+  const h = canvas.clientHeight || canvas.height;
+  if (canvas._ratio===ratio && canvas._w===w && canvas._h===h) return canvas.getContext("2d");
+  canvas.width = w*ratio; canvas.height = h*ratio;
+  canvas._ratio=ratio; canvas._w=w; canvas._h=h;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio,0,0,ratio,0,0);
+  return ctx;
+}
+function dimLine(ctx,x1,y1,x2,y2,label,opts={}){
+  ctx.save();
+  ctx.strokeStyle = opts.color||"#5c6b7d"; ctx.fillStyle = opts.color||"#93a2b3";
+  ctx.lineWidth=1; ctx.font = (opts.font||"10px sans-serif");
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang = Math.atan2(y2-y1,x2-x1);
+  [[x1,y1,ang+Math.PI],[x2,y2,ang]].forEach(([x,y,a])=>{
+    ctx.beginPath(); ctx.moveTo(x,y);
+    ctx.lineTo(x+6*Math.cos(a+2.6), y+6*Math.sin(a+2.6));
+    ctx.moveTo(x,y);
+    ctx.lineTo(x+6*Math.cos(a-2.6), y+6*Math.sin(a-2.6));
+    ctx.stroke();
+  });
+  if (label){
+    ctx.textAlign="center"; ctx.textBaseline = opts.above? "bottom":"top";
+    ctx.fillText(label, (x1+x2)/2, (y1+y2)/2 + (opts.above?-4:4));
+  }
+  ctx.restore();
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+const COL = { chassis:"#f2a93b", chassisDark:"#c97e19", cw:"#2b323a", mast:"#5b6673", innerMast:"#7c8794",
+              fork:"#aab2ba", wheel:"#1b1f24", rim:"#4a525b", ground:"#1b2531",
+              loadOk:"#3fb6d8", loadWarn:"#d5d94f", loadDanger:"#e2543c",
+              tri:"#3fb6d8", ok:"#55c99a", warn:"#d5d94f", danger:"#e2543c", dim:"#5c6b7d" };
+
+function loadColor(stab){
+  if (stab.overloaded) return COL.loadDanger;
+  if (stab.minMargin<0) return COL.loadDanger;
+  if (stab.minMargin<0.15) return COL.loadWarn;
+  return COL.loadOk;
+}
+
+/* ============================================================
+   Vista lateral
+   ============================================================ */
+function drawSide(stab){
+  const canvas = document.getElementById("cv-side");
+  const ctx = setupHiDPI(canvas);
+  const W = canvas._w, H = canvas._h;
+  ctx.clearRect(0,0,W,H);
+
+  const wbM = stab.wbM, foM = stab.foM;
+  const maxLiftM = spec.maxLiftHeightMm/1000;
+  // span de referência FIXO (não depende do slider de centro de carga) para o desenho não "zoomar" ao arrastar
+  const padL=76, padR=46, padTopDims=34, padBottomDims=86;
+  const totalSpanM = wbM + foM + 1.5 + 0.5;
+  const scale = (W-padL-padR)/totalSpanM;
+  const groundY = H-padBottomDims;
+  const wheelR = clamp(scale*0.19, 12, 30);
+  const originX = padL + wbM*scale; // eixo dianteiro (x=0 do modelo) na tela
+  const toX = xm => originX + xm*scale;
+  const rearX = toX(-wbM), frontX = toX(0);
+
+  ctx.save();
+  const tipFwd = display.tipForward;
+  if (tipFwd>0.02){ ctx.translate(frontX, groundY); ctx.rotate(tipFwd*deg2rad(30)); ctx.translate(-frontX,-groundY); }
+
+  // chão
+  ctx.strokeStyle = COL.ground; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(padL-46,groundY); ctx.lineTo(W-padR+30,groundY); ctx.stroke();
+
+  const wheelCenterY = groundY-wheelR;
+  const axleY = wheelCenterY;
+  const bodyH = scale*0.6, bodyTopY = axleY-bodyH;
+  const cwH = scale*0.95, cwTopY = axleY-cwH;
+
+  // contrapeso (conectado ao corpo, atrás do eixo traseiro)
+  ctx.fillStyle = COL.cw;
+  roundRect(ctx, rearX-scale*0.42, cwTopY, scale*0.62, cwH, 5); ctx.fill();
+
+  // chassi principal (do contrapeso até o eixo dianteiro)
+  ctx.fillStyle = COL.chassis;
+  roundRect(ctx, rearX-scale*0.05, bodyTopY, (frontX-rearX)+scale*0.15, bodyH, 6); ctx.fill();
+
+  // guarda avançada
+  ctx.strokeStyle = COL.chassisDark; ctx.lineWidth=Math.max(3,scale*0.045);
+  const guardTopY = bodyTopY - scale*1.5;
+  const gx1 = rearX+scale*0.12, gx2 = frontX-scale*0.08;
+  ctx.beginPath();
+  ctx.moveTo(gx1,bodyTopY); ctx.lineTo(gx1,guardTopY);
+  ctx.moveTo(gx2,bodyTopY); ctx.lineTo(gx2,guardTopY);
+  ctx.moveTo(gx1,guardTopY); ctx.lineTo(gx2,guardTopY);
+  ctx.stroke();
+
+  // rodas (por cima do chassi para parecerem encaixadas)
+  [rearX,frontX].forEach(x=>{
+    ctx.fillStyle=COL.wheel; ctx.beginPath(); ctx.arc(x,wheelCenterY,wheelR,0,7); ctx.fill();
+    ctx.fillStyle=COL.rim; ctx.beginPath(); ctx.arc(x,wheelCenterY,wheelR*0.42,0,7); ctx.fill();
+  });
+
+  // mastro + garfos + carga (giram juntos em torno da base do mastro, perto do eixo dianteiro)
+  const liftPx = display.liftM*scale;
+  const mastVisibleH = scale*(maxLiftM*0.62+0.35);
+  const forkGroundClearance = scale*0.06;
+  ctx.save();
+  ctx.translate(frontX, axleY);
+  ctx.rotate(deg2rad(-display.tiltDeg));
+  ctx.strokeStyle = COL.mast; ctx.lineWidth=Math.max(4,scale*0.06);
+  ctx.beginPath(); ctx.moveTo(0,forkGroundClearance); ctx.lineTo(0,-mastVisibleH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(scale*0.11,forkGroundClearance); ctx.lineTo(scale*0.11,-mastVisibleH); ctx.stroke();
+  ctx.strokeStyle = COL.innerMast; ctx.lineWidth=Math.max(3,scale*0.045);
+  ctx.beginPath(); ctx.moveTo(scale*0.045,forkGroundClearance); ctx.lineTo(scale*0.045, -liftPx-scale*0.45); ctx.stroke();
+
+  const forkY = -liftPx;
+  const forkLenPx = Math.max(display.loadCenterM*1.9, 0.55)*scale;
+  ctx.strokeStyle = COL.fork; ctx.lineWidth=Math.max(6,scale*0.09);
+  ctx.beginPath(); ctx.moveTo(-scale*0.02, forkY); ctx.lineTo(forkLenPx, forkY); ctx.stroke();
+
+  const loadWpx = Math.max(display.loadCenterM*1.35, 0.32)*scale;
+  const loadHpx = Math.max(display.loadHeightM,0.04)*scale;
+  const loadCx = display.loadCenterM*scale;
+  const loadX0 = loadCx-loadWpx/2, loadY0 = forkY-loadHpx;
+  ctx.fillStyle = loadColor(stab)+"dd";
+  roundRect(ctx, loadX0, loadY0, loadWpx, loadHpx, 4); ctx.fill();
+  ctx.strokeStyle="#0009"; ctx.lineWidth=1.2; roundRect(ctx, loadX0, loadY0, loadWpx, loadHpx, 4); ctx.stroke();
+  ctx.restore();
+
+  // base de apoio (segmento entre os pontos de contato das rodas)
+  ctx.strokeStyle = loadColor(stab); ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(rearX,groundY); ctx.lineTo(frontX,groundY); ctx.stroke();
+
+  // CG combinado (projeção sobre a base de apoio)
+  const cgX = toX(stab.combinedY);
+  const cgTopY = axleY-mastVisibleH*0.5;
+  ctx.setLineDash([4,3]); ctx.strokeStyle=loadColor(stab); ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(cgX,groundY); ctx.lineTo(cgX,cgTopY); ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(cgX,groundY,6,0,7); ctx.fillStyle=loadColor(stab); ctx.fill();
+  ctx.strokeStyle="#fff"; ctx.lineWidth=1.4; ctx.stroke();
+  ctx.fillStyle=loadColor(stab); ctx.font="bold 12px sans-serif"; ctx.textAlign="center";
+  ctx.fillText("CG combinado", cgX, cgTopY-8);
+
+  ctx.restore(); // fim da rotação de tombamento
+
+  // cotas (fora da rotação, sempre legíveis)
+  dimLine(ctx, rearX, groundY+wheelR+22, frontX, groundY+wheelR+22, "entre-eixos "+fmt(spec.wheelbaseMm)+" mm");
+  dimLine(ctx, frontX, groundY+wheelR+42, frontX+clamp(display.loadCenterM,0.15,1.5)*scale, groundY+wheelR+42,
+          "centro de carga "+fmt(load.loadCenterMm)+" mm");
+  ctx.textAlign="left"; ctx.fillStyle=COL.dim; ctx.font="11px sans-serif";
+  ctx.fillText("altura dos garfos: "+fmt(op.liftHeightMm)+" mm", 10, 18);
+  ctx.fillText("inclinação: "+(op.tiltDeg>=0?"+":"")+op.tiltDeg.toFixed(1)+"° ("+(op.tiltDeg>=0?"trás":"frente")+")", 10, 33);
+  if (tipFwd>0.5){
+    ctx.font="bold 13px sans-serif"; ctx.textAlign="center";
+    const tw = ctx.measureText("TOMBAMENTO PARA FRENTE").width;
+    ctx.fillStyle="#2a0e0ae0"; roundRect(ctx, W/2-tw/2-10, 5, tw+20, 22, 5); ctx.fill();
+    ctx.fillStyle=COL.danger; ctx.fillText("TOMBAMENTO PARA FRENTE", W/2, 20);
+  }
+}
+
+/* ============================================================
+   Vista frontal
+   ============================================================ */
+function drawFront(stab){
+  const canvas = document.getElementById("cv-front");
+  const ctx = setupHiDPI(canvas);
+  const W = canvas._w, H = canvas._h;
+  ctx.clearRect(0,0,W,H);
+
+  const twM = stab.twM;
+  const maxLiftM = spec.maxLiftHeightMm/1000;
+  const padSide=60, padTop=34, padBottom=64;
+  const spanX = twM + 1.3;
+  const spanY = maxLiftM*0.62 + 1.6;
+  const scale = Math.min((W-padSide*2)/spanX, (H-padTop-padBottom)/spanY);
+  const cx = W/2;
+  const groundY = H-padBottom;
+  const wheelR = clamp(scale*0.19, 12, 30);
+  const wheelCenterY = groundY-wheelR;
+  const xL = cx-(twM/2)*scale, xR = cx+(twM/2)*scale;
+
+  const tipL = display.tipLeft, tipR = display.tipRight;
+  ctx.save();
+  if (tipL>0.02 || tipR>0.02){
+    const dir = tipL>tipR? -1:1;
+    const pivotX = dir<0? xL : xR;
+    ctx.translate(pivotX, groundY);
+    ctx.rotate(dir*Math.max(tipL,tipR)*deg2rad(32));
+    ctx.translate(-pivotX,-groundY);
+  }
+
+  ctx.strokeStyle = COL.ground; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(padSide-40,groundY); ctx.lineTo(W-padSide+40,groundY); ctx.stroke();
+
+  // chassi (bloco simples apoiado sobre o eixo das rodas)
+  const bodyH = scale*0.6, bodyTopY = wheelCenterY-bodyH;
+  ctx.fillStyle = COL.chassis;
+  roundRect(ctx, cx-(twM/2+0.14)*scale, bodyTopY, (twM+0.28)*scale, bodyH, 6); ctx.fill();
+
+  [xL,xR].forEach(x=>{
+    ctx.fillStyle=COL.wheel; ctx.beginPath(); ctx.arc(x,wheelCenterY,wheelR,0,7); ctx.fill();
+    ctx.fillStyle=COL.rim; ctx.beginPath(); ctx.arc(x,wheelCenterY,wheelR*0.42,0,7); ctx.fill();
+  });
+
+  // mastro (duas colunas, altura de referência fixa = elevação máxima)
+  const mastTopY = wheelCenterY - scale*(maxLiftM*0.62+0.3);
+  ctx.strokeStyle = COL.mast; ctx.lineWidth = Math.max(5,scale*0.055);
+  [-1,1].forEach(side=>{
+    const x = cx+side*twM*0.4*scale;
+    ctx.beginPath(); ctx.moveTo(x, wheelCenterY); ctx.lineTo(x, mastTopY); ctx.stroke();
+  });
+
+  // garfos na altura atual
+  const liftPx = display.liftM*scale;
+  const forkY = groundY - scale*0.06 - liftPx;
+  ctx.strokeStyle = COL.fork; ctx.lineWidth = Math.max(6, scale*0.09);
+  [-1,1].forEach(side=>{
+    const x = cx+side*twM*0.28*scale;
+    ctx.beginPath(); ctx.moveTo(x-scale*0.08, forkY); ctx.lineTo(x+scale*0.08, forkY); ctx.stroke();
+  });
+
+  // carga (com deslocamento lateral)
+  const loadW = Math.max(twM*0.82,0.4)*scale;
+  const loadH = Math.max(display.loadHeightM,0.04)*scale;
+  const loadCx = cx + display.lateralM*scale;
+  ctx.fillStyle = loadColor(stab)+"dd";
+  roundRect(ctx, loadCx-loadW/2, forkY-loadH, loadW, loadH, 4); ctx.fill();
+  ctx.strokeStyle="#0009"; ctx.lineWidth=1.2; roundRect(ctx, loadCx-loadW/2, forkY-loadH, loadW, loadH, 4); ctx.stroke();
+
+  // base de apoio + CG
+  ctx.strokeStyle = loadColor(stab); ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(xL,groundY); ctx.lineTo(xR,groundY); ctx.stroke();
+
+  const cgX = cx + stab.combinedX*scale;
+  const cgTopY = mastTopY + scale*0.35;
+  ctx.strokeStyle = loadColor(stab); ctx.setLineDash([4,3]); ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(cgX, groundY); ctx.lineTo(cgX, cgTopY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(cgX, groundY, 6, 0, 7);
+  ctx.fillStyle = loadColor(stab); ctx.fill(); ctx.strokeStyle="#fff"; ctx.lineWidth=1.4; ctx.stroke();
+  ctx.fillStyle = loadColor(stab); ctx.font="bold 12px sans-serif"; ctx.textAlign="center";
+  ctx.fillText("CG combinado", cgX, cgTopY-8);
+
+  ctx.restore();
+
+  dimLine(ctx, xL, groundY+wheelR+22, xR, groundY+wheelR+22, "bitola "+fmt(spec.trackWidthMm)+" mm");
+  ctx.fillStyle=COL.dim; ctx.font="11px sans-serif"; ctx.textAlign="left";
+  ctx.fillText("deslocamento lateral do CG da carga: "+(load.lateralMm>=0?"+":"")+fmt(load.lateralMm)+" mm", 10, 18);
+  if (Math.max(tipL,tipR)>0.5){
+    ctx.font="bold 13px sans-serif"; ctx.textAlign="center";
+    const tw = ctx.measureText("TOMBAMENTO LATERAL").width;
+    ctx.fillStyle="#2a0e0ae0"; roundRect(ctx, W/2-tw/2-10, 5, tw+20, 22, 5); ctx.fill();
+    ctx.fillStyle=COL.danger; ctx.fillText("TOMBAMENTO LATERAL", W/2, 20);
+  }
+}
+
+/* ============================================================
+   Vista superior
+   ============================================================ */
+function drawTop(stab){
+  const canvas = document.getElementById("cv-top");
+  const ctx = setupHiDPI(canvas);
+  const W = canvas._w, H = canvas._h;
+  ctx.clearRect(0,0,W,H);
+
+  const wbM = stab.wbM, twM = stab.twM, foM = stab.foM;
+  // span de referência FIXO (não depende do slider de centro de carga)
+  const showLegend = W>=560;
+  const legendW = showLegend? 300 : 0;
+  const padTop=52, padBottom=44;
+  const spanY = wbM+foM+1.7;
+  const spanX = Math.max(twM+1.0, 2.4);
+  const drawAreaW = W-legendW;
+  const scale = Math.min((drawAreaW-60)/spanX, (H-padTop-padBottom)/spanY);
+  const cx = drawAreaW/2;
+  const originY = H-padBottom-wbM*scale; // eixo dianteiro na tela (y=0 do modelo); traseira fica a wbM*scale abaixo
+
+  const toPt = (xm,ym)=>({x:cx+xm*scale, y:originY-ym*scale});
+
+  // triângulo
+  const A=toPt(stab.A.x,stab.A.y), B=toPt(stab.B.x,stab.B.y), C=toPt(stab.C.x,stab.C.y);
+  const stable = stab.minMargin>=0.15, warn = stab.minMargin>=0 && stab.minMargin<0.15;
+  const triCol = stable? COL.ok : warn? COL.warn : COL.danger;
+  ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.lineTo(C.x,C.y); ctx.closePath();
+  ctx.fillStyle = stable? "#55c99a3d" : warn? "#d5d94f4a" : "#e2543c52"; ctx.fill();
+  ctx.strokeStyle = triCol; ctx.lineWidth=2; ctx.stroke();
+  [A,B,C].forEach(p=>{ ctx.beginPath(); ctx.arc(p.x,p.y,4,0,7); ctx.fillStyle="#93a2b3"; ctx.fill(); });
+
+  // chassi: mais estreito que a bitola das rodas, para não encobrir o triângulo
+  const bodyW = twM*0.52*scale;
+  ctx.fillStyle = COL.chassis+"dd";
+  roundRect(ctx, cx-bodyW/2, originY, bodyW, wbM*scale*0.78, 6); ctx.fill();
+  ctx.fillStyle = COL.cw;
+  roundRect(ctx, cx-bodyW*0.65/2, originY+wbM*scale*0.68, bodyW*0.65, wbM*scale*0.3, 4); ctx.fill();
+
+  // garfos: do eixo dianteiro até a face onde a carga se apoia
+  const loadCenterM = clamp(display.loadCenterM, 0.15, 1.5);
+  const forkTipM = foM+loadCenterM*1.15;
+  ctx.strokeStyle = COL.fork; ctx.lineWidth = Math.max(6,scale*0.06);
+  [-1,1].forEach(side=>{
+    const x = cx+side*twM*0.28*scale;
+    ctx.beginPath(); ctx.moveTo(x, originY); ctx.lineTo(x, originY-forkTipM*scale); ctx.stroke();
+  });
+
+  // carga
+  const loadLenM = Math.max(loadCenterM*1.15, 0.35);
+  const loadWm = Math.max(twM*0.85,0.4);
+  const loadCenter = toPt(display.lateralM, foM+loadCenterM);
+  const lw = loadWm*scale, ll = loadLenM*scale;
+  ctx.fillStyle = loadColor(stab)+"dd";
+  roundRect(ctx, loadCenter.x-lw/2, loadCenter.y-ll/2, lw, ll, 5); ctx.fill();
+  ctx.strokeStyle="#0009"; ctx.lineWidth=1.2; roundRect(ctx, loadCenter.x-lw/2, loadCenter.y-ll/2, lw, ll, 5); ctx.stroke();
+
+  // CG próprio da empilhadeira (referência) + CG combinado
+  const ownCg = toPt(0, -stab.ownArm);
+  const cg = toPt(stab.combinedX, stab.combinedY);
+  const cgDistPx = Math.hypot(cg.x-ownCg.x, cg.y-ownCg.y);
+
+  ctx.beginPath(); ctx.arc(ownCg.x, ownCg.y, 3.5, 0, 7); ctx.fillStyle="#93a2b3"; ctx.fill();
+  if (cgDistPx>16){
+    ctx.fillStyle="#93a2b3"; ctx.font="9.5px sans-serif"; ctx.textAlign="left";
+    ctx.fillText("CG da empilhadeira", ownCg.x+7, ownCg.y+3);
+  }
+
+  ctx.beginPath(); ctx.moveTo(ownCg.x,ownCg.y); ctx.lineTo(cg.x,cg.y);
+  ctx.strokeStyle=loadColor(stab)+"99"; ctx.setLineDash([3,3]); ctx.lineWidth=1.2; ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(cg.x,cg.y,6,0,7); ctx.fillStyle=loadColor(stab); ctx.fill();
+  ctx.strokeStyle="#fff"; ctx.lineWidth=1.4; ctx.stroke();
+  ctx.fillStyle=loadColor(stab); ctx.font="bold 11px sans-serif"; ctx.textAlign="left";
+  ctx.fillText(cgDistPx>16? "CG combinado" : "CG combinado ≈ CG da empilhadeira", cg.x+8, cg.y+4);
+
+  // indicador de curva
+  if (Math.abs(op.lateralG)>0.02){
+    const dir = op.lateralG>0? 1:-1;
+    ctx.strokeStyle = COL.warn; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.arc(cx - dir*140, originY-wbM*0.4*scale, 130, dir>0? -0.5:Math.PI-0.5, dir>0? 0.5:Math.PI+0.5);
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=COL.warn; ctx.font="10.5px sans-serif"; ctx.textAlign="center";
+    ctx.fillText("curva para "+(dir>0?"a direita":"a esquerda"), cx, originY+50);
+  }
+
+  // contorno do triângulo redesenhado por cima, para nunca ficar encoberto pelo desenho da empilhadeira
+  ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.lineTo(C.x,C.y); ctx.closePath();
+  ctx.strokeStyle = triCol+"55"; ctx.lineWidth=8; ctx.stroke();
+  ctx.strokeStyle = triCol; ctx.lineWidth=3; ctx.stroke();
+  [A,B,C].forEach(p=>{ ctx.beginPath(); ctx.arc(p.x,p.y,5,0,7); ctx.fillStyle="#e7edf3"; ctx.fill();
+    ctx.strokeStyle="#0009"; ctx.lineWidth=1.3; ctx.stroke(); });
+
+  ctx.fillStyle=COL.dim; ctx.font="10.5px sans-serif"; ctx.textAlign="center";
+  ctx.fillText("frente", cx, A.y-12);
+  ctx.fillText("eixo traseiro (direção)", cx, C.y+16);
+
+  if (stab.overloaded){
+    ctx.fillStyle=COL.danger; ctx.font="bold 12px sans-serif"; ctx.textAlign="left";
+    ctx.fillText("⚠ acima da capacidade da plaqueta", 10, H-10);
+  }
+
+  // painel lateral: legenda de cores + leitura numérica (só quando há largura suficiente;
+  // em telas estreitas os mesmos números já aparecem na barra de status no topo da página)
+  if (showLegend){
+    const lx = drawAreaW+26;
+    ctx.strokeStyle = "#1b2531"; ctx.beginPath(); ctx.moveTo(drawAreaW+4,20); ctx.lineTo(drawAreaW+4,H-20); ctx.stroke();
+    ctx.textAlign="left";
+    ctx.fillStyle=COL.dim; ctx.font="bold 10.5px sans-serif";
+    ctx.fillText("LEITURA DO TRIÂNGULO", lx, 30);
+
+    const marginPct = marginPercent(stab);
+    ctx.font="bold 26px sans-serif"; ctx.fillStyle=triCol;
+    ctx.fillText(marginPct.toFixed(0)+"%", lx, 64);
+    ctx.font="11px sans-serif"; ctx.fillStyle="#93a2b3";
+    ctx.fillText("margem de estabilidade", lx, 82);
+
+    const rows = [
+      [COL.ok, "Dentro do triângulo, com folga — estável"],
+      [COL.warn, "Dentro do triângulo, mas com pouca folga"],
+      [COL.danger, "Fora do triângulo — tombamento"],
+    ];
+    let ly = 112;
+    rows.forEach(([c,txt])=>{
+      ctx.fillStyle=c; roundRect(ctx, lx, ly-9, 13, 13, 3); ctx.fill();
+      ctx.fillStyle="#c7d0da"; ctx.font="10.5px sans-serif";
+      wrapText(ctx, txt, lx+20, ly+1, legendW-46, 13);
+      ly += 34;
+    });
+
+    ly += 4;
+    ctx.strokeStyle="#1b2531"; ctx.beginPath(); ctx.moveTo(lx,ly-14); ctx.lineTo(W-16,ly-14); ctx.stroke();
+    const infoRows = [
+      ["Peso da carga", fmt(load.weightKg)+" kg"],
+      ["Centro de carga", fmt(load.loadCenterMm)+" mm"],
+      ["Capacidade permitida aqui", fmt(stab.capAtLC)+" kg"],
+      ["Altura dos garfos", fmt(op.liftHeightMm)+" mm"],
+    ];
+    infoRows.forEach(([k,v])=>{
+      ctx.fillStyle=COL.dim; ctx.font="10.5px sans-serif"; ctx.fillText(k, lx, ly);
+      ctx.fillStyle="#e7edf3"; ctx.font="bold 10.5px sans-serif"; ctx.textAlign="right";
+      ctx.fillText(v, W-16, ly); ctx.textAlign="left";
+      ly += 20;
+    });
+  }
+}
+function wrapText(ctx, text, x, y, maxWidth, lineHeight){
+  const words = text.split(" ");
+  let line="", ny=y;
+  words.forEach(w=>{
+    const test = line? line+" "+w : w;
+    if (ctx.measureText(test).width>maxWidth && line){ ctx.fillText(line,x,ny); line=w; ny+=lineHeight; }
+    else line=test;
+  });
+  if (line) ctx.fillText(line,x,ny);
+}
+
+/* ============================================================
+   Gráfico de capacidade
+   ============================================================ */
+function drawChart(stab){
+  const canvas = document.getElementById("cv-chart");
+  const ctx = setupHiDPI(canvas);
+  const W = canvas._w, H = canvas._h;
+  ctx.clearRect(0,0,W,H);
+
+  const padL=46, padB=30, padT=14, padR=16;
+  const lcMin=150, lcMax=1300;
+  const capMax = Math.max(staticCapacityAt(lcMin)*1.05, load.weightKg*1.25, spec.ratedCapacityKg*1.3);
+  const xw = W-padL-padR, yh = H-padT-padB;
+  const xOf = lc => padL+(lc-lcMin)/(lcMax-lcMin)*xw;
+  const yOf = cap => padT+yh-clamp(cap/capMax,0,1)*yh;
+
+  ctx.strokeStyle="#26313f"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+yh); ctx.lineTo(padL+xw,padT+yh); ctx.stroke();
+  ctx.fillStyle=COL.dim; ctx.font="11px sans-serif"; ctx.textAlign="center";
+  ctx.fillText("centro de carga (mm)", padL+xw/2, H-6);
+  ctx.save(); ctx.translate(14,padT+yh/2); ctx.rotate(-Math.PI/2); ctx.fillText("capacidade (kg)",0,0); ctx.restore();
+
+  for (let g=0; g<=1.0001; g+=0.25){
+    const y = padT+yh-g*yh;
+    ctx.strokeStyle="#1b2531"; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+xw,y); ctx.stroke();
+    ctx.fillStyle=COL.dim; ctx.textAlign="right"; ctx.font="9.5px sans-serif";
+    ctx.fillText(fmt(g*capMax), padL-6, y+3);
+  }
+
+  ctx.beginPath();
+  for (let lc=lcMin; lc<=lcMax; lc+=15){
+    const cap = Math.min(staticCapacityAt(lc), capMax*1.4);
+    const x=xOf(lc), y=yOf(cap);
+    if (lc===lcMin) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle=COL.tri; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.lineTo(xOf(lcMax),padT+yh); ctx.lineTo(xOf(lcMin),padT+yh); ctx.closePath();
+  ctx.fillStyle="#3fb6d81a"; ctx.fill();
+
+  const nx=xOf(spec.ratedLoadCenterMm), ny=yOf(spec.ratedCapacityKg);
+  ctx.strokeStyle=COL.dim; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(nx,padT); ctx.lineTo(nx,ny); ctx.lineTo(padL,ny); ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(nx,ny,3.5,0,7); ctx.fillStyle="#93a2b3"; ctx.fill();
+  ctx.fillStyle="#93a2b3"; ctx.textAlign="left"; ctx.font="10px sans-serif";
+  ctx.fillText("nominal: "+fmt(spec.ratedCapacityKg)+" kg @ "+fmt(spec.ratedLoadCenterMm)+" mm", nx+8, ny-6);
+
+  const px=xOf(clamp(load.loadCenterMm,lcMin,lcMax)), py=yOf(load.weightKg);
+  ctx.beginPath(); ctx.arc(px,py,6,0,7);
+  ctx.fillStyle = stab.overloaded? COL.danger : COL.ok;
+  ctx.fill(); ctx.strokeStyle="#fff"; ctx.lineWidth=1.4; ctx.stroke();
+  ctx.fillStyle = stab.overloaded? COL.danger : COL.ok; ctx.font="bold 11px sans-serif"; ctx.textAlign="left";
+  ctx.fillText("sua carga: "+fmt(load.weightKg)+" kg @ "+fmt(load.loadCenterMm)+" mm", px+9, py+4);
+}
+
+/* ============================================================
+   Status / textos
+   ============================================================ */
+function tipReason(stab){
+  if (stab.overloaded && stab.minMargin>=0){
+    return "A carga de "+fmt(load.weightKg)+" kg excede a capacidade permitida de "+fmt(stab.capAtLC)+
+      " kg para o centro de carga de "+fmt(load.loadCenterMm)+" mm. Mesmo sem tombar neste instante, isso já é uma "+
+      "operação irregular: a capacidade da plaqueta nunca deve ser excedida.";
+  }
+  if (stab.tipEdge==="forward"){
+    return "Tombamento para frente: o momento da carga (peso × centro de carga), agravado pela altura de elevação, "+
+      "pela inclinação do mastro para frente e/ou pela frenagem, superou o contrapeso traseiro.";
+  }
+  if (stab.tipEdge==="left" || stab.tipEdge==="right"){
+    return "Tombamento lateral: o deslocamento do centro de gravidade da carga e/ou o efeito de uma curva fechada "+
+      "com a carga elevada deslocaram o centro de gravidade combinado para fora do triângulo de estabilidade.";
+  }
+  return "";
+}
+
+function updateStatus(stab){
+  const bar = document.getElementById("status-bar");
+  const icon = document.getElementById("status-icon");
+  const title = document.getElementById("status-title");
+  const detail = document.getElementById("status-detail");
+  const reasonBox = document.getElementById("reason-box");
+
+  let cls="st-ok", ic="✅", ti="ESTÁVEL", de="O centro de gravidade combinado está dentro do triângulo de estabilidade.";
+  if (stab.minMargin<0){
+    cls="st-danger"; ic="🚨"; ti="TOMBAMENTO"; de="O centro de gravidade combinado saiu do triângulo de estabilidade.";
+  } else if (stab.overloaded){
+    cls="st-warn"; ic="⚠️";
+    ti = stab.minMargin<0.15 ? "SOBRECARGA + MARGEM REDUZIDA" : "SOBRECARGA (fora da plaqueta)";
+    de = "Acima da capacidade nominal para este centro de carga — proibido pela NR-11"+
+      (stab.minMargin<0.15? ", e com pouca margem geométrica também." : ", mesmo geometricamente estável agora.");
+  } else if (stab.minMargin<0.15){
+    cls="st-warn"; ic="⚠️"; ti="MARGEM REDUZIDA"; de="Estável, mas com pouca margem — evite frear, acelerar ou curvar bruscamente.";
+  }
+  bar.className = "panel "+cls;
+  icon.textContent = ic; title.textContent = ti; detail.textContent = de;
+
+  const reason = tipReason(stab);
+  reasonBox.textContent = reason;
+  reasonBox.classList.toggle("show", !!reason);
+
+  const capPct = clamp(load.weightKg/stab.capAtLC*100,0,999);
+  const mEl = document.getElementById("m-capacity");
+  mEl.textContent = capPct.toFixed(0)+"%";
+  mEl.className = "val "+(capPct>100?"danger":capPct>85?"warn":"ok");
+
+  const marginPct = marginPercent(stab);
+  const marEl = document.getElementById("m-margin");
+  marEl.textContent = marginPct.toFixed(0)+"%";
+  marEl.className = "val "+(marginPct>35?"ok":marginPct>10?"warn":"danger");
+
+  document.getElementById("m-weight").textContent = fmt(load.weightKg)+" kg";
+  document.getElementById("m-cap-at-lc").textContent = fmt(stab.capAtLC)+" kg";
+}
+
+/* ============================================================
+   Loop de renderização (com suavização)
+   ============================================================ */
+let lastT = performance.now();
+function frame(){
+  requestAnimationFrame(frame);
+  const now = performance.now();
+  const dt = Math.min((now-lastT)/1000, 0.05);
+  lastT = now;
+
+  const stab = computeStability();
+  const target = targetFromState();
+  const k = 1-Math.pow(0.001, dt);
+  display.liftM = lerp(display.liftM, target.liftM, k);
+  display.tiltDeg = lerp(display.tiltDeg, target.tiltDeg, k);
+  display.loadCenterM = lerp(display.loadCenterM, target.loadCenterM, k);
+  display.lateralM = lerp(display.lateralM, target.lateralM, k);
+  display.loadHeightM = lerp(display.loadHeightM, target.loadHeightM, k);
+
+  const tf = stab.tipEdge==="forward"? clamp(-stab.dAB*6,0,1) : 0;
+  const tl = stab.tipEdge==="left"? clamp(-stab.dBC*6,0,1) : 0;
+  const tr = stab.tipEdge==="right"? clamp(-stab.dCA*6,0,1) : 0;
+  display.tipForward = lerp(display.tipForward, tf, 1-Math.pow(0.0005,dt));
+  display.tipLeft = lerp(display.tipLeft, tl, 1-Math.pow(0.0005,dt));
+  display.tipRight = lerp(display.tipRight, tr, 1-Math.pow(0.0005,dt));
+
+  drawSide(stab); drawFront(stab); drawTop(stab); drawChart(stab);
+  updateStatus(stab);
+}
+
+/* ============================================================
+   UI — configuração
+   ============================================================ */
+const $ = id=>document.getElementById(id);
+const inRatedCap=$("in-ratedcap"), inRatedLc=$("in-ratedlc"), selPreset=$("sel-preset"), selLoadType=$("sel-loadtype");
+const inLoadW=$("in-loadw"), inLoadLc=$("in-loadlc"), inLoadH=$("in-loadh"), inLoadLat=$("in-loadlat");
+const inLift=$("in-lift"), inTilt=$("in-tilt"), inAccel=$("in-accel"), inLateralG=$("in-lateralg");
+const chkDerate=$("chk-derate");
+
+function refreshLabels(){
+  $("lbl-ratedcap").textContent = fmt(spec.ratedCapacityKg)+" kg";
+  $("lbl-ratedlc").textContent = fmt(spec.ratedLoadCenterMm)+" mm";
+  $("lbl-loadw").textContent = fmt(load.weightKg)+" kg";
+  $("lbl-loadlc").textContent = fmt(load.loadCenterMm)+" mm";
+  $("lbl-loadh").textContent = fmt(load.heightMm)+" mm";
+  $("lbl-loadlat").textContent = (load.lateralMm>=0?"+":"")+fmt(load.lateralMm)+" mm";
+  $("lbl-lift").textContent = fmt(op.liftHeightMm)+" mm";
+  $("lbl-tilt").textContent = (op.tiltDeg>=0?"+":"")+op.tiltDeg.toFixed(1)+"° "+(op.tiltDeg>=0?"(trás)":"(frente)");
+  $("lbl-accel").textContent = (op.accelG>=0?"+":"")+op.accelG.toFixed(2)+" g"+(op.accelG<-0.05?" (freando)":op.accelG>0.05?" (acelerando)":"");
+  $("lbl-lateralg").textContent = (op.lateralG>=0?"+":"")+op.lateralG.toFixed(2)+" g"+(Math.abs(op.lateralG)>0.05?(op.lateralG>0?" (curva à direita)":" (curva à esquerda)"):"");
+  inRatedCap.value=spec.ratedCapacityKg; inRatedLc.value=spec.ratedLoadCenterMm;
+  inLoadW.value=load.weightKg; inLoadLc.value=load.loadCenterMm; inLoadH.value=load.heightMm; inLoadLat.value=load.lateralMm;
+  inLift.value=op.liftHeightMm; inTilt.value=op.tiltDeg; inAccel.value=op.accelG; inLateralG.value=op.lateralG;
+  inLift.max = spec.maxLiftHeightMm; inTilt.min=-spec.maxForwardTiltDeg; inTilt.max=spec.maxBackwardTiltDeg;
+  chkDerate.checked = op.derate;
+}
+function applyPreset(key){
+  if (key!=="custom") spec = {...PRESETS[key]};
+  refreshLabels();
+}
+selPreset.addEventListener("change", e=>applyPreset(e.target.value));
+[inRatedCap,inRatedLc].forEach(el=>el.addEventListener("input", ()=>{
+  selPreset.value="custom";
+  spec.ratedCapacityKg=+inRatedCap.value; spec.ratedLoadCenterMm=+inRatedLc.value;
+  refreshLabels();
+}));
+selLoadType.addEventListener("change", e=>{
+  const t = LOAD_TYPES[e.target.value];
+  if (t){ Object.assign(load, t); refreshLabels(); }
+});
+[inLoadW,inLoadLc,inLoadH,inLoadLat].forEach(el=>el.addEventListener("input", ()=>{
+  selLoadType.value="custom";
+  load.weightKg=+inLoadW.value; load.loadCenterMm=+inLoadLc.value;
+  load.heightMm=+inLoadH.value; load.lateralMm=+inLoadLat.value;
+  refreshLabels(); clearScenarioHighlight();
+}));
+[inLift,inTilt].forEach(el=>el.addEventListener("input", ()=>{
+  op.liftHeightMm=+inLift.value; op.tiltDeg=+inTilt.value; refreshLabels(); clearScenarioHighlight();
+}));
+[inAccel,inLateralG].forEach(el=>el.addEventListener("input", ()=>{
+  op.accelG=+inAccel.value; op.lateralG=+inLateralG.value; refreshLabels(); clearScenarioHighlight();
+}));
+$("btn-cond-none").addEventListener("click", ()=>{ op.accelG=0; op.lateralG=0; refreshLabels(); clearScenarioHighlight(); });
+$("btn-cond-brake").addEventListener("click", ()=>{ op.accelG=-0.45; op.lateralG=0; refreshLabels(); clearScenarioHighlight(); });
+$("btn-cond-turn").addEventListener("click", ()=>{ op.lateralG=0.35; op.accelG=0; refreshLabels(); clearScenarioHighlight(); });
+chkDerate.addEventListener("change", ()=>{ op.derate = chkDerate.checked; });
+
+$("btn-reset-config").addEventListener("click", ()=>{
+  spec = {...PRESETS.glp25}; selPreset.value="glp25";
+  Object.assign(load, LOAD_TYPES.pallet); selLoadType.value="pallet";
+  op.liftHeightMm=300; op.tiltDeg=4; op.accelG=0; op.lateralG=0; op.derate=false;
+  refreshLabels(); clearScenarioHighlight();
+});
+
+/* ============================================================
+   Cenários
+   ============================================================ */
+const SCENARIOS = [
+  { id:"base", title:"Operação de referência (segura)", badge:"ok",
+    desc:"Carga dentro da capacidade, centro de carga nominal, garfos baixos, sem frenagem ou curva.",
+    apply(){ spec={...PRESETS.glp25}; Object.assign(load,LOAD_TYPES.pallet);
+      op.liftHeightMm=250; op.tiltDeg=4; op.accelG=0; op.lateralG=0; } },
+  { id:"overload", title:"Sobrecarga na plaqueta", badge:"warn",
+    desc:"Peso 40% acima da capacidade no centro de carga nominal. Pode até parecer estável, mas já é proibido.",
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=3500; load.loadCenterMm=500; load.heightMm=500; load.lateralMm=0;
+      op.liftHeightMm=250; op.tiltDeg=4; op.accelG=0; op.lateralG=0; } },
+  { id:"longcenter", title:"Centro de carga deslocado", badge:"warn",
+    desc:"Mesmo peso permitido no centro nominal, mas a carga é comprida/mal posicionada — capacidade real cai.",
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=2200; load.loadCenterMm=1050; load.heightMm=400; load.lateralMm=0;
+      op.liftHeightMm=250; op.tiltDeg=4; op.accelG=0; op.lateralG=0; } },
+  { id:"brakehigh", title:"Carga elevada + frenagem brusca", badge:"danger",
+    desc:"Garfos bem altos e frenagem brusca — o efeito dinâmico soma-se ao peso e derruba a empilhadeira para frente.",
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=1800; load.loadCenterMm=550; load.heightMm=500; load.lateralMm=0;
+      op.liftHeightMm=3400; op.tiltDeg=0; op.accelG=-0.45; op.lateralG=0; } },
+  { id:"turnhigh", title:"Curva fechada com carga elevada", badge:"danger",
+    desc:"Garfos altos e curva fechada — a força lateral desloca o centro de gravidade para fora da base de apoio.",
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=1500; load.loadCenterMm=500; load.heightMm=500; load.lateralMm=0;
+      op.liftHeightMm=3200; op.tiltDeg=4; op.accelG=0; op.lateralG=0.38; } },
+  { id:"offcenter", title:"Carga com CG deslocado lateralmente", badge:"danger",
+    desc:"Carga muito mal centrada nos garfos e elevada, ainda por cima em uma curva leve — o desequilíbrio lateral some com o efeito da curva.",
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=1800; load.loadCenterMm=500; load.heightMm=600; load.lateralMm=480;
+      op.liftHeightMm=2200; op.tiltDeg=4; op.accelG=0; op.lateralG=-0.22; } },
+  { id:"correct", title:"Transporte correto", badge:"ok",
+    desc:"Carga pesada, porém baixa e com mastro inclinado para trás — a prática recomendada de deslocamento.",
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=2300; load.loadCenterMm=500; load.heightMm=500; load.lateralMm=0;
+      op.liftHeightMm=150; op.tiltDeg=8; op.accelG=0; op.lateralG=0; } },
+];
+let activeScenario = null;
+function clearScenarioHighlight(){
+  activeScenario = null;
+  document.querySelectorAll(".scenario").forEach(el=>el.classList.remove("active"));
+}
+function renderScenarios(){
+  const box = $("scenario-list"); box.innerHTML="";
+  SCENARIOS.forEach(s=>{
+    const el = document.createElement("div");
+    el.className = "scenario"; el.dataset.id = s.id;
+    el.innerHTML = '<div class="stitle">'+s.title+' <span class="badge '+s.badge+'">'+
+      (s.badge==="ok"?"estável":s.badge==="warn"?"atenção":"tombamento")+'</span></div>'+
+      '<div class="sdesc">'+s.desc+'</div>';
+    el.addEventListener("click", ()=>{
+      s.apply();
+      selPreset.value = "custom"; selLoadType.value="custom";
+      refreshLabels();
+      activeScenario = s.id;
+      document.querySelectorAll(".scenario").forEach(e2=>e2.classList.toggle("active", e2.dataset.id===s.id));
+    });
+    box.appendChild(el);
+  });
+}
+renderScenarios();
+
+/* ============================================================
+   NR-11 (conteúdo de apoio)
+   ============================================================ */
+const NR11_BULLETS = [
+  "O operador de empilhadeira deve ser <b>capacitado</b> (curso teórico e prático), maior de 18 anos e considerado apto em exame médico.",
+  "A capacitação inclui direção defensiva, noções básicas de mecânica, sinalização, normas de segurança, movimentação de cargas e prática supervisionada — recicle periodicamente.",
+  "A empilhadeira deve ter, em local visível, a <b>plaqueta de capacidade</b> (peso máximo e centro de carga correspondente) legível.",
+  "<b>Nunca exceder a capacidade da plaqueta</b> — mesmo que a carga pareça estável no momento, ultrapassar o limite é proibido.",
+  "É <b>proibido transportar ou elevar pessoas</b> sobre os garfos, exceto com plataforma certificada e travas de segurança específicas.",
+  "A carga deve estar bem apoiada e, quando necessário, amarrada; nunca comprometer a visibilidade do operador.",
+  "Ao se deslocar, mantenha a carga o mais <b>baixa possível</b> e o mastro <b>inclinado para trás</b>; eleve somente para empilhar/desempilhar.",
+  "Reduza a velocidade em curvas, cruzamentos, rampas, pisos irregulares e áreas com pedestres; buzine em cruzamentos e ao dar ré.",
+  "Respeite as faixas de circulação e a distância segura de docas, bordas, outras empilhadeiras e pedestres; nunca circule sob cargas suspensas.",
+  "Realize a <b>inspeção pré-uso</b> diária (freios, buzina, luzes, pneus, vazamentos, garfos e mastro) antes de operar.",
+];
+function renderNr11(){
+  const ul = $("nr11-list"); ul.innerHTML="";
+  NR11_BULLETS.forEach(b=>{ const li=document.createElement("li"); li.innerHTML=b; ul.appendChild(li); });
+}
+renderNr11();
+
+/* ============================================================
+   Checklist pré-uso
+   ============================================================ */
+const CHECKLIST = ["Freios funcionando","Buzina funcionando","Luzes e sinal sonoro de ré","Pneus/rodízios em bom estado",
+  "Sem vazamentos de óleo ou combustível","Garfos sem trincas e nivelados","Corrente e mastro sem folgas",
+  "Cinto de segurança funcional","Extintor de incêndio no local e carregado","Plaqueta de capacidade legível"];
+function renderChecklist(){
+  const box = $("chk-list"); box.innerHTML="";
+  CHECKLIST.forEach((item,i)=>{
+    const row = document.createElement("label"); row.className="chk-item";
+    row.innerHTML = '<input type="checkbox" data-i="'+i+'"><span>'+item+'</span>';
+    box.appendChild(row);
+  });
+  box.querySelectorAll("input").forEach(inp=>inp.addEventListener("change", ()=>{
+    inp.closest(".chk-item").classList.toggle("checked", inp.checked);
+    updateChkProgress();
+  }));
+  updateChkProgress();
+}
+function updateChkProgress(){
+  const boxes = document.querySelectorAll("#chk-list input");
+  const done = [...boxes].filter(b=>b.checked).length;
+  $("chk-progress").textContent = done+" de "+boxes.length+" itens verificados";
+}
+$("btn-chk-reset").addEventListener("click", renderChecklist);
+renderChecklist();
+
+/* ============================================================
+   Abas, ajuda, apresentação
+   ============================================================ */
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".tabpane").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    $("pane-"+btn.dataset.tab).classList.add("active");
+  });
+});
+$("btn-help").addEventListener("click", ()=>$("intro-screen").style.display="flex");
+$("btn-start").addEventListener("click", ()=>$("intro-screen").style.display="none");
+$("btn-presentation").addEventListener("click", ()=>{
+  const on = document.body.classList.toggle("presentation");
+  $("btn-presentation").classList.toggle("on", on);
+  document.body.style.zoom = on? "1.22" : "1";
+});
+
+refreshLabels();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
