@@ -22,6 +22,9 @@ python3 -m http.server 8080
 
 ## Comandos
 
+Todos os comandos têm um botão equivalente no painel de controle fixo na parte inferior da tela (funciona com mouse
+ou toque, e continua visível em celular/tablet), além do teclado:
+
 | Ação | Tecla |
 |---|---|
 | Andar / Ré | `W`/`S` ou `↑`/`↓` |
@@ -32,6 +35,10 @@ python3 -m http.server 8080
 | Buzina | `H` |
 | Alternar câmera (segue / topo / orbital) | `C` |
 | Freio | `Espaço` |
+
+Os botões em tela acendem automaticamente também quando o comando equivalente é usado pelo teclado, para reforçar a
+associação entre tecla e ação. O botão "❓ Ajuda", no canto superior direito, reabre a tela de instruções a qualquer
+momento sem perder o progresso.
 
 ## Modelo físico (simplificado, para fins didáticos)
 
@@ -57,7 +64,10 @@ identificação e o manual do fabricante de uma empilhadeira real**.
 ## Funcionalidades
 
 - Condução livre em um depósito com racks (níveis de elevação marcados) e paletes com pesos variados para praticar
-  coleta e armazenagem.
+  coleta e armazenagem. Só é possível pegar um palete com os garfos baixados (como numa empilhadeira real) — o
+  palete mais próximo acende com um destaque e o texto na tela avisa quando é preciso abaixar os garfos primeiro.
+- Painel de controle em tela (funciona com clique ou toque) para dirigir, elevar/inclinar o mastro, pegar/soltar
+  carga, buzinar e trocar de câmera — junto com o teclado, deixa o simulador utilizável em tablet/celular.
 - Painel de configuração: modelo de empilhadeira (predefinições ou personalizado), peso da carga, centro de carga,
   deslocamento lateral do centro de gravidade e altura da carga — tudo ajustável em tempo real, com ou sem a
   empilhadeira em movimento.
@@ -67,3 +77,5 @@ identificação e o manual do fabricante de uma empilhadeira real**.
   atualizados a cada quadro.
 - Alertas de sobrecarga e de risco de tombamento, e uma tela de "tombamento" que explica, em texto, qual limite foi
   ultrapassado (sobrecarga, tombamento para frente ou lateral).
+- Botão "❓ Ajuda" para reabrir as instruções a qualquer momento, e uma tela de aviso caso a biblioteca 3D não
+  consiga carregar (por exemplo, sem conexão com a internet).

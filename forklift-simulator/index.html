@@ -28,9 +28,9 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:v
 
 #panel-dash{position:absolute;top:14px;left:14px;width:250px;padding:12px 14px;}
 #panel-dash h3{margin:0 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);}
-.gauge-row{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0;}
+.gauge-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:6px 0;}
 .gauge-row .lbl{font-size:11.5px;color:var(--text-dim);}
-.gauge-row .val{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;}
+.gauge-row .val{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .bar-track{height:6px;border-radius:4px;background:#1c2632;overflow:hidden;margin:3px 0 8px;}
 .bar-fill{height:100%;border-radius:4px;transition:background-color .15s;}
 .state-ok .val{color:var(--ok);} .state-warn .val{color:var(--warn);} .state-danger .val{color:var(--danger);}
@@ -51,21 +51,21 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:v
 #alert-banner.danger{background:#e2543c33;border:1px solid var(--danger);color:#ffb3a3;animation:pulse 0.6s infinite alternate;}
 @keyframes pulse{from{opacity:1;}to{opacity:.55;}}
 
-#panel-hints{position:absolute;bottom:14px;left:14px;padding:10px 14px;max-width:300px;font-size:11.5px;color:var(--text-dim);}
-#panel-hints b{color:var(--text);}
-#panel-hints .row{display:flex;justify-content:space-between;gap:14px;margin:2px 0;}
-#hints-toggle{cursor:pointer;color:var(--accent);font-size:11px;}
-
-#prompt-pickup{position:absolute;bottom:120px;left:50%;transform:translateX(-50%);padding:8px 16px;
-  background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;font-size:13px;display:none;}
+#prompt-pickup{position:absolute;bottom:196px;left:50%;transform:translateX(-50%);padding:8px 16px;
+  background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;font-size:13px;display:none;
+  text-align:center;}
 #prompt-pickup.show{display:block;}
 
+/* ---------- Barra superior direita (ajuda / configurar) ---------- */
+#topbar-right{position:fixed;top:14px;right:14px;z-index:6;pointer-events:auto;display:flex;gap:8px;}
+.chip-btn{padding:9px 14px;background:var(--panel-solid);border:1px solid var(--line);border-radius:10px;
+  color:var(--text);font-size:13px;cursor:pointer;font-weight:600;white-space:nowrap;}
+.chip-btn:hover{border-color:var(--accent);}
+#panel-right{position:absolute;top:60px;right:14px;display:flex;flex-direction:column;gap:10px;align-items:flex-end;}
+
 /* ---------- Config drawer ---------- */
-#btn-config-toggle{position:fixed;bottom:14px;right:14px;z-index:6;pointer-events:auto;padding:10px 16px;
-  background:var(--panel-solid);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:13px;
-  cursor:pointer;font-weight:600;transition:right .25s ease;}
-#btn-config-toggle:hover{border-color:var(--accent);}
-body.config-open #btn-config-toggle{right:356px;}
+body.config-open #topbar-right{right:356px;}
+#topbar-right{transition:right .25s ease;}
 #config-panel .head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
 #btn-config-close{background:none;border:1px solid var(--line);color:var(--text-dim);border-radius:8px;
   width:28px;height:28px;flex:none;cursor:pointer;font-size:15px;line-height:1;}
@@ -108,14 +108,58 @@ body.config-open #btn-config-toggle{right:356px;}
 .kgrid div b{display:block;color:var(--text);}
 #tipover-screen .card{border-color:var(--danger);}
 #tipover-screen h1{color:var(--danger);}
+#load-error{position:fixed;inset:0;z-index:30;background:#05080cee;display:none;align-items:center;justify-content:center;}
+#load-error.show{display:flex;}
+#load-error .card{border-color:var(--danger);text-align:center;}
 
 ::-webkit-scrollbar{width:8px;}
 ::-webkit-scrollbar-thumb{background:#26313f;border-radius:8px;}
 
+/* ---------- Painel de controle (botões em tela, funciona com clique ou toque) ---------- */
+#control-pad{position:fixed;left:0;right:0;bottom:0;z-index:6;pointer-events:none;
+  display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:0 14px 14px;}
+#control-pad .pad-group{pointer-events:auto;display:grid;gap:6px;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;padding:8px;backdrop-filter:blur(6px);}
+#pad-drive{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(2,44px);grid-template-areas:
+  ". up ." "left down right";}
+#pad-drive .k-up{grid-area:up;} #pad-drive .k-left{grid-area:left;} #pad-drive .k-down{grid-area:down;} #pad-drive .k-right{grid-area:right;}
+#pad-mast{grid-template-columns:repeat(2,64px);grid-template-rows:repeat(2,44px);}
+#pad-actions{grid-template-columns:repeat(2,56px);grid-auto-rows:48px;margin-bottom:4px;}
+.pad-btn{border:1px solid var(--line);background:#0d1219cc;color:var(--text);border-radius:9px;font-size:16px;
+  font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  line-height:1.1;user-select:none;-webkit-user-select:none;touch-action:none;padding:0;}
+.pad-btn span{font-size:8.5px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.02em;}
+.pad-btn:hover{border-color:var(--accent);}
+.pad-btn.active{background:var(--accent);border-color:var(--accent);color:#04141a;}
+.pad-btn.active span{color:#04141a;}
+.pad-btn.primary{border-color:var(--accent);}
+#pad-cam-label{grid-column:1/-1;text-align:center;font-size:9.5px;color:var(--text-faint);margin-top:-2px;}
+
 @media (max-width:720px){
   #panel-right{display:none;}
-  #panel-hints{display:none;}
   #config-panel{width:88%;}
+  body.config-open #topbar-right{right:14px;}
+  .chip-btn{padding:9px 10px;font-size:15px;}
+  .chip-btn .label{display:none;}
+  #control-pad{padding:0 8px 10px;}
+  #pad-mast{grid-template-columns:repeat(2,54px);grid-template-rows:repeat(2,48px);}
+  #pad-drive{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px);}
+}
+
+@media (max-width:430px){
+  #control-pad{gap:4px;padding:0 4px 8px;}
+  #control-pad .pad-group{padding:5px;gap:4px;}
+  .pad-btn{font-size:14px;}
+  .pad-btn span{display:none;}
+  #pad-drive{grid-template-columns:repeat(3,34px);grid-template-rows:repeat(2,34px);}
+  #pad-mast{grid-template-columns:repeat(2,38px);grid-template-rows:repeat(2,34px);}
+  #pad-actions{grid-template-columns:repeat(2,38px);grid-auto-rows:34px;}
+  #pad-cam-label{font-size:8px;}
+  #panel-dash{width:auto;max-width:64vw;padding:8px 10px;}
+  #panel-dash h3{font-size:10.5px;}
+  .gauge-row .lbl{font-size:10px;}
+  .gauge-row .val{font-size:11px;}
+  #prompt-pickup{bottom:130px;font-size:12px;padding:6px 12px;}
 }
 </style>
 </head>
@@ -151,23 +195,38 @@ body.config-open #btn-config-toggle{right:356px;}
 
   <div id="alert-banner"></div>
   <div id="prompt-pickup">Pressione <b>E</b> para pegar a carga</div>
-
-  <div id="panel-hints" class="panel">
-    <div class="row"><b>Painel de comandos</b><span id="hints-toggle" onclick="document.getElementById('hints-body').classList.toggle('hidden')">mostrar/ocultar</span></div>
-    <div id="hints-body">
-      <div class="row"><span>Andar / Ré</span><span>W S ou ↑ ↓</span></div>
-      <div class="row"><span>Virar (roda traseira)</span><span>A D ou ← →</span></div>
-      <div class="row"><span>Elevar / Abaixar garfos</span><span>R / F</span></div>
-      <div class="row"><span>Inclinar mastro trás/frente</span><span>T / G</span></div>
-      <div class="row"><span>Pegar / soltar carga</span><span>E</span></div>
-      <div class="row"><span>Buzina</span><span>H</span></div>
-      <div class="row"><span>Câmera</span><span>C</span></div>
-      <div class="row"><span>Freio</span><span>Espaço</span></div>
-    </div>
-  </div>
 </div>
 
-<button id="btn-config-toggle">⚙ Configurar carga e empilhadeira</button>
+<div id="topbar-right">
+  <button id="btn-help-toggle" class="chip-btn" title="Ajuda / comandos">❓ <span class="label">Ajuda</span></button>
+  <button id="btn-config-toggle" class="chip-btn" title="Configurar carga e empilhadeira">⚙ <span class="label">Configurar</span></button>
+</div>
+
+<div id="control-pad">
+  <div id="pad-drive" class="pad-group" title="Dirigir">
+    <button class="pad-btn k-up" data-key="KeyW" aria-label="Andar para frente">▲</button>
+    <button class="pad-btn k-left" data-key="KeyA" aria-label="Virar à esquerda">◀</button>
+    <button class="pad-btn k-down" data-key="KeyS" aria-label="Ré">▼</button>
+    <button class="pad-btn k-right" data-key="KeyD" aria-label="Virar à direita">▶</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">
+    <div id="pad-actions" class="pad-group" style="pointer-events:auto;">
+      <button class="pad-btn" id="pad-brake" aria-label="Freio">⏸<span>Freio</span></button>
+      <button class="pad-btn primary" id="pad-action" aria-label="Pegar ou soltar carga">✋<span id="pad-action-label">Pegar</span></button>
+      <button class="pad-btn" id="pad-horn" aria-label="Buzina">🔊<span>Buzina</span></button>
+      <button class="pad-btn" id="pad-camera" aria-label="Alternar câmera">🎥<span>Câmera</span></button>
+    </div>
+    <div id="pad-cam-label" style="pointer-events:none;">Câmera: perseguição</div>
+  </div>
+
+  <div id="pad-mast" class="pad-group" title="Mastro">
+    <button class="pad-btn" data-key="KeyR" aria-label="Elevar garfos">⬆<span>Elevar</span></button>
+    <button class="pad-btn" data-key="KeyT" aria-label="Inclinar mastro para trás">⤺<span>Trás</span></button>
+    <button class="pad-btn" data-key="KeyF" aria-label="Abaixar garfos">⬇<span>Abaixar</span></button>
+    <button class="pad-btn" data-key="KeyG" aria-label="Inclinar mastro para frente">⤻<span>Frente</span></button>
+  </div>
+</div>
 
 <div id="config-panel">
   <div class="head">
@@ -269,8 +328,24 @@ body.config-open #btn-config-toggle{right:356px;}
   </div>
 </div>
 
+<div id="load-error">
+  <div class="card">
+    <div class="kicker" style="color:var(--danger);">Falha ao carregar</div>
+    <h1>Não foi possível carregar a simulação 3D</h1>
+    <p>O simulador precisa baixar a biblioteca gráfica (Three.js) pela internet. Verifique sua conexão e tente
+    novamente.</p>
+    <div class="btnrow"><div class="btn primary" style="padding:12px;" onclick="location.reload()">Tentar novamente</div></div>
+  </div>
+</div>
+<script>
+  window.addEventListener("load", ()=>{
+    setTimeout(()=>{ if (!window.__simLoaded) document.getElementById("load-error").classList.add("show"); }, 8000);
+  });
+</script>
+
 <script type="module">
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+window.__simLoaded = true;
 
 /* ============================================================
    Utilidades
@@ -352,11 +427,36 @@ const keys = {};
 window.addEventListener("keydown", e=>{
   keys[e.code]=true;
   if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+  if (e.repeat) return; // evita repetir pegar/soltar, buzina e troca de câmera ao segurar a tecla
   if (e.code==="KeyE") tryPickupOrDrop();
   if (e.code==="KeyC") cycleCamera();
   if (e.code==="KeyH") honk();
 });
 window.addEventListener("keyup", e=>{ keys[e.code]=false; });
+
+/* -------- painel de controle em tela (funciona com mouse ou toque) -------- */
+function bindHoldButton(el, code){
+  const setKey = v => { keys[code]=v; el.classList.toggle("active", v); };
+  el.addEventListener("pointerdown", e=>{ e.preventDefault(); el.setPointerCapture(e.pointerId); setKey(true); });
+  const release = ()=>setKey(false);
+  el.addEventListener("pointerup", release);
+  el.addEventListener("pointercancel", release);
+  el.addEventListener("pointerleave", release);
+  el.addEventListener("contextmenu", e=>e.preventDefault());
+}
+document.querySelectorAll(".pad-btn[data-key]").forEach(el=>bindHoldButton(el, el.dataset.key));
+bindHoldButton(document.getElementById("pad-brake"), "Space");
+document.getElementById("pad-action").addEventListener("click", ()=>tryPickupOrDrop());
+document.getElementById("pad-horn").addEventListener("click", ()=>honk());
+document.getElementById("pad-camera").addEventListener("click", ()=>cycleCamera());
+
+// mantém os botões em tela acesos quando o comando equivalente é usado pelo teclado
+const keyPadButtons = [...document.querySelectorAll(".pad-btn[data-key]")].map(el=>[el, el.dataset.key]);
+const padBrakeEl = document.getElementById("pad-brake");
+function syncPadButtons(){
+  keyPadButtons.forEach(([el,code])=>el.classList.toggle("active", !!keys[code]));
+  padBrakeEl.classList.toggle("active", !!keys["Space"]);
+}
 
 /* ============================================================
    Cena three.js
@@ -666,6 +766,9 @@ function toggleConfigPanel(force){
 }
 document.getElementById("btn-config-toggle").addEventListener("click", ()=>toggleConfigPanel());
 document.getElementById("btn-config-close").addEventListener("click", ()=>toggleConfigPanel(false));
+document.getElementById("btn-help-toggle").addEventListener("click", ()=>{
+  document.getElementById("intro-screen").classList.remove("hidden");
+});
 
 /* -------- config panel bindings -------- */
 const inRatedCap = document.getElementById("in-ratedcap");
@@ -853,34 +956,45 @@ function computeStability(dt){
 /* ============================================================
    Pickup / drop
    ============================================================ */
+const PICKUP_RANGE_M = 1.6;
+const PICKUP_MAX_HEIGHT_M = 0.28; // garfos precisam estar baixos, como em uma empilhadeira real, para entrar sob o palete
+
+// distância só no plano horizontal: a altura dos garfos não deve "afastar" um palete que está bem abaixo deles
+function horizontalDist(a,b){ return Math.hypot(a.x-b.x, a.z-b.z); }
+function findNearestPallet(forkWorld){
+  let nearest=null, nearestD=PICKUP_RANGE_M;
+  pallets.forEach(p=>{
+    if (p.picked) return;
+    const d = horizontalDist(forkWorld, p.group.position);
+    if (d<nearestD){ nearestD=d; nearest=p; }
+  });
+  return nearest;
+}
+
 function tryPickupOrDrop(){
   if (state.tipped) return;
   if (state.carrying){
     const c = detachLoadFromForks();
     if (!c) return;
-    // solta no chão à frente dos garfos
+    // solta à frente dos garfos, na altura atual (permite "depositar" numa prateleira)
     const dropDist = 0.6;
     const wx = state.pos.x + Math.sin(state.heading)*(-dropDist);
     const wz = state.pos.z + Math.cos(state.heading)*(-dropDist);
     const dims = {w:0.9, d:Math.max((c.loadCenterMm-60)/500,0.4), h:c.heightMm/1000};
     const p = makePalletMesh(c.weightKg, dims);
-    p.group.position.set(wx,0,wz);
-    p.worldPos = new THREE.Vector3(wx,0,wz);
+    p.group.position.set(wx, state.liftHeightM, wz);
+    p.worldPos = new THREE.Vector3(wx,state.liftHeightM,wz);
     p.picked=false;
     p.loadCenterMm = c.loadCenterMm;
     scene.add(p.group);
     pallets.push(p);
     return;
   }
-  // procura palete próximo à frente dos garfos
+  // procura palete próximo à frente dos garfos, só pega se os garfos estiverem baixos o bastante
+  if (state.liftHeightM > PICKUP_MAX_HEIGHT_M) return;
   const forkWorld = new THREE.Vector3();
   forklift.forkGroup.getWorldPosition(forkWorld);
-  let nearest=null, nearestD=1.6;
-  pallets.forEach(p=>{
-    if (p.picked) return;
-    const d = forkWorld.distanceTo(p.group.position);
-    if (d<nearestD){ nearestD=d; nearest=p; }
-  });
+  const nearest = findNearestPallet(forkWorld);
   if (nearest){
     nearest.picked=true;
     scene.remove(nearest.group);
@@ -889,12 +1003,23 @@ function tryPickupOrDrop(){
   }
 }
 
+let highlightedPallet = null;
 function updatePickupPrompt(){
+  document.getElementById("pad-action-label").textContent = state.carrying? "Soltar" : "Pegar";
+  if (highlightedPallet){ highlightedPallet.box.material.emissive.setHex(0x000000); highlightedPallet=null; }
   if (state.carrying){ ui.promptPickup.classList.remove("show"); return; }
   const forkWorld = new THREE.Vector3();
   forklift.forkGroup.getWorldPosition(forkWorld);
-  const near = pallets.some(p=>!p.picked && forkWorld.distanceTo(p.group.position)<1.6);
-  ui.promptPickup.classList.toggle("show", near);
+  const nearest = findNearestPallet(forkWorld);
+  if (nearest){
+    highlightedPallet = nearest;
+    nearest.box.material.emissive.setHex(0x3fb6d8);
+    nearest.box.material.emissiveIntensity = 0.4+0.3*Math.sin(performance.now()/180);
+  }
+  ui.promptPickup.classList.toggle("show", !!nearest);
+  ui.promptPickup.innerHTML = (nearest && state.liftHeightM>PICKUP_MAX_HEIGHT_M)
+    ? "Abaixe os garfos totalmente (tecla <b>F</b>) para pegar a carga"
+    : "Pressione <b>E</b> para pegar a carga";
 }
 
 /* ============================================================
@@ -917,7 +1042,11 @@ function honk(){
    Câmera
    ============================================================ */
 let orbit = {yaw:0, pitch:0.35, dist:9, dragging:false};
-function cycleCamera(){ state.cameraMode = (state.cameraMode+1)%3; }
+const CAMERA_LABELS = ["Câmera: perseguição", "Câmera: vista de topo", "Câmera: orbital (arraste para girar)"];
+function cycleCamera(){
+  state.cameraMode = (state.cameraMode+1)%3;
+  document.getElementById("pad-cam-label").textContent = CAMERA_LABELS[state.cameraMode];
+}
 canvas.addEventListener("pointerdown", e=>{ if(state.cameraMode===2){ orbit.dragging=true; } });
 window.addEventListener("pointerup", ()=>orbit.dragging=false);
 window.addEventListener("pointermove", e=>{
@@ -1146,6 +1275,7 @@ function animate(){
   updateHud(stab);
   drawMinimap(stab);
   drawChart();
+  syncPadButtons();
 
   renderer.render(scene, camera);
 }
