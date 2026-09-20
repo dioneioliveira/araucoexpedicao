@@ -45,6 +45,20 @@ altura da guarda avançada, altura do banco, altura de elevação por estágio d
 fichas técnicas reais de empilhadeiras contrabalançadas de 1,5/2,5/3,5 t (ex.: Crown FC5200 series), para que a
 empilhadeira desenhada tenha proporções plausíveis em vez de arbitrárias — rodas dianteiras bem maiores que as
 traseiras, guarda avançada na altura real, contrapeso robusto, mastro telescópico visível, garfos com calcanhar.
+A carroceria (contrapeso + capô numa única silhueta amarela, com banco, volante e guarda avançada em preto/cinza)
+foi redesenhada a partir de uma foto de referência de empilhadeira real (incluída em `assets/`), para não parecer
+uma forma abstrata desproporcional.
+
+### Carga e centro de carga
+
+A carga tem três dimensões reais e independentes, configuráveis — **comprimento** (no sentido dos garfos),
+**largura** e **altura própria** — em vez de só um "centro de carga" abstrato. Ela é **sempre desenhada encostada
+na grade de proteção de carga** (o encosto/tela preta montada no carro-porta-garfos, logo depois do calcanhar dos
+garfos), nas três vistas. Uma linha de referência tracejada marca esse ponto — o "zero" a partir do qual o
+**centro de carga** é medido (metade do comprimento da carga, mais uma pequena folga real de montagem); por isso
+o centro de carga não é mais digitado diretamente, e sim calculado a partir do comprimento. Na vista frontal, a
+altura de elevação dos garfos também é referenciada pela mesma grade/placa, para manter a leitura consistente
+entre as duas vistas.
 
 ## Modelo físico (simplificado, para fins didáticos)
 

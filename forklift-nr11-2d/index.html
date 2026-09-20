@@ -250,12 +250,17 @@ h4.grp:first-of-type{border-top:none;padding-top:0;margin-top:0;}
         </div>
         <div class="field"><label>Peso da carga <span class="v" id="lbl-loadw"></span></label>
           <input type="range" id="in-loadw" min="0" max="6000" step="25"></div>
-        <div class="field"><label>Centro de carga (face dos garfos → CG da carga) <span class="v" id="lbl-loadlc"></span></label>
-          <input type="range" id="in-loadlc" min="150" max="1300" step="10"></div>
+        <div class="field"><label>Comprimento da carga (no sentido dos garfos) <span class="v" id="lbl-loadlen"></span></label>
+          <input type="range" id="in-loadlen" min="200" max="2500" step="10"></div>
+        <div class="field"><label>Largura da carga <span class="v" id="lbl-loadwid"></span></label>
+          <input type="range" id="in-loadwid" min="200" max="2000" step="10"></div>
         <div class="field"><label>Altura própria da carga <span class="v" id="lbl-loadh"></span></label>
           <input type="range" id="in-loadh" min="100" max="1800" step="10"></div>
         <div class="field"><label>Deslocamento lateral do centro de gravidade <span class="v" id="lbl-loadlat"></span></label>
           <input type="range" id="in-loadlat" min="-500" max="500" step="10"></div>
+        <div class="note">A carga é sempre desenhada encostada na grade de carga (o calcanhar dos garfos) — por
+        isso o <b>centro de carga</b> não é digitado diretamente: ele é <b>metade do comprimento</b>, medido a partir
+        dessa referência. Centro de carga atual: <b><span class="v" id="lbl-loadlc-calc">—</span></b>.</div>
 
         <h4 class="grp">Operação (mastro e deslocamento)</h4>
         <div class="field"><label>Altura de elevação dos garfos <span class="v" id="lbl-lift"></span></label>
@@ -376,16 +381,23 @@ const PRESETS = {
 };
 const SAFETY_FACTOR = 1.6;
 
+// comprimento/largura/altura em mm — dimensões reais da carga (uma caixa apoiada nos garfos).
+// pallet padrão ~1000x1000mm de base; fardo leve e volumoso; tambor com base ~quadrada; carga longa e estreita.
 const LOAD_TYPES = {
-  pallet: {weightKg:1000, loadCenterMm:500, heightMm:500, lateralMm:0},
-  fardo:  {weightKg:450,  loadCenterMm:550, heightMm:1400, lateralMm:0},
-  tambor: {weightKg:900,  loadCenterMm:420, heightMm:900,  lateralMm:0},
-  longa:  {weightKg:1200, loadCenterMm:1050, heightMm:400, lateralMm:0},
+  pallet: {weightKg:1000, lengthMm:900,  widthMm:1000, heightMm:500,  lateralMm:0},
+  fardo:  {weightKg:450,  lengthMm:1000, widthMm:1100, heightMm:1400, lateralMm:0},
+  tambor: {weightKg:900,  lengthMm:740,  widthMm:740,  heightMm:900,  lateralMm:0},
+  longa:  {weightKg:1200, lengthMm:2000, widthMm:400,  heightMm:400,  lateralMm:0},
 };
+// distância prática entre o calcanhar dos garfos (encosto na grade de carga) e a face da carga
+const HEEL_CLEARANCE_MM = 50;
 
 let spec = {...PRESETS.glp25};
-const load = {weightKg:1000, loadCenterMm:500, heightMm:500, lateralMm:0};
+const load = {weightKg:1000, lengthMm:900, widthMm:1000, heightMm:500, lateralMm:0, loadCenterMm:500};
 const op = {liftHeightMm:300, tiltDeg:4, accelG:0, lateralG:0, derate:false};
+// centro de carga = a carga sempre encostada na grade; o CG fica na metade do comprimento a partir do calcanhar
+function syncLoadCenter(){ load.loadCenterMm = Math.round(HEEL_CLEARANCE_MM + load.lengthMm/2); }
+syncLoadCenter();
 
 function ownArmM(){
   return SAFETY_FACTOR*spec.ratedCapacityKg*((spec.frontOverhangMm+spec.ratedLoadCenterMm)/1000)/spec.vehicleWeightKg;
@@ -458,11 +470,12 @@ function marginPercent(stab){
 /* ============================================================
    Estado visual (com suavização por interpolação)
    ============================================================ */
-const display = { liftM:0.3, tiltDeg:4, loadCenterM:0.5, lateralM:0, loadHeightM:0.5,
+const display = { liftM:0.3, tiltDeg:4, loadCenterM:0.5, loadLengthM:0.9, loadWidthM:1.0, lateralM:0, loadHeightM:0.5,
                    tipForward:0, tipLeft:0, tipRight:0 };
 
 function targetFromState(){
   return { liftM: op.liftHeightMm/1000, tiltDeg: op.tiltDeg, loadCenterM: load.loadCenterMm/1000,
+           loadLengthM: load.lengthMm/1000, loadWidthM: load.widthMm/1000,
            lateralM: load.lateralMm/1000, loadHeightM: load.heightMm/1000 };
 }
 
@@ -507,8 +520,11 @@ function roundRect(ctx,x,y,w,h,r){
   ctx.closePath();
 }
 
-const COL = { chassis:"#f2a93b", chassisDark:"#c97e19", cw:"#2b323a", mast:"#5b6673", innerMast:"#7c8794",
-              fork:"#aab2ba", wheel:"#1b1f24", rim:"#4a525b", ground:"#1b2531",
+// paleta calibrada pela foto de referência: carroceria amarela em peça única, mecânica (mastro, guarda,
+// rodas, banco, volante, garfos) em preto/quase-preto — como numa empilhadeira real.
+const COL = { chassis:"#f6b429", chassisDark:"#c98a12", cw:"#f6b429", mast:"#16181b", innerMast:"#3d4046",
+              fork:"#101214", wheel:"#0b0c0e", rim:"#3a3d42", ground:"#1b2531", guard:"#16181b",
+              guardLine:"#484f58", black:"#101214",
               loadOk:"#3fb6d8", loadWarn:"#d5d94f", loadDanger:"#e2543c",
               tri:"#3fb6d8", ok:"#55c99a", warn:"#d5d94f", danger:"#e2543c", dim:"#5c6b7d" };
 
@@ -537,9 +553,11 @@ function drawWheelSide(ctx,x,y,rM,scale){
   g.addColorStop(0,"#2b3138"); g.addColorStop(1,COL.wheel);
   ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
   tireTread(ctx,x,y,r*0.97,r*0.8,"#0a0d10");
-  ctx.fillStyle=COL.rim; ctx.beginPath(); ctx.arc(x,y,r*0.48,0,7); ctx.fill();
-  ctx.fillStyle="#232a31";
-  for(let a=0;a<Math.PI*2;a+=Math.PI/3){ ctx.beginPath(); ctx.arc(x+Math.cos(a)*r*0.28,y+Math.sin(a)*r*0.28,r*0.07,0,7); ctx.fill(); }
+  // aro pintado na cor da carroceria — detalhe característico da foto de referência
+  ctx.fillStyle=COL.chassisDark; ctx.beginPath(); ctx.arc(x,y,r*0.5,0,7); ctx.fill();
+  ctx.fillStyle=COL.rim; ctx.beginPath(); ctx.arc(x,y,r*0.4,0,7); ctx.fill();
+  ctx.fillStyle="#232a31"; ctx.beginPath(); ctx.arc(x,y,r*0.16,0,7); ctx.fill();
+  for(let a=0;a<Math.PI*2;a+=Math.PI/3){ ctx.beginPath(); ctx.arc(x+Math.cos(a)*r*0.28,y+Math.sin(a)*r*0.28,r*0.055,0,7); ctx.fill(); }
   ctx.strokeStyle="#0006"; ctx.lineWidth=Math.max(1,r*0.04); ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.stroke();
 }
 
@@ -556,7 +574,8 @@ function drawSide(stab){
   // span de referência FIXO (não depende do slider de centro de carga) para o desenho não "zoomar" ao arrastar
   const padL=76, padR=46, padBottomDims=86;
   const totalSpanM = wbM + foM + 1.5 + 0.5;
-  const scale = Math.min((W-padL-padR)/totalSpanM, (H-46-padBottomDims)/(guardHM+0.6));
+  const vertSpanM = Math.max(guardHM+0.6, display.liftM+display.loadHeightM+0.55);
+  const scale = Math.min((W-padL-padR)/totalSpanM, (H-46-padBottomDims)/vertSpanM);
   const groundY = H-padBottomDims;
   const originX = padL + wbM*scale; // eixo dianteiro (x=0 do modelo) na tela
   const toX = xm => originX + xm*scale;
@@ -574,72 +593,79 @@ function drawSide(stab){
   for(let gx=padL-46; gx<W-padR+30; gx+=scale*0.5){ ctx.beginPath(); ctx.moveTo(gx,groundY+2); ctx.lineTo(gx+8,groundY+7); ctx.stroke(); }
 
   const axleY = groundY-frontWheelR; // eixo dianteiro (referência de montagem do chassi)
-  const hoodTopY = axleY - scale*0.62;      // capô/console sobre o eixo dianteiro
-  const cwTopY = groundY - guardHM*scale*0.42; // topo do contrapeso (bloco robusto, ~42% da guarda)
+  const hoodTopY = axleY - scale*0.60;      // capô sobre o eixo dianteiro
+  const cwTopY = groundY - guardHM*scale*0.44; // topo do contrapeso/coluna traseira
   const guardTopY = groundY - guardHM*scale;
+  const beltY = axleY + frontWheelR*0.55; // linha de baixo da carroceria: as rodas ficam à mostra, saindo por baixo
 
-  // ---- contrapeso: bloco trapezoidal, mais largo na base, dando "peso visual" atrás ----
-  const cwFrontX = rearX+scale*0.32, cwBackX = rearX-scale*0.30;
+  // ---- carroceria: silhueta única e arredondada (contrapeso + capô em uma peça só, como numa empilhadeira real) ----
+  const cwBackX = rearX-scale*0.30, cwFrontX = rearX+scale*0.34;
   ctx.beginPath();
-  ctx.moveTo(cwBackX, groundY-scale*0.08);
-  ctx.lineTo(cwBackX+scale*0.03, cwTopY+scale*0.05);
-  ctx.quadraticCurveTo(cwBackX+scale*0.05, cwTopY, cwBackX+scale*0.16, cwTopY);
-  ctx.lineTo(cwFrontX-scale*0.05, cwTopY);
-  ctx.lineTo(cwFrontX, cwTopY+scale*0.35);
-  ctx.lineTo(cwFrontX, groundY-scale*0.05);
+  ctx.moveTo(cwBackX, beltY);
+  ctx.lineTo(cwBackX, cwTopY+scale*0.12);
+  ctx.quadraticCurveTo(cwBackX, cwTopY, cwBackX+scale*0.16, cwTopY);
+  ctx.lineTo(cwFrontX-scale*0.02, cwTopY);
+  ctx.quadraticCurveTo(cwFrontX+scale*0.12, cwTopY, cwFrontX+scale*0.16, hoodTopY+scale*0.14);
+  ctx.lineTo(frontX-frontWheelR*0.6, hoodTopY);
+  ctx.quadraticCurveTo(frontX+frontWheelR*0.32, hoodTopY, frontX+frontWheelR*0.62, axleY-frontWheelR*0.1);
+  ctx.lineTo(frontX+frontWheelR*0.8, beltY);
   ctx.closePath();
-  const cwGrad = ctx.createLinearGradient(cwBackX,0,cwFrontX,0);
-  cwGrad.addColorStop(0,"#33393f"); cwGrad.addColorStop(1,COL.cw);
-  ctx.fillStyle=cwGrad; ctx.fill();
-  ctx.strokeStyle="#00000055"; ctx.lineWidth=1; ctx.stroke();
-  // friso amarelo/preto de alerta no contrapeso (comum em empilhadeiras reais)
-  ctx.fillStyle="#ffb100"; roundRect(ctx, cwBackX+scale*0.05, cwTopY+scale*0.28, (cwFrontX-cwBackX)*0.55, scale*0.05, 2); ctx.fill();
+  const bodyGrad = ctx.createLinearGradient(0,cwTopY,0,beltY);
+  bodyGrad.addColorStop(0,"#ffca4d"); bodyGrad.addColorStop(1,COL.chassisDark);
+  ctx.fillStyle=bodyGrad; ctx.fill();
+  ctx.strokeStyle="#0000004d"; ctx.lineWidth=1.4; ctx.stroke();
+  // friso preto de alerta no contrapeso (comum em empilhadeiras reais)
+  ctx.fillStyle=COL.black; roundRect(ctx, cwBackX+scale*0.04, cwTopY+scale*0.30, scale*0.32, scale*0.045, 2); ctx.fill();
 
-  // ---- capô / console central (do contrapeso até o eixo dianteiro) ----
-  ctx.fillStyle = COL.chassis;
+  // volante (elipse inclinada, visível mesmo de perfil) e banco cinza com encosto e apoio de cabeça
+  const seatX = cwFrontX+scale*0.20;
+  const seatTopY = hoodTopY-scale*0.05;
+  ctx.fillStyle="#5a5f66";
+  roundRect(ctx, seatX-scale*0.10, seatTopY-scale*0.09, scale*0.20, scale*0.10, 3); ctx.fill(); // almofada
+  roundRect(ctx, seatX-scale*0.10, seatTopY-scale*0.34, scale*0.065, scale*0.28, 3); ctx.fill(); // encosto
+  roundRect(ctx, seatX-scale*0.115, seatTopY-scale*0.40, scale*0.09, scale*0.09, 4); ctx.fill(); // apoio de cabeça
+  ctx.save();
+  ctx.translate(seatX+scale*0.20, hoodTopY-scale*0.16);
+  ctx.rotate(deg2rad(-18));
+  ctx.strokeStyle=COL.black; ctx.lineWidth=Math.max(2,scale*0.02);
+  ctx.beginPath(); ctx.ellipse(0,0, scale*0.10, scale*0.10, 0, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,-scale*0.10); ctx.lineTo(0,scale*0.10); ctx.moveTo(-scale*0.10,0); ctx.lineTo(scale*0.10,0); ctx.stroke();
+  ctx.restore();
+
+  // ---- guarda avançada: quadro tubular, cantos arredondados, ancorado no corpo por dois pés visíveis ----
+  const guardW = Math.max(5,scale*0.055);
+  const gx1 = cwFrontX-scale*0.04, gx2 = cwFrontX+scale*0.40;
+  const guardBaseL = cwTopY+scale*0.02, guardBaseR = hoodTopY+scale*0.02;
+  // pés de fixação (mais largos que os postes) — deixam claro que a guarda está presa ao corpo
+  ctx.fillStyle=COL.guardLine;
+  roundRect(ctx, gx1-guardW*0.6, guardBaseL-guardW*0.3, guardW*1.2, guardW*0.9, 2); ctx.fill();
+  roundRect(ctx, gx2-guardW*0.6, guardBaseR-guardW*0.3, guardW*1.2, guardW*0.9, 2); ctx.fill();
+  // escora traseira inclinada (a guarda se apoia também no contrapeso, não só verticalmente — traço
+  // característico de uma guarda avançada real)
+  ctx.strokeStyle = COL.guardLine; ctx.lineWidth=guardW*0.8; ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(gx1,guardTopY+guardW*0.4); ctx.lineTo(cwBackX+scale*0.10, cwTopY+scale*0.02); ctx.stroke();
+
+  ctx.strokeStyle = COL.guardLine; ctx.lineWidth=guardW; ctx.lineCap="round"; ctx.lineJoin="round";
   ctx.beginPath();
-  ctx.moveTo(cwFrontX-scale*0.06, groundY-scale*0.05);
-  ctx.lineTo(cwFrontX-scale*0.06, hoodTopY+scale*0.25);
-  ctx.quadraticCurveTo(cwFrontX-scale*0.06, hoodTopY, cwFrontX+scale*0.18, hoodTopY);
-  ctx.lineTo(frontX-frontWheelR*0.3, hoodTopY);
-  ctx.quadraticCurveTo(frontX+frontWheelR*0.5, hoodTopY, frontX+frontWheelR*0.7, hoodTopY+scale*0.18);
-  ctx.lineTo(frontX+frontWheelR*0.85, axleY+frontWheelR*0.3);
-  ctx.lineTo(frontX+frontWheelR*0.85, groundY-scale*0.03);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle=COL.chassisDark; ctx.lineWidth=1.2; ctx.stroke();
-
-  // painel/console do operador (leve realce sobre o capô)
-  ctx.fillStyle=COL.chassisDark+"aa";
-  roundRect(ctx, cwFrontX+scale*0.02, hoodTopY+scale*0.06, scale*0.16, scale*0.14, 3); ctx.fill();
-
-  // banco com encosto — a almofada apoia diretamente sobre o capô, sem vão flutuando
-  const seatX = cwFrontX+scale*0.26;
-  const seatTopY = hoodTopY-scale*0.06;
-  ctx.fillStyle="#1c2026";
-  roundRect(ctx, seatX-scale*0.11, seatTopY, scale*0.22, scale*0.08, 3); ctx.fill(); // almofada
-  roundRect(ctx, seatX-scale*0.11, seatTopY-scale*0.30, scale*0.07, scale*0.32, 3); ctx.fill(); // encosto
-
-  // ---- guarda avançada (teto de proteção): postes saem do capô/contrapeso, nunca "soltos" ----
-  ctx.strokeStyle = COL.chassisDark; ctx.lineWidth=Math.max(3,scale*0.04);
-  const gx1 = cwFrontX+scale*0.04, gx2 = cwFrontX+scale*0.46;
-  ctx.beginPath();
-  ctx.moveTo(gx1,cwTopY); ctx.lineTo(gx1-scale*0.03,guardTopY);
-  ctx.moveTo(gx2,hoodTopY); ctx.lineTo(gx2+scale*0.05,guardTopY);
-  ctx.moveTo(gx1-scale*0.03,guardTopY); ctx.lineTo(gx2+scale*0.05,guardTopY);
+  ctx.moveTo(gx1,guardBaseL); ctx.lineTo(gx1,guardTopY+guardW*0.4);
+  ctx.lineTo(gx2,guardTopY+guardW*0.4); ctx.lineTo(gx2,guardBaseR);
   ctx.stroke();
-  // grade do teto (barras finas)
-  ctx.strokeStyle=COL.chassisDark+"99"; ctx.lineWidth=1;
-  for(let gx=gx1-scale*0.03+4; gx<gx2+scale*0.05-4; gx+=8){ ctx.beginPath(); ctx.moveTo(gx,guardTopY); ctx.lineTo(gx,guardTopY+4); ctx.stroke(); }
+  // grade do teto (barras finas) e um pequeno acabamento/antena no canto traseiro
+  ctx.strokeStyle=COL.guardLine+"aa"; ctx.lineWidth=1.4; ctx.lineCap="butt";
+  for(let gx=gx1+6; gx<gx2-4; gx+=9){ ctx.beginPath(); ctx.moveTo(gx,guardTopY+guardW*0.4); ctx.lineTo(gx,guardTopY+guardW*0.4+5); ctx.stroke(); }
+  ctx.fillStyle=COL.guardLine; ctx.beginPath(); ctx.arc(gx1, guardTopY-scale*0.02, scale*0.018,0,7); ctx.fill();
+  // luz de sinalização (âmbar) no topo da guarda e lanterna (vermelha) no contrapeso
+  ctx.fillStyle="#e8a83a"; ctx.beginPath(); ctx.arc(gx2-scale*0.03, guardTopY+guardW*0.4-scale*0.02, scale*0.014,0,7); ctx.fill();
+  ctx.fillStyle="#c73a2e"; ctx.beginPath(); ctx.arc(cwBackX+scale*0.03, cwTopY+scale*0.10, scale*0.016,0,7); ctx.fill();
 
   // farol
-  ctx.fillStyle="#ffe9a8"; ctx.beginPath(); ctx.arc(frontX+frontWheelR*0.55, hoodTopY+scale*0.22, scale*0.035,0,7); ctx.fill();
+  ctx.fillStyle="#ffe9a8"; ctx.beginPath(); ctx.arc(frontX+frontWheelR*0.5, hoodTopY+scale*0.2, scale*0.032,0,7); ctx.fill();
   ctx.strokeStyle="#8a6d1f"; ctx.lineWidth=1; ctx.stroke();
 
-  // paralamas sobre as rodas
-  ctx.strokeStyle=COL.chassisDark; ctx.lineWidth=Math.max(3,scale*0.05); ctx.lineCap="round";
+  // paralamas sobre as rodas (a carroceria termina acima da linha de cintura; a roda aparece por baixo)
+  ctx.strokeStyle=COL.chassisDark; ctx.lineWidth=Math.max(3,scale*0.045); ctx.lineCap="round";
   [[rearX,rearWheelR],[frontX,frontWheelR]].forEach(([x,r])=>{
-    ctx.beginPath(); ctx.arc(x, groundY-r, r*1.18, Math.PI*1.08, Math.PI*1.92); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, beltY, r*1.14, Math.PI*1.06, Math.PI*1.94); ctx.stroke();
   });
   ctx.lineCap="butt";
 
@@ -655,46 +681,72 @@ function drawSide(stab){
   ctx.save();
   ctx.translate(mastBaseX, axleY);
   ctx.rotate(deg2rad(-display.tiltDeg));
-  // trilhos externos (par, com leve espessura para parecer perfil de aço)
+  // trilhos externos (par, com friso lateral claro para parecer perfil de aço, não uma tira solta)
   ctx.fillStyle=COL.mast;
-  roundRect(ctx,-scale*0.045,-mastVisibleH,scale*0.075,mastVisibleH+forkGroundClearance,2); ctx.fill();
-  roundRect(ctx, scale*0.10,-mastVisibleH,scale*0.075,mastVisibleH+forkGroundClearance,2); ctx.fill();
-  ctx.fillStyle=COL.chassisDark;
-  roundRect(ctx,-scale*0.05,-mastVisibleH,scale*0.02,mastVisibleH+forkGroundClearance,1); ctx.fill();
-  // travessa superior
-  roundRect(ctx,-scale*0.05,-mastVisibleH-scale*0.02,scale*0.22,scale*0.045,2); ctx.fill();
+  roundRect(ctx,-scale*0.05,-mastVisibleH,scale*0.085,mastVisibleH+forkGroundClearance,2); ctx.fill();
+  roundRect(ctx, scale*0.105,-mastVisibleH,scale*0.085,mastVisibleH+forkGroundClearance,2); ctx.fill();
+  ctx.strokeStyle=COL.guardLine; ctx.lineWidth=1;
+  roundRect(ctx,-scale*0.05,-mastVisibleH,scale*0.085,mastVisibleH+forkGroundClearance,2); ctx.stroke();
+  roundRect(ctx, scale*0.105,-mastVisibleH,scale*0.085,mastVisibleH+forkGroundClearance,2); ctx.stroke();
+  // travessa superior (une os dois trilhos)
+  ctx.fillStyle=COL.mast;
+  roundRect(ctx,-scale*0.05,-mastVisibleH-scale*0.02,scale*0.24,scale*0.045,2); ctx.fill();
   // trilho interno (telescópico) até a altura atual + carro
   ctx.fillStyle = COL.innerMast;
   roundRect(ctx,-scale*0.018,-liftPx-scale*0.5, scale*0.05, liftPx+scale*0.5+forkGroundClearance, 2); ctx.fill();
 
-  // carro-porta-garfos + encosto de carga
+  // carro-porta-garfos: placa vertical fixa no mastro. Seu rosto frontal ("calcanhar" dos garfos) é o
+  // ponto zero, fixo, a partir do qual a carga e a cota de centro de carga sempre são medidas.
   const forkY = -liftPx;
-  ctx.fillStyle="#2b323a";
-  roundRect(ctx,-scale*0.06, forkY-scale*0.5, scale*0.14, scale*0.5, 2); ctx.fill();
+  const carriageX0 = -scale*0.06, carriageW = scale*0.14, carriageH = scale*0.24;
+  const heelX = carriageX0+carriageW;
+  ctx.fillStyle="#40474f";
+  roundRect(ctx, carriageX0, forkY-carriageH, carriageW, carriageH, 2); ctx.fill();
+  ctx.strokeStyle=COL.guardLine; ctx.lineWidth=1; roundRect(ctx, carriageX0, forkY-carriageH, carriageW, carriageH, 2); ctx.stroke();
 
-  const forkLenPx = Math.max(display.loadCenterM*1.9, 0.55)*scale;
+  // grade de proteção de carga (encosto), montada no carro — a carga fica sempre encostada nela
+  const gradeH = clamp(display.loadHeightM*scale*1.15, scale*0.42, scale*1.3);
+  ctx.fillStyle="#30363d";
+  roundRect(ctx, heelX-scale*0.016, forkY-gradeH, scale*0.022, gradeH, 2); ctx.fill();
+  ctx.strokeStyle=COL.guardLine; ctx.lineWidth=1; roundRect(ctx, heelX-scale*0.016, forkY-gradeH, scale*0.022, gradeH, 2); ctx.stroke();
+  ctx.strokeStyle="#6b7178"; ctx.lineWidth=1.1;
+  for(let gy=forkY-gradeH+7; gy<forkY-3; gy+=7){
+    ctx.beginPath(); ctx.moveTo(heelX-scale*0.014,gy); ctx.lineTo(heelX+scale*0.006,gy); ctx.stroke();
+  }
+
+  const heelClearancePx = (HEEL_CLEARANCE_MM/1000)*scale;
+  const loadLenPx = Math.max(display.loadLengthM,0.05)*scale;
+  const loadHpx = Math.max(display.loadHeightM,0.04)*scale;
+  const loadX0 = heelX+heelClearancePx, loadX1 = loadX0+loadLenPx;
+  const forkLenPx = Math.max(loadX1-heelX+scale*0.10, 0.5*scale);
+
   ctx.fillStyle = COL.fork;
-  // garfo com calcanhar (ângulo de 90° visível) e ligeira ponta afinada
+  // garfo com calcanhar (ângulo de 90° visível) e ligeira ponta afinada, saindo do rosto do carro
   ctx.beginPath();
-  ctx.moveTo(-scale*0.05, forkY-scale*0.045);
-  ctx.lineTo(-scale*0.05, forkY+scale*0.03);
-  ctx.lineTo(forkLenPx*0.94, forkY+scale*0.03);
-  ctx.lineTo(forkLenPx, forkY+scale*0.008);
-  ctx.lineTo(forkLenPx, forkY-scale*0.008);
-  ctx.lineTo(-scale*0.02, forkY-scale*0.045);
+  ctx.moveTo(heelX-scale*0.03, forkY-scale*0.045);
+  ctx.lineTo(heelX-scale*0.03, forkY+scale*0.03);
+  ctx.lineTo(heelX+forkLenPx*0.94, forkY+scale*0.03);
+  ctx.lineTo(heelX+forkLenPx, forkY+scale*0.008);
+  ctx.lineTo(heelX+forkLenPx, forkY-scale*0.008);
+  ctx.lineTo(heelX, forkY-scale*0.045);
   ctx.closePath(); ctx.fill();
   ctx.strokeStyle="#5a5f66"; ctx.lineWidth=1; ctx.stroke();
 
-  const loadWpx = Math.max(display.loadCenterM*1.35, 0.32)*scale;
-  const loadHpx = Math.max(display.loadHeightM,0.04)*scale;
-  const loadCx = display.loadCenterM*scale;
-  const loadX0 = loadCx-loadWpx/2, loadY0 = forkY-loadHpx;
+  // linha de referência do calcanhar/grade — o "zero" da cota de centro de carga, atravessando a carga
+  ctx.setLineDash([3,3]); ctx.strokeStyle="#ffffffb0"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(heelX, forkY-Math.max(gradeH,loadHpx)-6); ctx.lineTo(heelX, forkY+scale*0.05); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // carga: sempre encostada na grade (loadX0 = calcanhar + folga real de ~50 mm), dimensões reais
+  const loadY0 = forkY-loadHpx;
   ctx.fillStyle = loadColor(stab)+"dd";
-  roundRect(ctx, loadX0, loadY0, loadWpx, loadHpx, 4); ctx.fill();
-  ctx.strokeStyle="#0009"; ctx.lineWidth=1.2; roundRect(ctx, loadX0, loadY0, loadWpx, loadHpx, 4); ctx.stroke();
+  roundRect(ctx, loadX0, loadY0, loadLenPx, loadHpx, 4); ctx.fill();
+  ctx.strokeStyle="#0009"; ctx.lineWidth=1.2; roundRect(ctx, loadX0, loadY0, loadLenPx, loadHpx, 4); ctx.stroke();
   // linhas de "paletização" na carga
   ctx.strokeStyle="#0006"; ctx.lineWidth=1;
-  for(let i=1;i<3;i++){ const lx=loadX0+loadWpx*i/3; ctx.beginPath(); ctx.moveTo(lx,loadY0); ctx.lineTo(lx,loadY0+loadHpx); ctx.stroke(); }
+  for(let i=1;i<3;i++){ const lx=loadX0+loadLenPx*i/3; ctx.beginPath(); ctx.moveTo(lx,loadY0); ctx.lineTo(lx,loadY0+loadHpx); ctx.stroke(); }
+
+  const heelScreenX = mastBaseX+heelX, loadCenterScreenX = mastBaseX+(loadX0+loadX1)/2;
   ctx.restore();
 
   // base de apoio (segmento entre os pontos de contato das rodas)
@@ -715,8 +767,11 @@ function drawSide(stab){
 
   // cotas (fora da rotação, sempre legíveis)
   dimLine(ctx, rearX, groundY+frontWheelR+22, frontX, groundY+frontWheelR+22, "entre-eixos "+fmt(spec.wheelbaseMm)+" mm");
-  dimLine(ctx, frontX, groundY+frontWheelR+42, frontX+clamp(display.loadCenterM,0.15,1.5)*scale, groundY+frontWheelR+42,
-          "centro de carga "+fmt(load.loadCenterMm)+" mm");
+  dimLine(ctx, heelScreenX, groundY+frontWheelR+42, loadCenterScreenX, groundY+frontWheelR+42,
+          "centro de carga "+fmt(load.loadCenterMm)+" mm (a partir da grade)");
+  ctx.setLineDash([2,2]); ctx.strokeStyle=COL.dim; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(heelScreenX,groundY+frontWheelR+8); ctx.lineTo(heelScreenX,groundY+frontWheelR+50); ctx.stroke();
+  ctx.setLineDash([]);
   ctx.textAlign="left"; ctx.fillStyle=COL.dim; ctx.font="11px sans-serif";
   ctx.fillText("altura dos garfos: "+fmt(op.liftHeightMm)+" mm", 10, 18);
   ctx.fillText("inclinação: "+(op.tiltDeg>=0?"+":"")+op.tiltDeg.toFixed(1)+"° ("+(op.tiltDeg>=0?"trás":"frente")+")", 10, 33);
@@ -741,9 +796,9 @@ function drawFront(stab){
   const maxLiftM = spec.maxLiftHeightMm/1000;
   const frontWheelRM = (spec.frontWheelDiaMm||533)/2000;
   const guardHM = (spec.guardHeightMm||2250)/1000;
-  const padSide=60, padTop=34, padBottom=64;
+  const padSide=64, padTop=34, padBottom=64;
   const spanX = twM + 1.3;
-  const spanY = guardHM + 0.5;
+  const spanY = Math.max(guardHM+0.5, display.liftM+display.loadHeightM+0.45);
   const scale = Math.min((W-padSide*2)/spanX, (H-padTop-padBottom)/spanY);
   const cx = W/2;
   const groundY = H-padBottom;
@@ -764,64 +819,106 @@ function drawFront(stab){
   ctx.strokeStyle = COL.ground; ctx.lineWidth=3;
   ctx.beginPath(); ctx.moveTo(padSide-40,groundY); ctx.lineTo(W-padSide+40,groundY); ctx.stroke();
 
-  const bodyTopY = wheelCenterY - scale*0.62;
+  const axleY = wheelCenterY;
+  const beltY = axleY + wheelR*0.55;         // corpo encaixado sobre as rodas — elas saem visíveis por baixo
+  const bodyTopY = axleY - scale*0.62;       // topo do capô/contrapeso
+  const capTopY = bodyTopY - scale*0.16;     // "tampa" do radiador, no topo do corpo
   const guardTopY = groundY - guardHM*scale;
-  const cwTopY = groundY - guardHM*scale*0.42;
 
-  // contrapeso: visível "espiando" atrás/acima do corpo, mais largo
-  const cwGrad = ctx.createLinearGradient(0,cwTopY,0,bodyTopY+scale*0.1);
-  cwGrad.addColorStop(0,"#33393f"); cwGrad.addColorStop(1,COL.cw);
-  ctx.fillStyle=cwGrad;
-  roundRect(ctx, cx-(twM/2+0.06)*scale, cwTopY, (twM+0.12)*scale, (bodyTopY-cwTopY)+scale*0.35, 5); ctx.fill();
-  ctx.fillStyle="#ffb100"; roundRect(ctx, cx-(twM/2-0.06)*scale, cwTopY+scale*0.08, (twM-0.12)*scale, scale*0.045, 2); ctx.fill();
-
-  // chassi / capô (bloco apoiado sobre o eixo das rodas)
-  ctx.fillStyle = COL.chassis;
-  roundRect(ctx, cx-(twM/2+0.14)*scale, bodyTopY, (twM+0.28)*scale, wheelCenterY-bodyTopY, 6); ctx.fill();
-  ctx.strokeStyle=COL.chassisDark; ctx.lineWidth=1.2;
-  roundRect(ctx, cx-(twM/2+0.14)*scale, bodyTopY, (twM+0.28)*scale, wheelCenterY-bodyTopY, 6); ctx.stroke();
-
-  // faróis
-  ctx.fillStyle="#ffe9a8";
-  [-1,1].forEach(side=>{ ctx.beginPath(); ctx.arc(cx+side*twM*0.32*scale, bodyTopY+scale*0.12, scale*0.032,0,7); ctx.fill(); });
-
-  // guarda avançada (dois postes visíveis + barra superior, com grade)
-  ctx.strokeStyle = COL.chassisDark; ctx.lineWidth=Math.max(3,scale*0.035);
-  const gpx1 = cx-twM*0.34*scale, gpx2 = cx+twM*0.34*scale;
+  // ---- carroceria: silhueta única, larga sobre as rodas e afunilando para cima — como de frente real ----
+  const baseHalfW = (twM/2+0.20)*scale, topHalfW = (twM/2-0.02)*scale, capHalfW = (twM/2-0.16)*scale;
   ctx.beginPath();
-  ctx.moveTo(gpx1,bodyTopY); ctx.lineTo(gpx1,guardTopY);
-  ctx.moveTo(gpx2,bodyTopY); ctx.lineTo(gpx2,guardTopY);
-  ctx.moveTo(gpx1,guardTopY); ctx.lineTo(gpx2,guardTopY);
-  ctx.stroke();
-  ctx.strokeStyle=COL.chassisDark+"88"; ctx.lineWidth=1;
-  for(let gx=gpx1+6; gx<gpx2-4; gx+=8){ ctx.beginPath(); ctx.moveTo(gx,guardTopY); ctx.lineTo(gx,guardTopY+4); ctx.stroke(); }
+  ctx.moveTo(cx-baseHalfW, beltY);
+  ctx.quadraticCurveTo(cx-baseHalfW, bodyTopY+scale*0.10, cx-baseHalfW+scale*0.10, bodyTopY);
+  ctx.lineTo(cx-topHalfW, bodyTopY);
+  ctx.lineTo(cx-capHalfW, capTopY);
+  ctx.lineTo(cx+capHalfW, capTopY);
+  ctx.lineTo(cx+topHalfW, bodyTopY);
+  ctx.lineTo(cx+baseHalfW-scale*0.10, bodyTopY);
+  ctx.quadraticCurveTo(cx+baseHalfW, bodyTopY+scale*0.10, cx+baseHalfW, beltY);
+  ctx.closePath();
+  const bodyGrad = ctx.createLinearGradient(0,capTopY,0,beltY);
+  bodyGrad.addColorStop(0,"#ffca4d"); bodyGrad.addColorStop(1,COL.chassisDark);
+  ctx.fillStyle=bodyGrad; ctx.fill();
+  ctx.strokeStyle="#0000004d"; ctx.lineWidth=1.4; ctx.stroke();
 
-  // paralamas + rodas (grandes, motrizes)
+  // grade do radiador (barras pretas na "tampa" superior)
+  ctx.strokeStyle=COL.black; ctx.lineWidth=Math.max(2,scale*0.02);
+  for(let i=0;i<3;i++){ const gy=capTopY+scale*0.03+i*scale*0.045; ctx.beginPath(); ctx.moveTo(cx-capHalfW+scale*0.03,gy); ctx.lineTo(cx+capHalfW-scale*0.03,gy); ctx.stroke(); }
+
+  // faróis (redondos, na carroceria)
+  ctx.fillStyle="#ffe9a8"; ctx.strokeStyle="#8a6d1f"; ctx.lineWidth=1;
+  [-1,1].forEach(side=>{
+    ctx.beginPath(); ctx.arc(cx+side*(twM/2)*0.62*scale, bodyTopY+scale*0.14, scale*0.036,0,7);
+    ctx.fill(); ctx.stroke();
+  });
+
+  // ---- guarda avançada: quadro tubular preto — 2 postes traseiros (mais internos, tom claro p/ profundidade)
+  // e 2 dianteiros, unidos por uma barra superior única com grade fina no teto ----
+  const guardW = Math.max(5,scale*0.05);
+  const gx1 = cx-(twM/2-0.02)*scale, gx2 = cx+(twM/2-0.02)*scale;
+  const gbx1 = cx-(twM/2-0.14)*scale, gbx2 = cx+(twM/2-0.14)*scale;
+  ctx.strokeStyle=COL.guardLine+"88"; ctx.lineWidth=guardW*0.75; ctx.lineCap="round";
+  [gbx1,gbx2].forEach(x=>{ ctx.beginPath(); ctx.moveTo(x,capTopY-scale*0.02); ctx.lineTo(x,guardTopY+scale*0.03); ctx.stroke(); });
+  ctx.fillStyle=COL.guardLine;
+  [gx1,gx2].forEach(x=>{ roundRect(ctx, x-guardW*0.6, capTopY-scale*0.02-guardW*0.3, guardW*1.2, guardW*0.9, 2); ctx.fill(); });
+  ctx.strokeStyle=COL.guardLine; ctx.lineWidth=guardW; ctx.lineJoin="round";
+  ctx.beginPath();
+  ctx.moveTo(gx1,capTopY-scale*0.02); ctx.lineTo(gx1,guardTopY);
+  ctx.lineTo(gx2,guardTopY); ctx.lineTo(gx2,capTopY-scale*0.02);
+  ctx.stroke();
+  ctx.strokeStyle=COL.guardLine+"aa"; ctx.lineWidth=1.3; ctx.lineCap="butt";
+  for(let gx=gx1+7; gx<gx2-5; gx+=9){ ctx.beginPath(); ctx.moveTo(gx,guardTopY); ctx.lineTo(gx,guardTopY+5); ctx.stroke(); }
+
+  // paralamas + rodas (grandes, motrizes) — saem visíveis por baixo da carroceria
   ctx.strokeStyle=COL.chassisDark; ctx.lineWidth=Math.max(3,scale*0.05); ctx.lineCap="round";
-  [xL,xR].forEach(x=>{ ctx.beginPath(); ctx.arc(x, wheelCenterY, wheelR*1.16, Math.PI*1.06, Math.PI*1.94); ctx.stroke(); });
+  [xL,xR].forEach(x=>{ ctx.beginPath(); ctx.arc(x, beltY, wheelR*1.16, Math.PI*1.06, Math.PI*1.94); ctx.stroke(); });
   ctx.lineCap="butt";
   [xL,xR].forEach(x=> drawWheelSide(ctx,x,wheelCenterY,frontWheelRM,scale));
 
-  // mastro (duas colunas robustas, altura de referência fixa = elevação máxima)
+  // mastro (duas colunas robustas, altura de referência fixa = elevação máxima) + travessa superior
   const mastTopY = wheelCenterY - scale*(maxLiftM*(spec.mastCollapsedRatio||0.5)+0.35);
   const mastW = Math.max(6,scale*0.075);
+  const mastGap = twM*0.4*scale;
   ctx.fillStyle = COL.mast;
   [-1,1].forEach(side=>{
-    const x = cx+side*twM*0.4*scale;
+    const x = cx+side*mastGap;
     roundRect(ctx, x-mastW/2, mastTopY, mastW, wheelCenterY-mastTopY, 2); ctx.fill();
   });
+  ctx.strokeStyle=COL.guardLine; ctx.lineWidth=1;
+  [-1,1].forEach(side=>{
+    const x = cx+side*mastGap;
+    roundRect(ctx, x-mastW/2, mastTopY, mastW, wheelCenterY-mastTopY, 2); ctx.stroke();
+  });
+  ctx.fillStyle=COL.mast;
+  roundRect(ctx, cx-mastGap-mastW/2, mastTopY-scale*0.02, mastGap*2+mastW, scale*0.045, 2); ctx.fill();
 
-  // garfos na altura atual (blocos, não só linhas)
+  // carro-porta-garfos + grade de proteção de carga (a mesma referência de "zero" usada na vista lateral)
   const liftPx = display.liftM*scale;
   const forkY = groundY - scale*0.07 - liftPx;
+  const carriageHalfW = mastGap+mastW*0.9;
+  ctx.fillStyle="#40474f";
+  roundRect(ctx, cx-carriageHalfW, forkY-scale*0.10, carriageHalfW*2, scale*0.10, 2); ctx.fill();
+  ctx.strokeStyle=COL.guardLine; ctx.lineWidth=1; roundRect(ctx, cx-carriageHalfW, forkY-scale*0.10, carriageHalfW*2, scale*0.10, 2); ctx.stroke();
+  const gradeH = clamp(display.loadHeightM*scale*1.15, scale*0.42, scale*1.3);
+  ctx.strokeStyle="#6b7178"; ctx.lineWidth=1.1;
+  for(let gx=cx-carriageHalfW+8; gx<cx+carriageHalfW-6; gx+=10){ ctx.beginPath(); ctx.moveTo(gx,forkY-gradeH); ctx.lineTo(gx,forkY-scale*0.10); ctx.stroke(); }
+  ctx.fillStyle="#30363d"; roundRect(ctx, cx-carriageHalfW, forkY-gradeH, carriageHalfW*2, scale*0.02, 2); ctx.fill();
+  ctx.strokeStyle=COL.guardLine; ctx.lineWidth=1; roundRect(ctx, cx-carriageHalfW, forkY-gradeH, carriageHalfW*2, scale*0.02, 2); ctx.stroke();
+  // linha de referência da grade/placa — mesmo "zero" usado para a altura dos garfos
+  ctx.strokeStyle="#ffffffb0"; ctx.setLineDash([3,3]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx-carriageHalfW-scale*0.08,forkY-gradeH); ctx.lineTo(cx+carriageHalfW+scale*0.08,forkY-gradeH); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // garfos na altura atual (blocos, não só linhas), saindo do carro
   ctx.fillStyle = COL.fork;
   [-1,1].forEach(side=>{
     const x = cx+side*twM*0.28*scale;
     roundRect(ctx, x-scale*0.09, forkY-scale*0.03, scale*0.18, scale*0.05, 2); ctx.fill();
   });
 
-  // carga (com deslocamento lateral)
-  const loadW = Math.max(twM*0.82,0.4)*scale;
+  // carga: largura real (a face vista de frente), sempre apoiada nos garfos junto à grade
+  const loadW = Math.max(display.loadWidthM,0.1)*scale;
   const loadH = Math.max(display.loadHeightM,0.04)*scale;
   const loadCx = cx + display.lateralM*scale;
   ctx.fillStyle = loadColor(stab)+"dd";
@@ -849,6 +946,7 @@ function drawFront(stab){
   dimLine(ctx, xL, groundY+wheelR+22, xR, groundY+wheelR+22, "bitola "+fmt(spec.trackWidthMm)+" mm");
   ctx.fillStyle=COL.dim; ctx.font="11px sans-serif"; ctx.textAlign="left";
   ctx.fillText("deslocamento lateral do CG da carga: "+(load.lateralMm>=0?"+":"")+fmt(load.lateralMm)+" mm", 10, 18);
+  ctx.fillText("altura dos garfos: "+fmt(op.liftHeightMm)+" mm (referenciada pela grade/placa de carga)", 10, 33);
   if (Math.max(tipL,tipR)>0.5){
     ctx.font="bold 13px sans-serif"; ctx.textAlign="center";
     const tw = ctx.measureText("TOMBAMENTO LATERAL").width;
@@ -902,23 +1000,36 @@ function drawTop(stab){
   [A,B].forEach(p=>{ roundRect(ctx, p.x-frontWheelWm*scale/2, p.y-frontWheelLm*scale/2, frontWheelWm*scale, frontWheelLm*scale, 2); ctx.fill(); });
   ctx.beginPath(); ctx.arc(C.x, C.y, Math.max(4,scale*0.055), 0, 7); ctx.fill();
 
-  // garfos: do eixo dianteiro até a face onde a carga se apoia
-  const loadCenterM = clamp(display.loadCenterM, 0.15, 1.5);
-  const forkTipM = foM+loadCenterM*1.15;
+  // garfos: do eixo dianteiro até a face onde a carga se apoia. A grade (encosto) fica na altura foM —
+  // mesma referência "zero" usada nas vistas lateral e frontal — e a carga fica sempre encostada nela.
+  const heelM = foM;
+  const loadStartM = heelM + HEEL_CLEARANCE_MM/1000;
+  const loadLenM = Math.max(display.loadLengthM, 0.05);
+  const forkTipM = loadStartM+loadLenM+0.10;
   ctx.strokeStyle = COL.fork; ctx.lineWidth = Math.max(6,scale*0.06);
   [-1,1].forEach(side=>{
     const x = cx+side*twM*0.28*scale;
     ctx.beginPath(); ctx.moveTo(x, originY); ctx.lineTo(x, originY-forkTipM*scale); ctx.stroke();
   });
 
-  // carga
-  const loadLenM = Math.max(loadCenterM*1.15, 0.35);
-  const loadWm = Math.max(twM*0.85,0.4);
-  const loadCenter = toPt(display.lateralM, foM+loadCenterM);
+  // grade de proteção de carga: barra preta na altura do calcanhar dos garfos + linha de referência tracejada
+  const heelPt = toPt(0, heelM);
+  ctx.strokeStyle="#1c2024"; ctx.lineWidth=Math.max(5,scale*0.05); ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(cx-twM*0.34*scale, heelPt.y); ctx.lineTo(cx+twM*0.34*scale, heelPt.y); ctx.stroke();
+  ctx.lineCap="butt";
+  ctx.strokeStyle="#ffffffb0"; ctx.setLineDash([3,3]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx-twM*0.42*scale, heelPt.y); ctx.lineTo(cx+twM*0.42*scale, heelPt.y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // carga: dimensões reais (comprimento no sentido dos garfos x largura), sempre encostada na grade
+  const loadWm = Math.max(display.loadWidthM, 0.1);
+  const loadCenter = toPt(display.lateralM, loadStartM+loadLenM/2);
   const lw = loadWm*scale, ll = loadLenM*scale;
   ctx.fillStyle = loadColor(stab)+"dd";
   roundRect(ctx, loadCenter.x-lw/2, loadCenter.y-ll/2, lw, ll, 5); ctx.fill();
   ctx.strokeStyle="#0009"; ctx.lineWidth=1.2; roundRect(ctx, loadCenter.x-lw/2, loadCenter.y-ll/2, lw, ll, 5); ctx.stroke();
+  ctx.strokeStyle="#0006"; ctx.lineWidth=1;
+  for(let i=1;i<3;i++){ const ly=loadCenter.y-ll/2+ll*i/3; ctx.beginPath(); ctx.moveTo(loadCenter.x-lw/2,ly); ctx.lineTo(loadCenter.x+lw/2,ly); ctx.stroke(); }
 
   // CG próprio da empilhadeira (referência) + CG combinado
   const ownCg = toPt(0, -stab.ownArm);
@@ -1148,6 +1259,8 @@ function frame(){
   display.liftM = lerp(display.liftM, target.liftM, k);
   display.tiltDeg = lerp(display.tiltDeg, target.tiltDeg, k);
   display.loadCenterM = lerp(display.loadCenterM, target.loadCenterM, k);
+  display.loadLengthM = lerp(display.loadLengthM, target.loadLengthM, k);
+  display.loadWidthM = lerp(display.loadWidthM, target.loadWidthM, k);
   display.lateralM = lerp(display.lateralM, target.lateralM, k);
   display.loadHeightM = lerp(display.loadHeightM, target.loadHeightM, k);
 
@@ -1167,7 +1280,7 @@ function frame(){
    ============================================================ */
 const $ = id=>document.getElementById(id);
 const inRatedCap=$("in-ratedcap"), inRatedLc=$("in-ratedlc"), selPreset=$("sel-preset"), selLoadType=$("sel-loadtype");
-const inLoadW=$("in-loadw"), inLoadLc=$("in-loadlc"), inLoadH=$("in-loadh"), inLoadLat=$("in-loadlat");
+const inLoadW=$("in-loadw"), inLoadLen=$("in-loadlen"), inLoadWid=$("in-loadwid"), inLoadH=$("in-loadh"), inLoadLat=$("in-loadlat");
 const inLift=$("in-lift"), inTilt=$("in-tilt"), inAccel=$("in-accel"), inLateralG=$("in-lateralg");
 const chkDerate=$("chk-derate");
 
@@ -1175,15 +1288,18 @@ function refreshLabels(){
   $("lbl-ratedcap").textContent = fmt(spec.ratedCapacityKg)+" kg";
   $("lbl-ratedlc").textContent = fmt(spec.ratedLoadCenterMm)+" mm";
   $("lbl-loadw").textContent = fmt(load.weightKg)+" kg";
-  $("lbl-loadlc").textContent = fmt(load.loadCenterMm)+" mm";
+  $("lbl-loadlen").textContent = fmt(load.lengthMm)+" mm";
+  $("lbl-loadwid").textContent = fmt(load.widthMm)+" mm";
   $("lbl-loadh").textContent = fmt(load.heightMm)+" mm";
   $("lbl-loadlat").textContent = (load.lateralMm>=0?"+":"")+fmt(load.lateralMm)+" mm";
+  $("lbl-loadlc-calc").textContent = fmt(load.loadCenterMm)+" mm";
   $("lbl-lift").textContent = fmt(op.liftHeightMm)+" mm";
   $("lbl-tilt").textContent = (op.tiltDeg>=0?"+":"")+op.tiltDeg.toFixed(1)+"° "+(op.tiltDeg>=0?"(trás)":"(frente)");
   $("lbl-accel").textContent = (op.accelG>=0?"+":"")+op.accelG.toFixed(2)+" g"+(op.accelG<-0.05?" (freando)":op.accelG>0.05?" (acelerando)":"");
   $("lbl-lateralg").textContent = (op.lateralG>=0?"+":"")+op.lateralG.toFixed(2)+" g"+(Math.abs(op.lateralG)>0.05?(op.lateralG>0?" (curva à direita)":" (curva à esquerda)"):"");
   inRatedCap.value=spec.ratedCapacityKg; inRatedLc.value=spec.ratedLoadCenterMm;
-  inLoadW.value=load.weightKg; inLoadLc.value=load.loadCenterMm; inLoadH.value=load.heightMm; inLoadLat.value=load.lateralMm;
+  inLoadW.value=load.weightKg; inLoadLen.value=load.lengthMm; inLoadWid.value=load.widthMm;
+  inLoadH.value=load.heightMm; inLoadLat.value=load.lateralMm;
   inLift.value=op.liftHeightMm; inTilt.value=op.tiltDeg; inAccel.value=op.accelG; inLateralG.value=op.lateralG;
   inLift.max = spec.maxLiftHeightMm; inTilt.min=-spec.maxForwardTiltDeg; inTilt.max=spec.maxBackwardTiltDeg;
   chkDerate.checked = op.derate;
@@ -1201,12 +1317,13 @@ selPreset.addEventListener("change", e=>applyPreset(e.target.value));
 }));
 selLoadType.addEventListener("change", e=>{
   const t = LOAD_TYPES[e.target.value];
-  if (t){ Object.assign(load, t); refreshLabels(); }
+  if (t){ Object.assign(load, t); syncLoadCenter(); refreshLabels(); }
 });
-[inLoadW,inLoadLc,inLoadH,inLoadLat].forEach(el=>el.addEventListener("input", ()=>{
+[inLoadW,inLoadLen,inLoadWid,inLoadH,inLoadLat].forEach(el=>el.addEventListener("input", ()=>{
   selLoadType.value="custom";
-  load.weightKg=+inLoadW.value; load.loadCenterMm=+inLoadLc.value;
+  load.weightKg=+inLoadW.value; load.lengthMm=+inLoadLen.value; load.widthMm=+inLoadWid.value;
   load.heightMm=+inLoadH.value; load.lateralMm=+inLoadLat.value;
+  syncLoadCenter();
   refreshLabels(); clearScenarioHighlight();
 }));
 [inLift,inTilt].forEach(el=>el.addEventListener("input", ()=>{
@@ -1222,7 +1339,7 @@ chkDerate.addEventListener("change", ()=>{ op.derate = chkDerate.checked; });
 
 $("btn-reset-config").addEventListener("click", ()=>{
   spec = {...PRESETS.glp25}; selPreset.value="glp25";
-  Object.assign(load, LOAD_TYPES.pallet); selLoadType.value="pallet";
+  Object.assign(load, LOAD_TYPES.pallet); selLoadType.value="pallet"; syncLoadCenter();
   op.liftHeightMm=300; op.tiltDeg=4; op.accelG=0; op.lateralG=0; op.derate=false;
   refreshLabels(); clearScenarioHighlight();
 });
@@ -1324,27 +1441,27 @@ const SCENARIOS = [
       op.liftHeightMm=250; op.tiltDeg=4; op.accelG=0; op.lateralG=0; } },
   { id:"overload", title:"Sobrecarga na plaqueta", badge:"warn",
     desc:"Peso 40% acima da capacidade no centro de carga nominal. Pode até parecer estável, mas já é proibido.",
-    apply(){ spec={...PRESETS.glp25}; load.weightKg=3500; load.loadCenterMm=500; load.heightMm=500; load.lateralMm=0;
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=3500; load.lengthMm=900; load.widthMm=1000; load.heightMm=500; load.lateralMm=0;
       op.liftHeightMm=250; op.tiltDeg=4; op.accelG=0; op.lateralG=0; } },
   { id:"longcenter", title:"Centro de carga deslocado", badge:"warn",
     desc:"Mesmo peso permitido no centro nominal, mas a carga é comprida/mal posicionada — capacidade real cai.",
-    apply(){ spec={...PRESETS.glp25}; load.weightKg=2200; load.loadCenterMm=1050; load.heightMm=400; load.lateralMm=0;
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=2200; load.lengthMm=2000; load.widthMm=500; load.heightMm=400; load.lateralMm=0;
       op.liftHeightMm=250; op.tiltDeg=4; op.accelG=0; op.lateralG=0; } },
   { id:"brakehigh", title:"Carga elevada + frenagem brusca", badge:"danger",
     desc:"Garfos bem altos e frenagem brusca — o efeito dinâmico soma-se ao peso e derruba a empilhadeira para frente.",
-    apply(){ spec={...PRESETS.glp25}; load.weightKg=1800; load.loadCenterMm=550; load.heightMm=500; load.lateralMm=0;
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=1800; load.lengthMm=1000; load.widthMm=1000; load.heightMm=500; load.lateralMm=0;
       op.liftHeightMm=3400; op.tiltDeg=0; op.accelG=-0.45; op.lateralG=0; } },
   { id:"turnhigh", title:"Curva fechada com carga elevada", badge:"danger",
     desc:"Garfos altos e curva fechada — a força lateral desloca o centro de gravidade para fora da base de apoio.",
-    apply(){ spec={...PRESETS.glp25}; load.weightKg=1500; load.loadCenterMm=500; load.heightMm=500; load.lateralMm=0;
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=1500; load.lengthMm=900; load.widthMm=1000; load.heightMm=500; load.lateralMm=0;
       op.liftHeightMm=3200; op.tiltDeg=4; op.accelG=0; op.lateralG=0.38; } },
   { id:"offcenter", title:"Carga com CG deslocado lateralmente", badge:"danger",
     desc:"Carga muito mal centrada nos garfos e elevada, ainda por cima em uma curva leve — o desequilíbrio lateral some com o efeito da curva.",
-    apply(){ spec={...PRESETS.glp25}; load.weightKg=1800; load.loadCenterMm=500; load.heightMm=600; load.lateralMm=480;
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=1800; load.lengthMm=900; load.widthMm=1000; load.heightMm=600; load.lateralMm=480;
       op.liftHeightMm=2200; op.tiltDeg=4; op.accelG=0; op.lateralG=-0.22; } },
   { id:"correct", title:"Transporte correto", badge:"ok",
     desc:"Carga pesada, porém baixa e com mastro inclinado para trás — a prática recomendada de deslocamento.",
-    apply(){ spec={...PRESETS.glp25}; load.weightKg=2300; load.loadCenterMm=500; load.heightMm=500; load.lateralMm=0;
+    apply(){ spec={...PRESETS.glp25}; load.weightKg=2300; load.lengthMm=900; load.widthMm=1000; load.heightMm=500; load.lateralMm=0;
       op.liftHeightMm=150; op.tiltDeg=8; op.accelG=0; op.lateralG=0; } },
 ];
 let activeScenario = null;
@@ -1362,6 +1479,7 @@ function renderScenarios(){
       '<div class="sdesc">'+s.desc+'</div>';
     el.addEventListener("click", ()=>{
       s.apply();
+      syncLoadCenter();
       selPreset.value = "custom"; selLoadType.value="custom";
       refreshLabels();
       activeScenario = s.id;
