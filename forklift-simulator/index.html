@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Simulador de Empilhadeira — Treinamento</title>
+<style>
+:root{
+  --bg:#0a0e13; --panel:#121821cc; --panel-solid:#121821; --line:#26313f; --line-soft:#1b2531;
+  --text:#e7edf3; --text-dim:#93a2b3; --text-faint:#5c6b7d;
+  --accent:#3fb6d8; --accent-soft:#3fb6d833;
+  --ok:#55c99a; --warn:#d5d94f; --danger:#e2543c; --danger-soft:#e2543c33;
+  --yellow:#f2a93b;
+  font-size:15px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+#scene{position:fixed;inset:0;display:block;outline:none;}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(6px);
+  box-shadow:0 6px 24px #00000055;}
+.hidden{display:none !important;}
+
+/* ---------- HUD layout ---------- */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:5;}
+#hud .panel{pointer-events:auto;}
+
+#panel-dash{position:absolute;top:14px;left:14px;width:250px;padding:12px 14px;}
+#panel-dash h3{margin:0 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);}
+.gauge-row{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0;}
+.gauge-row .lbl{font-size:11.5px;color:var(--text-dim);}
+.gauge-row .val{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;}
+.bar-track{height:6px;border-radius:4px;background:#1c2632;overflow:hidden;margin:3px 0 8px;}
+.bar-fill{height:100%;border-radius:4px;transition:background-color .15s;}
+.state-ok .val{color:var(--ok);} .state-warn .val{color:var(--warn);} .state-danger .val{color:var(--danger);}
+#stab-margin-label{font-size:11.5px;color:var(--text-dim);margin-top:2px;}
+
+#panel-right{position:absolute;top:14px;right:14px;display:flex;flex-direction:column;gap:10px;align-items:flex-end;}
+#panel-map{padding:10px;}
+#panel-map h3, #panel-chart h3{margin:0 0 6px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);}
+#minimap{display:block;width:210px;height:170px;}
+#panel-chart{padding:10px;}
+#chart{display:block;width:210px;height:150px;}
+#chart-caption{font-size:10.5px;color:var(--text-dim);margin-top:4px;line-height:1.4;}
+
+#alert-banner{position:absolute;top:14px;left:50%;transform:translateX(-50%);padding:8px 18px;border-radius:10px;
+  font-size:13px;font-weight:600;text-align:center;display:none;white-space:nowrap;}
+#alert-banner.show{display:block;}
+#alert-banner.warn{background:#d5d94f22;border:1px solid var(--warn);color:var(--warn);}
+#alert-banner.danger{background:#e2543c33;border:1px solid var(--danger);color:#ffb3a3;animation:pulse 0.6s infinite alternate;}
+@keyframes pulse{from{opacity:1;}to{opacity:.55;}}
+
+#panel-hints{position:absolute;bottom:14px;left:14px;padding:10px 14px;max-width:300px;font-size:11.5px;color:var(--text-dim);}
+#panel-hints b{color:var(--text);}
+#panel-hints .row{display:flex;justify-content:space-between;gap:14px;margin:2px 0;}
+#hints-toggle{cursor:pointer;color:var(--accent);font-size:11px;}
+
+#prompt-pickup{position:absolute;bottom:120px;left:50%;transform:translateX(-50%);padding:8px 16px;
+  background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;font-size:13px;display:none;}
+#prompt-pickup.show{display:block;}
+
+/* ---------- Config drawer ---------- */
+#btn-config-toggle{position:fixed;bottom:14px;right:14px;z-index:6;pointer-events:auto;padding:10px 16px;
+  background:var(--panel-solid);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:13px;
+  cursor:pointer;font-weight:600;transition:right .25s ease;}
+#btn-config-toggle:hover{border-color:var(--accent);}
+body.config-open #btn-config-toggle{right:356px;}
+#config-panel .head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+#btn-config-close{background:none;border:1px solid var(--line);color:var(--text-dim);border-radius:8px;
+  width:28px;height:28px;flex:none;cursor:pointer;font-size:15px;line-height:1;}
+#btn-config-close:hover{border-color:var(--danger);color:#ffb3a3;}
+#config-panel{position:fixed;top:0;right:0;height:100%;width:340px;z-index:7;background:var(--panel-solid);
+  border-left:1px solid var(--line);overflow-y:auto;padding:18px;pointer-events:auto;transform:translateX(100%);
+  transition:transform .25s ease;}
+#config-panel.open{transform:translateX(0);}
+#config-panel h2{font-size:15px;margin:0 0 4px;}
+#config-panel .sub{font-size:11.5px;color:var(--text-dim);margin-bottom:14px;line-height:1.5;}
+#config-panel h4{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);
+  margin:18px 0 8px;border-top:1px solid var(--line-soft);padding-top:14px;}
+#config-panel h4:first-of-type{border-top:none;padding-top:0;}
+.field{margin:10px 0;}
+.field label{display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);margin-bottom:4px;}
+.field label span.v{color:var(--text);font-weight:600;}
+.field input[type=range]{width:100%;accent-color:var(--accent);}
+.field select, .field input[type=number]{width:100%;background:#0d1219;border:1px solid var(--line);color:var(--text);
+  border-radius:6px;padding:6px 8px;font-size:12.5px;}
+.btnrow{display:flex;gap:8px;margin-top:10px;}
+.btn{flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:#0d1219;color:var(--text);
+  font-size:12.5px;font-weight:600;cursor:pointer;text-align:center;}
+.btn:hover{border-color:var(--accent);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#04141a;}
+.btn.danger{border-color:var(--danger);color:#ffb3a3;}
+.note{font-size:11px;color:var(--text-faint);line-height:1.5;margin-top:4px;}
+
+/* ---------- Overlays ---------- */
+#intro-screen, #tipover-screen{position:fixed;inset:0;z-index:20;background:#05080cee;display:flex;
+  align-items:center;justify-content:center;pointer-events:auto;}
+.card{max-width:640px;width:92%;background:var(--panel-solid);border:1px solid var(--line);border-radius:16px;
+  padding:28px 32px;max-height:88vh;overflow-y:auto;}
+.card h1{font-size:22px;margin:0 0 4px;}
+.card .kicker{color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;}
+.card p{font-size:13.5px;line-height:1.6;color:var(--text-dim);margin:8px 0;}
+.card ul{margin:8px 0;padding-left:20px;font-size:13px;color:var(--text-dim);line-height:1.7;}
+.card b{color:var(--text);}
+.kgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin:14px 0;font-size:12.5px;}
+.kgrid div span{color:var(--text-faint);}
+.kgrid div b{display:block;color:var(--text);}
+#tipover-screen .card{border-color:var(--danger);}
+#tipover-screen h1{color:var(--danger);}
+
+::-webkit-scrollbar{width:8px;}
+::-webkit-scrollbar-thumb{background:#26313f;border-radius:8px;}
+
+@media (max-width:720px){
+  #panel-right{display:none;}
+  #panel-hints{display:none;}
+  #config-panel{width:88%;}
+}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="hud">
+  <div id="panel-dash" class="panel">
+    <h3>Painel da empilhadeira</h3>
+    <div class="gauge-row"><span class="lbl">Velocidade</span><span class="val" id="v-speed">0.0 km/h</span></div>
+    <div class="gauge-row"><span class="lbl">Altura dos garfos</span><span class="val" id="v-height">0 mm</span></div>
+    <div class="bar-track"><div class="bar-fill" id="bar-height" style="width:0%;background:var(--accent);"></div></div>
+    <div class="gauge-row"><span class="lbl">Inclinação do mastro</span><span class="val" id="v-tilt">0.0°</span></div>
+    <div class="bar-track"><div class="bar-fill" id="bar-tilt" style="width:50%;background:var(--accent);"></div></div>
+    <div class="gauge-row"><span class="lbl">Carga nos garfos</span><span class="val" id="v-load">— kg</span></div>
+    <div class="gauge-row"><span class="lbl">Capacidade no centro de carga</span><span class="val" id="v-cap">— kg</span></div>
+    <div class="bar-track"><div class="bar-fill" id="bar-cap" style="width:0%;background:var(--ok);"></div></div>
+    <div class="gauge-row state-ok" id="row-margin"><span class="lbl">Margem de estabilidade</span><span class="val" id="v-margin">100%</span></div>
+    <div id="stab-margin-label">Empilhadeira estável</div>
+  </div>
+
+  <div id="panel-right">
+    <div id="panel-map" class="panel">
+      <h3>Triângulo de estabilidade (vista de cima)</h3>
+      <canvas id="minimap" width="210" height="170"></canvas>
+    </div>
+    <div id="panel-chart" class="panel">
+      <h3>Gráfico de capacidade x centro de carga</h3>
+      <canvas id="chart" width="210" height="150"></canvas>
+      <div id="chart-caption">Ponto colorido = sua carga atual. Curva = capacidade máxima nominal em cada centro de carga.</div>
+    </div>
+  </div>
+
+  <div id="alert-banner"></div>
+  <div id="prompt-pickup">Pressione <b>E</b> para pegar a carga</div>
+
+  <div id="panel-hints" class="panel">
+    <div class="row"><b>Painel de comandos</b><span id="hints-toggle" onclick="document.getElementById('hints-body').classList.toggle('hidden')">mostrar/ocultar</span></div>
+    <div id="hints-body">
+      <div class="row"><span>Andar / Ré</span><span>W S ou ↑ ↓</span></div>
+      <div class="row"><span>Virar (roda traseira)</span><span>A D ou ← →</span></div>
+      <div class="row"><span>Elevar / Abaixar garfos</span><span>R / F</span></div>
+      <div class="row"><span>Inclinar mastro trás/frente</span><span>T / G</span></div>
+      <div class="row"><span>Pegar / soltar carga</span><span>E</span></div>
+      <div class="row"><span>Buzina</span><span>H</span></div>
+      <div class="row"><span>Câmera</span><span>C</span></div>
+      <div class="row"><span>Freio</span><span>Espaço</span></div>
+    </div>
+  </div>
+</div>
+
+<button id="btn-config-toggle">⚙ Configurar carga e empilhadeira</button>
+
+<div id="config-panel">
+  <div class="head">
+    <h2>Configuração de treinamento</h2>
+    <button id="btn-config-close" title="Fechar">✕</button>
+  </div>
+  <div class="sub">Ajuste a empilhadeira e a carga para entender, na prática, como o centro de carga, o peso, a altura de elevação e a inclinação do mastro afetam a capacidade e a estabilidade.</div>
+
+  <h4>Modelo de empilhadeira</h4>
+  <div class="field">
+    <label>Modelo <span class="v" id="lbl-preset"></span></label>
+    <select id="sel-preset">
+      <option value="eletrica15">Elétrica 1,5 t (contrabalanço)</option>
+      <option value="glp25" selected>GLP 2,5 t (contrabalanço)</option>
+      <option value="pesada35">Diesel 3,5 t (grande porte)</option>
+      <option value="custom">Personalizado</option>
+    </select>
+  </div>
+  <div class="field"><label>Capacidade nominal <span class="v" id="lbl-ratedcap"></span></label>
+    <input type="range" id="in-ratedcap" min="500" max="6000" step="50"></div>
+  <div class="field"><label>Centro de carga nominal (padrão de fábrica) <span class="v" id="lbl-ratedlc"></span></label>
+    <input type="range" id="in-ratedlc" min="300" max="900" step="10"></div>
+  <div class="note">A capacidade nominal (na plaqueta de identificação) só vale para cargas cujo centro de gravidade está exatamente a essa distância da face dos garfos. Cargas com centro de carga maior reduzem a capacidade real — veja o gráfico.</div>
+
+  <h4>Carga sobre os garfos</h4>
+  <div class="field"><label>Peso da carga <span class="v" id="lbl-loadw"></span></label>
+    <input type="range" id="in-loadw" min="0" max="6000" step="25"></div>
+  <div class="field"><label>Centro de carga (distância do centro de gravidade até a face dos garfos) <span class="v" id="lbl-loadlc"></span></label>
+    <input type="range" id="in-loadlc" min="150" max="1300" step="10"></div>
+  <div class="field"><label>Deslocamento lateral do centro de gravidade <span class="v" id="lbl-loadlat"></span></label>
+    <input type="range" id="in-loadlat" min="-500" max="500" step="10"></div>
+  <div class="field"><label>Altura da carga (para efeito visual e de CG) <span class="v" id="lbl-loadh"></span></label>
+    <input type="range" id="in-loadh" min="200" max="1600" step="10"></div>
+  <div class="btnrow">
+    <div class="btn primary" id="btn-place-load">Colocar carga configurada nos garfos</div>
+  </div>
+  <div class="btnrow">
+    <div class="btn danger" id="btn-remove-load">Remover carga dos garfos</div>
+  </div>
+
+  <h4>Cenário</h4>
+  <div class="btnrow">
+    <div class="btn" id="btn-respawn-pallets">Gerar novos paletes no depósito</div>
+  </div>
+  <div class="btnrow">
+    <div class="btn" id="btn-reset-truck">Reposicionar empilhadeira</div>
+  </div>
+  <div class="note" id="derate-note">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <input type="checkbox" id="chk-derate"> Aplicar derating estrutural adicional acima de 3 m de elevação (alguns mastros longos reduzem a capacidade estrutural em grandes alturas, além do efeito de estabilidade)
+    </label>
+  </div>
+
+  <h4>Sobre o modelo físico</h4>
+  <p class="note">
+  A estabilidade é calculada pelo <b>triângulo de estabilidade</b> formado pelas duas rodas dianteiras (motrizes) e o pino
+  central do eixo traseiro (direção). Enquanto a projeção do centro de gravidade combinado (empilhadeira + carga) permanecer
+  dentro desse triângulo, a empilhadeira não tomba. Elevar a carga não reduz a capacidade estática com o mastro na vertical,
+  mas <b>aumenta muito o risco</b> ao inclinar para frente, acelerar, frear ou fazer curvas — o efeito dinâmico é amplificado
+  pela altura do centro de gravidade. Este é um modelo simplificado para fins didáticos, não um manual de um modelo real.
+  </p>
+</div>
+
+<div id="intro-screen">
+  <div class="card">
+    <div class="kicker">Treinamento de operação — uso educacional</div>
+    <h1>Simulador de Empilhadeira</h1>
+    <p>Pratique a condução de uma empilhadeira contrabalançada e aprenda, na prática, os conceitos que mais causam
+    acidentes reais: <b>centro de carga</b>, <b>capacidade nominal</b>, <b>triângulo de estabilidade</b> e os riscos de
+    elevar, inclinar, acelerar, frear e curvar com carga no alto.</p>
+    <div class="kgrid">
+      <div><span>Andar / Ré</span><b>W S ou setas ↑ ↓</b></div>
+      <div><span>Virar</span><b>A D ou setas ← →</b></div>
+      <div><span>Elevar / Abaixar</span><b>R / F</b></div>
+      <div><span>Inclinar mastro</span><b>T (trás) / G (frente)</b></div>
+      <div><span>Pegar / soltar carga</span><b>E</b></div>
+      <div><span>Câmera</span><b>C</b></div>
+    </div>
+    <ul>
+      <li>Use o botão <b>Configurar</b> (canto inferior direito) para montar cenários: mude o peso, o centro de carga e
+      o modelo de empilhadeira, e observe o gráfico de capacidade e o triângulo de estabilidade reagirem em tempo real.</li>
+      <li>Ande até um palete no depósito e pressione <b>E</b> perto dos garfos para pegá-lo; leve até uma prateleira e
+      eleve os garfos até a altura da viga para posicionar a carga.</li>
+      <li>Se a margem de estabilidade chegar a zero, a empilhadeira tomba — evite acelerar, frear ou curvar bruscamente
+      com carga elevada, e sempre incline o mastro para trás antes de se deslocar.</li>
+    </ul>
+    <div class="btnrow"><div class="btn primary" id="btn-start" style="padding:12px;">Iniciar simulação</div></div>
+  </div>
+</div>
+
+<div id="tipover-screen" class="hidden">
+  <div class="card">
+    <div class="kicker" style="color:var(--danger);">Acidente simulado</div>
+    <h1>Tombamento!</h1>
+    <p id="tipover-reason">A empilhadeira tombou.</p>
+    <p>Em uma operação real, o operador poderia sofrer ferimentos graves. Reveja o gráfico de capacidade e o triângulo de
+    estabilidade para entender o que ultrapassou o limite antes de tentar novamente.</p>
+    <div class="btnrow"><div class="btn primary" id="btn-restart" style="padding:12px;">Reiniciar</div></div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+/* ============================================================
+   Utilidades
+   ============================================================ */
+const G = 9.81;
+const deg2rad = d => d*Math.PI/180;
+const rad2deg = r => r*180/Math.PI;
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+const moveToward = (v,target,maxDelta) => {
+  const d = target-v;
+  if (Math.abs(d) <= maxDelta) return target;
+  return v + Math.sign(d)*maxDelta;
+};
+
+const COLORS = {
+  bg: 0x0a0e13, floor: 0x141c24, floorLine: 0x233043,
+  chassis: 0xf2a93b, chassisDark: 0xd8901f, counterweight: 0x262b31,
+  mast: 0x3a4552, fork: 0x8a8f96, tire: 0x1b1f24, rim: 0x4a525b,
+  glass: 0x9fd8e8, rack: 0x3f7fd6, beam: 0xe77824,
+  palletWood: 0xb98a52,
+  loadLight: 0x55c99a, loadMed: 0xd5d94f, loadHeavy: 0xe2543c,
+};
+
+/* ============================================================
+   Especificação da empilhadeira (plaqueta de identificação)
+   ============================================================ */
+const PRESETS = {
+  eletrica15: {label:"Elétrica 1,5 t", ratedCapacityKg:1500, ratedLoadCenterMm:500, vehicleWeightKg:2600,
+    maxLiftHeightMm:4000, wheelbaseMm:1500, frontOverhangMm:400, trackWidthMm:950,
+    maxForwardTiltDeg:5, maxBackwardTiltDeg:8, maxSpeedKmh:14},
+  glp25: {label:"GLP 2,5 t", ratedCapacityKg:2500, ratedLoadCenterMm:500, vehicleWeightKg:3800,
+    maxLiftHeightMm:4700, wheelbaseMm:1650, frontOverhangMm:450, trackWidthMm:1000,
+    maxForwardTiltDeg:6, maxBackwardTiltDeg:10, maxSpeedKmh:19},
+  pesada35: {label:"Diesel 3,5 t", ratedCapacityKg:3500, ratedLoadCenterMm:600, vehicleWeightKg:5400,
+    maxLiftHeightMm:5500, wheelbaseMm:1800, frontOverhangMm:500, trackWidthMm:1100,
+    maxForwardTiltDeg:6, maxBackwardTiltDeg:12, maxSpeedKmh:20},
+};
+const SAFETY_FACTOR = 1.6; // fator entre capacidade nominal e o ponto real de tombamento estático
+
+let spec = {...PRESETS.glp25};
+let presetKey = "glp25";
+
+function ownArmM(){
+  return SAFETY_FACTOR*spec.ratedCapacityKg*((spec.frontOverhangMm+spec.ratedLoadCenterMm)/1000)/spec.vehicleWeightKg;
+}
+// Capacidade estática (mastro vertical, parada, sem efeitos dinâmicos) para um dado centro de carga.
+function staticCapacityAt(loadCenterMm){
+  const armM = (spec.frontOverhangMm+loadCenterMm)/1000;
+  let cap = (spec.vehicleWeightKg*ownArmM())/(SAFETY_FACTOR*armM);
+  return cap;
+}
+function heightDerateFactor(heightM){
+  if (!ui.chkDerate.checked) return 1;
+  const thresholdM = 3.0;
+  if (heightM <= thresholdM) return 1;
+  return clamp(1-(heightM-thresholdM)*0.12, 0.4, 1);
+}
+
+/* ============================================================
+   Estado da simulação
+   ============================================================ */
+const state = {
+  pos: new THREE.Vector3(0,0,6),
+  heading: Math.PI, // radianos; modelo aponta garfos em -Z local, heading=PI olha para -Z do mundo inicialmente
+  speed: 0,          // m/s, + = para frente (garfos à frente)
+  prevSpeed: 0,
+  steerAngle: 0,     // rad, roda traseira. + = gira para a esquerda
+  liftHeightM: 0,
+  tiltDeg: 4,        // + = para trás (mais seguro para deslocamento)
+  carrying: null,    // {weightKg, loadCenterMm, lateralMm, heightMm, mesh}
+  tipped: false,
+  tipTimerMs: 0,
+  cameraMode: 0,     // 0 = segue, 1 = topo, 2 = orbital livre
+};
+
+const load = { weightKg: 1000, loadCenterMm: 500, lateralMm: 0, heightMm: 500 };
+
+const keys = {};
+window.addEventListener("keydown", e=>{
+  keys[e.code]=true;
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+  if (e.code==="KeyE") tryPickupOrDrop();
+  if (e.code==="KeyC") cycleCamera();
+  if (e.code==="KeyH") honk();
+});
+window.addEventListener("keyup", e=>{ keys[e.code]=false; });
+
+/* ============================================================
+   Cena three.js
+   ============================================================ */
+const canvas = document.getElementById("scene");
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(COLORS.bg);
+scene.fog = new THREE.Fog(COLORS.bg, 40, 110);
+
+const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 300);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+sun.position.set(20,30,10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-35; sun.shadow.camera.right=35; sun.shadow.camera.top=35; sun.shadow.camera.bottom=-35;
+sun.shadow.camera.far=90;
+scene.add(sun);
+const hemi = new THREE.HemisphereLight(0x7fb8d8, 0x1a1510, 0.4);
+scene.add(hemi);
+
+/* ----- chão do depósito ----- */
+const FLOOR_W=70, FLOOR_D=70;
+const floorMat = new THREE.MeshStandardMaterial({color:COLORS.floor, roughness:0.9, metalness:0.05});
+const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_W,FLOOR_D), floorMat);
+floorMesh.rotation.x = -Math.PI/2;
+floorMesh.receiveShadow = true;
+scene.add(floorMesh);
+const grid = new THREE.GridHelper(FLOOR_W, 35, COLORS.floorLine, COLORS.floorLine);
+grid.position.y = 0.01;
+grid.material.transparent = true; grid.material.opacity = 0.5;
+scene.add(grid);
+
+/* ----- paredes de fundo (referência visual) ----- */
+function wall(w,h,x,y,z,ry){
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshStandardMaterial({color:0x0d131b, roughness:1}));
+  m.position.set(x,y,z); m.rotation.y = ry; m.receiveShadow=true;
+  scene.add(m);
+}
+wall(FLOOR_W,10,0,5,-FLOOR_D/2,0);
+wall(FLOOR_D,10,-FLOOR_W/2,5,0,Math.PI/2);
+wall(FLOOR_D,10,FLOOR_W/2,5,0,-Math.PI/2);
+
+/* ----- estruturas de racks (porta-paletes) com níveis marcados ----- */
+const RACK_LEVELS_M = [1.5, 3.0, 4.3];
+function buildRack(x,z,rotY){
+  const g = new THREE.Group();
+  g.position.set(x,0,z); g.rotation.y = rotY;
+  const upMat = new THREE.MeshStandardMaterial({color:COLORS.rack, roughness:0.6, metalness:0.3});
+  const beamMat = new THREE.MeshStandardMaterial({color:COLORS.beam, roughness:0.6, metalness:0.2});
+  const topH = 5.0, bayW = 2.7, depth = 1.1;
+  [[-bayW/2,-depth/2],[bayW/2,-depth/2],[-bayW/2,depth/2],[bayW/2,depth/2]].forEach(([ux,uz])=>{
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.08,topH,0.08), upMat);
+    post.position.set(ux,topH/2,uz); post.castShadow=true;
+    g.add(post);
+  });
+  RACK_LEVELS_M.forEach(h=>{
+    [-depth/2,depth/2].forEach(uz=>{
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(bayW,0.1,0.08), beamMat);
+      beam.position.set(0,h,uz); beam.castShadow=true;
+      g.add(beam);
+    });
+    // etiqueta de altura (canvas -> sprite)
+    const c=document.createElement("canvas"); c.width=256; c.height=64;
+    const ctx=c.getContext("2d");
+    ctx.fillStyle="rgba(10,14,19,0.85)"; ctx.fillRect(0,0,256,64);
+    ctx.fillStyle="#e77824"; ctx.font="bold 34px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(Math.round(h*1000)+" mm", 128,34);
+    const tex = new THREE.CanvasTexture(c);
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true}));
+    spr.position.set(bayW/2+0.55,h+0.15,0); spr.scale.set(1.1,0.28,1);
+    g.add(spr);
+  });
+  scene.add(g);
+}
+buildRack(-14, -24, 0);
+buildRack(-9, -24, 0);
+buildRack(9, -24, 0);
+buildRack(14, -24, 0);
+
+/* ============================================================
+   Empilhadeira — modelo 3D
+   ============================================================ */
+function buildForklift(){
+  const wb = spec.wheelbaseMm/1000, fo = spec.frontOverhangMm/1000, tw = spec.trackWidthMm/1000;
+  const root = new THREE.Group();
+
+  // eixo dianteiro (motriz, fixo) em z=0 local (referência da física); garfos apontam para -z (frente)
+  const bodyMat = new THREE.MeshStandardMaterial({color:COLORS.chassis, roughness:0.55, metalness:0.35});
+  const darkMat = new THREE.MeshStandardMaterial({color:COLORS.chassisDark, roughness:0.6, metalness:0.3});
+  const cwMat = new THREE.MeshStandardMaterial({color:COLORS.counterweight, roughness:0.5, metalness:0.6});
+
+  const chassis = new THREE.Group();
+  root.add(chassis);
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(tw+0.25, 0.75, wb*0.72), bodyMat);
+  body.position.set(0,0.55,-wb*0.30);
+  body.castShadow=true; body.receiveShadow=true;
+  chassis.add(body);
+
+  const counterweight = new THREE.Mesh(new THREE.BoxGeometry(tw+0.3,0.95,0.55), cwMat);
+  counterweight.position.set(0,0.7,-wb-0.15);
+  counterweight.castShadow=true;
+  chassis.add(counterweight);
+
+  // guarda avançada / teto de proteção
+  const guardMat = darkMat;
+  const pillarGeo = new THREE.CylinderGeometry(0.035,0.035,1.65,8);
+  [[tw/2-0.1,-wb*0.12],[-tw/2+0.1,-wb*0.12],[tw/2-0.1,-wb*0.78],[-tw/2+0.1,-wb*0.78]].forEach(([x,z])=>{
+    const p = new THREE.Mesh(pillarGeo, guardMat); p.position.set(x,1.75,z); p.castShadow=true; chassis.add(p);
+  });
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(tw+0.05,0.05,wb*0.75), guardMat);
+  roof.position.set(0,2.58,-wb*0.45); roof.castShadow=true;
+  chassis.add(roof);
+
+  // banco
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.45,0.5), new THREE.MeshStandardMaterial({color:0x1c2026}));
+  seat.position.set(0,1.05,-wb*0.55); chassis.add(seat);
+
+  // rodas dianteiras (motrizes, fixas)
+  const wheelGeo = new THREE.CylinderGeometry(0.36,0.36,0.28,20);
+  const tireMat = new THREE.MeshStandardMaterial({color:COLORS.tire, roughness:0.9});
+  const rimMat = new THREE.MeshStandardMaterial({color:COLORS.rim, roughness:0.4, metalness:0.6});
+  const driveWheels = [];
+  [-1,1].forEach(side=>{
+    const wgroup = new THREE.Group();
+    const tire = new THREE.Mesh(wheelGeo, tireMat); tire.rotation.z=Math.PI/2; tire.castShadow=true;
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.30,14), rimMat); rim.rotation.z=Math.PI/2;
+    wgroup.add(tire,rim);
+    wgroup.position.set(side*tw/2, 0.36, 0);
+    chassis.add(wgroup);
+    driveWheels.push(wgroup);
+  });
+
+  // eixo traseiro (direção — pino único simulado com duas rodas próximas)
+  const steerPivot = new THREE.Group();
+  steerPivot.position.set(0,0,-wb);
+  chassis.add(steerPivot);
+  const steerWheels=[];
+  [-1,1].forEach(side=>{
+    const wgroup = new THREE.Group();
+    const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.26,0.22,18), tireMat); tire.rotation.z=Math.PI/2; tire.castShadow=true;
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.24,12), rimMat); rim.rotation.z=Math.PI/2;
+    wgroup.add(tire,rim);
+    wgroup.position.set(side*0.22,0.26,0);
+    steerPivot.add(wgroup);
+    steerWheels.push(wgroup);
+  });
+
+  // mastro (grupo de inclinação, pivô perto do eixo dianteiro)
+  const tiltGroup = new THREE.Group();
+  tiltGroup.position.set(0, 0.35, fo*0.55);
+  chassis.add(tiltGroup);
+
+  const mastMat = new THREE.MeshStandardMaterial({color:COLORS.mast, roughness:0.4, metalness:0.5});
+  const maxLiftM = spec.maxLiftHeightMm/1000;
+  const outerH = maxLiftM*0.62;
+  [-1,1].forEach(side=>{
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.09,outerH,0.14), mastMat);
+    rail.position.set(side*(tw*0.4), outerH/2, 0); rail.castShadow=true;
+    tiltGroup.add(rail);
+  });
+  const crossTop = new THREE.Mesh(new THREE.BoxGeometry(tw*0.8+0.09,0.09,0.14), mastMat);
+  crossTop.position.set(0, outerH-0.05, 0);
+  tiltGroup.add(crossTop);
+
+  const innerMast = new THREE.Group();
+  tiltGroup.add(innerMast);
+  const innerMat = new THREE.MeshStandardMaterial({color:0x4a5560, roughness:0.35, metalness:0.6});
+  const innerRails=[];
+  [-1,1].forEach(side=>{
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.07,outerH*0.85,0.1), innerMat);
+    rail.position.set(side*(tw*0.4), outerH*0.85/2, 0.02); rail.castShadow=true;
+    innerMast.add(rail); innerRails.push(rail);
+  });
+
+  // carro-porta-garfos + garfos
+  const carriage = new THREE.Group();
+  tiltGroup.add(carriage);
+  const carriagePlate = new THREE.Mesh(new THREE.BoxGeometry(tw*0.85,0.5,0.08), new THREE.MeshStandardMaterial({color:0x2b323a, metalness:0.5, roughness:0.5}));
+  carriagePlate.position.set(0,0.25,0.12); carriagePlate.castShadow=true;
+  carriage.add(carriagePlate);
+
+  const forkMat = new THREE.MeshStandardMaterial({color:COLORS.fork, roughness:0.5, metalness:0.6});
+  const forkGroup = new THREE.Group();
+  carriage.add(forkGroup);
+  const forkLen = 1.1;
+  [-1,1].forEach(side=>{
+    const fork = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.08,forkLen), forkMat);
+    fork.position.set(side*tw*0.28, 0.04, 0.12+forkLen/2); fork.castShadow=true;
+    forkGroup.add(fork);
+  });
+
+  // ponto de referência do "calcanhar" dos garfos (face contra o carro) em coordenadas locais da tiltGroup
+  const forkFaceLocalZ = 0.16;
+
+  // luzes/etiqueta
+  const headlight = new THREE.PointLight(0xfff2cc, 0.6, 6);
+  headlight.position.set(0,1.2,fo+0.3);
+  chassis.add(headlight);
+
+  return { root, chassis, driveWheels, steerPivot, steerWheels, tiltGroup, innerMast, carriage, forkGroup,
+           maxLiftM, outerH, forkFaceLocalZ, forkLen };
+}
+
+let forklift = buildForklift();
+scene.add(forklift.root);
+
+/* ============================================================
+   Paletes / cargas no depósito
+   ============================================================ */
+const pallets = []; // {group, weightKg, dims:{w,d,h}, worldPos, picked}
+function makePalletMesh(weightKg, dims){
+  const g = new THREE.Group();
+  const pallet = new THREE.Mesh(new THREE.BoxGeometry(dims.w,0.14,dims.d), new THREE.MeshStandardMaterial({color:COLORS.palletWood, roughness:0.9}));
+  pallet.position.y=0.07; pallet.castShadow=true; pallet.receiveShadow=true;
+  g.add(pallet);
+  const boxColor = weightKg>1800?COLORS.loadHeavy:(weightKg>800?COLORS.loadMed:COLORS.loadLight);
+  const box = new THREE.Mesh(new THREE.BoxGeometry(dims.w*0.92,dims.h,dims.d*0.92), new THREE.MeshStandardMaterial({color:boxColor, roughness:0.7}));
+  box.position.y = 0.14+dims.h/2; box.castShadow=true; box.receiveShadow=true;
+  g.add(box);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), new THREE.LineBasicMaterial({color:0x000000, transparent:true, opacity:0.25}));
+  edges.position.copy(box.position);
+  g.add(edges);
+  // etiqueta de peso
+  const c=document.createElement("canvas"); c.width=256; c.height=96;
+  const ctx=c.getContext("2d");
+  ctx.fillStyle="rgba(10,14,19,0.85)"; ctx.fillRect(0,0,256,96);
+  ctx.fillStyle="#e7edf3"; ctx.font="bold 40px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(Math.round(weightKg)+" kg", 128,48);
+  const tex = new THREE.CanvasTexture(c);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true}));
+  spr.position.set(0, 0.14+dims.h+0.35, 0); spr.scale.set(1.1,0.42,1);
+  g.add(spr);
+  return {group:g, dims, weightKg, labelSprite:spr, box};
+}
+function spawnPallets(){
+  pallets.forEach(p=>scene.remove(p.group));
+  pallets.length = 0;
+  const spots = [[-18,-6],[-13,-6],[-8,-6],[-3,2],[3,2],[8,-6],[13,-6],[18,-6],[-4,-14],[4,-14]];
+  spots.forEach(([x,z])=>{
+    const w = 0.9+Math.random()*0.3, d=1.1+Math.random()*0.2, h=0.35+Math.random()*0.9;
+    const weightKg = Math.round((150+Math.random()*2600)/25)*25;
+    const p = makePalletMesh(weightKg, {w,d,h});
+    p.group.position.set(x,0,z);
+    p.worldPos = new THREE.Vector3(x,0,z);
+    p.picked = false;
+    // centro de carga real do palete: metade da profundidade + folga de aproximação
+    p.loadCenterMm = Math.round((d/2)*1000 + 60);
+    scene.add(p.group);
+    pallets.push(p);
+  });
+}
+spawnPallets();
+
+/* carga atualmente presa nos garfos (mesh dedicado, reaproveitado) */
+let carriedMeshInfo = null;
+function attachLoadToForks(weightKg, loadCenterMm, lateralMm, heightMm){
+  if (carriedMeshInfo) { forklift.forkGroup.remove(carriedMeshInfo.group); carriedMeshInfo=null; }
+  const w = 0.9, d = (loadCenterMm-60)/1000*2 || 0.8;
+  const info = makePalletMesh(weightKg, {w:Math.max(w,0.5), d:Math.max(d,0.3), h:heightMm/1000});
+  info.group.position.set(lateralMm/1000, 0, forklift.forkFaceLocalZ + Math.max(d,0.3)/2*0.92);
+  forklift.forkGroup.add(info.group);
+  carriedMeshInfo = info;
+  state.carrying = {weightKg, loadCenterMm, lateralMm, heightMm};
+  document.getElementById("prompt-pickup").classList.remove("show");
+}
+function detachLoadFromForks(){
+  if (!carriedMeshInfo) return null;
+  const c = state.carrying;
+  forklift.forkGroup.remove(carriedMeshInfo.group);
+  carriedMeshInfo = null;
+  state.carrying = null;
+  return c;
+}
+
+/* ============================================================
+   Entrada / HUD DOM
+   ============================================================ */
+const ui = {
+  speed: document.getElementById("v-speed"),
+  height: document.getElementById("v-height"),
+  barHeight: document.getElementById("bar-height"),
+  tilt: document.getElementById("v-tilt"),
+  barTilt: document.getElementById("bar-tilt"),
+  loadVal: document.getElementById("v-load"),
+  capVal: document.getElementById("v-cap"),
+  barCap: document.getElementById("bar-cap"),
+  margin: document.getElementById("v-margin"),
+  marginRow: document.getElementById("row-margin"),
+  marginLabel: document.getElementById("stab-margin-label"),
+  alert: document.getElementById("alert-banner"),
+  promptPickup: document.getElementById("prompt-pickup"),
+  configPanel: document.getElementById("config-panel"),
+  chkDerate: document.getElementById("chk-derate"),
+};
+
+function toggleConfigPanel(force){
+  const open = ui.configPanel.classList.toggle("open", force);
+  document.body.classList.toggle("config-open", open);
+}
+document.getElementById("btn-config-toggle").addEventListener("click", ()=>toggleConfigPanel());
+document.getElementById("btn-config-close").addEventListener("click", ()=>toggleConfigPanel(false));
+
+/* -------- config panel bindings -------- */
+const inRatedCap = document.getElementById("in-ratedcap");
+const inRatedLc = document.getElementById("in-ratedlc");
+const inLoadW = document.getElementById("in-loadw");
+const inLoadLc = document.getElementById("in-loadlc");
+const inLoadLat = document.getElementById("in-loadlat");
+const inLoadH = document.getElementById("in-loadh");
+const selPreset = document.getElementById("sel-preset");
+
+function refreshConfigLabels(){
+  document.getElementById("lbl-ratedcap").textContent = spec.ratedCapacityKg+" kg";
+  document.getElementById("lbl-ratedlc").textContent = spec.ratedLoadCenterMm+" mm";
+  document.getElementById("lbl-loadw").textContent = load.weightKg+" kg";
+  document.getElementById("lbl-loadlc").textContent = load.loadCenterMm+" mm";
+  document.getElementById("lbl-loadlat").textContent = load.lateralMm+" mm";
+  document.getElementById("lbl-loadh").textContent = load.heightMm+" mm";
+  inRatedCap.value = spec.ratedCapacityKg;
+  inRatedLc.value = spec.ratedLoadCenterMm;
+  inLoadW.value = load.weightKg;
+  inLoadLc.value = load.loadCenterMm;
+  inLoadLat.value = load.lateralMm;
+  inLoadH.value = load.heightMm;
+}
+function applyPreset(key){
+  presetKey = key;
+  if (key!=="custom") spec = {...PRESETS[key]};
+  rebuildForklift();
+  refreshConfigLabels();
+}
+selPreset.addEventListener("change", e=>applyPreset(e.target.value));
+[inRatedCap,inRatedLc].forEach(el=>el.addEventListener("input", ()=>{
+  selPreset.value="custom"; presetKey="custom";
+  spec.ratedCapacityKg = +inRatedCap.value;
+  spec.ratedLoadCenterMm = +inRatedLc.value;
+  refreshConfigLabels();
+}));
+[inLoadW,inLoadLc,inLoadLat,inLoadH].forEach(el=>el.addEventListener("input", ()=>{
+  load.weightKg=+inLoadW.value; load.loadCenterMm=+inLoadLc.value;
+  load.lateralMm=+inLoadLat.value; load.heightMm=+inLoadH.value;
+  refreshConfigLabels();
+  if (state.carrying) attachLoadToForks(load.weightKg, load.loadCenterMm, load.lateralMm, load.heightMm);
+}));
+document.getElementById("btn-place-load").addEventListener("click", ()=>{
+  attachLoadToForks(load.weightKg, load.loadCenterMm, load.lateralMm, load.heightMm);
+});
+document.getElementById("btn-remove-load").addEventListener("click", ()=>{ detachLoadFromForks(); });
+document.getElementById("btn-respawn-pallets").addEventListener("click", spawnPallets);
+document.getElementById("btn-reset-truck").addEventListener("click", ()=>resetTruckPosition());
+refreshConfigLabels();
+
+function rebuildForklift(){
+  const carrying = state.carrying;
+  scene.remove(forklift.root);
+  forklift = buildForklift();
+  scene.add(forklift.root);
+  if (carrying) attachLoadToForks(carrying.weightKg, carrying.loadCenterMm, carrying.lateralMm, carrying.heightMm);
+}
+
+/* ============================================================
+   Física / dinâmica de condução
+   ============================================================ */
+function resetTruckPosition(){
+  state.pos.set(0,0,6); state.heading=Math.PI; state.speed=0; state.steerAngle=0;
+  state.liftHeightM=0; state.tiltDeg=4; state.tipped=false; state.tipTimerMs=0;
+  document.getElementById("tipover-screen").classList.add("hidden");
+}
+
+let lastT = performance.now();
+function updateDriving(dt){
+  const maxSpeed = spec.maxSpeedKmh/3.6;
+  const overloadFactor = clamp(currentCapacityKg()>0 ? (state.carrying?.weightKg||0)/currentCapacityKg() : 0, 0, 3);
+  const perfPenalty = overloadFactor>1 ? clamp(1-(overloadFactor-1)*0.6, 0.15, 1) : 1;
+
+  let targetSpeed = 0;
+  if (keys["KeyW"]||keys["ArrowUp"]) targetSpeed = maxSpeed*perfPenalty;
+  else if (keys["KeyS"]||keys["ArrowDown"]) targetSpeed = -maxSpeed*0.55*perfPenalty;
+  if (keys["Space"]) targetSpeed = 0;
+
+  const accelRate = keys["Space"] ? 5.5 : 1.8;
+  state.prevSpeed = state.speed;
+  state.speed = moveToward(state.speed, targetSpeed, accelRate*dt);
+
+  const maxSteer = deg2rad(38);
+  let targetSteer = 0;
+  if (keys["KeyA"]||keys["ArrowLeft"]) targetSteer = maxSteer;
+  else if (keys["KeyD"]||keys["ArrowRight"]) targetSteer = -maxSteer;
+  state.steerAngle = moveToward(state.steerAngle, targetSteer, deg2rad(90)*dt);
+
+  const wbM = spec.wheelbaseMm/1000;
+  const yawRate = Math.abs(state.speed)>0.02 ? (state.speed/wbM)*Math.tan(state.steerAngle) : 0;
+  state.heading += yawRate*dt;
+
+  state.pos.x += Math.sin(state.heading)*state.speed*dt;
+  state.pos.z += Math.cos(state.heading)*state.speed*dt;
+  state.pos.x = clamp(state.pos.x, -FLOOR_W/2+2, FLOOR_W/2-2);
+  state.pos.z = clamp(state.pos.z, -FLOOR_D/2+2, FLOOR_D/2-2);
+
+  // elevação
+  const liftSpeed = 0.55*perfPenalty;
+  if ((keys["KeyR"]) && !(overloadFactor>1.15)) state.liftHeightM = clamp(state.liftHeightM + liftSpeed*dt, 0, forklift.maxLiftM);
+  if (keys["KeyF"]) state.liftHeightM = clamp(state.liftHeightM - liftSpeed*dt, 0, forklift.maxLiftM);
+
+  // inclinação
+  const tiltSpeed = 12; // graus/seg
+  if (keys["KeyT"]) state.tiltDeg = clamp(state.tiltDeg + tiltSpeed*dt, -spec.maxForwardTiltDeg, spec.maxBackwardTiltDeg);
+  if (keys["KeyG"]) state.tiltDeg = clamp(state.tiltDeg - tiltSpeed*dt, -spec.maxForwardTiltDeg, spec.maxBackwardTiltDeg);
+
+  // aplica transformações visuais
+  forklift.root.position.set(state.pos.x, 0, state.pos.z);
+  forklift.root.rotation.y = state.heading;
+  forklift.steerPivot.rotation.y = state.steerAngle;
+  forklift.tiltGroup.rotation.x = deg2rad(-state.tiltDeg); // + tiltDeg (trás) inclina topo do mastro para -z local
+
+  const liftFrac = clamp(state.liftHeightM/forklift.maxLiftM,0,1);
+  forklift.carriage.position.y = state.liftHeightM;
+  forklift.innerMast.position.y = Math.min(state.liftHeightM, forklift.outerH*0.55);
+
+  const wheelRotDelta = (state.speed*dt)/0.36;
+  forklift.driveWheels.forEach(w=>{ w.children[0].rotation.x -= wheelRotDelta; w.children[1].rotation.x -= wheelRotDelta; });
+  forklift.steerWheels.forEach(w=>{ w.children[0].rotation.x -= wheelRotDelta; w.children[1].rotation.x -= wheelRotDelta; });
+}
+
+/* ---------- cálculo de estabilidade ---------- */
+function currentCapacityKg(){
+  if (!state.carrying) return staticCapacityAt(spec.ratedLoadCenterMm*0+ (load.loadCenterMm||spec.ratedLoadCenterMm));
+  return staticCapacityAt(state.carrying.loadCenterMm) * heightDerateFactor(state.liftHeightM);
+}
+
+function computeStability(dt){
+  const wbM = spec.wheelbaseMm/1000, foM = spec.frontOverhangMm/1000, twM = spec.trackWidthMm/1000;
+  const ownArm = ownArmM();
+  const ownWeight = spec.vehicleWeightKg;
+
+  const carrying = state.carrying;
+  const loadWeight = carrying? carrying.weightKg : 0;
+  const loadArmStatic = foM + (carrying? carrying.loadCenterMm/1000 : 0);
+  const forkHeight = state.liftHeightM + 0.35;
+  const loadCgHeight = forkHeight + (carrying? carrying.heightMm/2000 : 0);
+
+  // deslocamento por inclinação do mastro (graus->rad); tiltDeg>0 = para trás (reduz braço)
+  const tiltShift = -Math.sin(deg2rad(state.tiltDeg)) * forkHeight;
+
+  // aceleração longitudinal (m/s^2); frenagem com carga elevada empurra o CG para frente
+  const longAccel = (state.speed-state.prevSpeed)/Math.max(dt,1e-4);
+  const brakingShift = carrying ? -(longAccel/G)*loadCgHeight : 0;
+
+  const loadArmDynamic = loadArmStatic + tiltShift + brakingShift;
+
+  // combinação (y = para frente a partir do eixo dianteiro, negativo = atrás)
+  const totalWeight = ownWeight + loadWeight;
+  const combinedY = (ownWeight*(-ownArm) + loadWeight*loadArmDynamic) / totalWeight;
+
+  // lateral: deslocamento lateral do CG da carga + efeito de curva
+  const wbSafe = Math.max(wbM,0.1);
+  const yawRate = Math.abs(state.speed)>0.02 ? (state.speed/wbSafe)*Math.tan(state.steerAngle) : 0;
+  const lateralAccel = state.speed*yawRate;
+  const systemCgHeight = (ownWeight*0.6 + loadWeight*loadCgHeight)/totalWeight;
+  const loadLateralM = carrying? carrying.lateralMm/1000 : 0;
+  const turnShift = carrying ? -(lateralAccel/G)*systemCgHeight : -(lateralAccel/G)*systemCgHeight*0.15;
+  const combinedX = (ownWeight*0 + loadWeight*loadLateralM)/totalWeight + turnShift;
+
+  // triângulo em coordenadas locais (x lateral, y longitudinal, origem no eixo dianteiro)
+  const A = {x: twM/2, y:0};       // roda dianteira direita (local +x)
+  const B = {x:-twM/2, y:0};       // roda dianteira esquerda
+  const C = {x:0, y:-wbM};         // pino do eixo traseiro
+
+  function edgeSigned(P,Q,pt){ return (Q.x-P.x)*(pt.y-P.y) - (Q.y-P.y)*(pt.x-P.x); }
+  // normaliza por comprimento da aresta para obter distância aproximada
+  function edgeDist(P,Q,pt){
+    const len = Math.hypot(Q.x-P.x,Q.y-P.y)||1;
+    return edgeSigned(P,Q,pt)/len;
+  }
+  const pt = {x:combinedX, y:combinedY};
+  // orientação do triângulo (sentido) para saber sinal "para dentro"
+  const areaSign = Math.sign(edgeSigned(A,B,C)) || 1;
+  const dAB = edgeDist(A,B,pt)*areaSign; // aresta dianteira (tombamento p/ frente se negativo)
+  const dBC = edgeDist(B,C,pt)*areaSign; // aresta traseira-esquerda
+  const dCA = edgeDist(C,A,pt)*areaSign; // aresta traseira-direita
+  const minMargin = Math.min(dAB,dBC,dCA);
+
+  return {A,B,C,pt, dAB,dBC,dCA, minMargin, combinedX, combinedY, longAccel, lateralAccel};
+}
+
+/* ============================================================
+   Pickup / drop
+   ============================================================ */
+function tryPickupOrDrop(){
+  if (state.tipped) return;
+  if (state.carrying){
+    const c = detachLoadFromForks();
+    if (!c) return;
+    // solta no chão à frente dos garfos
+    const dropDist = 0.6;
+    const wx = state.pos.x + Math.sin(state.heading)*(-dropDist);
+    const wz = state.pos.z + Math.cos(state.heading)*(-dropDist);
+    const dims = {w:0.9, d:Math.max((c.loadCenterMm-60)/500,0.4), h:c.heightMm/1000};
+    const p = makePalletMesh(c.weightKg, dims);
+    p.group.position.set(wx,0,wz);
+    p.worldPos = new THREE.Vector3(wx,0,wz);
+    p.picked=false;
+    p.loadCenterMm = c.loadCenterMm;
+    scene.add(p.group);
+    pallets.push(p);
+    return;
+  }
+  // procura palete próximo à frente dos garfos
+  const forkWorld = new THREE.Vector3();
+  forklift.forkGroup.getWorldPosition(forkWorld);
+  let nearest=null, nearestD=1.6;
+  pallets.forEach(p=>{
+    if (p.picked) return;
+    const d = forkWorld.distanceTo(p.group.position);
+    if (d<nearestD){ nearestD=d; nearest=p; }
+  });
+  if (nearest){
+    nearest.picked=true;
+    scene.remove(nearest.group);
+    pallets.splice(pallets.indexOf(nearest),1);
+    attachLoadToForks(nearest.weightKg, nearest.loadCenterMm, 0, nearest.dims.h*1000);
+  }
+}
+
+function updatePickupPrompt(){
+  if (state.carrying){ ui.promptPickup.classList.remove("show"); return; }
+  const forkWorld = new THREE.Vector3();
+  forklift.forkGroup.getWorldPosition(forkWorld);
+  const near = pallets.some(p=>!p.picked && forkWorld.distanceTo(p.group.position)<1.6);
+  ui.promptPickup.classList.toggle("show", near);
+}
+
+/* ============================================================
+   Buzina
+   ============================================================ */
+let audioCtx=null;
+function honk(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type="square"; osc.frequency.value=340;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.35);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime+0.35);
+  }catch(e){}
+}
+
+/* ============================================================
+   Câmera
+   ============================================================ */
+let orbit = {yaw:0, pitch:0.35, dist:9, dragging:false};
+function cycleCamera(){ state.cameraMode = (state.cameraMode+1)%3; }
+canvas.addEventListener("pointerdown", e=>{ if(state.cameraMode===2){ orbit.dragging=true; } });
+window.addEventListener("pointerup", ()=>orbit.dragging=false);
+window.addEventListener("pointermove", e=>{
+  if (orbit.dragging){ orbit.yaw -= e.movementX*0.006; orbit.pitch = clamp(orbit.pitch - e.movementY*0.006, 0.05, 1.4); }
+});
+canvas.addEventListener("wheel", e=>{ if(state.cameraMode===2){ orbit.dist = clamp(orbit.dist+e.deltaY*0.01,3,25); } }, {passive:true});
+
+function updateCamera(dt){
+  const target = new THREE.Vector3(state.pos.x, 1.4+state.liftHeightM*0.15, state.pos.z);
+  if (state.cameraMode===0){
+    const back = new THREE.Vector3(-Math.sin(state.heading), 0, -Math.cos(state.heading)).multiplyScalar(8);
+    const desired = new THREE.Vector3(state.pos.x+back.x, 4.2, state.pos.z+back.z);
+    camera.position.lerp(desired, 1-Math.pow(0.001,dt));
+    camera.lookAt(target);
+  } else if (state.cameraMode===1){
+    const desired = new THREE.Vector3(state.pos.x, 26, state.pos.z+0.01);
+    camera.position.lerp(desired, 1-Math.pow(0.001,dt));
+    camera.up.set(0,0,-1);
+    camera.lookAt(new THREE.Vector3(state.pos.x,0,state.pos.z));
+    camera.up.set(0,1,0);
+  } else {
+    const ox = state.pos.x + orbit.dist*Math.sin(orbit.yaw)*Math.cos(orbit.pitch);
+    const oy = 1.5 + orbit.dist*Math.sin(orbit.pitch);
+    const oz = state.pos.z + orbit.dist*Math.cos(orbit.yaw)*Math.cos(orbit.pitch);
+    camera.position.lerp(new THREE.Vector3(ox,oy,oz), 1-Math.pow(0.0001,dt));
+    camera.lookAt(target);
+  }
+}
+
+/* ============================================================
+   HUD / gráficos
+   ============================================================ */
+const minimapCanvas = document.getElementById("minimap");
+const mctx = minimapCanvas.getContext("2d");
+const chartCanvas = document.getElementById("chart");
+const cctx = chartCanvas.getContext("2d");
+
+function drawMinimap(stab){
+  const w=minimapCanvas.width, h=minimapCanvas.height;
+  mctx.clearRect(0,0,w,h);
+  mctx.fillStyle="#0d1219"; mctx.fillRect(0,0,w,h);
+  const wbM = spec.wheelbaseMm/1000, twM = spec.trackWidthMm/1000;
+  const scale = Math.min((w-40)/twM, (h-40)/wbM);
+  const cx = w/2, cy = 26;
+  const toPx = (x,y)=>({x:cx+x*scale, y:cy-y*scale});
+  const pA = toPx(stab.A.x,stab.A.y), pB = toPx(stab.B.x,stab.B.y), pC = toPx(stab.C.x,stab.C.y);
+
+  mctx.beginPath(); mctx.moveTo(pA.x,pA.y); mctx.lineTo(pB.x,pB.y); mctx.lineTo(pC.x,pC.y); mctx.closePath();
+  const stable = stab.minMargin>=0.05;
+  const warn = stab.minMargin>=0 && stab.minMargin<0.05;
+  mctx.fillStyle = stable? "#55c99a22" : warn? "#d5d94f33" : "#e2543c44";
+  mctx.fill();
+  mctx.strokeStyle = stable? "#55c99a" : warn? "#d5d94f" : "#e2543c";
+  mctx.lineWidth=1.5; mctx.stroke();
+
+  [pA,pB,pC].forEach(p=>{ mctx.beginPath(); mctx.arc(p.x,p.y,3,0,7); mctx.fillStyle="#93a2b3"; mctx.fill(); });
+
+  const pP = toPx(stab.combinedX, stab.combinedY);
+  mctx.beginPath(); mctx.arc(pP.x,pP.y,5,0,7);
+  mctx.fillStyle = stable? "#55c99a" : warn? "#d5d94f" : "#e2543c";
+  mctx.fill(); mctx.strokeStyle="#fff"; mctx.lineWidth=1; mctx.stroke();
+
+  mctx.fillStyle="#5c6b7d"; mctx.font="10px sans-serif"; mctx.textAlign="center";
+  mctx.fillText("frente", cx, pA.y-8);
+  mctx.fillText("eixo traseiro", cx, pC.y+12);
+}
+
+function drawChart(){
+  const w=chartCanvas.width, h=chartCanvas.height;
+  cctx.clearRect(0,0,w,h);
+  cctx.fillStyle="#0d1219"; cctx.fillRect(0,0,w,h);
+  const padL=34, padB=16, padT=8, padR=8;
+  const lcMin=150, lcMax=1300;
+  const capMax = Math.max(staticCapacityAt(lcMin)*1.05, load.weightKg*1.2, spec.ratedCapacityKg*1.3);
+  const xw = w-padL-padR, yh = h-padT-padB;
+  const xOf = lc => padL + (lc-lcMin)/(lcMax-lcMin)*xw;
+  const yOf = cap => padT + yh - clamp(cap/capMax,0,1)*yh;
+
+  // eixos
+  cctx.strokeStyle="#26313f"; cctx.lineWidth=1;
+  cctx.beginPath(); cctx.moveTo(padL,padT); cctx.lineTo(padL,padT+yh); cctx.lineTo(padL+xw,padT+yh); cctx.stroke();
+  cctx.fillStyle="#5c6b7d"; cctx.font="9px sans-serif"; cctx.textAlign="center";
+  cctx.fillText("centro de carga (mm)", padL+xw/2, h-3);
+  cctx.save(); cctx.translate(9,padT+yh/2); cctx.rotate(-Math.PI/2); cctx.fillText("capacidade (kg)",0,0); cctx.restore();
+
+  // curva
+  cctx.beginPath();
+  for (let lc=lcMin; lc<=lcMax; lc+=20){
+    const cap = Math.min(staticCapacityAt(lc), capMax*1.3);
+    const x=xOf(lc), y=yOf(cap);
+    if (lc===lcMin) cctx.moveTo(x,y); else cctx.lineTo(x,y);
+  }
+  cctx.strokeStyle="#3fb6d8"; cctx.lineWidth=2; cctx.stroke();
+  cctx.lineTo(xOf(lcMax), padT+yh); cctx.lineTo(xOf(lcMin), padT+yh); cctx.closePath();
+  cctx.fillStyle="#3fb6d81a"; cctx.fill();
+
+  // ponto nominal
+  const nx=xOf(spec.ratedLoadCenterMm), ny=yOf(spec.ratedCapacityKg);
+  cctx.strokeStyle="#5c6b7d"; cctx.setLineDash([3,3]);
+  cctx.beginPath(); cctx.moveTo(nx,padT); cctx.lineTo(nx,ny); cctx.lineTo(padL,ny); cctx.stroke();
+  cctx.setLineDash([]);
+  cctx.beginPath(); cctx.arc(nx,ny,3,0,7); cctx.fillStyle="#93a2b3"; cctx.fill();
+
+  // ponto da carga atual configurada / carregada
+  const curLc = state.carrying? state.carrying.loadCenterMm : load.loadCenterMm;
+  const curW = state.carrying? state.carrying.weightKg : load.weightKg;
+  const px=xOf(clamp(curLc,lcMin,lcMax)), py=yOf(curW);
+  const capHere = staticCapacityAt(curLc);
+  const over = curW>capHere;
+  cctx.beginPath(); cctx.arc(px,py,4.5,0,7);
+  cctx.fillStyle = over? "#e2543c" : "#55c99a";
+  cctx.fill(); cctx.strokeStyle="#fff"; cctx.lineWidth=1; cctx.stroke();
+}
+
+function setAlert(msg, level){
+  ui.alert.textContent = msg;
+  ui.alert.className = msg? ("show "+level) : "";
+}
+
+function updateHud(stab){
+  const speedKmh = state.speed*3.6;
+  ui.speed.textContent = speedKmh.toFixed(1)+" km/h"+(state.speed<-0.05?" (ré)":"");
+  const heightMm = Math.round(state.liftHeightM*1000);
+  ui.height.textContent = heightMm+" mm";
+  ui.barHeight.style.width = clamp(state.liftHeightM/forklift.maxLiftM*100,0,100)+"%";
+  ui.tilt.textContent = (state.tiltDeg>=0?"+":"")+state.tiltDeg.toFixed(1)+"° "+(state.tiltDeg>=0?"(trás)":"(frente)");
+  ui.barTilt.style.width = (50+ (state.tiltDeg/Math.max(spec.maxBackwardTiltDeg,spec.maxForwardTiltDeg))*50)+"%";
+
+  const carrying = state.carrying;
+  ui.loadVal.textContent = carrying? carrying.weightKg+" kg @ "+carrying.loadCenterMm+" mm" : "sem carga";
+  const cap = carrying? currentCapacityKg() : staticCapacityAt(load.loadCenterMm);
+  ui.capVal.textContent = Math.round(cap)+" kg";
+  const usedFrac = carrying? clamp(carrying.weightKg/cap,0,1.5) : 0;
+  ui.barCap.style.width = clamp(usedFrac*100,0,100)+"%";
+  ui.barCap.style.background = usedFrac>1? "var(--danger)" : usedFrac>0.85? "var(--warn)" : "var(--ok)";
+
+  const marginPct = clamp(100 + stab.minMargin*140, 0, 100);
+  ui.margin.textContent = marginPct.toFixed(0)+"%";
+  ui.marginRow.className = "gauge-row " + (marginPct>35?"state-ok":marginPct>10?"state-warn":"state-danger");
+
+  let alertMsg="", alertLevel="";
+  if (carrying && carrying.weightKg>cap){
+    alertMsg = "SOBRECARGA: "+carrying.weightKg+" kg excede a capacidade de "+Math.round(cap)+" kg neste centro de carga/altura";
+    alertLevel = "danger";
+    ui.marginLabel.textContent = "Sobrecarga — capacidade excedida para este centro de carga";
+  } else if (stab.minMargin<0){
+    alertMsg = "RISCO DE TOMBAMENTO — reduza velocidade, abaixe os garfos ou incline o mastro para trás";
+    alertLevel = "danger";
+    ui.marginLabel.textContent = "Fora do triângulo de estabilidade";
+  } else if (stab.minMargin<0.15){
+    alertMsg = "Margem de estabilidade baixa — evite curvas, freadas ou acelerações bruscas";
+    alertLevel = "warn";
+    ui.marginLabel.textContent = "Margem de estabilidade reduzida";
+  } else {
+    ui.marginLabel.textContent = "Empilhadeira estável";
+  }
+  if (state.liftHeightM>2.5 && Math.abs(state.speed)>0.3 && !alertMsg){
+    alertMsg = "Trafegando com carga elevada — risco de tombamento lateral em curvas";
+    alertLevel = "warn";
+  }
+  setAlert(alertMsg, alertLevel);
+}
+
+/* ============================================================
+   Tombamento
+   ============================================================ */
+function triggerTipOver(stab){
+  state.tipped = true;
+  let reason;
+  if (state.carrying && state.carrying.weightKg > currentCapacityKg()*1.05){
+    reason = "A carga de "+state.carrying.weightKg+" kg excedeu muito a capacidade permitida para o centro de carga de "+
+      state.carrying.loadCenterMm+" mm ("+Math.round(currentCapacityKg())+" kg), rompendo o equilíbrio com o contrapeso.";
+  } else if (stab.dAB < Math.min(stab.dBC,stab.dCA)){
+    reason = "Tombamento para frente: o momento da carga (peso × centro de carga, agravado pela altura de elevação, "+
+      "inclinação do mastro para frente e/ou frenagem) superou o contrapeso traseiro.";
+  } else {
+    reason = "Tombamento lateral: a combinação de velocidade e curva fechada com a carga elevada deslocou o centro de "+
+      "gravidade para fora do triângulo de estabilidade.";
+  }
+  document.getElementById("tipover-reason").textContent = reason;
+  document.getElementById("tipover-screen").classList.remove("hidden");
+}
+
+/* ============================================================
+   Loop principal
+   ============================================================ */
+function onResize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w,h);
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", onResize);
+onResize();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt = Math.min((now-lastT)/1000, 0.05);
+  lastT = now;
+
+  if (!state.tipped){
+    updateDriving(dt);
+  }
+  const stab = computeStability(dt);
+
+  if (!state.tipped){
+    if (stab.minMargin<0){
+      state.tipTimerMs += dt*1000;
+      if (state.tipTimerMs>450) triggerTipOver(stab);
+    } else {
+      state.tipTimerMs = Math.max(0,state.tipTimerMs-dt*1500);
+    }
+  } else {
+    // animação simples de queda
+    const dir = stab.dAB < Math.min(stab.dBC,stab.dCA) ? 1 : 0;
+    if (dir===1){
+      forklift.root.rotation.x = moveToward(forklift.root.rotation.x, deg2rad(72), dt*2.5);
+    } else {
+      const side = stab.dBC < stab.dCA ? 1 : -1;
+      forklift.root.rotation.z = moveToward(forklift.root.rotation.z, side*deg2rad(78), dt*2.5);
+    }
+  }
+
+  updateCamera(dt);
+  updatePickupPrompt();
+  updateHud(stab);
+  drawMinimap(stab);
+  drawChart();
+
+  renderer.render(scene, camera);
+}
+
+/* ============================================================
+   Telas iniciais
+   ============================================================ */
+document.getElementById("btn-start").addEventListener("click", ()=>{
+  document.getElementById("intro-screen").classList.add("hidden");
+});
+document.getElementById("btn-restart").addEventListener("click", ()=>{
+  forklift.root.rotation.set(0,forklift.root.rotation.y,0);
+  detachLoadFromForks();
+  resetTruckPosition();
+});
+
+animate();
+</script>
+</body>
+</html>
