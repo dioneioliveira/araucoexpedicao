@@ -30,9 +30,20 @@ python3 -m http.server 8080
   e o transporte correto) para carregar com um clique e discutir com a turma.
 - **NR-11**: resumo de apoio didático dos pontos centrais da norma (Anexo II) relacionados à operação de
   empilhadeiras.
+- **Plaqueta**: uma plaqueta de capacidade em estilo realista (placa metálica, rebites, tabela de capacidade por
+  centro de carga, tara, entre-eixos, ângulos de inclinação, pneus) que acompanha a configuração atual — serve para
+  treinar a leitura de uma plaqueta real.
 - **Checklist**: simulação da inspeção pré-uso diária (não altera a simulação — reforço de hábito operacional).
 - **🖥 Modo apresentação**: amplia toda a página para leitura à distância (projetor).
 - **❓ Sobre / Como usar**: reabre a tela de instruções a qualquer momento.
+
+## Desenho das vistas
+
+As proporções da empilhadeira (entre-eixos, balanço dianteiro, bitola, diâmetro das rodas dianteiras/traseiras,
+altura da guarda avançada, altura do banco, altura de elevação por estágio do mastro) foram calibradas a partir de
+fichas técnicas reais de empilhadeiras contrabalançadas de 1,5/2,5/3,5 t (ex.: Crown FC5200 series), para que a
+empilhadeira desenhada tenha proporções plausíveis em vez de arbitrárias — rodas dianteiras bem maiores que as
+traseiras, guarda avançada na altura real, contrapeso robusto, mastro telescópico visível, garfos com calcanhar.
 
 ## Modelo físico (simplificado, para fins didáticos)
 
