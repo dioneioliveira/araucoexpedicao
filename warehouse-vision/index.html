@@ -755,23 +755,6 @@ function ageColor(b){
 function skuItemsOf(b){
   return (b.mixed && b.skuBreakdown && b.skuBreakdown.length) ? b.skuBreakdown : [{sku:b.sku, cls:b.cls, familia:b.familia, vol:1}];
 }
-// A mixed position stays visible under the Classe A/B/C filter as long as
-// ANY of its SKUs passes it (see materialVisible), so its dominant-by-
-// overall-volume class can easily be one the user just filtered OUT --
-// painting it in that class's color would look like the filter is
-// leaking other classes through. Re-derive "dominant" from only the SKUs
-// that pass the currently active filter (falling back to the full list
-// when none do, e.g. while a search or "over capacity" view is active),
-// so the color always matches a class the box is actually being shown for.
-function visibleDominantCls(b){
-  const items = skuItemsOf(b);
-  if (items.length <= 1) return b.cls;
-  const passing = items.filter(it => !it.cls || state.filters[it.cls]);
-  const pool = passing.length ? passing : items;
-  let best = pool[0];
-  for (const it of pool) if ((it.vol||0) > (best.vol||0)) best = it;
-  return best.cls;
-}
 function computeFillBaseColor(b){
   // A blocked position shows none of its usual status/occupancy/class color
   // in any mode -- just the fixed "blocked" tone -- since it carries no
@@ -779,14 +762,19 @@ function computeFillBaseColor(b){
   if (b.blocked) return COLORS.blocked;
   if (state.mode === 'plant'){
     if (state.occupancyColors) return occupancyColor(b.occupancy);
-    return classColor(visibleDominantCls(b), b.naoFaturavel); // occupancy gradient off -- class color stays on every box instead of a flat neutral tone
+    return classColor(b.cls, b.naoFaturavel); // occupancy gradient off -- class color stays on every box instead of a flat neutral tone
   }
   if (state.mode === 'age') return ageColor(b);
   // Curva ABC mode: the over-capacity red is itself an occupancy signal,
   // so it only shows while "Cores por ocupação" is on -- off, every box
-  // (over-capacity or not) reads by class only.
+  // (over-capacity or not) reads by class only. A mixed position always
+  // reads by its single most-voluminous item's class (b.cls, already
+  // picked that way in computeEstoqueFromSAP) -- the Classe A/B/C filter
+  // can keep a position visible on account of a smaller secondary SKU
+  // (see materialVisible), but the color itself never follows that
+  // secondary SKU, only the one that actually dominates the position.
   if (state.occupancyColors && b.status === 'over') return COLORS.occOver;
-  return classColor(visibleDominantCls(b), b.naoFaturavel);
+  return classColor(b.cls, b.naoFaturavel);
 }
 
 /* ================= derived KPIs ================= */
