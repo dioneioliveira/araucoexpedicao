@@ -634,13 +634,23 @@ const SEED_DATA_PB25 = {
 const PLANT_CODES = ['PB26','PB25','PB23','PB22'];
 const PLANT_STORAGE_PREFIX = 'warehouseVision.plantData.';
 const ACTIVE_PLANT_STORAGE_KEY = 'warehouseVision.activePlant';
+// Bumped every time the baked-in geometry (SEED_DATA_*) changes. A browser
+// that persisted plant data from an older build (via a real import, or a
+// blocked position) would otherwise keep booting into that stale geometry
+// forever on every future file -- loadPlantData below throws the cached
+// blob away instead of using it whenever its seedBuild doesn't match.
+const SEED_BUILD = 'rev-2026-09-22b';
 function emptyPlantShell(code){
   return { name: code, width: SEED_DATA_PB26.width, depth: SEED_DATA_PB26.depth, boxes: [], zones: [], aisleLabels: [], prodItems: [] };
 }
 function loadPlantData(code){
   try {
     const raw = localStorage.getItem(PLANT_STORAGE_PREFIX + code);
-    if (raw) return JSON.parse(raw);
+    if (raw){
+      const parsed = JSON.parse(raw);
+      if (parsed.seedBuild === SEED_BUILD) return parsed;
+      localStorage.removeItem(PLANT_STORAGE_PREFIX + code);
+    }
   } catch (e){ console.warn('Falha ao carregar dados salvos da planta', code, e); }
   if (code === 'PB26') return SEED_DATA_PB26;
   if (code === 'PB25') return SEED_DATA_PB25;
@@ -752,8 +762,7 @@ const boxByCode = new Map(boxes.map(b=>[b.code, b]));
 
 function fmt(n, d=0){ return (n||0).toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d}); }
 
-const BUILD_TAG = 'rev 2026-09-22b';
-document.getElementById('plant-name').textContent = `${DATA.name} · ${fmt(DATA.width,0)}×${fmt(DATA.depth,0)} m · ${BUILD_TAG}`;
+document.getElementById('plant-name').textContent = `${DATA.name} · ${fmt(DATA.width,0)}×${fmt(DATA.depth,0)} m · ${SEED_BUILD}`;
 document.title = `Arauco Piên - Warehouse Vision ${DATA.name}`;
 
 const importState = { done:false, prodItems: [] };
@@ -2740,6 +2749,7 @@ if (demoBtn) demoBtn.addEventListener('click', ()=>{
    offline. Only called after a real spreadsheet import, never for Demo data. */
 function persistActivePlant(){
   DATA.prodItems = importState.prodItems;
+  DATA.seedBuild = SEED_BUILD;
   try { localStorage.setItem(PLANT_STORAGE_PREFIX + ACTIVE_PLANT, JSON.stringify(DATA)); }
   catch (e){ console.warn('Falha ao salvar dados da planta', ACTIVE_PLANT, e); }
 }
