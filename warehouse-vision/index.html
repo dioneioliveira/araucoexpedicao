@@ -752,7 +752,8 @@ const boxByCode = new Map(boxes.map(b=>[b.code, b]));
 
 function fmt(n, d=0){ return (n||0).toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d}); }
 
-document.getElementById('plant-name').textContent = `${DATA.name} · ${fmt(DATA.width,0)}×${fmt(DATA.depth,0)} m`;
+const BUILD_TAG = 'rev 2026-09-22b';
+document.getElementById('plant-name').textContent = `${DATA.name} · ${fmt(DATA.width,0)}×${fmt(DATA.depth,0)} m · ${BUILD_TAG}`;
 document.title = `Arauco Piên - Warehouse Vision ${DATA.name}`;
 
 const importState = { done:false, prodItems: [] };
