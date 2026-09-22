@@ -1180,7 +1180,13 @@ function renderFamiliaFilter(){
   const block = document.getElementById('familia-block');
   const select = document.getElementById('familia-filter');
   if (!block || !select) return;
-  const families = [...new Set(boxes.map(b=>b.familia).filter(Boolean))].sort();
+  // Pulls família from every SKU in a mixed position (skuItemsOf), not just
+  // each box's dominant one -- a família that never happens to be anyone's
+  // dominant SKU, only ever a secondary material in a mixed position, used
+  // to be entirely unreachable here: materialVisible() already matches it
+  // (a mixed position shows under any família it contains), but with no
+  // dropdown option for it, there was no way to actually select it.
+  const families = [...new Set(boxes.flatMap(b=>skuItemsOf(b).map(it=>it.familia)).filter(Boolean))].sort();
   block.hidden = families.length === 0;
   if (!families.length){ state.familyFilter = ''; return; }
   const prev = state.familyFilter;
