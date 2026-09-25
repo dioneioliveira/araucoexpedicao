@@ -2644,7 +2644,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
   if (!dateByLote.size && lx02Rows.length){
     const lx02Keys = Object.keys(lx02Rows[0]);
     const loteKeyLX = findKey(lx02Keys, ['lote']);
-    const dateKeyLX = findKey(lx02Keys, ['data em']);
+    const dateKeyLX = findKey(lx02Keys, ['data da entrada de mercadorias', 'data de entrada', 'data em']);
     if (loteKeyLX && dateKeyLX){
       report.info(`Guia "LX02" usada como fonte de data (guia "MB51" ausente): lote "${loteKeyLX}", data "${dateKeyLX}".`);
       for (const row of lx02Rows){
@@ -2929,7 +2929,7 @@ async function runImport(file){
     // "cadastros" (curva ABC + família já definidas) takes over from the
     // older "faturamento" Pareto calculation whenever it's present -- it's
     // a lookup, not a computation, so there's no revenue window to report.
-    const cadastrosName = findSheetName(wb, ['cadastros']);
+    const cadastrosName = findSheetName(wb, ['cadastros', 'cadastro']);
     let clsBySku, familiaBySku, hasFat;
     if (cadastrosName){
       const cadastros = computeCadastrosFromRows(sheetRows(wb, cadastrosName), report);
