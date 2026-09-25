@@ -1171,13 +1171,11 @@ function renderFamiliaFilter(){
   const block = document.getElementById('familia-block');
   const select = document.getElementById('familia-filter');
   if (!block || !select) return;
-  // Pulls família from every SKU in a mixed position (skuItemsOf), not just
-  // each box's dominant one -- a família that never happens to be anyone's
-  // dominant SKU, only ever a secondary material in a mixed position, used
-  // to be entirely unreachable here: materialVisible() already matches it
-  // (a mixed position shows under any família it contains), but with no
-  // dropdown option for it, there was no way to actually select it.
-  const families = [...new Set(boxes.flatMap(b=>skuItemsOf(b).map(it=>it.familia)).filter(Boolean))].sort();
+  // Only each box's dominant SKU's família -- matches materialVisible(),
+  // which now filters on the dominant família too (a família that's only
+  // ever a secondary material in a mixed position never actually matches
+  // anything, so it has no business being a selectable option here).
+  const families = [...new Set(boxes.map(b=>b.familia).filter(Boolean))].sort();
   block.hidden = families.length === 0;
   if (!families.length){ state.familyFilter = ''; return; }
   const prev = state.familyFilter;
@@ -1597,20 +1595,27 @@ function roundRect(ctx,x,y,w,h,r){
 function materialVisible(b){
   const hasMaterial = b.status === 'filled' || b.status === 'over';
   if (!hasMaterial) return false;
-  // A mixed position (more than one SKU) must match the active filters if
-  // ANY of its SKUs would -- not just the dominant one by volume, or a
-  // secondary material's class/família would make the whole position
-  // vanish from a filter it should still show under. A single-SKU position
-  // reduces to the same one-item list, so behavior there is unchanged.
-  const items = skuItemsOf(b);
-  if (state.familyFilter && !items.some(it=>it.familia === state.familyFilter)) return false;
+  // Família and Classe A/B/C both key off the position's dominant SKU
+  // (by volume) -- the same one the fill color already reflects
+  // (computeFillBaseColor uses b.cls). A mixed position used to match a
+  // filter if ANY of its SKUs qualified, but that let a position filtered
+  // in under Classe A show up still colored as its dominant class B/C,
+  // reading as the filter "leaking" other classes. Matching only the
+  // dominant SKU keeps what's visible and what's shown in that color the
+  // same set. Search stays a union across every SKU in the position --
+  // finding a specific material should work even when it's only a
+  // secondary item there.
+  if (state.familyFilter && b.familia !== state.familyFilter) return false;
   // An active material search takes over completely: only positions whose
   // material matches stay filled, everything else drops to the same "no
   // material on display" look as a filtered-out or genuinely empty position
   // -- the class/over-only chips are ignored while a search is active.
-  if (state.searchQuery) return items.some(it=>it.sku && it.sku.toUpperCase().includes(state.searchQuery));
+  if (state.searchQuery){
+    const items = skuItemsOf(b);
+    return items.some(it=>it.sku && it.sku.toUpperCase().includes(state.searchQuery));
+  }
   if (state.overOnly) return b.status === 'over';
-  return items.some(it=>!it.cls || state.filters[it.cls]);
+  return !b.cls || state.filters[b.cls];
 }
 function positionVisible(b){
   if (b.status === 'empty') return state.filters.empty;
@@ -2631,6 +2636,26 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     }
   } else {
     report.warn('Guia "MB51" não encontrada — dias em estoque ficarão indisponíveis.');
+  }
+  // MB51 isn't always present (a planilha can track a plant's stock without
+  // it) -- when it's missing or unusable, LX02 itself sometimes carries the
+  // same per-lote entry date under a "Data em" column, so fall back to that
+  // instead of leaving every position's age blank.
+  if (!dateByLote.size && lx02Rows.length){
+    const lx02Keys = Object.keys(lx02Rows[0]);
+    const loteKeyLX = findKey(lx02Keys, ['lote']);
+    const dateKeyLX = findKey(lx02Keys, ['data em']);
+    if (loteKeyLX && dateKeyLX){
+      report.info(`Guia "LX02" usada como fonte de data (guia "MB51" ausente): lote "${loteKeyLX}", data "${dateKeyLX}".`);
+      for (const row of lx02Rows){
+        const lote = normLote(row[loteKeyLX]);
+        if (!lote) continue;
+        const d = excelSerialToDate(row[dateKeyLX]);
+        if (!d) continue;
+        const ts = d.getTime();
+        if (!dateByLote.has(lote) || ts < dateByLote.get(lote)) dateByLote.set(lote, ts);
+      }
+    }
   }
 
   const textoBySku = new Map();
