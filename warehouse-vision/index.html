@@ -762,6 +762,22 @@ function ageColor(b){
 function skuItemsOf(b){
   return (b.mixed && b.skuBreakdown && b.skuBreakdown.length) ? b.skuBreakdown : [{sku:b.sku, cls:b.cls, familia:b.familia, vol:1}];
 }
+// Among a position's items, the highest-volume one whose class is currently
+// checked in the Classe A/B/C filter -- with all three checked (the default)
+// this is just the position's overall dominant item, but with only one or
+// two checked, a mixed position colors as whichever of its classes the user
+// is actually isolating (e.g. a Classe-A-dominant box with a Classe B SKU
+// reads orange when filtering A, blue when filtering B instead of always
+// orange or disappearing). Returns null when nothing in the position passes
+// the active filters -- materialVisible already hides it in that case.
+function visibleDominantCls(b){
+  let best = null, bestVol = -1;
+  for (const it of skuItemsOf(b)){
+    if (it.cls && !state.filters[it.cls]) continue;
+    if (it.vol > bestVol){ bestVol = it.vol; best = it; }
+  }
+  return best ? best.cls : null;
+}
 function computeFillBaseColor(b){
   // A blocked position shows none of its usual status/occupancy/class color
   // in any mode -- just the fixed "blocked" tone -- since it carries no
@@ -769,18 +785,17 @@ function computeFillBaseColor(b){
   if (b.blocked) return COLORS.blocked;
   if (state.mode === 'plant'){
     if (state.occupancyColors) return occupancyColor(b.occupancy);
-    return classColor(b.cls, b.naoFaturavel); // occupancy gradient off -- class color stays on every box instead of a flat neutral tone
+    return classColor(visibleDominantCls(b) ?? b.cls, b.naoFaturavel); // occupancy gradient off -- class color stays on every box instead of a flat neutral tone
   }
   if (state.mode === 'age') return ageColor(b);
   // Curva ABC mode: the over-capacity red is itself an occupancy signal,
   // so it only shows while "Cores por ocupação" is on -- off, every box
-  // (over-capacity or not) reads by class only. A mixed position always
-  // reads by its single most-voluminous item's class (b.cls, already
-  // picked that way in computeEstoqueFromSAP) -- materialVisible's Classe
-  // A/B/C and família filters key off this same dominant SKU, so a
-  // position's visibility and its color always agree.
+  // (over-capacity or not) reads by class only. A mixed position reads by
+  // whichever of its classes is currently isolated in the Classe A/B/C
+  // filter (visibleDominantCls) -- with all three checked that's just the
+  // position's overall dominant item, same as before.
   if (state.occupancyColors && b.status === 'over') return COLORS.occOver;
-  return classColor(b.cls, b.naoFaturavel);
+  return classColor(visibleDominantCls(b) ?? b.cls, b.naoFaturavel);
 }
 
 /* ================= derived KPIs ================= */
@@ -1610,16 +1625,14 @@ function roundRect(ctx,x,y,w,h,r){
 function materialVisible(b){
   const hasMaterial = b.status === 'filled' || b.status === 'over';
   if (!hasMaterial) return false;
-  // Família and Classe A/B/C both key off the position's dominant SKU
-  // (by volume) -- the same one the fill color already reflects
-  // (computeFillBaseColor uses b.cls). A mixed position used to match a
-  // filter if ANY of its SKUs qualified, but that let a position filtered
-  // in under Classe A show up still colored as its dominant class B/C,
-  // reading as the filter "leaking" other classes. Matching only the
-  // dominant SKU keeps what's visible and what's shown in that color the
-  // same set. Search stays a union across every SKU in the position --
-  // finding a specific material should work even when it's only a
-  // secondary item there.
+  // Família stays keyed to the position's dominant SKU (by volume). Classe
+  // A/B/C instead matches if ANY of the position's items qualify -- a mixed
+  // position filtered in under Classe B stays visible even when Classe B
+  // isn't its most-voluminous item, and computeFillBaseColor's
+  // visibleDominantCls() colors it by that same matching item, not always
+  // by the position's overall dominant class. Search stays a union across
+  // every SKU in the position -- finding a specific material should work
+  // even when it's only a secondary item there.
   if (state.familyFilter && b.familia !== state.familyFilter) return false;
   // An active material search takes over completely: only positions whose
   // material matches stay filled, everything else drops to the same "no
@@ -1630,7 +1643,7 @@ function materialVisible(b){
     return items.some(it=>it.sku && it.sku.toUpperCase().includes(state.searchQuery));
   }
   if (state.overOnly) return b.status === 'over';
-  return !b.cls || state.filters[b.cls];
+  return skuItemsOf(b).some(it=>!it.cls || state.filters[it.cls]);
 }
 function positionVisible(b){
   if (b.status === 'empty') return state.filters.empty;
