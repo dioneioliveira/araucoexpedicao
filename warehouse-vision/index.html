@@ -776,10 +776,9 @@ function computeFillBaseColor(b){
   // so it only shows while "Cores por ocupação" is on -- off, every box
   // (over-capacity or not) reads by class only. A mixed position always
   // reads by its single most-voluminous item's class (b.cls, already
-  // picked that way in computeEstoqueFromSAP) -- the Classe A/B/C filter
-  // can keep a position visible on account of a smaller secondary SKU
-  // (see materialVisible), but the color itself never follows that
-  // secondary SKU, only the one that actually dominates the position.
+  // picked that way in computeEstoqueFromSAP) -- materialVisible's Classe
+  // A/B/C and família filters key off this same dominant SKU, so a
+  // position's visibility and its color always agree.
   if (state.occupancyColors && b.status === 'over') return COLORS.occOver;
   return classColor(b.cls, b.naoFaturavel);
 }
