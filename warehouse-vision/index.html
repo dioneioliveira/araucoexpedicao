@@ -269,6 +269,7 @@
   }
   .chip .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
   .chip.off{opacity:.35;}
+  .chip.active{border-color:var(--accent);color:var(--ink);background:var(--accent-soft);}
   .chip:hover{border-color:var(--ink-faint);}
   .toggle-row{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--ink-dim);}
   .switch{position:relative;width:34px;height:19px;flex:0 0 auto;}
@@ -503,7 +504,7 @@
       </div>
       <div class="ctrl-block" id="familia-block" hidden>
         <div class="ctrl-title">Família</div>
-        <select class="plant-select" id="familia-filter" style="width:100%;margin-bottom:9px;"><option value="">Todas as famílias</option></select>
+        <div class="chip-row" id="familia-chips" style="margin-bottom:9px;"></div>
         <div class="toggle-row">
           <span>Rótulo de família no box</span>
           <label class="switch"><input type="checkbox" id="show-familia" checked><span class="track"></span><span class="knob"></span></label>
@@ -777,6 +778,20 @@ function visibleDominantCls(b){
     if (it.vol > bestVol){ bestVol = it.vol; best = it; }
   }
   return best ? best.cls : null;
+}
+// Same idea as visibleDominantCls, but for the família filter/label: with no
+// família selected (the default) every item is eligible, so this reduces to
+// the position's true overall dominant família; with one or more selected,
+// only items in those famílias compete, so a mixed position's on-box label
+// switches to whichever selected família actually dominates it.
+function visibleDominantFamilia(b){
+  const active = state.familyFilters;
+  let best = null, bestVol = -1;
+  for (const it of skuItemsOf(b)){
+    if (active.size && (!it.familia || !active.has(it.familia))) continue;
+    if (it.vol > bestVol){ bestVol = it.vol; best = it; }
+  }
+  return best ? best.familia : null;
 }
 function computeFillBaseColor(b){
   // A blocked position shows none of its usual status/occupancy/class color
@@ -1158,7 +1173,7 @@ const state = {
   view: 'free',
   searchQuery: '', // active material search: while set, overrides the class/over-only filters below
   occupancyColors: true, // Planta 3D mode's occupancy gradient -- off falls back to one flat neutral tone, so filters don't stack on top of a busy color gradient
-  familyFilter: '', // '' = every família; otherwise only positions whose família matches stay on display
+  familyFilters: new Set(), // empty = every família; otherwise a position stays on display if ANY of its SKUs' família is in this set
   showFamilia: true, // on-box família label -- separate from the family filter itself, since some views may just want the color without the extra text
 };
 
@@ -1184,10 +1199,6 @@ document.getElementById('occupancy-colors').addEventListener('change', (e)=>{
   renderLegend();
   applyVisualState();
 });
-document.getElementById('familia-filter').addEventListener('change', (e)=>{
-  state.familyFilter = e.target.value;
-  applyVisualState();
-});
 document.getElementById('show-familia').addEventListener('change', (e)=>{
   state.showFamilia = e.target.checked;
   applyVisualState();
@@ -1199,18 +1210,44 @@ document.getElementById('show-familia').addEventListener('change', (e)=>{
 // families that no longer have any occupied box.
 function renderFamiliaFilter(){
   const block = document.getElementById('familia-block');
-  const select = document.getElementById('familia-filter');
-  if (!block || !select) return;
-  // Only each box's dominant SKU's família -- matches materialVisible(),
-  // which now filters on the dominant família too (a família that's only
-  // ever a secondary material in a mixed position never actually matches
-  // anything, so it has no business being a selectable option here).
-  const families = [...new Set(boxes.map(b=>b.familia).filter(Boolean))].sort();
+  const row = document.getElementById('familia-chips');
+  if (!block || !row) return;
+  // Pulls família from every SKU in a mixed position (skuItemsOf), not just
+  // each box's dominant one -- the filter itself is a union match (a
+  // position shows if ANY of its SKUs' família is selected), so a família
+  // that's only ever a secondary material still needs to be selectable.
+  const families = [...new Set(boxes.flatMap(b=>skuItemsOf(b).map(it=>it.familia)).filter(Boolean))].sort();
   block.hidden = families.length === 0;
-  if (!families.length){ state.familyFilter = ''; return; }
-  const prev = state.familyFilter;
-  select.innerHTML = '<option value="">Todas as famílias</option>' + families.map(f=>`<option value="${f}">${f}</option>`).join('');
-  if (prev && families.includes(prev)){ select.value = prev; } else { state.familyFilter = ''; select.value = ''; }
+  if (!families.length){ state.familyFilters.clear(); row.innerHTML = ''; return; }
+  // Drop any previously-selected família that no longer exists in this
+  // plant/import (e.g. after switching plants or re-importing) instead of
+  // silently keeping a selection that can never match anything again.
+  for (const f of [...state.familyFilters]) if (!families.includes(f)) state.familyFilters.delete(f);
+
+  function renderChips(){
+    row.innerHTML = '';
+    const allChip = document.createElement('button');
+    allChip.className = 'chip' + (state.familyFilters.size === 0 ? ' active' : '');
+    allChip.textContent = 'Todas as famílias';
+    allChip.addEventListener('click', ()=>{
+      state.familyFilters.clear();
+      renderChips();
+      applyVisualState();
+    });
+    row.appendChild(allChip);
+    families.forEach(f=>{
+      const chip = document.createElement('button');
+      chip.className = 'chip' + (state.familyFilters.has(f) ? ' active' : '');
+      chip.textContent = f;
+      chip.addEventListener('click', ()=>{
+        if (state.familyFilters.has(f)) state.familyFilters.delete(f); else state.familyFilters.add(f);
+        renderChips();
+        applyVisualState();
+      });
+      row.appendChild(chip);
+    });
+  }
+  renderChips();
 }
 
 const CLASS_LEGEND_ROWS = `
@@ -1500,9 +1537,10 @@ function buildBoxGroup(b){
   // filters at runtime can show/hide the família stamp without needing a
   // full mesh rebuild -- it only sits over a position that's both filled/
   // over AND has a família on record, layered on top of the color fill.
-  let floorFamilia = null;
+  let floorFamilia = null, floorFamiliaText = null;
   if (b.familia){
-    floorFamilia = makeFloorLabel(b.familia, {color:'#0a0e13', outline:'#fff8ea', size: Math.max(0.42, Math.min(0.7, b.width*0.34)), weight:700});
+    floorFamiliaText = b.familia;
+    floorFamilia = makeFloorLabel(floorFamiliaText, {color:'#0a0e13', outline:'#fff8ea', size: Math.max(0.42, Math.min(0.7, b.width*0.34)), weight:700});
     floorFamilia.position.set(0, 0.052, 0);
     floorFamilia.visible = false;
     group.add(floorFamilia);
@@ -1523,7 +1561,7 @@ function buildBoxGroup(b){
     group.add(blockedMarker);
   }
 
-  return {group, shell, shellMat, fill, fillMat, fillEdges, shellEdges, floorCode, floorFamilia, blockedMarker, baseFillColor: fill?fill.material.color.getHex():null};
+  return {group, shell, shellMat, fill, fillMat, fillEdges, shellEdges, floorCode, floorFamilia, floorFamiliaText, blockedMarker, baseFillColor: fill?fill.material.color.getHex():null};
 }
 
 function disposeObject3D(obj){
@@ -1532,6 +1570,27 @@ function disposeObject3D(obj){
     const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
     mats.forEach(m=>{ if (m.map) m.map.dispose(); m.dispose(); });
   });
+}
+
+// A single-família position's floor stamp never needs to change, but a mixed
+// one can: visibleDominantFamilia(b) depends on which famílias are currently
+// selected, so its label text can differ from what was baked in at build
+// time. The label's width (and so its plane geometry) depends on the text
+// itself, so this can't be a cheap in-place canvas redraw -- rebuild the
+// whole mesh, but only when the text actually changed.
+function refreshFloorFamiliaLabel(rec, b){
+  if (!b.mixed || !rec.floorFamilia) return;
+  const wanted = visibleDominantFamilia(b) ?? b.familia;
+  if (!wanted || wanted === rec.floorFamiliaText) return;
+  const wasVisible = rec.floorFamilia.visible;
+  rec.group.remove(rec.floorFamilia);
+  disposeObject3D(rec.floorFamilia);
+  const label = makeFloorLabel(wanted, {color:'#0a0e13', outline:'#fff8ea', size: Math.max(0.42, Math.min(0.7, b.width*0.34)), weight:700});
+  label.position.set(0, 0.052, 0);
+  label.visible = wasVisible;
+  rec.group.add(label);
+  rec.floorFamilia = label;
+  rec.floorFamiliaText = wanted;
 }
 
 function removeFromPickables(...meshes){
@@ -1625,15 +1684,15 @@ function roundRect(ctx,x,y,w,h,r){
 function materialVisible(b){
   const hasMaterial = b.status === 'filled' || b.status === 'over';
   if (!hasMaterial) return false;
-  // Família stays keyed to the position's dominant SKU (by volume). Classe
-  // A/B/C instead matches if ANY of the position's items qualify -- a mixed
-  // position filtered in under Classe B stays visible even when Classe B
-  // isn't its most-voluminous item, and computeFillBaseColor's
-  // visibleDominantCls() colors it by that same matching item, not always
-  // by the position's overall dominant class. Search stays a union across
-  // every SKU in the position -- finding a specific material should work
-  // even when it's only a secondary item there.
-  if (state.familyFilter && b.familia !== state.familyFilter) return false;
+  // Família and Classe A/B/C both match if ANY of the position's items
+  // qualify -- a mixed position filtered under Classe B or a given família
+  // stays visible even when that isn't its most-voluminous item.
+  // computeFillBaseColor's visibleDominantCls()/visibleDominantFamilia()
+  // then color/label it by that same matching item, not always by the
+  // position's overall dominant one. Search stays a union across every SKU
+  // in the position -- finding a specific material should work even when
+  // it's only a secondary item there.
+  if (state.familyFilters.size && !skuItemsOf(b).some(it=>it.familia && state.familyFilters.has(it.familia))) return false;
   // An active material search takes over completely: only positions whose
   // material matches stay filled, everything else drops to the same "no
   // material on display" look as a filtered-out or genuinely empty position
@@ -1678,6 +1737,7 @@ function applyVisualState(){
       rec.fillEdges.material.color.set(color);
       rec.fillEdges.visible = matVisible && posVisible;
     }
+    refreshFloorFamiliaLabel(rec, b);
     const familiaShown = !!(rec.floorFamilia && state.showFamilia);
     if (rec.floorCode){
       // show the position's code whenever there's no material on display
