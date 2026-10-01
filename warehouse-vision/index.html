@@ -1489,6 +1489,28 @@ DATA.aisleLabels.forEach(a=>{
   scene.add(label);
 });
 
+/* Plant-code watermark, 4 copies on the floor just outside the stock
+   footprint (0..DATA.width x 0..DATA.depth) -- a quick visual "which
+   plant am I looking at" cue in the 3D view itself, independent of any
+   SEED_DATA (uses only DATA.name/width/depth, so it works for every
+   plant, including an emptyPlantShell with no boxes yet). */
+{
+  const wmSize = Math.min(7, Math.max(3.5, Math.min(DATA.width, DATA.depth)*0.05));
+  const wmMargin = Math.max(4, wmSize*1.4);
+  const wmCorners = [
+    {x:-wmMargin,            z:-wmMargin,            color:'#8a9a3b'}, // NW -- verde oliva
+    {x:DATA.width+wmMargin,  z:-wmMargin,             color:'#ffb366'}, // NE -- laranja claro
+    {x:DATA.width+wmMargin,  z:DATA.depth+wmMargin,   color:'#9aa4ad'}, // SE -- cinza
+    {x:-wmMargin,            z:DATA.depth+wmMargin,   color:'#2ec4b6'}, // SW -- azul turquesa
+  ];
+  wmCorners.forEach(c=>{
+    const label = makeFloorLabel(DATA.name, {color:c.color, outline:null, size:wmSize});
+    label.position.set(c.x, 0.03, c.z);
+    label.material.opacity = 0.35;
+    scene.add(label);
+  });
+}
+
 /* ================= boxes ================= */
 const SHELL_HEIGHT = 2.2;
 const MIN_FILL = 0.16;
