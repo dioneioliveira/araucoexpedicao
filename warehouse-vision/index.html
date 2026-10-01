@@ -2461,14 +2461,29 @@ function makeImportReport(){
   return { info:(m)=>lines.info.push(m), warn:(m)=>lines.warn.push(m), err:(m)=>lines.err.push(m), lines };
 }
 
+// Used only when the "capacidade" sheet lists box codes but no volume
+// column at all (capacity not surveyed yet) -- keeps every listed position
+// registered/visible instead of looking empty until the real m3 arrives.
+const DEFAULT_CAPACIDADE_M3 = 100;
+
 function computeCapacidadeFromRows(rows, report){
   if (!rows.length){ report.warn('Guia "capacidade" está vazia.'); return {}; }
   const keys = Object.keys(rows[0]);
   const codeKey = findKey(keys, ['box','posicao','codigo']);
   const capKey = findKey(keys, ['capacidade','m3','volume']);
-  if (!codeKey || !capKey){
-    report.err(`Guia "capacidade": não foi possível identificar as colunas (posição: ${codeKey||'não achada'}, capacidade: ${capKey||'não achada'}).`);
+  if (!codeKey){
+    report.err(`Guia "capacidade": não foi possível identificar a coluna de posição.`);
     return {};
+  }
+  if (!capKey){
+    const map = {};
+    for (const row of rows){
+      const code = String(row[codeKey]||'').trim().toUpperCase();
+      if (!code) continue;
+      map[code] = DEFAULT_CAPACIDADE_M3;
+    }
+    report.warn(`Guia "capacidade": coluna de posição "${codeKey}" encontrada, mas nenhuma coluna de volume (capacidade/m3) — usando ${DEFAULT_CAPACIDADE_M3} m³ como valor temporário em ${Object.keys(map).length} posição(ões), até a planilha trazer a capacidade real.`);
+    return map;
   }
   report.info(`Guia "capacidade": coluna de posição "${codeKey}", coluna de volume "${capKey}".`);
   const map = {};
