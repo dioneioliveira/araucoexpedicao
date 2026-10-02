@@ -31,7 +31,7 @@
     --font-mono:'IBM Plex Mono',ui-monospace,monospace;
   }
   :root[data-theme="light"]{
-    --bg-void:#eef1f4;
+    --bg-void:#ffffff;
     --bg-panel:#ffffff;
     --bg-panel-2:#f3f6f8;
     --bg-raised:#e6ebf0;
@@ -776,8 +776,8 @@ const THEME = {
     blocked: 0x1c1c22,
     shell:   0x1b8aa0,
     hi:      0xc99a2e,
-    floor:   0xd7dfe5,
-    bg:      0xeef1f4,
+    floor:   0xf7f8f9,
+    bg:      0xffffff,
     zoneShip:0xe77824, zoneShipEdge:0xb55c14,
     zoneProd:0x4f7fd6, zoneProdEdge:0x2f58a8,
     zoneSupp:0x4a9d68, zoneSuppEdge:0x2e7a48,
@@ -1442,7 +1442,11 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(COLORS.bg);
 const span = Math.max(DATA.width, DATA.depth);
-scene.fog = new THREE.Fog(COLORS.bg, span*0.75, span*2.2);
+// Fog is a dark-theme-only atmospheric touch -- on the light theme its
+// gradient (floor tone fading into the background color with distance)
+// read as a hazy/"nebuloso" cast over the whole scene instead of a clean
+// flat background, so light mode skips it entirely.
+scene.fog = currentTheme === 'light' ? null : new THREE.Fog(COLORS.bg, span*0.75, span*2.2);
 
 const camera = new THREE.PerspectiveCamera(46, 1, 0.1, span*6);
 
@@ -1950,7 +1954,7 @@ function applyTheme(name){
   catch (e){ console.warn('Falha ao salvar preferência de tema', e); }
 
   scene.background.setHex(COLORS.bg);
-  scene.fog.color.setHex(COLORS.bg);
+  scene.fog = name === 'light' ? null : new THREE.Fog(COLORS.bg, span*0.75, span*2.2);
   floorMat.color.setHex(COLORS.floor);
 
   buildZones();
