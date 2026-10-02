@@ -30,6 +30,33 @@
     --font-ui:'IBM Plex Sans',system-ui,sans-serif;
     --font-mono:'IBM Plex Mono',ui-monospace,monospace;
   }
+  :root[data-theme="light"]{
+    --bg-void:#eef1f4;
+    --bg-panel:#ffffff;
+    --bg-panel-2:#f3f6f8;
+    --bg-raised:#e6ebf0;
+    --line:#d7dee5;
+    --line-soft:#e4e9ee;
+    --ink:#1b2430;
+    --ink-dim:#5a6675;
+    --ink-faint:#8b97a3;
+    --accent:#0e8fa3;
+    --accent-soft:rgba(14,143,163,.12);
+    --accent-ink:#ffffff;
+    --unreg:#a98f8f;
+    --ir-ok:#1d8a52;
+    --ir-warn:#a16a0a;
+    --ir-err:#c43f31;
+    --panel-shadow:rgba(30,40,55,.16);
+    --scrollbar-track:rgba(20,30,45,.06);
+  }
+  :root{
+    --ir-ok:#7fe0a8;
+    --ir-warn:#f2c14e;
+    --ir-err:#ef7a6c;
+    --panel-shadow:rgba(0,0,0,.4);
+    --scrollbar-track:rgba(255,255,255,.05);
+  }
   *{box-sizing:border-box;}
   html,body{height:100%;}
   body{
@@ -164,7 +191,7 @@
   .search-results{
     position:absolute;top:calc(100% + 6px);right:0;width:280px;z-index:30;
     background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--radius-s);
-    padding:6px;max-height:280px;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,.4);
+    padding:6px;max-height:280px;overflow-y:auto;box-shadow:0 10px 30px var(--panel-shadow);
   }
   .search-results-head{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);padding:5px 8px 7px;}
   .search-result-row{
@@ -216,9 +243,9 @@
   #import-report-body h5{margin:12px 0 4px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);}
   #import-report-body h5:first-child{margin-top:0;}
   #import-report-body ul{margin:0;padding-left:16px;}
-  #import-report-body .ir-ok{color:#7fe0a8;}
-  #import-report-body .ir-warn{color:#f2c14e;}
-  #import-report-body .ir-err{color:#ef7a6c;}
+  #import-report-body .ir-ok{color:var(--ir-ok);}
+  #import-report-body .ir-warn{color:var(--ir-warn);}
+  #import-report-body .ir-err{color:var(--ir-err);}
   #import-report-body .ir-muted{color:var(--ink-faint);}
 
   /* ---------- stage ---------- */
@@ -230,7 +257,7 @@
      pan gesture. Kept subtle (low opacity, hairline width) so they read
      as a faint affordance, not a UI element competing with the HUD; they
      brighten on hover/drag for discoverability and easier grabbing. */
-  .view-scroll{position:absolute;z-index:8;background:rgba(255,255,255,.05);
+  .view-scroll{position:absolute;z-index:8;background:var(--scrollbar-track);
     border-radius:3px;opacity:.28;transition:opacity .15s;touch-action:none;}
   .view-scroll:hover,.view-scroll.dragging{opacity:.85;}
   .view-scroll-v{top:14px;right:6px;bottom:34px;width:5px;}
@@ -242,7 +269,7 @@
   .panel{
     position:absolute;background:var(--bg-panel-2);
     border:1px solid var(--line-soft);border-radius:var(--radius-m);
-    box-shadow:0 12px 28px rgba(0,0,0,.4);
+    box-shadow:0 12px 28px var(--panel-shadow);
   }
 
   /* left control rail */
@@ -286,7 +313,7 @@
   .switch input:checked ~ .knob{transform:translateX(15px);background:var(--accent);}
 
   .legend-row{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-dim);padding:3px 0;}
-  .legend-swatch{width:14px;height:14px;border-radius:3px;flex:0 0 auto;border:1px solid rgba(255,255,255,.12);}
+  .legend-swatch{width:14px;height:14px;border-radius:3px;flex:0 0 auto;border:1px solid var(--line);}
   .legend-swatch.hatched{
     background-image:repeating-linear-gradient(45deg,var(--unreg) 0 3px,transparent 3px 6px);
     background-color:var(--bg-raised);
@@ -474,6 +501,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v6.5L4.5 18a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 8.5V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
         <span id="demo-btn-label">Demo</span>
       </button>
+      <button class="icon-btn" id="theme-btn" title="Mudar para tema claro">☀</button>
       <button class="icon-btn" id="info-btn" title="Roteiro do projeto">i</button>
     </div>
   </div>
@@ -691,35 +719,95 @@ const DATA = loadPlantData(ACTIVE_PLANT);
 
 const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const COLORS = {
-  occLow:  0x55c99a,
-  occMid:  0xd5d94f,
-  occHigh: 0xf2a93b,
-  occOver: 0xe2543c,
-  occEmpty:0x3a4552,
-  clsA:    0xf0932f,
-  clsB:    0x3fb6d8,
-  clsC:    0x7b86c4,
-  clsNone: 0x6b7480,
-  clsUnclassified: 0x454c54,
-  unreg:   0x5b4a4a,
-  blocked: 0x1c1c22,
-  shell:   0x79d8e8,
-  hi:      0xffe9b0,
-  floor:   0x141c24,
-  bg:      0x0a0e13,
-  zoneShip:0xe77824, zoneShipEdge:0xffad66,
-  zoneProd:0x4f7fd6, zoneProdEdge:0x8fb4ff,
-  zoneSupp:0x5fb87d, zoneSuppEdge:0x98e0b0,
-  zoneAisle:0x78929b, zoneAisleEdge:0x6d878f,
-  age0:  0x4fae6a,
-  age30: 0x9bc23f,
-  age60: 0xd8cf3a,
-  age90: 0xe8ab34,
-  age120:0xe8842f,
-  age150:0xe25d33,
-  age180:0xcf3f3a,
+// THEME holds a full palette per mode -- dark is the original look, light is
+// its counterpart for the day/night toggle. COLORS is the live, mutable
+// palette everything else in the file reads from (filled from THEME.dark or
+// THEME.light below); switching themes reassigns its fields in place rather
+// than swapping the object reference, so code that destructured a value
+// earlier still ends up stale only where it's expected to (box materials
+// already get repainted via applyVisualState()).
+const THEME = {
+  dark: {
+    occLow:  0x55c99a,
+    occMid:  0xd5d94f,
+    occHigh: 0xf2a93b,
+    occOver: 0xe2543c,
+    occEmpty:0x3a4552,
+    clsA:    0xf0932f,
+    clsB:    0x3fb6d8,
+    clsC:    0x7b86c4,
+    clsNone: 0x6b7480,
+    clsUnclassified: 0x454c54,
+    unreg:   0x5b4a4a,
+    blocked: 0x1c1c22,
+    shell:   0x79d8e8,
+    hi:      0xffe9b0,
+    floor:   0x141c24,
+    bg:      0x0a0e13,
+    zoneShip:0xe77824, zoneShipEdge:0xffad66,
+    zoneProd:0x4f7fd6, zoneProdEdge:0x8fb4ff,
+    zoneSupp:0x5fb87d, zoneSuppEdge:0x98e0b0,
+    zoneAisle:0x78929b, zoneAisleEdge:0x6d878f,
+    age0:  0x4fae6a,
+    age30: 0x9bc23f,
+    age60: 0xd8cf3a,
+    age90: 0xe8ab34,
+    age120:0xe8842f,
+    age150:0xe25d33,
+    age180:0xcf3f3a,
+    labelFg:      '#e6f4f8',
+    labelOutline: '#0a0e13',
+    codeLabelDim:    '#8a7a7a',
+    codeLabelNormal: '#bbd6dc',
+    wmNW:'#8a9a3b', wmNE:'#ffb366', wmSE:'#9aa4ad', wmSW:'#2ec4b6',
+  },
+  light: {
+    occLow:  0x2f9c6c,
+    occMid:  0xb79f1b,
+    occHigh: 0xcf7e1c,
+    occOver: 0xc23f2c,
+    occEmpty:0xb7c0c8,
+    clsA:    0xcf7420,
+    clsB:    0x1d87a8,
+    clsC:    0x6269a8,
+    clsNone: 0x8993a0,
+    clsUnclassified: 0x6c7580,
+    unreg:   0x8a6a6a,
+    blocked: 0x1c1c22,
+    shell:   0x1b8aa0,
+    hi:      0xc99a2e,
+    floor:   0xd7dfe5,
+    bg:      0xeef1f4,
+    zoneShip:0xe77824, zoneShipEdge:0xb55c14,
+    zoneProd:0x4f7fd6, zoneProdEdge:0x2f58a8,
+    zoneSupp:0x4a9d68, zoneSuppEdge:0x2e7a48,
+    zoneAisle:0x78929b, zoneAisleEdge:0x5a7078,
+    age0:  0x3c8f55,
+    age30: 0x80a330,
+    age60: 0xb3a929,
+    age90: 0xc48a28,
+    age120:0xc46b25,
+    age150:0xc14a2a,
+    age180:0xaf3330,
+    labelFg:      '#1b2430',
+    labelOutline: '#ffffff',
+    codeLabelDim:    '#8a7a7a',
+    codeLabelNormal: '#2b4a52',
+    wmNW:'#6b7a28', wmNE:'#c17a1e', wmSE:'#5c646d', wmSW:'#1f9b8f',
+  },
 };
+let COLORS = Object.assign({}, THEME.dark);
+
+const THEME_STORAGE_KEY = 'warehouseVision.theme';
+function getStoredTheme(){
+  try {
+    const t = localStorage.getItem(THEME_STORAGE_KEY);
+    return (t === 'light' || t === 'dark') ? t : 'dark';
+  } catch (e){ return 'dark'; }
+}
+let currentTheme = getStoredTheme();
+if (currentTheme === 'light') COLORS = Object.assign({}, THEME.light);
+document.documentElement.dataset.theme = currentTheme;
 
 function occupancyColor(o){
   if (o > 1) return COLORS.occOver;
@@ -1375,7 +1463,7 @@ floorMesh.userData.isGround = true;
 scene.add(floorMesh);
 
 /* text-decal helper (flat plane lying on the ground) */
-function makeFloorLabel(text, {color='#e6f4f8', outline='#0a0e13', size=1.0, weight=600, fontFamily='IBM Plex Mono'}={}){
+function makeFloorLabel(text, {color=COLORS.labelFg, outline=COLORS.labelOutline, size=1.0, weight=600, fontFamily='IBM Plex Mono'}={}){
   const scale = 3;
   const fontPx = 64*scale;
   const c = document.createElement('canvas');
@@ -1421,95 +1509,126 @@ function makeBlockedMarker(width, depth, color='#ff8f7a'){
   return mesh;
 }
 
-/* zones */
-const ZONE_STYLE = {
-  shipping:{color:COLORS.zoneShip, edge:COLORS.zoneShipEdge, opacity:0.62},
-  production:{color:COLORS.zoneProd, edge:COLORS.zoneProdEdge, opacity:0.34},
-  support:{color:COLORS.zoneSupp, edge:COLORS.zoneSuppEdge, opacity:0.3},
-  aisle:{color:COLORS.zoneAisle, edge:COLORS.zoneAisleEdge, opacity:0.08},
-};
-DATA.zones.forEach(z=>{
-  const style = ZONE_STYLE[z.kind] || ZONE_STYLE.aisle;
-  const geo = new THREE.PlaneGeometry(z.width, z.depth);
-  const mat = new THREE.MeshStandardMaterial({color:style.color, transparent:true, opacity:style.opacity, roughness:0.8});
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.rotation.x = -Math.PI/2;
-  mesh.rotation.z = THREE.MathUtils.degToRad(z.rotation||0);
-  mesh.position.set(z.x, z.kind==='aisle'?0.004:0.01, z.z);
-  mesh.userData.isGround = true;
-  scene.add(mesh);
-  // Aisle zones skip the border on purpose -- each one used to get its own
-  // full 4-sided outline with no merging between neighbors, so wherever
-  // two corridors met or crossed (or just sat close together) their edges
-  // drew right next to each other as a visible seam, making the aisle
-  // network read as separate boxed-in rectangles instead of one open,
-  // continuous floor. Production/support/shipping zones keep their border
-  // since those really are distinct, bounded areas worth outlining.
-  if (z.kind !== 'aisle'){
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({color:style.edge, transparent:true, opacity:0.55}));
-    edges.rotation.copy(mesh.rotation);
-    edges.position.copy(mesh.position);
-    edges.position.y += 0.001;
-    scene.add(edges);
-  }
+/* zones, aisle labels, and the plant-code watermark are rebuilt (not just
+   recolored) on every theme change -- their text is baked into a canvas
+   texture at creation time, and their fill/edge colors come from COLORS,
+   so a straight property mutation on the existing materials wouldn't pick
+   up the new palette. Each builder disposes whatever it made last time
+   before creating the new set, and is called once up front below. */
+let zoneObjects = [], aisleLabelObjects = [], watermarkObjects = [];
 
-  if (z.kind === 'shipping'){
-    const label = makeFloorLabel(z.label || 'EMBARQUE E ENLONAMENTO', {color:'#fff0df', size:Math.min(2.2, z.depth*0.85)});
-    label.position.set(z.x, 0.025, z.z);
-    scene.add(label);
-  }
-  if (z.kind === 'production'){
-    const label = makeFloorLabel(z.label || 'LINHAS DE PRODUÇÃO', {color:'#d6e3ff', size:Math.min(2.6, z.depth*0.09)});
-    label.position.set(z.x, 0.025, z.z);
-    scene.add(label);
-  }
-});
+function getZoneStyle(kind){
+  const styles = {
+    shipping:{color:COLORS.zoneShip, edge:COLORS.zoneShipEdge, opacity:0.62},
+    production:{color:COLORS.zoneProd, edge:COLORS.zoneProdEdge, opacity:0.34},
+    support:{color:COLORS.zoneSupp, edge:COLORS.zoneSuppEdge, opacity:0.3},
+    aisle:{color:COLORS.zoneAisle, edge:COLORS.zoneAisleEdge, opacity:0.08},
+  };
+  return styles[kind] || styles.aisle;
+}
+
+function buildZones(){
+  zoneObjects.forEach(o=>{ scene.remove(o); disposeObject3D(o); });
+  zoneObjects = [];
+  DATA.zones.forEach(z=>{
+    const style = getZoneStyle(z.kind);
+    const geo = new THREE.PlaneGeometry(z.width, z.depth);
+    const mat = new THREE.MeshStandardMaterial({color:style.color, transparent:true, opacity:style.opacity, roughness:0.8});
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI/2;
+    mesh.rotation.z = THREE.MathUtils.degToRad(z.rotation||0);
+    mesh.position.set(z.x, z.kind==='aisle'?0.004:0.01, z.z);
+    mesh.userData.isGround = true;
+    scene.add(mesh);
+    zoneObjects.push(mesh);
+    // Aisle zones skip the border on purpose -- each one used to get its own
+    // full 4-sided outline with no merging between neighbors, so wherever
+    // two corridors met or crossed (or just sat close together) their edges
+    // drew right next to each other as a visible seam, making the aisle
+    // network read as separate boxed-in rectangles instead of one open,
+    // continuous floor. Production/support/shipping zones keep their border
+    // since those really are distinct, bounded areas worth outlining.
+    if (z.kind !== 'aisle'){
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({color:style.edge, transparent:true, opacity:0.55}));
+      edges.rotation.copy(mesh.rotation);
+      edges.position.copy(mesh.position);
+      edges.position.y += 0.001;
+      scene.add(edges);
+      zoneObjects.push(edges);
+    }
+
+    if (z.kind === 'shipping'){
+      const label = makeFloorLabel(z.label || 'EMBARQUE E ENLONAMENTO', {color:'#fff0df', size:Math.min(2.2, z.depth*0.85)});
+      label.position.set(z.x, 0.025, z.z);
+      scene.add(label);
+      zoneObjects.push(label);
+    }
+    if (z.kind === 'production'){
+      const label = makeFloorLabel(z.label || 'LINHAS DE PRODUÇÃO', {color:'#d6e3ff', size:Math.min(2.6, z.depth*0.09)});
+      label.position.set(z.x, 0.025, z.z);
+      scene.add(label);
+      zoneObjects.push(label);
+    }
+  });
+}
 
 /* aisle labels -- oriented along the aisle's own long axis (matched via its
    zone's width vs depth) so the text runs down the corridor instead of
    reading sideways and spilling into the neighboring rows of boxes on a
    narrow, vertical aisle. */
-const aisleZones = DATA.zones.filter(z=>z.kind==='aisle');
-DATA.aisleLabels.forEach(a=>{
-  // Match by nearest zone position, not by label text -- some plants
-  // (PB25) store a bare letter as the zone label instead of the "RUA X"
-  // text used for the floor label, and a single letter can legitimately
-  // span more than one zone rectangle (e.g. two "H" segments in PB25)
-  // that only differ by position, not by label. Every plant's aisleLabels
-  // entry shares its zone's exact x/z, so nearest-match is exact.
-  let zone = null, bestDist = Infinity;
-  for (const z of aisleZones){
-    const dist = (z.x-a.x)**2 + (z.z-a.z)**2;
-    if (dist < bestDist){ bestDist = dist; zone = z; }
-  }
-  const vertical = !!zone && zone.depth > zone.width;
-  const label = makeFloorLabel(`RUA ${a.aisle}`, {color:'#e6f4f8', size:1.9});
-  label.position.set(a.x, 0.05, a.z);
-  if (vertical) label.rotation.z = Math.PI/2;
-  scene.add(label);
-});
+function buildAisleLabels(){
+  aisleLabelObjects.forEach(o=>{ scene.remove(o); disposeObject3D(o); });
+  aisleLabelObjects = [];
+  const aisleZones = DATA.zones.filter(z=>z.kind==='aisle');
+  DATA.aisleLabels.forEach(a=>{
+    // Match by nearest zone position, not by label text -- some plants
+    // (PB25) store a bare letter as the zone label instead of the "RUA X"
+    // text used for the floor label, and a single letter can legitimately
+    // span more than one zone rectangle (e.g. two "H" segments in PB25)
+    // that only differ by position, not by label. Every plant's aisleLabels
+    // entry shares its zone's exact x/z, so nearest-match is exact.
+    let zone = null, bestDist = Infinity;
+    for (const z of aisleZones){
+      const dist = (z.x-a.x)**2 + (z.z-a.z)**2;
+      if (dist < bestDist){ bestDist = dist; zone = z; }
+    }
+    const vertical = !!zone && zone.depth > zone.width;
+    const label = makeFloorLabel(`RUA ${a.aisle}`, {size:1.9});
+    label.position.set(a.x, 0.05, a.z);
+    if (vertical) label.rotation.z = Math.PI/2;
+    scene.add(label);
+    aisleLabelObjects.push(label);
+  });
+}
 
 /* Plant-code watermark, 4 copies on the floor just outside the stock
    footprint (0..DATA.width x 0..DATA.depth) -- a quick visual "which
    plant am I looking at" cue in the 3D view itself, independent of any
    SEED_DATA (uses only DATA.name/width/depth, so it works for every
    plant, including an emptyPlantShell with no boxes yet). */
-{
+function buildPlantWatermark(){
+  watermarkObjects.forEach(o=>{ scene.remove(o); disposeObject3D(o); });
+  watermarkObjects = [];
   const wmSize = Math.min(7, Math.max(3.5, Math.min(DATA.width, DATA.depth)*0.05));
   const wmMargin = Math.max(4, wmSize*1.4);
   const wmCorners = [
-    {x:-wmMargin,            z:-wmMargin,            color:'#8a9a3b'}, // NW -- verde oliva
-    {x:DATA.width+wmMargin,  z:-wmMargin,             color:'#ffb366'}, // NE -- laranja claro
-    {x:DATA.width+wmMargin,  z:DATA.depth+wmMargin,   color:'#9aa4ad'}, // SE -- cinza
-    {x:-wmMargin,            z:DATA.depth+wmMargin,   color:'#2ec4b6'}, // SW -- azul turquesa
+    {x:-wmMargin,            z:-wmMargin,            color:COLORS.wmNW}, // NW -- verde oliva
+    {x:DATA.width+wmMargin,  z:-wmMargin,             color:COLORS.wmNE}, // NE -- laranja claro
+    {x:DATA.width+wmMargin,  z:DATA.depth+wmMargin,   color:COLORS.wmSE}, // SE -- cinza
+    {x:-wmMargin,            z:DATA.depth+wmMargin,   color:COLORS.wmSW}, // SW -- azul turquesa
   ];
   wmCorners.forEach(c=>{
     const label = makeFloorLabel(DATA.name, {color:c.color, outline:null, size:wmSize});
     label.position.set(c.x, 0.03, c.z);
     label.material.opacity = 0.35;
     scene.add(label);
+    watermarkObjects.push(label);
   });
 }
+
+buildZones();
+buildAisleLabels();
+buildPlantWatermark();
 
 /* ================= boxes ================= */
 const SHELL_HEIGHT = 2.2;
@@ -1559,7 +1678,7 @@ function buildBoxGroup(b){
   // when the active filters hide a filled position's material (see
   // applyVisualState), the position still needs its code visible so it
   // doesn't read as "gone", just as "empty for this view".
-  const floorCode = makeFloorLabel(b.code, {color: b.status==='unregistered' ? '#8a7a7a' : '#bbd6dc', size: Math.max(0.55, Math.min(0.95, b.width*0.5))});
+  const floorCode = makeFloorLabel(b.code, {color: b.status==='unregistered' ? COLORS.codeLabelDim : COLORS.codeLabelNormal, size: Math.max(0.55, Math.min(0.95, b.width*0.5))});
   floorCode.position.set(0, 0.05, 0);
   floorCode.rotation.y = 0;
   floorCode.visible = (b.status === 'empty' || b.status === 'unregistered');
@@ -1623,6 +1742,25 @@ function refreshFloorFamiliaLabel(rec, b){
   rec.group.add(label);
   rec.floorFamilia = label;
   rec.floorFamiliaText = wanted;
+}
+
+// The floor code label's color depends on COLORS (dim for unregistered,
+// normal otherwise) and, like the família label, is baked into a canvas
+// texture at creation time -- a theme change has to rebuild it, not just
+// recolor it. Called for every registered position when the theme toggles.
+function rebuildFloorCodeLabel(rec, b){
+  if (!rec.floorCode) return;
+  const wasVisible = rec.floorCode.visible;
+  const opacity = rec.floorCode.material.opacity;
+  rec.group.remove(rec.floorCode);
+  disposeObject3D(rec.floorCode);
+  const label = makeFloorLabel(b.code, {color: b.status==='unregistered' ? COLORS.codeLabelDim : COLORS.codeLabelNormal, size: Math.max(0.55, Math.min(0.95, b.width*0.5))});
+  label.position.set(0, 0.05, 0);
+  label.rotation.y = 0;
+  label.visible = wasVisible;
+  label.material.opacity = opacity;
+  rec.group.add(label);
+  rec.floorCode = label;
 }
 
 function removeFromPickables(...meshes){
@@ -1794,6 +1932,46 @@ function applyVisualState(){
   });
 }
 applyVisualState();
+
+/* Day/night theme toggle -- swaps COLORS to the other palette, then
+   repaints everything that was built or colored from it: the scene
+   background/fog/floor live-update in place, the zones/aisle-labels/
+   watermark get rebuilt (their text is baked into a canvas texture, so a
+   color can't just be reassigned on the existing material), each
+   registered position's floor code label gets rebuilt the same way, and
+   applyVisualState() repaints every box shell/fill (it already reads
+   COLORS fresh on every call). */
+function applyTheme(name){
+  if (name !== 'light' && name !== 'dark') return;
+  currentTheme = name;
+  Object.assign(COLORS, THEME[name]);
+  document.documentElement.dataset.theme = name;
+  try { localStorage.setItem(THEME_STORAGE_KEY, name); }
+  catch (e){ console.warn('Falha ao salvar preferência de tema', e); }
+
+  scene.background.setHex(COLORS.bg);
+  scene.fog.color.setHex(COLORS.bg);
+  floorMat.color.setHex(COLORS.floor);
+
+  buildZones();
+  buildAisleLabels();
+  buildPlantWatermark();
+  registry.forEach(rec=>rebuildFloorCodeLabel(rec, rec.data));
+
+  applyVisualState();
+
+  const themeBtn = document.getElementById('theme-btn');
+  if (themeBtn){
+    themeBtn.textContent = name === 'light' ? '☾' : '☀';
+    themeBtn.title = name === 'light' ? 'Mudar para tema escuro' : 'Mudar para tema claro';
+  }
+}
+const themeBtn = document.getElementById('theme-btn');
+if (themeBtn){
+  themeBtn.textContent = currentTheme === 'light' ? '☾' : '☀';
+  themeBtn.title = currentTheme === 'light' ? 'Mudar para tema escuro' : 'Mudar para tema claro';
+  themeBtn.addEventListener('click', ()=>applyTheme(currentTheme === 'light' ? 'dark' : 'light'));
+}
 
 /* ================= camera control ================= */
 const target = new THREE.Vector3(DATA.width/2, 0, DATA.depth/2);
