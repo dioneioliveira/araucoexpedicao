@@ -1,4 +1,4 @@
-<!doctype html><html><head><title>Arauco Piên - Warehouse Vision PB26</title>
+<!doctype html><html><head><title>Arauco Warehouse Vision PB26</title>
 <meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 </head><body>
 <style>
@@ -470,7 +470,7 @@
   <div id="topbar">
     <div class="brand">
       <span class="brand-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
-      <span class="brand-mark">ARAUCO PIÊN <b>WAREHOUSE VISION</b></span>
+      <span class="brand-mark">ARAUCO <b>WAREHOUSE VISION</b></span>
       <select class="plant-select" id="plant-select" title="Selecionar planta" aria-label="Selecionar planta"></select>
       <span class="brand-sub" id="plant-name">PB26</span>
     </div>
@@ -920,7 +920,7 @@ const boxByCode = new Map(boxes.map(b=>[b.code, b]));
 function fmt(n, d=0){ return (n||0).toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d}); }
 
 document.getElementById('plant-name').textContent = `${DATA.name} · ${fmt(DATA.width,0)}×${fmt(DATA.depth,0)} m · ${SEED_BUILD}`;
-document.title = `Arauco Piên - Warehouse Vision ${DATA.name}`;
+document.title = `Arauco Warehouse Vision ${DATA.name}`;
 
 const importState = { done:false, prodItems: [] };
 
