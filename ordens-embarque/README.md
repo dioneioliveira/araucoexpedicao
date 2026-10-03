@@ -86,6 +86,30 @@ Acentos quebrados da página (ex.: `SolicitaÃ§Ã£o`, `NÃƒO`) são corrigido
 automaticamente. Também é possível colar várias Solicitações de uma vez em
 **Importar dados → Colar do sistema**.
 
+### Guia Agendamentos (as duas janelas do SEW)
+
+1. No SEW, abra **Agendamento de Cargas** (PIÊN PAINÉIS e/ou PIÊN CONTAINERS) e
+   copie a tela (**Ctrl+A**, **Ctrl+C**).
+2. No app, pressione **Ctrl+V**. A guia **Agendamentos** mostra as duas janelas
+   (mercado interno e containers) do dia, com o transporte e o status da ordem de
+   cada placa. Se a janela não for reconhecida, escolha em *Ao colar, tratar como*.
+3. **Durante o dia, cole de novo sempre que o agendamento mudar.** Cada colagem
+   é comparada com a anterior (pela janela + dia + senha):
+   - hora, carreta, cavalo, CPF, container, transportadora ou cliente alterados
+     ficam registrados na linha (de → para, com o horário da colagem);
+   - agendamento que sumiu fica riscado como *removido* (não é apagado).
+4. **Ordem já impressa cujo agendamento mudou** fica **em vermelho, "Com
+   alterações"** (na lista diária, na guia Agendamentos e no painel, com o que
+   mudou). Também vale para mudanças nos dados impressos (placas, motorista, CPF,
+   transportadora, OT…) vindas de uma nova Solicitação de Embarque. Ao imprimir
+   de novo, a ordem volta a ficar normal.
+
+### Ordens faturadas
+
+No painel, **Marcar como faturada** (ou selecione várias linhas e use **Marcar
+faturadas**). A lista diária fica sempre em ordem de horário, mas as faturadas
+vão para o fim, esmaecidas. Dá para desmarcar no mesmo botão.
+
 ### Outras formas de entrada
 
 - **Colar do sistema**: aceita também tabelas com as colunas da guia **LOG**. Com
@@ -109,8 +133,10 @@ Abra pelo campo **Transporte** (topo) ou clicando na linha da lista.
   Container, Lacre e Ticket da balança;
 - botões de cópia para colar em planilhas e no SAP:
   - **Dados de texto**: `EXP …` / `TARA …` / `Container …` / `Lacre …` (texto da NF-e, Controle OT F1:F4)
-  - **Dados de balança**: linha da verificação de pesagem (Controle OT I2:U2)
-  - **Dados do motorista**: `CPF` e `Placas` no formato do SAP (Controle OT I3:J4)
+  - **Dados de balança**: uma linha, sem títulos, para colar na planilha da balança:
+    `Data · Placa · Nº Ticket · Tara container · Peso máximo container · Peso entrada · Peso saída · Conferência 7% · Peso total carga · Status · Nº container · Lacre · NF-e`.
+    Peso entrada, Peso saída, Conferência 7%, Peso total e Status vão **em branco** (o balanceiro preenche).
+  - **Dados do motorista**: só os valores, sem rótulos: CPF (só números) na 1ª linha e placas (`CAVALOUF/CARRETAUF`) na 2ª
 - **Imprimir ordem**: imprime os dois check-lists.
 
 Na lista, marque várias linhas e use **Imprimir selecionadas** para imprimir

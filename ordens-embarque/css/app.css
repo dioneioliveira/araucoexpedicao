@@ -123,6 +123,8 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .kpi::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;background:var(--turq)}
 .kpi.lime::before{background:var(--lime)}
 .kpi.grey::before{background:var(--line)}
+.kpi.red::before{background:var(--err)}
+.kpi.red .k-val{color:var(--err)}
 .kpi .k-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--title)}
 .kpi .k-val{font-family:var(--f-title);font-weight:700;font-size:28px;color:var(--ink);line-height:1.15;margin-top:4px}
 .kpi .k-sub{font-size:12px;color:var(--ink-faint)}
@@ -142,6 +144,12 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .grid tbody tr:hover{background:var(--turq-ghost)}
 .grid tbody tr.active{background:var(--turq-soft);box-shadow:inset 3px 0 0 var(--turq-strong)}
 .grid tbody tr.printed td{color:var(--ink-dim)}
+.grid tbody tr.alterada,.grid tbody tr.alterada:hover{background:rgba(180,71,59,.09);box-shadow:inset 3px 0 0 var(--err)}
+.grid tbody tr.alterada td{color:var(--err)}
+.grid tbody tr.faturada td{color:var(--ink-faint)}
+.grid tbody tr.faturada{background:repeating-linear-gradient(135deg,transparent 0 10px,rgba(217,217,217,.18) 10px 20px)}
+.chip.alt{background:var(--err);color:#fff}
+.chip.fat{background:#ececec;color:var(--ink-dim);border-color:var(--line)}
 .grid .num{text-align:right;font-variant-numeric:tabular-nums}
 .grid .mono{font-family:var(--f-mono);font-size:12px}
 .grid .wrap{white-space:normal;min-width:160px;max-width:260px}
@@ -164,6 +172,27 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .empty p{margin:0 0 18px;color:var(--ink-dim)}
 .empty-actions{display:flex;gap:10px;justify-content:center}
 
+/* ---------- visões (Lista diária / Agendamentos) ---------- */
+.views{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:-4px}
+.views button{border:0;background:none;padding:10px 18px;font-family:var(--f-title);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);border-bottom:3px solid transparent;cursor:pointer;display:flex;gap:8px;align-items:center}
+.views button.active{color:var(--ink);border-bottom-color:var(--turq-strong)}
+.views .count{background:var(--bg-0);border:1px solid var(--line-soft);border-radius:999px;padding:0 8px;font-size:11px;font-family:var(--f-ui);letter-spacing:0;color:var(--ink-dim)}
+.views .count.alt{background:var(--err);border-color:var(--err);color:#fff}
+.views .count:empty{display:none}
+.agenda-help{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:16px 20px;flex-wrap:wrap;margin-bottom:18px}
+.agenda-help h2{margin:0 0 4px;font-family:var(--f-title);font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--title)}
+.agenda-help p{margin:0;max-width:780px;font-size:13px}
+.agenda-tools{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.small{font-size:11.5px}
+.txt-alt{color:var(--err)}
+.agenda-grid{display:grid;grid-template-columns:1fr;gap:18px}
+.ag-head{display:flex;align-items:center;gap:10px;padding:14px 18px 10px;flex-wrap:wrap}
+.ag-head h3{margin:0;font-family:var(--f-title);font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--title)}
+.ag-head .muted{font-size:12px}
+.grid tr.ag-removed td{text-decoration:line-through;color:var(--ink-faint)}
+.grid tr.ag-changed{background:rgba(208,204,0,.09)}
+.chg{font-size:11px;color:#6b5600;display:block;white-space:normal}
+
 /* ---------- painel do transporte ---------- */
 #scrim{position:fixed;inset:0;background:rgba(74,74,74,.12);backdrop-filter:blur(2px);z-index:39}
 .drawer{
@@ -182,6 +211,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .drawer-body{flex:1;overflow:auto;padding:16px 22px 22px 26px;display:flex;flex-direction:column;gap:16px}
 .drawer-foot{padding:14px 22px 18px 26px;border-top:1px solid var(--line-soft);background:var(--glass);backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px}
 .drawer-foot #d-print{width:100%}
+#d-fat.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
 .copy-row{display:flex;gap:8px}
 
 .section{background:#fff;border:1px solid var(--line-soft);border-radius:var(--r-m);padding:14px 16px;box-shadow:0 1px 2px rgba(74,74,74,.03)}
@@ -220,6 +250,8 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .alert{border-radius:var(--r-s);padding:10px 12px;font-size:12.5px}
 .alert.warn{background:var(--warn-soft);color:#6b5600}
 .alert.err{background:var(--err-soft);color:var(--err)}
+.alert.ok{background:var(--ok-soft);color:var(--ok)}
+.alert ul{margin:6px 0 0;padding-left:18px}
 .alert.info{background:var(--turq-ghost);color:#3d6f6d}
 
 /* ---------- modais ---------- */

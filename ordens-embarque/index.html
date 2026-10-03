@@ -37,6 +37,10 @@
   </header>
 
   <main id="main">
+    <nav class="views" id="views" role="tablist">
+      <button data-view="lista" class="active" role="tab">Lista diária <span class="count" id="v-count-lista"></span></button>
+      <button data-view="agenda" role="tab">Agendamentos <span class="count" id="v-count-agenda"></span></button>
+    </nav>
     <section class="toolbar card">
       <div class="tb-group">
         <label class="field-inline">Data
@@ -50,14 +54,15 @@
         <input type="search" id="search" placeholder="Buscar cliente, placa, motorista…">
       </div>
       <div class="tb-group">
+        <button class="btn btn-ghost btn-sm" id="btn-fat-selected" disabled title="Marcar as linhas selecionadas como faturadas (vão para o fim da lista)"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Marcar faturadas</button>
         <button class="btn btn-ghost btn-sm" id="btn-copy-list" title="Copiar a lista do dia (colar no Excel)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>Copiar lista</button>
         <button class="btn btn-ghost btn-sm" id="btn-new-manual"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Transporte manual</button>
       </div>
     </section>
 
-    <section class="kpis" id="kpis"></section>
+    <section class="kpis" id="kpis" data-view-of="lista"></section>
 
-    <section class="card list-card">
+    <section class="card list-card" data-view-of="lista">
       <div class="list-head">
         <h2 id="list-title">Lista diária</h2>
         <span class="muted" id="list-sub"></span>
@@ -85,6 +90,26 @@
         </div>
       </div>
     </section>
+    <section id="agenda" data-view-of="agenda" hidden>
+      <div class="card agenda-help">
+        <div>
+          <h2>Agendamentos do dia</h2>
+          <p class="muted">No SEW, abra <b>Agendamento de Cargas</b> (PIÊN PAINÉIS e/ou PIÊN CONTAINERS), copie a tela (<b>Ctrl+A</b>, <b>Ctrl+C</b>) e pressione <b>Ctrl+V</b> aqui. Cole de novo sempre que o agendamento mudar: as alterações ficam registradas e a ordem já impressa fica <b class="txt-alt">com alterações</b>.</p>
+        </div>
+        <div class="agenda-tools">
+          <span class="muted small">Ao colar, tratar como</span>
+          <div class="seg seg-sm" id="ag-mode">
+            <button data-v="auto" class="active">Detectar</button>
+            <button data-v="MI">Mercado interno</button>
+            <button data-v="CONTAINER">Containers</button>
+          </div>
+        </div>
+      </div>
+      <div class="agenda-grid">
+        <div class="card list-card" id="ag-MI"></div>
+        <div class="card list-card" id="ag-CONTAINER"></div>
+      </div>
+    </section>
   </main>
 
   <!-- Painel da ordem de embarque -->
@@ -104,6 +129,7 @@
         <button class="btn btn-copy" data-copy="balanca"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 006 0L5 7zm14 0l-3 7a4 4 0 006 0l-3-7z"/></svg>Dados de balança</button>
         <button class="btn btn-copy" data-copy="motorista"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>Dados do motorista</button>
       </div>
+      <button class="btn btn-ghost" id="d-fat"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Marcar como faturada</button>
       <button class="btn btn-primary btn-lg" id="d-print"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>Imprimir ordem (2 check-lists)</button>
     </div>
   </aside>

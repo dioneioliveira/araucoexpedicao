@@ -13,7 +13,7 @@
 
   // ------------------------------------------------------------------ estado
   const STORE_KEY = 'arauco.ordensEmbarque.v1';
-  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {} });
+  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {} });
   let state = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.v === 1) return Object.assign(emptyState(), s); } catch (e) { /* sem storage */ }
@@ -27,7 +27,7 @@
     if (now) run(); else saveTimer = setTimeout(run, 250);
   }
   let printing = false;
-  const ui = { date: '', janela: 'ALL', q: '', selected: new Set(), open: null };
+  const ui = { date: '', janela: 'ALL', q: '', selected: new Set(), open: null, view: 'lista', agMode: 'auto' };
 
   // campos do transporte que podem ser corrigidos/preenchidos à mão
   const OVERRIDABLE = ['data', 'hora', 'cliente', 'entrega', 'incoterm', 'motorista', 'cpf', 'transportadora', 'placaL', 'placaM', 'tipoVeiculo', 'treinamento'];
@@ -46,8 +46,34 @@
     if (!hits.length) return null;
     // LOG!AI: placa da carreta na janela de containers => CONTAINER
     const sameDay = hits.filter(s => s.data === e.data);
-    const pool = sameDay.length ? sameDay : hits;
+    let pool = sameDay.length ? sameDay : hits;
+    const ativos = pool.filter(s => !s.removed); if (ativos.length) pool = ativos;
     return pool.find(s => s.janela === 'CONTAINER') || pool[0];
+  }
+  // identidade de um agendamento na tela do SEW: janela + dia + senha
+  const sewKey = e => e.carregamento ? `sol|${e.carregamento}` : [e.janela, e.data, e.senha || (e.hora + '|' + P.plate7(e.carreta))].join('|');
+  const SEW_TRACK = [['hora', 'Hora'], ['carreta', 'Carreta'], ['cavalo', 'Cavalo'], ['cpf', 'CPF'], ['container', 'Container'], ['transportadora', 'Transportadora'], ['tipoVeiculo', 'Tipo de veículo'], ['cliente', 'Cliente']];
+  // campos impressos que, se mudarem depois da impressão, deixam a ordem "com alterações"
+  const SNAP_FIELDS = [['data', 'Data'], ['motorista', 'Motorista'], ['cpf', 'CPF'], ['transportadora', 'Transportadora'], ['truck', 'Placa truck'], ['carreta', 'Placa carreta'], ['cavalo', 'Placa cavalo'], ['janelaContainer', 'Janela container'], ['pallets', 'Pallets'], ['ot', 'OT'], ['fsc', 'FSC'], ['treinamento', 'Treinamento'], ['entregaTransporte', 'Entrega / transporte']];
+  function snapshotOf(T) {
+    const d = printData(T);
+    const sw = T.sew && !T.sew.carregamento ? { key: sewKey(T.sew), hora: T.sew.hora, carreta: T.sew.carreta, cavalo: T.sew.cavalo, cpf: T.sew.cpf, container: T.sew.container } : null;
+    return { campos: Object.fromEntries(SNAP_FIELDS.map(([k]) => [k, d[k] || ''])), sew: sw, hora: T.eff.hora };
+  }
+  function alteracoesDesdeImpressao(T) {
+    const sn = state.snap[T.transporte]; if (!sn) return [];
+    const out = []; const d = printData(T);
+    SNAP_FIELDS.forEach(([k, l]) => { if (P.clean(sn.d.campos[k]) !== P.clean(d[k])) out.push({ campo: l, de: sn.d.campos[k], para: d[k] }); });
+    if (P.clean(sn.d.hora) !== P.clean(T.eff.hora)) out.push({ campo: 'Hora do agendamento', de: sn.d.hora, para: T.eff.hora });
+    if (sn.d.sew) {
+      const cur = state.sew.find(e => sewKey(e) === sn.d.sew.key);
+      if (!cur || cur.removed) out.push({ campo: 'Agendamento', de: `${sn.d.sew.hora} · ${sn.d.sew.carreta}`, para: 'removido do SEW' });
+      else ['hora', 'carreta', 'cavalo', 'cpf', 'container'].forEach(k => {
+        if (P.clean(cur[k]) !== P.clean(sn.d.sew[k]) && !out.some(o => o.campo === k)) out.push({ campo: { hora: 'Hora do agendamento', carreta: 'Carreta (agendamento)', cavalo: 'Cavalo (agendamento)', cpf: 'CPF (agendamento)', container: 'Container (agendamento)' }[k], de: sn.d.sew[k], para: cur[k] });
+      });
+    }
+    // não repetir a mesma mudança vinda das duas fontes
+    const seen = new Set(); return out.filter(o => { const k = o.campo.split(' ')[0] + '|' + P.clean(o.para); if (seen.has(k)) return false; seen.add(k); return true; });
   }
   function fscOf(cliente) {
     const n = P.norm(cliente); if (!n) return null;
@@ -91,15 +117,16 @@
       transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (f.janela ? 'Solicitação de Embarque' : (sew ? 'SEW' : 'padrão')),
       solic: f.fonte === 'Solicitação de Embarque' ? f : null,
       fsc, ot, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
-      printed: state.printed[t] || null, manualOnly: items.every(i => i.manualOnly),
+      printed: state.printed[t] || null, faturado: state.faturado[t] || null, manualOnly: items.every(i => i.manualOnly),
     };
   }
+  function withAlt(T) { T.alteracoes = T.printed ? alteracoesDesdeImpressao(T) : []; return T; }
   function allTransports() {
     const g = new Map();
     Object.values(state.items).forEach(it => { if (!g.has(it.transporte)) g.set(it.transporte, []); g.get(it.transporte).push(it); });
-    return Array.from(g, ([t, items]) => makeTransport(t, items));
+    return Array.from(g, ([t, items]) => withAlt(makeTransport(t, items)));
   }
-  const getTransport = t => { const items = Object.values(state.items).filter(i => i.transporte === t); return items.length ? makeTransport(t, items) : null; };
+  const getTransport = t => { const items = Object.values(state.items).filter(i => i.transporte === t); return items.length ? withAlt(makeTransport(t, items)) : null; };
 
   // dados que vão para as células dos check-lists (mesmas fórmulas de CKL / Check Vc)
   function printData(T) {
@@ -145,8 +172,8 @@
       const row = [P.fmtDateBR(P.todayISO()), P.plate7(e.placaL), o.ticket, o.tara, o.mwg, '', '', '', '', '', o.container, o.lacre, o.nf];
       return { text: row.join('\t'), need: [['ticket', 'Ticket'], ['tara', 'Tara'], ['mwg', 'Peso máx.'], ['nf', 'NF-e']].filter(([k]) => !o[k]).map(x => x[1]) };
     }
-    // Controle OT!I3:J4 — CPF e placas (VT02N / SAP)
-    return { text: `CPF\t${P.cpfDigits(e.cpf)}\nPlacas\t${placasTexto(e)}`, need: [['cpf', 'CPF'], ['placaL', 'Placa']].filter(([k]) => !e[k]).map(x => x[1]) };
+    // Controle OT!J3:J4 — só os valores (CPF e placas), sem rótulos, para o SAP
+    return { text: `${P.cpfDigits(e.cpf)}\n${placasTexto(e)}`, need: [['cpf', 'CPF'], ['placaL', 'Placa']].filter(([k]) => !e[k]).map(x => x[1]) };
   }
   async function toClipboard(text) {
     try { await navigator.clipboard.writeText(text); return true; } catch (e) {
@@ -238,7 +265,7 @@
     window.print();
     printing = false;
     const now = new Date().toISOString();
-    list.forEach(T => { state.printed[T.transporte] = now; });
+    list.forEach(T => { state.printed[T.transporte] = now; state.snap[T.transporte] = { at: now, d: snapshotOf(T) }; });
     save(true);
     renderAll();
     toast(`${list.length} ordem(ns) enviada(s) para impressão — ${list.length * 2} página(s).`, 'ok');
@@ -260,6 +287,8 @@
     return `<span class="chip ${c ? 'ct' : 'mi'}" title="Origem: ${esc(T.janelaSrc)}"><span class="dot"></span>${c ? 'Container' : 'Mercado interno'}</span>`;
   }
   function statusChip(T) {
+    if (T.faturado) return `<span class="chip fat" title="Faturada em ${esc(new Date(T.faturado).toLocaleString('pt-BR'))}">Faturada</span>`;
+    if (T.printed && T.alteracoes.length) return `<span class="chip alt" title="${esc(T.alteracoes.map(a => `${a.campo}: ${a.de || '—'} → ${a.para || '—'}`).join('\n'))}">Com alterações</span>`;
     if (T.printed) return `<span class="chip ok" title="${esc(new Date(T.printed).toLocaleString('pt-BR'))}">Ordem impressa</span>`;
     if (T.missing.length) return `<span class="chip err" title="Falta: ${esc(T.missing.join(', '))}">Dados faltando</span>`;
     return `<span class="chip grey">Pronta p/ imprimir</span>`;
@@ -276,7 +305,8 @@
       .filter(T => T.eff.data === ui.date)
       .filter(T => ui.janela === 'ALL' || T.janela === ui.janela)
       .filter(T => !q || P.norm([T.transporte, T.eff.cliente, T.eff.entrega, T.eff.motorista, T.eff.placaL, T.eff.placaM, T.eff.transportadora, T.ot.ot, T.items.map(i => i.descricao + ' ' + i.material).join(' ')].join(' ')).includes(q))
-      .sort((a, b) => (a.eff.hora || '99').localeCompare(b.eff.hora || '99') || a.transporte.localeCompare(b.transporte));
+      // por horário; as já faturadas descem para o fim
+      .sort((a, b) => (!!a.faturado - !!b.faturado) || (a.eff.hora || '99').localeCompare(b.eff.hora || '99') || a.transporte.localeCompare(b.transporte));
   }
 
   function renderKPIs(list) {
@@ -284,14 +314,17 @@
     const mi = dayAll.filter(T => T.janela !== 'CONTAINER').length, ct = dayAll.length - mi;
     const pal = dayAll.reduce((s, T) => s + (T.pallets || 0), 0);
     const printed = dayAll.filter(T => T.printed).length;
-    const pend = dayAll.filter(T => T.missing.length).length;
-    const tr = dayAll.filter(T => T.treino.k === 'err' || T.treino.k === 'warn').length;
+    const pend = dayAll.filter(T => T.missing.length && !T.faturado).length;
+    const tr = dayAll.filter(T => !T.faturado && (T.treino.k === 'err' || T.treino.k === 'warn')).length;
+    const alt = dayAll.filter(T => T.printed && !T.faturado && T.alteracoes.length).length;
+    const fat = dayAll.filter(T => T.faturado).length;
     $('#kpis').innerHTML = [
       ['Transportes', dayAll.length, P.fmtDateBR(ui.date), ''],
       ['Mercado interno', mi, 'janela PIÊN PAINÉIS', ''],
       ['Containers', ct, 'janela PIÊN CONTAINERS', 'lime'],
       ['Pallets', fmtNum(pal, 1), 'previstos no dia', 'grey'],
-      ['Ordens impressas', `${printed}<span class="k-sub"> / ${dayAll.length}</span>`, `${dayAll.length - printed} a imprimir`, ''],
+      ['Ordens impressas', `${printed}<span class="k-sub"> / ${dayAll.length}</span>`, `${dayAll.length - printed} a imprimir · ${fat} faturada(s)`, ''],
+      ['Com alterações', alt, 'impressas com agendamento alterado', alt ? 'red' : 'grey'],
       ['Atenção', pend + tr, `${pend} com dados faltando · ${tr} treinamento`, 'lime'],
     ].map(([l, v, s, c]) => `<div class="card kpi ${c}"><div class="k-label">${l}</div><div class="k-val">${v}</div><div class="k-sub">${esc(s)}</div></div>`).join('');
   }
@@ -303,7 +336,7 @@
     tb.innerHTML = list.map(T => {
       const e = T.eff; const first = T.items[0] || {};
       const more = T.items.length > 1 ? ` <span class="chip grey">+${T.items.length - 1}</span>` : '';
-      return `<tr data-t="${esc(T.transporte)}" class="${ui.open === T.transporte ? 'active' : ''} ${T.printed ? 'printed' : ''}">
+      return `<tr data-t="${esc(T.transporte)}" class="${ui.open === T.transporte ? 'active' : ''} ${T.printed ? 'printed' : ''} ${T.faturado ? 'faturada' : ''} ${T.printed && !T.faturado && T.alteracoes.length ? 'alterada' : ''}">
         <td class="c-check"><input type="checkbox" ${ui.selected.has(T.transporte) ? 'checked' : ''} aria-label="Selecionar ${esc(T.transporte)}"></td>
         <td class="mono">${esc(e.hora)}</td>
         <td class="mono"><b>${esc(T.transporte)}</b></td>
@@ -323,18 +356,79 @@
     $('#empty-state').hidden = list.length > 0;
     $('#daily-table').style.display = list.length ? '' : 'none';
     $('#list-title').textContent = `Lista diária · ${P.fmtDateBR(ui.date)}`;
-    const ag = state.sew.filter(s => s.data === ui.date).length;
-    $('#list-sub').textContent = `${list.length} transporte(s)${ag ? ` · ${ag} agendamento(s) SEW` : ''}`;
+    const altN = list.filter(T => T.printed && !T.faturado && T.alteracoes.length).length;
+    const ag = state.sew.filter(s => !s.carregamento && !s.removed && s.data === ui.date).length;
+    $('#list-sub').textContent = `${list.length} transporte(s)${ag ? ` · ${ag} agendamento(s) SEW` : ''}${altN ? ` · ${altN} impressa(s) com alterações` : ''} · faturadas ficam no fim da lista`;
     // seleção
     const vis = new Set(list.map(T => T.transporte));
     Array.from(ui.selected).forEach(t => { if (!vis.has(t)) ui.selected.delete(t); });
     $('#sel-count').textContent = ui.selected.size;
     $('#btn-print-selected').disabled = !ui.selected.size;
+    $('#btn-fat-selected').disabled = !ui.selected.size;
     $('#check-all').checked = list.length > 0 && list.every(T => ui.selected.has(T.transporte));
     // datalist do campo Transporte
     const dl = $('#transporte-list');
     const ts = Array.from(new Set(Object.values(state.items).map(i => i.transporte))).sort().reverse().slice(0, 400);
     dl.innerHTML = ts.map(t => `<option value="${esc(t)}">`).join('');
+  }
+
+  // ------------------------------------------------------------------ guia Agendamentos
+  function setView(v) {
+    ui.view = v;
+    $$('#views button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+    $$('[data-view-of]').forEach(el => { el.hidden = el.dataset.viewOf !== v; });
+    $('#janela-filter').style.display = v === 'agenda' ? 'none' : '';
+    renderAll();
+  }
+  function renderAgenda() {
+    const day = allTransports().filter(T => T.eff.data === ui.date);
+    const byPlate = new Map(); day.forEach(T => { const p = P.plate7(T.eff.placaL); if (p) byPlate.set(p, T); });
+    const q = P.norm(ui.q);
+    let nAlt = 0, nTot = 0;
+    ['MI', 'CONTAINER'].forEach(j => {
+      const box = $('#ag-' + j);
+      const rows = state.sew.filter(e => !e.carregamento && e.janela === j && e.data === ui.date)
+        .filter(e => !q || P.norm([e.carreta, e.cavalo, e.cpf, e.transportadora, e.cliente, e.container, e.senha].join(' ')).includes(q))
+        .sort((a, b) => (!!a.removed - !!b.removed) || (a.hora || '99').localeCompare(b.hora || '99'));
+      nTot += rows.filter(e => !e.removed).length;
+      const last = rows.reduce((m, e) => (e.updatedAt > m ? e.updatedAt : m), '');
+      const ct = j === 'CONTAINER';
+      const body = rows.map(e => {
+        const T = byPlate.get(P.plate7(e.carreta));
+        const alt = T && T.printed && !T.faturado && T.alteracoes.length;
+        if (alt) nAlt++;
+        const chg = (e.changes || []).slice(-3).map(c => `<span class="chg">${esc(c.campo)}: ${esc(c.de || '—')} → ${esc(c.para || '—')} <span class="muted">(${esc(new Date(c.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))})</span></span>`).join('');
+        return `<tr ${T ? `data-t="${esc(T.transporte)}"` : ''} class="${e.removed ? 'ag-removed' : ''} ${alt ? 'alterada' : ''} ${!alt && (e.changes || []).length ? 'ag-changed' : ''}">
+          <td class="mono">${esc(e.hora)}${chg}</td><td class="mono">${esc(e.senha)}</td><td class="wrap">${esc(e.removed ? 'Removido do agendamento' : e.status)}</td>
+          <td class="wrap">${esc(e.tipoVeiculo)}</td><td class="mono">${esc(e.carreta)}</td><td class="mono">${esc(e.cavalo)}</td><td class="mono">${esc(e.cpf)}</td>
+          ${ct ? `<td class="mono">${esc(e.container)}</td>` : ''}
+          <td class="wrap">${esc(e.transportadora)}</td><td class="wrap">${esc(e.cliente)}</td><td class="num">${fmtNum(e.volume, 3)}</td>
+          <td class="mono">${T ? `<b>${esc(T.transporte)}</b>` : '<span class="muted">—</span>'}</td>
+          <td>${T ? statusChip(T) : '<span class="chip grey">Sem ordem</span>'}</td></tr>`;
+      }).join('');
+      box.innerHTML = `<div class="ag-head"><span class="chip ${ct ? 'ct' : 'mi'}"><span class="dot"></span>${ct ? 'PIÊN CONTAINERS' : 'PIÊN PAINÉIS'}</span>
+        <h3>${ct ? 'Containers' : 'Mercado interno'}</h3>
+        <span class="muted">${rows.filter(e => !e.removed).length} agendamento(s)${last ? ` · atualizado às ${esc(new Date(last).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))}` : ''}</span></div>
+        <div class="table-wrap" style="max-height:none;min-height:0">${rows.length ? `<table class="grid"><thead><tr><th>Hora</th><th>Senha</th><th>Status</th><th>Tipo de veículo</th><th>Carreta</th><th>Cavalo</th><th>CPF</th>${ct ? '<th>Container</th>' : ''}<th>Transportadora</th><th>Cliente</th><th class="num">Volume</th><th>Transporte</th><th>Ordem</th></tr></thead><tbody>${body}</tbody></table>`
+          : `<div class="empty" style="padding:28px"><p>Nenhum agendamento de ${ct ? 'containers' : 'mercado interno'} em ${esc(P.fmtDateBR(ui.date))}. Copie a tela no SEW e pressione <b>Ctrl+V</b>.</p></div>`}</div>`;
+    });
+    return { nAlt, nTot };
+  }
+  function renderViewCounts() {
+    const day = allTransports().filter(T => T.eff.data === ui.date);
+    const alt = day.filter(T => T.printed && !T.faturado && T.alteracoes.length).length;
+    $('#v-count-lista').textContent = alt ? `${alt} com alterações` : (day.length || '');
+    $('#v-count-lista').classList.toggle('alt', !!alt);
+    const ag = state.sew.filter(e => !e.carregamento && !e.removed && e.data === ui.date).length;
+    $('#v-count-agenda').textContent = ag || '';
+  }
+  function importSewGrid(grids, mode) {
+    for (const g of grids) {
+      if (!g || !g.length) continue;
+      const entries = P.parseSEW(g, mode);
+      if (entries.length) return { entries, res: mergeSew(entries) };
+    }
+    return null;
   }
 
   function fieldHTML(T, k, label, opts = {}) {
@@ -353,9 +447,13 @@
     const t = ui.open; const T = t && getTransport(t);
     if (!T) { closeDetail(); return; }
     $('#d-title').textContent = T.transporte;
+    $('#d-fat').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
+    $('#d-fat').classList.toggle('on', !!T.faturado);
     $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
     const e = T.eff;
     const alerts = [];
+    if (T.faturado) alerts.push(`<div class="alert ok">Ordem <b>faturada</b> em ${esc(new Date(T.faturado).toLocaleString('pt-BR'))}.</div>`);
+    if (T.printed && T.alteracoes.length) alerts.push(`<div class="alert err"><b>Com alterações</b>: a ordem foi impressa em ${esc(new Date(T.printed).toLocaleString('pt-BR'))} e o agendamento mudou depois disso. Imprima novamente.<ul>${T.alteracoes.map(a => `<li>${esc(a.campo)}: <s>${esc(a.de || '—')}</s> → <b>${esc(a.para || '—')}</b></li>`).join('')}</ul></div>`);
     if (T.missing.length) alerts.push(`<div class="alert err">Faltam dados obrigatórios para imprimir: <b>${esc(T.missing.join(', '))}</b>.</div>`);
     if (T.treino.k === 'err') alerts.push(`<div class="alert warn">Motorista <b>nunca foi treinado</b> — realizar o treinamento antes do carregamento.</div>`);
     if (T.treino.k === 'warn') alerts.push(`<div class="alert warn">Treinamento do motorista <b>expirado</b> — realizar o treinamento.</div>`);
@@ -465,7 +563,12 @@
     ui.open = null; $('#detail').hidden = true; $('#scrim').hidden = true;
     renderList();
   }
-  function renderAll() { renderList(); if (ui.open) renderDetail(); }
+  function renderAll() {
+    renderList();
+    if (ui.view === 'agenda') renderAgenda();
+    renderViewCounts();
+    if (ui.open) renderDetail();
+  }
 
   // ------------------------------------------------------------------ eventos principais
   function pickDefaultDate() {
@@ -477,11 +580,11 @@
   }
 
   function bind() {
-    $('#date-filter').addEventListener('change', e => { ui.date = e.target.value || P.todayISO(); ui.selected.clear(); renderList(); });
+    $('#date-filter').addEventListener('change', e => { ui.date = e.target.value || P.todayISO(); ui.selected.clear(); renderAll(); });
     $$('#janela-filter button').forEach(b => b.addEventListener('click', () => {
       $$('#janela-filter button').forEach(x => x.classList.toggle('active', x === b)); ui.janela = b.dataset.v; renderList();
     }));
-    let st; $('#search').addEventListener('input', e => { clearTimeout(st); st = setTimeout(() => { ui.q = e.target.value; renderList(); }, 120); });
+    let st; $('#search').addEventListener('input', e => { clearTimeout(st); st = setTimeout(() => { ui.q = e.target.value; renderAll(); }, 120); });
 
     $('#daily-table tbody').addEventListener('click', e => {
       const tr = e.target.closest('tr[data-t]'); if (!tr) return;
@@ -489,6 +592,12 @@
       if (e.target.matches('input[type=checkbox]')) { e.target.checked ? ui.selected.add(t) : ui.selected.delete(t); renderList(); return; }
       openDetail(t);
     });
+    $('#agenda').addEventListener('click', e => { const tr = e.target.closest('tr[data-t]'); if (tr) openDetail(tr.dataset.t); });
+    $$('#views button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+    $$('#ag-mode button').forEach(b => b.addEventListener('click', () => { $$('#ag-mode button').forEach(x => x.classList.toggle('active', x === b)); ui.agMode = b.dataset.v; }));
+    const setFat = (ts, on) => { const now = new Date().toISOString(); ts.forEach(t => { if (on) state.faturado[t] = now; else delete state.faturado[t]; }); save(true); renderAll(); };
+    $('#btn-fat-selected').addEventListener('click', () => { const ts = Array.from(ui.selected); setFat(ts, true); ui.selected.clear(); renderAll(); toast(`${ts.length} ordem(ns) marcada(s) como faturada(s).`, 'ok'); });
+    $('#d-fat').addEventListener('click', () => { const T = getTransport(ui.open); if (!T) return; setFat([T.transporte], !T.faturado); toast(T.faturado ? `Transporte ${T.transporte}: faturamento desmarcado.` : `Transporte ${T.transporte} marcado como faturado.`, 'ok'); });
     $('#check-all').addEventListener('change', e => {
       visibleTransports().forEach(T => e.target.checked ? ui.selected.add(T.transporte) : ui.selected.delete(T.transporte)); renderList();
     });
@@ -592,13 +701,28 @@
         toast(`Transporte ${t} importado da Solicitação de Embarque (${T.janela === 'CONTAINER' ? 'container' : 'mercado interno'}).${T.missing.length ? ' Falta: ' + T.missing.join(', ') : ' Pronto para imprimir.'}`, T.missing.length ? 'warn' : 'ok');
         return;
       }
-      // tabela (LOG/SAP, SEW): abre a importação já com o conteúdo colado
+      // tela "Agendamento de Cargas": atualiza a guia Agendamentos direto
       const html = e.clipboardData.getData('text/html');
-      const sew = /PI[EÊ]N (PAINEIS|PAINÉIS|CONTAINERS)|Tp\.?Ve[ií]culo/i.test(text);
-      imp.tab = sew ? 'sew' : 'log';
+      const htmlGrid = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null;
+      const sewLike = ui.view === 'agenda' || /Agendamento de Cargas|PI[EÊ]N (PAINEIS|PAINÉIS|CONTAINERS)|Tp\.?\s*Ve[ií]culo/i.test(P.fixMojibake(text));
+      if (sewLike) {
+        const r = importSewGrid([htmlGrid, P.parseTSV(P.fixMojibake(text))], ui.agMode);
+        if (r) {
+          save(true);
+          const ds = Array.from(new Set(r.entries.map(x => x.data))).sort();
+          if (ds.length && !ds.includes(ui.date)) { ui.date = ds.includes(P.todayISO()) ? P.todayISO() : ds[0]; $('#date-filter').value = ui.date; }
+          if (ui.view !== 'agenda') setView('agenda'); else renderAll();
+          const mi = r.entries.filter(x => x.janela === 'MI').length, ct = r.entries.length - mi;
+          const alt = allTransports().filter(T => T.printed && !T.faturado && T.alteracoes.length).length;
+          toast(`Agendamentos atualizados: ${mi} mercado interno · ${ct} containers.${r.res.alteradas ? ` ${r.res.alteradas} alterado(s).` : ''}${r.res.novas ? ` ${r.res.novas} novo(s).` : ''}${r.res.removidas ? ` ${r.res.removidas} removido(s).` : ''}${alt ? ` ${alt} ordem(ns) impressa(s) com alterações!` : ''}`, alt ? 'err' : 'ok');
+          return;
+        }
+        if (ui.view === 'agenda') { toast('Não reconheci a tela de agendamento. Copie a página com a linha de títulos (Data, Hora, Seq, Senha, Carreta…).', 'err'); return; }
+      }
+      // tabela (LOG/SAP): abre a importação já com o conteúdo colado
+      imp.tab = 'log';
       $('#btn-import').click();
-      if (sew) { imp.sewHtml = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null; $('#sew-paste').value = text; parseSewPaste(); }
-      else { imp.html = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null; $('#log-paste').value = text; parseLogPaste(); }
+      imp.html = htmlGrid; $('#log-paste').value = text; parseLogPaste();
     });
     $('#pv-close').addEventListener('click', () => $('#preview-dialog').close());
     $('#btn-demo').addEventListener('click', loadDemo);
@@ -808,9 +932,33 @@
     save(true);
     return items;
   }
+  // Cada colagem da tela de agendamento substitui as janelas/dias colados.
+  // O que mudou em relação à colagem anterior fica registrado em `changes`, e o
+  // agendamento que sumiu fica marcado como removido (não é apagado).
   function mergeSew(entries) {
-    const keys = new Set(entries.map(s => s.janela + '|' + s.data));
-    state.sew = state.sew.filter(s => !keys.has(s.janela + '|' + s.data)).concat(entries);
+    const now = new Date().toISOString();
+    const groups = new Set(entries.map(e => e.janela + '|' + e.data));
+    const inGroup = e => !e.carregamento && groups.has(e.janela + '|' + e.data);
+    const prev = new Map(state.sew.filter(inGroup).map(e => [sewKey(e), e]));
+    const keep = state.sew.filter(e => !inGroup(e));
+    const seen = new Set(); let alteradas = 0, novas = 0, removidas = 0;
+    const merged = entries.map(e => {
+      const k = sewKey(e); seen.add(k);
+      const old = prev.get(k);
+      const n = Object.assign({}, e, { firstSeen: old ? old.firstSeen : now, updatedAt: now, changes: old ? (old.changes || []).slice() : [] });
+      if (!old) { if (prev.size) novas++; return n; }
+      const ch = SEW_TRACK.filter(([f]) => P.clean(old[f]) !== P.clean(e[f])).map(([f, l]) => ({ campo: l, de: old[f] || '', para: e[f] || '', em: now }));
+      if (old.removed) ch.push({ campo: 'Agendamento', de: 'removido', para: 'ativo', em: now });
+      if (ch.length) { alteradas++; n.changes.push(...ch); }
+      return n;
+    });
+    prev.forEach((o, k) => {
+      if (seen.has(k)) return;
+      if (!o.removed) removidas++;
+      merged.push(Object.assign({}, o, { removed: true, changes: (o.changes || []).concat(o.removed ? [] : [{ campo: 'Agendamento', de: 'ativo', para: 'removido', em: now }]) }));
+    });
+    state.sew = keep.concat(merged);
+    return { total: entries.length, alteradas, novas, removidas };
   }
   function focusDateOf(items) {
     const c = {}; items.forEach(i => { if (i.data) c[i.data] = (c[i.data] || 0) + 1; });
@@ -936,7 +1084,7 @@
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
     bind(); bindImport();
-    renderList();
+    setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });
     window.addEventListener('storage', e => { if (e.key === STORE_KEY) { state = load(); renderAll(); } });

@@ -19,3 +19,8 @@
   Eles ficam só no localStorage do navegador. Use apenas dados fictícios em exemplos.
 - `ordens-embarque.html` (arquivo único) é gerado por `tools/build_single_html.py`:
   depois de mudar `index.html`, `css/`, `js/` ou `templates/`, gere de novo e versione junto.
+- Guia Agendamentos: cada colagem da tela SEW é comparada com a anterior (chave janela|dia|senha,
+  `mergeSew`); ao imprimir guarda-se um retrato dos dados impressos (`state.snap`). Ordem impressa
+  com diferença => "Com alterações" (vermelho). Faturadas (`state.faturado`) vão para o fim da lista.
+- Cópias: "Dados do motorista" sem rótulos (CPF, placas); "Dados de balança" = 13 colunas sem
+  título, com Peso entrada/saída, Conferência 7%, Peso total e Status em branco.
