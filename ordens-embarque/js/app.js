@@ -33,7 +33,7 @@
   const OVERRIDABLE = ['data', 'hora', 'cliente', 'entrega', 'incoterm', 'motorista', 'cpf', 'transportadora', 'placaL', 'placaM', 'tipoVeiculo', 'treinamento'];
   // campos da guia "Controle OT"
   const OT_FIELDS = [
-    ['ot', 'OT'], ['doc', 'Doc'], ['nf', 'NF-e'], ['tara', 'Tara container'], ['mwg', 'Peso máx. (MWG)'],
+    ['ot', 'OT'], ['doc', 'Doc'], ['nf', 'NF-e (fatura a ordem)'], ['tara', 'Tara container'], ['mwg', 'Peso máx. (MWG)'],
     ['exp', 'EXP'], ['container', 'Nº container'], ['lacre', 'Lacre'], ['ticket', 'Ticket balança (Nº seq.)'],
   ];
   const REQUIRED = [['data', 'Data'], ['motorista', 'Motorista'], ['cpf', 'CPF'], ['transportadora', 'Transportadora'], ['placaL', 'Placa (carreta/truck)']];
@@ -355,7 +355,9 @@
         <td>${treinoChip(T)}</td>
         <td class="wrap">${esc(e.transportadora)}</td>
         <td class="mono">${esc(T.ot.ot)}</td>
-        <td>${statusChip(T)}</td>
+        <td class="c-nf"><input class="nf-in" data-nf="${esc(T.transporte)}" value="${esc(T.ot.nf)}" placeholder="NF-e" inputmode="numeric" title="Informe a NF-e: a ordem fica faturada"></td>
+        <td class="c-status">${statusChip(T)}</td>
+        <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
     }).join('');
     $('#empty-state').hidden = list.length > 0;
@@ -370,11 +372,51 @@
     $('#sel-count').textContent = ui.selected.size;
     $('#btn-print-selected').disabled = !ui.selected.size;
     $('#btn-fat-selected').disabled = !ui.selected.size;
+    $('#btn-del-selected').disabled = !ui.selected.size;
     $('#check-all').checked = list.length > 0 && list.every(T => ui.selected.has(T.transporte));
     // datalist do campo Transporte
     const dl = $('#transporte-list');
     const ts = Array.from(new Set(Object.values(state.items).map(i => i.transporte))).sort().reverse().slice(0, 400);
     dl.innerHTML = ts.map(t => `<option value="${esc(t)}">`).join('');
+  }
+
+  // ------------------------------------------------------------------ faturamento / exclusão
+  function setFat(ts, on, porNf) {
+    const now = new Date().toISOString();
+    state.fatNf = state.fatNf || {};
+    ts.forEach(t => {
+      if (!on) { delete state.faturado[t]; delete state.fatNf[t]; return; }
+      if (state.faturado[t]) return;
+      state.faturado[t] = now;
+      if (porNf) state.fatNf[t] = true;
+      // faturada: a OT some da tela do SAP. Ela fica gravada no transporte e a memória é liberada.
+      const T = getTransport(t);
+      if (T) {
+        if (T.ot.ot && !(state.manual[t] || {}).ot) (state.manual[t] = state.manual[t] || {}).ot = T.ot.ot;
+        T.entregas.forEach(en => { delete state.ots[en]; });
+      }
+    });
+    save(true);
+  }
+  // NF-e informada => ordem faturada. Apagar a NF desfaz só o faturamento que veio dela.
+  function aplicarNF(t, v) {
+    const man = state.manual[t] || (state.manual[t] = {});
+    v = P.clean(v);
+    if (v) man.nf = v; else delete man.nf;
+    if (v) setFat([t], true, true);
+    else if ((state.fatNf || {})[t]) setFat([t], false);
+    save(true);
+  }
+  async function excluirTransportes(ts) {
+    if (!ts.length) return;
+    const ok = await confirmBox('Excluir da lista diária', `<p>Excluir <b>${ts.length}</b> transporte(s) da lista?</p><p class="muted">${esc(ts.slice(0, 12).join(', '))}${ts.length > 12 ? '…' : ''}</p><p class="muted">Os dados digitados (Controle OT, correções) também são apagados. Para trazer de volta, cole a Solicitação de Embarque de novo.</p>`, 'Excluir');
+    if (!ok) return;
+    const set = new Set(ts);
+    Object.values(state.items).forEach(i => { if (set.has(i.transporte)) delete state.items[i.key]; });
+    ts.forEach(t => { delete state.manual[t]; delete state.printed[t]; delete state.snap[t]; delete state.faturado[t]; if (state.fatNf) delete state.fatNf[t]; ui.selected.delete(t); });
+    if (ui.open && set.has(ui.open)) closeDetail();
+    save(true); renderAll();
+    toast(`${ts.length} transporte(s) excluído(s) da lista.`, 'ok');
   }
 
   // ------------------------------------------------------------------ guia Agendamentos
@@ -644,6 +686,9 @@
     $('#daily-table tbody').addEventListener('click', e => {
       const tr = e.target.closest('tr[data-t]'); if (!tr) return;
       const t = tr.dataset.t;
+      if (e.target.closest('.nf-in')) return;
+      const del = e.target.closest('[data-del]');
+      if (del) { excluirTransportes([del.dataset.del]); return; }
       if (e.target.matches('input[type=checkbox]')) { e.target.checked ? ui.selected.add(t) : ui.selected.delete(t); renderList(); return; }
       openDetail(t);
     });
@@ -651,22 +696,15 @@
     $('#agenda').addEventListener('click', e => { const tr = e.target.closest('tr[data-t]'); if (tr) openDetail(tr.dataset.t); });
     $$('#views button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
     $$('#ag-mode button').forEach(b => b.addEventListener('click', () => { $$('#ag-mode button').forEach(x => x.classList.toggle('active', x === b)); ui.agMode = b.dataset.v; }));
-    const setFat = (ts, on) => {
-      const now = new Date().toISOString();
-      ts.forEach(t => {
-        if (!on) { delete state.faturado[t]; return; }
-        state.faturado[t] = now;
-        // faturada: a OT some da tela do SAP. Ela fica gravada no transporte e a memória é liberada.
-        const T = getTransport(t);
-        if (T) {
-          if (T.ot.ot && !(state.manual[t] || {}).ot) (state.manual[t] = state.manual[t] || {}).ot = T.ot.ot;
-          T.entregas.forEach(en => { delete state.ots[en]; });
-        }
-      });
-      save(true); renderAll();
-    };
+    $('#btn-del-selected').addEventListener('click', () => excluirTransportes(visibleTransports().filter(T => ui.selected.has(T.transporte)).map(T => T.transporte)));
     $('#btn-fat-selected').addEventListener('click', () => { const ts = Array.from(ui.selected); setFat(ts, true); ui.selected.clear(); renderAll(); toast(`${ts.length} ordem(ns) marcada(s) como faturada(s).`, 'ok'); });
-    $('#d-fat').addEventListener('click', () => { const T = getTransport(ui.open); if (!T) return; setFat([T.transporte], !T.faturado); toast(T.faturado ? `Transporte ${T.transporte}: faturamento desmarcado.` : `Transporte ${T.transporte} marcado como faturado.`, 'ok'); });
+    $('#d-fat').addEventListener('click', () => { const T = getTransport(ui.open); if (!T) return; setFat([T.transporte], !T.faturado); renderAll(); toast(T.faturado ? `Transporte ${T.transporte}: faturamento desmarcado.` : `Transporte ${T.transporte} marcado como faturado.`, 'ok'); });
+    $('#daily-table tbody').addEventListener('change', e => {
+      const inp = e.target.closest('.nf-in'); if (!inp) return;
+      const t = inp.dataset.nf; aplicarNF(t, inp.value); renderAll();
+      if (P.clean(inp.value)) toast(`Transporte ${t}: NF-e ${P.clean(inp.value)} — ordem faturada.`, 'ok');
+    });
+    $('#daily-table tbody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('.nf-in')) e.target.blur(); });
     $('#check-all').addEventListener('change', e => {
       visibleTransports().forEach(T => e.target.checked ? ui.selected.add(T.transporte) : ui.selected.delete(T.transporte)); renderList();
     });
@@ -723,6 +761,7 @@
     $('#d-body').addEventListener('change', e => {
       const t = ui.open; if (!t) return;
       const man = state.manual[t] || (state.manual[t] = {});
+      if (e.target.dataset.ot === 'nf') { aplicarNF(t, e.target.value); softRefresh(); return; }
       if (e.target.id === 'f-janela') { if (e.target.value) man.janela = e.target.value; else delete man.janela; save(); renderAll(); return; }
       if (e.target.dataset.ov === 'cpf' && man.cpf) { man.cpf = P.fmtCPF(man.cpf); e.target.value = man.cpf; }
       if ((e.target.dataset.ov === 'placaL' || e.target.dataset.ov === 'placaM') && man[e.target.dataset.ov]) { man[e.target.dataset.ov] = P.normPlate(man[e.target.dataset.ov]); e.target.value = man[e.target.dataset.ov]; }
@@ -818,6 +857,8 @@
     softTimer = setTimeout(() => {
       const T = getTransport(ui.open); if (!T) return;
       $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
+      $('#d-fat').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
+      $('#d-fat').classList.toggle('on', !!T.faturado);
       $$('[data-ov]', $('#d-body')).forEach(inp => {
         const k = inp.dataset.ov; const f = inp.closest('.f');
         const req = REQUIRED.some(r => r[0] === k);
@@ -1114,6 +1155,8 @@
         const cur = state.manual[t] || (state.manual[t] = {});
         Object.entries(m).forEach(([k, v]) => { if (!cur[k]) cur[k] = v; }); // não sobrescreve o que já foi digitado no app
       });
+      // NF-e já lançada na Controle OT => ordem faturada
+      if (x.manual) setFat(Object.keys(x.manual).filter(t => state.manual[t] && state.manual[t].nf), true, true);
       msg = 'Planilha importada: ' + x.summary;
       imp.xlsx = null; $('#xlsx-status').textContent = ''; $('#xlsx-file').value = '';
     } else return;
@@ -1140,7 +1183,7 @@
     const res = P.rowsToItems(grid, { headerRow: -1, map: P.LOG_KEYS.slice() });
     mergeLogItems(res.items, false);
     mergeSew([{ janela: 'CONTAINER', data: d, hora: '14:00', status: '200 - Agendamento Concluído', senha: '3*', seq: '1', tipoVeiculo: '', carreta: 'QRS4T56', cavalo: 'UVW7X89', cpf: '333.333.333-33', container: 'ABCU1234567', transportadora: 'TRANSPORTADORA EXEMPLO C', cliente: 'EXPORT CLIENT S.A.', incoterm: 'CIF', volume: null }]);
-    state.manual['10000103'] = Object.assign({ ot: '660001', exp: '1000000001', tara: '3700', mwg: '32500', lacre: 'LC0000001', ticket: '900001', nf: '9001' }, state.manual['10000103'] || {});
+    state.manual['10000103'] = Object.assign({ ot: '660001', exp: '1000000001', tara: '3700', mwg: '32500', lacre: 'LC0000001', ticket: '900001' }, state.manual['10000103'] || {});
     save(true); ui.date = d; $('#date-filter').value = d; renderAll();
     toast('Exemplo carregado (dados fictícios).', 'ok');
   }

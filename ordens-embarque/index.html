@@ -55,6 +55,7 @@
         <input type="search" id="search" placeholder="Buscar cliente, placa, motorista…">
       </div>
       <div class="tb-group">
+        <button class="btn btn-ghost btn-sm btn-danger" id="btn-del-selected" disabled title="Excluir da lista diária as linhas selecionadas"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Excluir selecionadas</button>
         <button class="btn btn-ghost btn-sm" id="btn-fat-selected" disabled title="Marcar as linhas selecionadas como faturadas (vão para o fim da lista)"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Marcar faturadas</button>
         <button class="btn btn-ghost btn-sm" id="btn-copy-list" title="Copiar a lista do dia (colar no Excel)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>Copiar lista</button>
         <button class="btn btn-ghost btn-sm" id="btn-new-manual"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Transporte manual</button>
@@ -75,7 +76,7 @@
               <th class="c-check"><input type="checkbox" id="check-all" title="Selecionar todas"></th>
               <th>Hora</th><th>Transporte</th><th>Janela</th><th>Cliente</th><th>Entrega</th>
               <th>Material</th><th class="num">Pallets</th><th>Placas</th><th>Motorista</th>
-              <th>Treinamento</th><th>Transportadora</th><th>OT</th><th>Status</th>
+              <th>Treinamento</th><th>Transportadora</th><th>OT</th><th class="c-nf">NF-e</th><th class="c-status">Status</th><th class="c-act"></th>
             </tr>
           </thead>
           <tbody></tbody>

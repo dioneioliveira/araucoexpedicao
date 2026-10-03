@@ -120,11 +120,20 @@ automaticamente. Também é possível colar várias Solicitações de uma vez em
 5. OT que chega depois de a ordem ter sido impressa deixa a ordem "Com alterações",
    porque o check-list impresso saiu sem ela. Imprima de novo.
 
-### Ordens faturadas
+### Ordens faturadas e exclusão
 
-No painel, **Marcar como faturada** (ou selecione várias linhas e use **Marcar
-faturadas**). A lista diária fica sempre em ordem de horário, mas as faturadas
-vão para o fim, esmaecidas. Dá para desmarcar no mesmo botão.
+- **Informou a NF-e, a ordem está faturada.** A NF-e pode ser digitada direto
+  na coluna **NF-e** da lista diária, sem abrir a ordem, ou no Controle OT do
+  painel. Apagar a NF-e desfaz o faturamento que veio dela. NF-e que já vem na
+  guia Controle OT da planilha importada também marca como faturada.
+- Também dá para marcar sem NF: **Marcar como faturada** no painel, ou selecione
+  linhas e **Marcar faturadas**.
+- A lista fica sempre em ordem de horário; as faturadas vão para o fim, esmaecidas.
+- **Excluir:** a lixeira no fim de cada linha tira o transporte da lista diária
+  sem abrir a ordem. Para várias (ou o dia inteiro: marque a caixa do
+  cabeçalho), use **Excluir selecionadas**. Sempre pede confirmação. Para trazer
+  de volta, cole a Solicitação de Embarque de novo.
+- As colunas **NF-e · Status · Excluir** ficam fixas à direita da lista.
 
 ### Outras formas de entrada
 

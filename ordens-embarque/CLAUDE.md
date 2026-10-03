@@ -27,3 +27,5 @@
 - Guia OTs (3ª): colagem da tela de OTs do SAP (layout da guia `lt22`), ligada pela entrega
   (remessa). `state.ots` só acrescenta; ao faturar, a OT vai para `state.manual[t].ot` e a
   remessa sai da memória (colagens posteriores dessa remessa são ignoradas).
+- NF-e informada (lista, painel ou Controle OT importada) => faturada (`aplicarNF`, `state.fatNf`).
+  Exclusão de transportes direto na lista (`excluirTransportes`), sempre com confirmação.

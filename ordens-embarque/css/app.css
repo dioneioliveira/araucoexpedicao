@@ -154,6 +154,23 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .grid .mono{font-family:var(--f-mono);font-size:12px}
 .grid .wrap{white-space:normal;min-width:160px;max-width:260px}
 .c-check{width:34px}
+.c-act{width:44px;min-width:44px;text-align:center}
+/* NF-e, Status e Excluir ficam fixos à direita, sempre visíveis */
+.grid tbody tr{--row-bg:#fff}
+.grid tbody tr:hover{--row-bg:#f0f7f7}
+.grid tbody tr.active{--row-bg:#e6f2f1}
+.grid tbody tr.alterada,.grid tbody tr.alterada:hover{--row-bg:#f8ebe9}
+.grid tbody tr.faturada{--row-bg:#f6f6f6}
+.grid .c-nf,.grid .c-status,.grid .c-act{position:sticky;z-index:1;background:var(--row-bg,#fff)}
+.grid thead .c-nf,.grid thead .c-status,.grid thead .c-act{z-index:3;background:#F8F8F8}
+.grid .c-act{right:0}
+.grid .c-status{right:44px;width:150px;min-width:150px}
+.grid .c-nf{right:194px;width:118px;min-width:118px;box-shadow:-8px 0 12px -10px rgba(74,74,74,.35)}
+.row-del{border:1px solid transparent;background:none;border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--ink-faint)}
+.row-del:hover{color:var(--err);border-color:rgba(180,71,59,.35);background:var(--err-soft)}
+.nf-in{width:92px;border:1px dashed var(--line);border-radius:8px;padding:5px 7px;font-family:var(--f-mono);font-size:12px;background:rgba(255,255,255,.8);outline:0}
+.nf-in:focus{border:1px solid var(--turq-strong);box-shadow:0 0 0 3px var(--turq-ghost);background:#fff}
+.nf-in:not(:placeholder-shown){border-style:solid;border-color:rgba(63,143,107,.45);color:var(--ok);font-weight:600}
 .grid input[type=checkbox]{accent-color:var(--turq-strong);width:15px;height:15px;cursor:pointer}
 .chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;border:1px solid transparent;white-space:nowrap}
 .chip.mi{background:var(--turq-soft);color:#3d6f6d;border-color:rgba(95,159,157,.25)}
