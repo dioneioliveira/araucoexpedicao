@@ -86,6 +86,23 @@ Acentos quebrados da página (ex.: `SolicitaÃ§Ã£o`, `NÃƒO`) são corrigido
 automaticamente. Também é possível colar várias Solicitações de uma vez em
 **Importar dados → Colar do sistema**.
 
+### Campo Transporte (topo)
+
+O campo **Transporte** fica em destaque no topo da tela: é a chave de tudo. Digite o
+número e pressione Enter. A ordem abre com tudo o que está ligado a ele (Solicitação de
+Embarque, agendamento, OTs, Controle OT). Se o transporte não existir, o app oferece
+criar manualmente. Ao fechar a ordem, o cursor volta para o campo.
+
+### Texto grande na "Disposição dos pallets" (check-list da carga)
+
+| Situação | Texto impresso |
+|---|---|
+| Cliente **ARAUCO MADERAS** | **EXPORTAÇÃO TERRESTRE** (25% transparente) |
+| Algum material com **`EB/`** na descrição | **BREAKBULK** |
+| Janela PIÊN CONTAINERS | **CONTAINER** (e os "N/A" de tipo de caminhão e lona) |
+
+A lista diária mostra uma etiqueta "Exp. terrestre" ou "Breakbulk" ao lado da janela.
+
 ### Guia Agendamentos (as duas janelas do SEW)
 
 1. No SEW, abra **Agendamento de Cargas** (PIÊN PAINÉIS e/ou PIÊN CONTAINERS) e
@@ -140,10 +157,10 @@ tabela dos embarques da data selecionada.
 
 ### Ordens faturadas e exclusão
 
-- **Informou a NF-e, a ordem está faturada.** A NF-e pode ser digitada direto
-  na coluna **NF-e** da lista diária, sem abrir a ordem, ou no Controle OT do
-  painel. Apagar a NF-e desfaz o faturamento que veio dela. NF-e que já vem na
-  guia Controle OT da planilha importada também marca como faturada.
+- **Informou a NF-e, a ordem está faturada.** A NF-e é digitada dentro do transporte,
+  no **Controle OT** (junto de lacre, container, tara…). Apagar a NF-e desfaz o
+  faturamento que veio dela. NF-e que já vem na guia Controle OT da planilha
+  importada também marca como faturada.
 - Também dá para marcar sem NF: **Marcar como faturada** no painel, ou selecione
   linhas e **Marcar faturadas**.
 - A lista fica sempre em ordem de horário; as faturadas vão para o fim, esmaecidas.
@@ -151,7 +168,7 @@ tabela dos embarques da data selecionada.
   sem abrir a ordem. Para várias (ou o dia inteiro: marque a caixa do
   cabeçalho), use **Excluir selecionadas**. Sempre pede confirmação. Para trazer
   de volta, cole a Solicitação de Embarque de novo.
-- As colunas **NF-e · Status · Excluir** ficam fixas à direita da lista.
+- As colunas **Status · Excluir** ficam fixas à direita da lista.
 
 ### Outras formas de entrada
 
@@ -179,6 +196,7 @@ Abra pelo campo **Transporte** (topo) ou clicando na linha da lista.
   - **Dados de balança**: uma linha, sem títulos, para colar na planilha da balança:
     `Data · Placa · Nº Ticket · Tara container · Peso máximo container · Peso entrada · Peso saída · Conferência 7% · Peso total carga · Status · Nº container · Lacre · NF-e`.
     Peso entrada, Peso saída, Conferência 7%, Peso total e Status vão **em branco** (o balanceiro preenche).
+  - **Placa p/ nota**: duas linhas: `0001` e a placa da carreta com UF, sem espaço (ex.: `AAA1234PR`) (Controle OT T3:T4)
   - **Dados do motorista**: só os valores, sem rótulos: CPF (só números) na 1ª linha e placas (`CAVALOUF/CARRETAUF`) na 2ª
 - **Imprimir ordem**: imprime os dois check-lists.
 

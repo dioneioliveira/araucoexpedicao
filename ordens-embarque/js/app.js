@@ -154,11 +154,22 @@
       otQr: T.otList[0] || '',
       ot: T.otList.join('\n'), // várias OTs: uma por linha no campo OT
       fsc: T.fsc ? T.fsc.fsc : '',
-      janelaContainer: cont ? 'CONTAINER' : '',
+      janelaContainer: destaque(T, cont),
       treinamento: e.treinamento,
       cpfTreinamento: /EXPIRADO/i.test(e.cpfStatus) && !T.man.cpf ? e.cpfStatus : P.fmtCPF(e.cpf),
       entregaTransporte: [e.entrega, T.transporte].filter(Boolean).join(' / '),
     };
+  }
+
+  // Texto grande em "Disposição dos pallets" (célula A41 da carga):
+  // ARAUCO MADERAS => EXPORTAÇÃO TERRESTRE (25% transparente); material "EB/" => BREAKBULK;
+  // janela de containers => CONTAINER.
+  const isAraucoMaderas = T => /ARAUCO\s+MADERAS/.test(P.norm(T.eff.cliente));
+  const isBreakbulk = T => T.items.some(i => /EB\//i.test(i.descricao || ''));
+  function destaque(T, cont) {
+    if (isAraucoMaderas(T)) return 'EXPORTAÇÃO TERRESTRE';
+    if (isBreakbulk(T)) return 'BREAKBULK';
+    return cont ? 'CONTAINER' : '';
   }
 
   // ------------------------------------------------------------------ textos para copiar (guia Controle OT)
@@ -177,6 +188,11 @@
       // Controle OT!I2:U2 — verificação de pesagem na balança
       const row = [P.fmtDateBR(P.todayISO()), P.plate7(e.placaL), o.ticket, o.tara, o.mwg, '', '', '', '', '', o.container, o.lacre, o.nf];
       return { text: row.join('\t'), need: [['ticket', 'Ticket'], ['tara', 'Tara'], ['mwg', 'Peso máx.'], ['nf', 'NF-e']].filter(([k]) => !o[k]).map(x => x[1]) };
+    }
+    if (kind === 'placa') {
+      // Controle OT!T3:T4 — "0001" e a placa da carreta com UF (ex.: AAA1234PR)
+      const pl = P.plate7(e.placaL);
+      return { text: `0001\n${pl}${P.plateUF(e.placaL)}`, need: [!pl && 'Placa', pl && !P.plateUF(e.placaL) && 'UF da placa'].filter(Boolean) };
     }
     // Controle OT!J3:J4 — só os valores (CPF e placas), sem rótulos, para o SAP
     return { text: `${P.cpfDigits(e.cpf)}\n${placasTexto(e)}`, need: [['cpf', 'CPF'], ['placaL', 'Placa']].filter(([k]) => !e[k]).map(x => x[1]) };
@@ -225,6 +241,7 @@
         const s = el.querySelector('svg'); if (s) { s.removeAttribute('width'); s.removeAttribute('height'); }
       } else {
         if (f.wrap) el.classList.add('wrap');
+        if (f.key === 'janelaContainer' && val === 'EXPORTAÇÃO TERRESTRE') el.style.opacity = '0.75';
         if (String(val).includes('\n')) { el.classList.add('wrap', 'clip'); el.style.whiteSpace = 'pre-line'; el.style.lineHeight = '1.05'; }
         const sp = document.createElement('span'); sp.textContent = val; el.appendChild(sp);
       }
@@ -291,7 +308,8 @@
   // ------------------------------------------------------------------ renderização
   function janelaChip(T) {
     const c = T.janela === 'CONTAINER';
-    return `<span class="chip ${c ? 'ct' : 'mi'}" title="Origem: ${esc(T.janelaSrc)}"><span class="dot"></span>${c ? 'Container' : 'Mercado interno'}</span>`;
+    const extra = isAraucoMaderas(T) ? ' <span class="chip grey">Exp. terrestre</span>' : (isBreakbulk(T) ? ' <span class="chip grey">Breakbulk</span>' : '');
+    return extra + `<span class="chip ${c ? 'ct' : 'mi'}" title="Origem: ${esc(T.janelaSrc)}"><span class="dot"></span>${c ? 'Container' : 'Mercado interno'}</span>`;
   }
   function statusChip(T) {
     if (T.faturado) return `<span class="chip fat" title="Faturada em ${esc(new Date(T.faturado).toLocaleString('pt-BR'))}">Faturada</span>`;
@@ -319,7 +337,6 @@
   function renderKPIs(list) {
     const dayAll = allTransports().filter(T => T.eff.data === ui.date);
     const mi = dayAll.filter(T => T.janela !== 'CONTAINER').length, ct = dayAll.length - mi;
-    const pal = dayAll.reduce((s, T) => s + (T.pallets || 0), 0);
     const printed = dayAll.filter(T => T.printed).length;
     const pend = dayAll.filter(T => T.missing.length && !T.faturado).length;
     const tr = dayAll.filter(T => !T.faturado && (T.treino.k === 'err' || T.treino.k === 'warn')).length;
@@ -329,7 +346,6 @@
       ['Transportes', dayAll.length, P.fmtDateBR(ui.date), ''],
       ['Mercado interno', mi, 'janela PIÊN PAINÉIS', ''],
       ['Containers', ct, 'janela PIÊN CONTAINERS', 'lime'],
-      ['Pallets', fmtNum(pal, 1), 'previstos no dia', 'grey'],
       ['Ordens impressas', `${printed}<span class="k-sub"> / ${dayAll.length}</span>`, `${dayAll.length - printed} a imprimir · ${fat} faturada(s)`, ''],
       ['Com alterações', alt, 'impressas com agendamento alterado', alt ? 'red' : 'grey'],
       ['Atenção', pend + tr, `${pend} com dados faltando · ${tr} treinamento`, 'lime'],
@@ -357,7 +373,6 @@
         <td>${treinoChip(T)}</td>
         <td class="wrap">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
-        <td class="c-nf"><input class="nf-in" data-nf="${esc(T.transporte)}" value="${esc(T.ot.nf)}" placeholder="NF-e" inputmode="numeric" title="Informe a NF-e: a ordem fica faturada"></td>
         <td class="c-status">${statusChip(T)}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
@@ -761,6 +776,7 @@
   function closeDetail() {
     ui.open = null; $('#detail').hidden = true; $('#scrim').hidden = true;
     renderList();
+    const ti = $('#transporte-input'); if (ti) { ti.focus(); ti.select(); }
   }
   function renderAll() {
     renderList();
@@ -789,7 +805,6 @@
     $('#daily-table tbody').addEventListener('click', e => {
       const tr = e.target.closest('tr[data-t]'); if (!tr) return;
       const t = tr.dataset.t;
-      if (e.target.closest('.nf-in')) return;
       const del = e.target.closest('[data-del]');
       if (del) { excluirTransportes([del.dataset.del]); return; }
       if (e.target.matches('input[type=checkbox]')) { e.target.checked ? ui.selected.add(t) : ui.selected.delete(t); renderList(); return; }
@@ -802,12 +817,6 @@
     $('#btn-del-selected').addEventListener('click', () => excluirTransportes(visibleTransports().filter(T => ui.selected.has(T.transporte)).map(T => T.transporte)));
     $('#btn-fat-selected').addEventListener('click', () => { const ts = Array.from(ui.selected); setFat(ts, true); ui.selected.clear(); renderAll(); toast(`${ts.length} ordem(ns) marcada(s) como faturada(s).`, 'ok'); });
     $('#d-fat').addEventListener('click', () => { const T = getTransport(ui.open); if (!T) return; setFat([T.transporte], !T.faturado); renderAll(); toast(T.faturado ? `Transporte ${T.transporte}: faturamento desmarcado.` : `Transporte ${T.transporte} marcado como faturado.`, 'ok'); });
-    $('#daily-table tbody').addEventListener('change', e => {
-      const inp = e.target.closest('.nf-in'); if (!inp) return;
-      const t = inp.dataset.nf; aplicarNF(t, inp.value); renderAll();
-      if (P.clean(inp.value)) toast(`Transporte ${t}: NF-e ${P.clean(inp.value)} — ordem faturada.`, 'ok');
-    });
-    $('#daily-table tbody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('.nf-in')) e.target.blur(); });
     $('#check-all').addEventListener('change', e => {
       visibleTransports().forEach(T => e.target.checked ? ui.selected.add(T.transporte) : ui.selected.delete(T.transporte)); renderList();
     });
@@ -882,7 +891,7 @@
       const { text, need } = copyText(b.dataset.copy, T);
       const ok = await toClipboard(text);
       b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 1200);
-      const nome = { texto: 'Dados de texto', balanca: 'Dados de balança', motorista: 'Dados do motorista' }[b.dataset.copy];
+      const nome = { texto: 'Dados de texto', balanca: 'Dados de balança', motorista: 'Dados do motorista', placa: 'Placa p/ nota' }[b.dataset.copy];
       toast(`${ok ? 'Copiado' : 'Não foi possível copiar'}: ${nome}${need.length ? ` — em branco: ${need.join(', ')}` : ''}`, ok ? (need.length ? 'warn' : 'ok') : 'err', text);
     }));
 

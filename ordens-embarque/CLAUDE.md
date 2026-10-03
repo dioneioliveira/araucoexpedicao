@@ -27,9 +27,13 @@
 - Guia OTs (3ª): colagem da tela de OTs do SAP (layout da guia `lt22`), ligada pela entrega
   (remessa). `state.ots` só acrescenta; ao faturar, a OT vai para `state.manual[t].ot` e a
   remessa sai da memória (colagens posteriores dessa remessa são ignoradas).
-- NF-e informada (lista, painel ou Controle OT importada) => faturada (`aplicarNF`, `state.fatNf`).
+- NF-e informada (Controle OT do painel ou da planilha importada) => faturada (`aplicarNF`, `state.fatNf`).
+  A lista diária não tem campo de NF-e.
   Exclusão de transportes direto na lista (`excluirTransportes`), sempre com confirmação.
 - OTs: sem títulos, `parseOTs(grid, knownSets())` lê linha a linha (remessa conhecida/8xxxxxxx +
   número de 6–12 dígitos que não é material). Várias OTs => `T.otList`, impressas uma por linha.
 - Relatório do dia (`relatorio()`): Excel (SheetJS; CSV sem internet), PDF (página nomeada
   `relatorio`, A4 paisagem) e e-mail (copia HTML com estilos inline + abre mailto).
+- Texto grande da célula A41 (carga), em `destaque()`: cliente ARAUCO MADERAS => "EXPORTAÇÃO TERRESTRE"
+  (opacidade 0.75); material com "EB/" => "BREAKBULK"; janela container => "CONTAINER".
+- Cópia "Placa p/ nota": `0001` + quebra de linha + placa da carreta com UF (Controle OT T3:T4).

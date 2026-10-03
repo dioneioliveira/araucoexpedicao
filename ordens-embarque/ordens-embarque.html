@@ -78,6 +78,20 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .brand-mark b{color:var(--ink);font-weight:800}
 .brand-sub{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
 
+.transporte-hero{
+  display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
+  padding:20px 24px 20px 28px;position:relative;overflow:hidden;
+  background:linear-gradient(110deg,#FFFFFF 0%,#FFFFFF 55%,rgba(183,217,216,.28) 100%);
+}
+.transporte-hero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:linear-gradient(180deg,var(--turq),var(--lime))}
+.th-label{display:flex;flex-direction:column;gap:4px}
+.th-label label{font-family:var(--f-title);font-weight:800;font-size:22px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
+.th-label span{font-size:13px;color:var(--ink-dim)}
+.th-field{display:flex;align-items:center;gap:12px;flex:1 1 460px;max-width:720px;background:#fff;border:2px solid var(--turq);border-radius:16px;padding:6px 6px 6px 18px;box-shadow:var(--shadow-1)}
+.th-field:focus-within{border-color:var(--turq-strong);box-shadow:0 0 0 5px var(--turq-ghost),var(--shadow-1)}
+.th-field svg{width:24px;height:24px;color:var(--turq-strong)}
+.th-field input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:var(--f-mono);font-size:30px;font-weight:600;letter-spacing:.06em;color:var(--ink);padding:6px 0}
+.th-field input::placeholder{color:var(--ink-faint);font-size:20px;letter-spacing:0}
 .transporte-box{
   display:flex;align-items:center;gap:8px;margin-left:auto;
   background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 5px 5px 16px;
@@ -174,11 +188,10 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .grid tbody tr.active{--row-bg:#e6f2f1}
 .grid tbody tr.alterada,.grid tbody tr.alterada:hover{--row-bg:#f8ebe9}
 .grid tbody tr.faturada{--row-bg:#f6f6f6}
-.grid .c-nf,.grid .c-status,.grid .c-act{position:sticky;z-index:1;background:var(--row-bg,#fff)}
-.grid thead .c-nf,.grid thead .c-status,.grid thead .c-act{z-index:3;background:#F8F8F8}
+.grid .c-status,.grid .c-act{position:sticky;z-index:1;background:var(--row-bg,#fff)}
+.grid thead .c-status,.grid thead .c-act{z-index:3;background:#F8F8F8}
 .grid .c-act{right:0}
-.grid .c-status{right:44px;width:150px;min-width:150px}
-.grid .c-nf{right:194px;width:118px;min-width:118px;box-shadow:-8px 0 12px -10px rgba(74,74,74,.35)}
+.grid .c-status{right:44px;width:150px;min-width:150px;box-shadow:-8px 0 12px -10px rgba(74,74,74,.35)}
 .row-del{border:1px solid transparent;background:none;border-radius:8px;width:30px;height:30px;display:grid;place-items:center;cursor:pointer;color:var(--ink-faint)}
 .row-del:hover{color:var(--err);border-color:rgba(180,71,59,.35);background:var(--err-soft)}
 .nf-in{width:92px;border:1px dashed var(--line);border-radius:8px;padding:5px 7px;font-family:var(--f-mono);font-size:12px;background:rgba(255,255,255,.8);outline:0}
@@ -363,8 +376,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 /* ---------- responsivo ---------- */
 @media (max-width:1100px){
   .brand-sub{display:none}
-  .transporte-box{margin-left:0;order:3;width:100%}
-  .transporte-box input{flex:1;width:auto}
+  .th-field input{font-size:24px}
   .top-actions{margin-left:auto}
 }
 @media (max-width:720px){
@@ -399,13 +411,6 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       <span class="brand-sub">Expedição · Piên</span>
     </div>
 
-    <form class="transporte-box" id="transporte-form" autocomplete="off">
-      <label for="transporte-input">Transporte</label>
-      <input id="transporte-input" inputmode="numeric" placeholder="Nº do transporte" list="transporte-list">
-      <datalist id="transporte-list"></datalist>
-      <button type="submit" class="btn btn-primary btn-sm" title="Abrir ordem de embarque">Abrir</button>
-    </form>
-
     <div class="top-actions">
       <button class="btn btn-ghost" id="btn-import"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Importar dados</button>
       <button class="btn btn-ghost" id="btn-print-selected" disabled><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>Imprimir selecionadas <span class="count" id="sel-count">0</span></button>
@@ -413,6 +418,18 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
   </header>
 
   <main id="main">
+    <form class="transporte-hero card" id="transporte-form" autocomplete="off">
+      <div class="th-label">
+        <label for="transporte-input">Transporte</label>
+        <span>digite o nº e pressione Enter: a ordem abre com todos os dados ligados a ele</span>
+      </div>
+      <div class="th-field">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <input id="transporte-input" inputmode="numeric" placeholder="Nº do transporte" list="transporte-list" autofocus>
+        <datalist id="transporte-list"></datalist>
+        <button type="submit" class="btn btn-primary btn-lg" title="Abrir ordem de embarque">Abrir ordem</button>
+      </div>
+    </form>
     <nav class="views" id="views" role="tablist">
       <button data-view="lista" class="active" role="tab">Lista diária <span class="count" id="v-count-lista"></span></button>
       <button data-view="agenda" role="tab">Agendamentos <span class="count" id="v-count-agenda"></span></button>
@@ -453,7 +470,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
               <th class="c-check"><input type="checkbox" id="check-all" title="Selecionar todas"></th>
               <th>Hora</th><th>Transporte</th><th>Janela</th><th>Cliente</th><th>Entrega</th>
               <th>Material</th><th class="num">Pallets</th><th>Placas</th><th>Motorista</th>
-              <th>Treinamento</th><th>Transportadora</th><th>OT</th><th class="c-nf">NF-e</th><th class="c-status">Status</th><th class="c-act"></th>
+              <th>Treinamento</th><th>Transportadora</th><th>OT</th><th class="c-status">Status</th><th class="c-act"></th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -516,6 +533,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       <div class="copy-row">
         <button class="btn btn-copy" data-copy="texto"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Dados de texto</button>
         <button class="btn btn-copy" data-copy="balanca"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 006 0L5 7zm14 0l-3 7a4 4 0 006 0l-3-7z"/></svg>Dados de balança</button>
+        <button class="btn btn-copy" data-copy="placa" title="0001 e a placa da carreta com UF, em duas linhas"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h10"/></svg>Placa p/ nota</button>
         <button class="btn btn-copy" data-copy="motorista"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>Dados do motorista</button>
       </div>
       <button class="btn btn-ghost" id="d-fat"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Marcar como faturada</button>
@@ -4118,11 +4136,22 @@ window.ORDEM_TEMPLATES = {
       otQr: T.otList[0] || '',
       ot: T.otList.join('\n'), // várias OTs: uma por linha no campo OT
       fsc: T.fsc ? T.fsc.fsc : '',
-      janelaContainer: cont ? 'CONTAINER' : '',
+      janelaContainer: destaque(T, cont),
       treinamento: e.treinamento,
       cpfTreinamento: /EXPIRADO/i.test(e.cpfStatus) && !T.man.cpf ? e.cpfStatus : P.fmtCPF(e.cpf),
       entregaTransporte: [e.entrega, T.transporte].filter(Boolean).join(' / '),
     };
+  }
+
+  // Texto grande em "Disposição dos pallets" (célula A41 da carga):
+  // ARAUCO MADERAS => EXPORTAÇÃO TERRESTRE (25% transparente); material "EB/" => BREAKBULK;
+  // janela de containers => CONTAINER.
+  const isAraucoMaderas = T => /ARAUCO\s+MADERAS/.test(P.norm(T.eff.cliente));
+  const isBreakbulk = T => T.items.some(i => /EB\//i.test(i.descricao || ''));
+  function destaque(T, cont) {
+    if (isAraucoMaderas(T)) return 'EXPORTAÇÃO TERRESTRE';
+    if (isBreakbulk(T)) return 'BREAKBULK';
+    return cont ? 'CONTAINER' : '';
   }
 
   // ------------------------------------------------------------------ textos para copiar (guia Controle OT)
@@ -4141,6 +4170,11 @@ window.ORDEM_TEMPLATES = {
       // Controle OT!I2:U2 — verificação de pesagem na balança
       const row = [P.fmtDateBR(P.todayISO()), P.plate7(e.placaL), o.ticket, o.tara, o.mwg, '', '', '', '', '', o.container, o.lacre, o.nf];
       return { text: row.join('\t'), need: [['ticket', 'Ticket'], ['tara', 'Tara'], ['mwg', 'Peso máx.'], ['nf', 'NF-e']].filter(([k]) => !o[k]).map(x => x[1]) };
+    }
+    if (kind === 'placa') {
+      // Controle OT!T3:T4 — "0001" e a placa da carreta com UF (ex.: AAA1234PR)
+      const pl = P.plate7(e.placaL);
+      return { text: `0001\n${pl}${P.plateUF(e.placaL)}`, need: [!pl && 'Placa', pl && !P.plateUF(e.placaL) && 'UF da placa'].filter(Boolean) };
     }
     // Controle OT!J3:J4 — só os valores (CPF e placas), sem rótulos, para o SAP
     return { text: `${P.cpfDigits(e.cpf)}\n${placasTexto(e)}`, need: [['cpf', 'CPF'], ['placaL', 'Placa']].filter(([k]) => !e[k]).map(x => x[1]) };
@@ -4189,6 +4223,7 @@ window.ORDEM_TEMPLATES = {
         const s = el.querySelector('svg'); if (s) { s.removeAttribute('width'); s.removeAttribute('height'); }
       } else {
         if (f.wrap) el.classList.add('wrap');
+        if (f.key === 'janelaContainer' && val === 'EXPORTAÇÃO TERRESTRE') el.style.opacity = '0.75';
         if (String(val).includes('\n')) { el.classList.add('wrap', 'clip'); el.style.whiteSpace = 'pre-line'; el.style.lineHeight = '1.05'; }
         const sp = document.createElement('span'); sp.textContent = val; el.appendChild(sp);
       }
@@ -4255,7 +4290,8 @@ window.ORDEM_TEMPLATES = {
   // ------------------------------------------------------------------ renderização
   function janelaChip(T) {
     const c = T.janela === 'CONTAINER';
-    return `<span class="chip ${c ? 'ct' : 'mi'}" title="Origem: ${esc(T.janelaSrc)}"><span class="dot"></span>${c ? 'Container' : 'Mercado interno'}</span>`;
+    const extra = isAraucoMaderas(T) ? ' <span class="chip grey">Exp. terrestre</span>' : (isBreakbulk(T) ? ' <span class="chip grey">Breakbulk</span>' : '');
+    return extra + `<span class="chip ${c ? 'ct' : 'mi'}" title="Origem: ${esc(T.janelaSrc)}"><span class="dot"></span>${c ? 'Container' : 'Mercado interno'}</span>`;
   }
   function statusChip(T) {
     if (T.faturado) return `<span class="chip fat" title="Faturada em ${esc(new Date(T.faturado).toLocaleString('pt-BR'))}">Faturada</span>`;
@@ -4283,7 +4319,6 @@ window.ORDEM_TEMPLATES = {
   function renderKPIs(list) {
     const dayAll = allTransports().filter(T => T.eff.data === ui.date);
     const mi = dayAll.filter(T => T.janela !== 'CONTAINER').length, ct = dayAll.length - mi;
-    const pal = dayAll.reduce((s, T) => s + (T.pallets || 0), 0);
     const printed = dayAll.filter(T => T.printed).length;
     const pend = dayAll.filter(T => T.missing.length && !T.faturado).length;
     const tr = dayAll.filter(T => !T.faturado && (T.treino.k === 'err' || T.treino.k === 'warn')).length;
@@ -4293,7 +4328,6 @@ window.ORDEM_TEMPLATES = {
       ['Transportes', dayAll.length, P.fmtDateBR(ui.date), ''],
       ['Mercado interno', mi, 'janela PIÊN PAINÉIS', ''],
       ['Containers', ct, 'janela PIÊN CONTAINERS', 'lime'],
-      ['Pallets', fmtNum(pal, 1), 'previstos no dia', 'grey'],
       ['Ordens impressas', `${printed}<span class="k-sub"> / ${dayAll.length}</span>`, `${dayAll.length - printed} a imprimir · ${fat} faturada(s)`, ''],
       ['Com alterações', alt, 'impressas com agendamento alterado', alt ? 'red' : 'grey'],
       ['Atenção', pend + tr, `${pend} com dados faltando · ${tr} treinamento`, 'lime'],
@@ -4321,7 +4355,6 @@ window.ORDEM_TEMPLATES = {
         <td>${treinoChip(T)}</td>
         <td class="wrap">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
-        <td class="c-nf"><input class="nf-in" data-nf="${esc(T.transporte)}" value="${esc(T.ot.nf)}" placeholder="NF-e" inputmode="numeric" title="Informe a NF-e: a ordem fica faturada"></td>
         <td class="c-status">${statusChip(T)}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
@@ -4725,6 +4758,7 @@ window.ORDEM_TEMPLATES = {
   function closeDetail() {
     ui.open = null; $('#detail').hidden = true; $('#scrim').hidden = true;
     renderList();
+    const ti = $('#transporte-input'); if (ti) { ti.focus(); ti.select(); }
   }
   function renderAll() {
     renderList();
@@ -4753,7 +4787,6 @@ window.ORDEM_TEMPLATES = {
     $('#daily-table tbody').addEventListener('click', e => {
       const tr = e.target.closest('tr[data-t]'); if (!tr) return;
       const t = tr.dataset.t;
-      if (e.target.closest('.nf-in')) return;
       const del = e.target.closest('[data-del]');
       if (del) { excluirTransportes([del.dataset.del]); return; }
       if (e.target.matches('input[type=checkbox]')) { e.target.checked ? ui.selected.add(t) : ui.selected.delete(t); renderList(); return; }
@@ -4766,12 +4799,6 @@ window.ORDEM_TEMPLATES = {
     $('#btn-del-selected').addEventListener('click', () => excluirTransportes(visibleTransports().filter(T => ui.selected.has(T.transporte)).map(T => T.transporte)));
     $('#btn-fat-selected').addEventListener('click', () => { const ts = Array.from(ui.selected); setFat(ts, true); ui.selected.clear(); renderAll(); toast(`${ts.length} ordem(ns) marcada(s) como faturada(s).`, 'ok'); });
     $('#d-fat').addEventListener('click', () => { const T = getTransport(ui.open); if (!T) return; setFat([T.transporte], !T.faturado); renderAll(); toast(T.faturado ? `Transporte ${T.transporte}: faturamento desmarcado.` : `Transporte ${T.transporte} marcado como faturado.`, 'ok'); });
-    $('#daily-table tbody').addEventListener('change', e => {
-      const inp = e.target.closest('.nf-in'); if (!inp) return;
-      const t = inp.dataset.nf; aplicarNF(t, inp.value); renderAll();
-      if (P.clean(inp.value)) toast(`Transporte ${t}: NF-e ${P.clean(inp.value)} — ordem faturada.`, 'ok');
-    });
-    $('#daily-table tbody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('.nf-in')) e.target.blur(); });
     $('#check-all').addEventListener('change', e => {
       visibleTransports().forEach(T => e.target.checked ? ui.selected.add(T.transporte) : ui.selected.delete(T.transporte)); renderList();
     });
@@ -4846,7 +4873,7 @@ window.ORDEM_TEMPLATES = {
       const { text, need } = copyText(b.dataset.copy, T);
       const ok = await toClipboard(text);
       b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 1200);
-      const nome = { texto: 'Dados de texto', balanca: 'Dados de balança', motorista: 'Dados do motorista' }[b.dataset.copy];
+      const nome = { texto: 'Dados de texto', balanca: 'Dados de balança', motorista: 'Dados do motorista', placa: 'Placa p/ nota' }[b.dataset.copy];
       toast(`${ok ? 'Copiado' : 'Não foi possível copiar'}: ${nome}${need.length ? ` — em branco: ${need.join(', ')}` : ''}`, ok ? (need.length ? 'warn' : 'ok') : 'err', text);
     }));
 
