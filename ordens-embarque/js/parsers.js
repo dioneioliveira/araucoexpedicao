@@ -374,7 +374,97 @@
     return out;
   }
 
+  // ---------- texto com acentuação quebrada (UTF-8 lido como Windows-1252) ----------
+  const CP1252 = { 0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88, 0x2030: 0x89, 0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C, 0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97, 0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B, 0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F };
+  function fixMojibake(str) {
+    if (!/[ÃÂ][\u0080-¿Œ-™]/.test(str)) return str;
+    return str.replace(/[Â-ô][\u0080-¿ŒœŠšŸŽžƒˆ˜–-™]{1,3}/g, m => {
+      const bytes = [];
+      for (const ch of m) { const c = ch.charCodeAt(0); const b = c < 256 ? c : CP1252[c]; if (b == null) return m; bytes.push(b); }
+      try { return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes)); } catch (e) { return m; }
+    });
+  }
+
+  // ---------- página "Solicitação de Embarque - Carregamento de Produto Terminado" (SEW) ----------
+  // Uma ficha por carregamento: cabeçalho (agendamento, origem, placas), tabela
+  // de itens (Pedido · Entrega · Carga = nº do transporte · Cod.Mat · Material ·
+  // Qtde · Cliente), dados do motorista e tabela de treinamentos.
+  const isSolicitacao = text => /Solicita\S*\s+de\s+Embarque/i.test(fixMojibake(String(text || ''))) && /Placa\s+(Carreta|Cavalo|Truck)/i.test(text);
+  function parseSolicitacoes(text) {
+    const t = fixMojibake(String(text || '').replace(/\r\n?/g, '\n'));
+    const parts = t.split(/(?=Solicita\S*\s+de\s+Embarque)/i).filter(isSolicitacao);
+    return parts.map(parseSolicitacao).filter(Boolean);
+  }
+  function parseSolicitacao(text) {
+    const lines = text.split('\n').map(l => l.split('\t').map(c => clean(c)));
+    const kv = {};
+    lines.forEach(cells => {
+      for (let i = 0; i < cells.length - 1; i++) {
+        const m = cells[i].match(/^(.+?):$/);
+        if (m) { const k = norm(m[1]); if (kv[k] == null) kv[k] = cells[i + 1]; }
+      }
+    });
+    const g = (...keys) => { for (const k of keys) { const v = kv[norm(k)]; if (v) return v; } return ''; };
+    // itens
+    const hi = lines.findIndex(c => { const n = c.map(norm); return n.includes('PEDIDO') && n.includes('ENTREGA') && n.includes('CARGA'); });
+    const items = [];
+    if (hi >= 0) {
+      const h = lines[hi].map(norm);
+      const col = (...names) => { for (const nm of names) { const i = h.indexOf(nm); if (i >= 0) return i; } return -1; };
+      const c = { pedido: col('PEDIDO'), entrega: col('ENTREGA'), carga: col('CARGA'), mat: col('COD.MAT', 'COD MAT', 'MATERIAL COD'), desc: col('MATERIAL'), texto: col('TEXTO COMERCIAL'), qtd: col('QTDE', 'QTD', 'QUANTIDADE'), cli: col('NOME DO CLIENTE', 'CLIENTE'), cid: col('CIDADE'), uf: col('UF'), dep: col('DEPOSITO') };
+      for (let r = hi + 1; r < lines.length; r++) {
+        const row = lines[r];
+        if (!/^\d{6,12}$/.test(intStr(row[c.carga])) && !/^\d+\s*-\s*\d+$/.test(row[c.pedido] || '')) break;
+        items.push({ pedido: row[c.pedido] || '', entrega: intStr(row[c.entrega]), transporte: intStr(row[c.carga]), material: intStr(row[c.mat]), descricao: row[c.desc] || '', textoComercial: row[c.texto] || '', qtd: toNum(row[c.qtd]), cliente: row[c.cli] || '', cidade: row[c.cid] || '', uf: row[c.uf] || '', deposito: row[c.dep] || '' });
+      }
+    }
+    // treinamentos: maior validade entre os aplicados
+    const ti = lines.findIndex(c => { const n = c.map(norm); return n[0] === 'TREINAMENTO' && n.includes('VALIDADE'); });
+    const treinos = [];
+    if (ti >= 0) {
+      for (let r = ti + 1; r < lines.length; r++) {
+        const [nome, status, data, validade] = lines[r];
+        if (!nome || lines[r].length < 3) break;
+        treinos.push({ nome, aplicado: norm(status) === 'APLICADO', data: toISODate(data), validade: toISODate(validade) });
+      }
+    }
+    const data = toISODate(g('Agendamento')) || toISODate(g('Data'));
+    const placaCarreta = g('Placa Carreta'), placaCavalo = g('Placa Cavalo'), placaTruck = g('Placa Truck', 'Placa');
+    let placaL, placaM;
+    if (placaCarreta) { placaL = normPlate(placaCarreta); placaM = placaCavalo ? normPlate(placaCavalo) : '-'; }
+    else { placaL = normPlate(placaTruck || placaCavalo); placaM = '-'; }
+    const ult = g('Ult.Treinamento', 'Ult. Treinamento', 'Ultimo Treinamento');
+    const aplicados = treinos.filter(x => x.aplicado && x.validade);
+    const validade = aplicados.map(x => x.validade).sort().pop() || '';
+    const cpf = fmtCPF(g('CPF'));
+    let treinamento = ult, cpfStatus = cpf;
+    if (!ult && !aplicados.length && treinos.length) treinamento = 'NUNCA FOI TREINADO';
+    else if (validade && data && validade < data) cpfStatus = '### TREINAMENTO EXPIRADO ###';
+    const origem = g('Origem');
+    const janela = /CONTAINER/i.test(origem) ? 'CONTAINER' : 'MI';
+    const carregamento = intStr(g('Carregamento'));
+    const head = {
+      data, hora: toTime(g('Hora')), incoterm: g('Frete').toUpperCase(), agendamento: carregamento,
+      obs: g('Observacao'), placaL, placaM, tipoVeiculo: g('Carreta', 'Truck', 'Veiculo') || g('Cavalo'),
+      motorista: g('Nome').toUpperCase(), treinamento, transportadora: g('Transportadora'), cpf, cpfStatus,
+      celular: g('Celular'), cnpjTransportadora: g('CNPJ'), origem, janela, sequencia: g('Sequencia'),
+      peso: toNum(g('Peso da Carga')), container: g('Container', 'Numero Container', 'N Container').toUpperCase(),
+      lacre: g('Lacre').toUpperCase(), validadeTreinamento: validade, fonte: 'Solicitação de Embarque',
+    };
+    if (!items.length) return null;
+    const out = items.map((it, i) => {
+      const o = Object.assign({ colC: '', colP: '', colT: '', colW: '' }, head, it);
+      o.agItem = carregamento ? `${carregamento}-${i + 1}` : String(i + 1);
+      if (!isFinite(o.qtd)) o.qtd = null;
+      o.key = [o.transporte, o.agItem, o.material, o.entrega].join('|');
+      return o;
+    });
+    const sew = { janela, data, hora: head.hora, status: 'Solicitação de Embarque', senha: '', seq: head.sequencia, tipoVeiculo: head.tipoVeiculo, carreta: placaL, cavalo: placaM === '-' ? '' : placaM, cpf, container: head.container, transportadora: head.transportadora, cliente: items[0].cliente, incoterm: head.incoterm, volume: null, carregamento, peso: head.peso, celular: head.celular };
+    return { items: out, sew, carregamento, transportes: Array.from(new Set(out.map(o => o.transporte))) };
+  }
+
   global.OEP = {
+    fixMojibake, isSolicitacao, parseSolicitacoes,
     clean, norm, pad, toISODate, toTime, fmtDateBR, todayISO, toNum, intStr, cpfDigits, fmtCPF, isCPFLike,
     normPlate, plate7, plateUF, isPlate, matInfo, parseTSV, parseHTMLTable, trimGrid,
     LOG_COLS, LOG_KEYS, LOG_LABEL, detectLogMapping, rowsToItems, parseSEW, parseFSC, parseControleOT,

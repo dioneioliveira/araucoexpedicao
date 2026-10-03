@@ -80,14 +80,16 @@
       return Object.assign({}, it, { mi, pallets: pal });
     });
     const sew = sewMatch(eff);
-    const janelaAuto = sew ? sew.janela : 'MI';
+    const janelaAuto = f.janela || (sew ? sew.janela : 'MI'); // Origem da Solicitação de Embarque tem prioridade
     const janela = man.janela || janelaAuto;
     const fsc = fscOf(eff.cliente);
     const ot = Object.fromEntries(OT_FIELDS.map(([k]) => [k, man[k] || '']));
+    if (!ot.container && f.container) ot.container = f.container;
     if (!ot.container && sew && sew.container) ot.container = sew.container;
     const missing = REQUIRED.filter(([k]) => !P.clean(eff[k])).map(([, l]) => l);
     return {
-      transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (sew ? 'SEW' : 'padrão'),
+      transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (f.janela ? 'Solicitação de Embarque' : (sew ? 'SEW' : 'padrão')),
+      solic: f.fonte === 'Solicitação de Embarque' ? f : null,
       fsc, ot, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
       printed: state.printed[t] || null, manualOnly: items.every(i => i.manualOnly),
     };
@@ -357,7 +359,8 @@
     if (T.missing.length) alerts.push(`<div class="alert err">Faltam dados obrigatórios para imprimir: <b>${esc(T.missing.join(', '))}</b>.</div>`);
     if (T.treino.k === 'err') alerts.push(`<div class="alert warn">Motorista <b>nunca foi treinado</b> — realizar o treinamento antes do carregamento.</div>`);
     if (T.treino.k === 'warn') alerts.push(`<div class="alert warn">Treinamento do motorista <b>expirado</b> — realizar o treinamento.</div>`);
-    if (T.sew) alerts.push(`<div class="alert info">Agendamento SEW · janela <b>${T.sew.janela === 'CONTAINER' ? 'PIÊN CONTAINERS' : 'PIÊN PAINÉIS'}</b> · ${esc(P.fmtDateBR(T.sew.data))} ${esc(T.sew.hora)}${T.sew.senha ? ` · senha ${esc(T.sew.senha)}` : ''}${T.sew.status ? ` · ${esc(T.sew.status)}` : ''}${T.sew.container ? ` · container ${esc(T.sew.container)}` : ''}</div>`);
+    if (T.solic) { const x = T.solic; alerts.push(`<div class="alert info">Solicitação de Embarque · carregamento <b>${esc(x.agendamento)}</b> · origem <b>${esc(x.origem)}</b>${x.sequencia ? ` · sequência ${esc(x.sequencia)}` : ''}${x.peso ? ` · peso ${fmtNum(x.peso, 0)} kg` : ''}${x.celular ? ` · celular do motorista ${esc(x.celular)}` : ''}${x.validadeTreinamento ? ` · treinamento válido até ${esc(P.fmtDateBR(x.validadeTreinamento))}` : ''}${x.cidade ? ` · destino ${esc(x.cidade)}/${esc(x.uf)}` : ''}</div>`); }
+    else if (T.sew) alerts.push(`<div class="alert info">Agendamento SEW · janela <b>${T.sew.janela === 'CONTAINER' ? 'PIÊN CONTAINERS' : 'PIÊN PAINÉIS'}</b> · ${esc(P.fmtDateBR(T.sew.data))} ${esc(T.sew.hora)}${T.sew.senha ? ` · senha ${esc(T.sew.senha)}` : ''}${T.sew.status ? ` · ${esc(T.sew.status)}` : ''}${T.sew.container ? ` · container ${esc(T.sew.container)}` : ''}</div>`);
     else if (!state.sew.length) alerts.push(`<div class="alert info">Sem agendamento SEW importado — janela considerada <b>Mercado interno</b>. Ajuste abaixo se for container.</div>`);
 
     const tot = T.items.reduce((s, i) => s + (i.qtd || 0), 0);
@@ -572,6 +575,31 @@
       toast(ok ? `Lista copiada (${rows.length} linha(s)) — cole no Excel.` : 'Não foi possível copiar.', ok ? 'ok' : 'err');
     });
 
+    document.addEventListener('paste', e => {
+      const tg = e.target;
+      if (document.querySelector('dialog[open]') || (tg && (tg.closest('input,textarea,select,[contenteditable]')))) return;
+      const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+      if (!text.trim()) return;
+      e.preventDefault();
+      if (P.isSolicitacao(text)) {
+        const list = P.parseSolicitacoes(text);
+        const its = list.length ? importSolicitacoes(list) : [];
+        if (!its.length) { toast('Página reconhecida, mas sem a tabela de itens. Copie a página inteira (Ctrl+A, Ctrl+C) e cole de novo.', 'err'); return; }
+        const t = its[0].transporte, d = its[0].data;
+        if (d) { ui.date = d; $('#date-filter').value = d; }
+        renderAll(); openDetail(t);
+        const T = getTransport(t);
+        toast(`Transporte ${t} importado da Solicitação de Embarque (${T.janela === 'CONTAINER' ? 'container' : 'mercado interno'}).${T.missing.length ? ' Falta: ' + T.missing.join(', ') : ' Pronto para imprimir.'}`, T.missing.length ? 'warn' : 'ok');
+        return;
+      }
+      // tabela (LOG/SAP, SEW): abre a importação já com o conteúdo colado
+      const html = e.clipboardData.getData('text/html');
+      const sew = /PI[EÊ]N (PAINEIS|PAINÉIS|CONTAINERS)|Tp\.?Ve[ií]culo/i.test(text);
+      imp.tab = sew ? 'sew' : 'log';
+      $('#btn-import').click();
+      if (sew) { imp.sewHtml = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null; $('#sew-paste').value = text; parseSewPaste(); }
+      else { imp.html = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null; $('#log-paste').value = text; parseLogPaste(); }
+    });
     $('#pv-close').addEventListener('click', () => $('#preview-dialog').close());
     $('#btn-demo').addEventListener('click', loadDemo);
     window.addEventListener('resize', () => { if (ui.open) { const T = getTransport(ui.open); if (T) renderThumbs(T); } });
@@ -695,10 +723,10 @@
     updateApply();
   }
   function updateApply() {
-    const ready = { log: imp.log && imp.log.items.length, sew: imp.sew && imp.sew.length, fsc: imp.fsc && Object.keys(imp.fsc).length, xlsx: imp.xlsx }[imp.tab];
+    const ready = { log: (imp.log && imp.log.items.length) || (imp.sol && imp.sol.length), sew: imp.sew && imp.sew.length, fsc: imp.fsc && Object.keys(imp.fsc).length, xlsx: imp.xlsx }[imp.tab];
     $('#import-apply').disabled = !ready;
     const msg = {
-      log: imp.log ? `${imp.log.items.length} linha(s) · ${new Set(imp.log.items.map(i => i.transporte)).size} transporte(s)` : '',
+      log: imp.sol ? `${imp.sol.length} solicitação(ões) de embarque` : imp.log ? `${imp.log.items.length} linha(s) · ${new Set(imp.log.items.map(i => i.transporte)).size} transporte(s)` : '',
       sew: imp.sew ? `${imp.sew.length} agendamento(s)` : '',
       fsc: '', xlsx: imp.xlsx ? imp.xlsx.summary : '', backup: '',
     }[imp.tab];
@@ -711,7 +739,9 @@
 
   function parseLogPaste() {
     const text = $('#log-paste').value;
+    imp.sol = null;
     if (!text.trim()) { imp.log = null; $('#log-preview').innerHTML = ''; updateApply(); return; }
+    if (P.isSolicitacao(text)) { imp.log = null; imp.sol = P.parseSolicitacoes(text); renderSolPreview(); return; }
     const grid = imp.html && imp.html.length ? imp.html : P.trimGrid(P.parseTSV(text));
     const mapping = P.detectLogMapping(grid);
     imp.log = { grid, mapping, items: [] };
@@ -732,6 +762,15 @@
         <thead><tr>${Array.from({ length: ncol }, (_, i) => `<th><select data-col="${i}" class="${mapping.map[i] ? '' : 'unmapped'}">${opts(mapping.map[i])}</select></th>`).join('')}</tr></thead>
         <tbody>${rows.map((r, ri) => `<tr class="${badSet.has(ri + mapping.headerRow + 1) ? 'bad' : ''}">${Array.from({ length: ncol }, (_, i) => `<td>${esc(P.clean(r[i]))}</td>`).join('')}</tr>`).join('')}</tbody>
       </table></div>`;
+    updateApply();
+  }
+  function renderSolPreview() {
+    const its = [].concat(...imp.sol.map(x => x.items));
+    $('#log-preview').innerHTML = its.length ? `
+      <div class="row-actions"><span class="muted">Reconhecida(s) <b>${imp.sol.length} Solicitação(ões) de Embarque</b> · ${new Set(its.map(i => i.transporte)).size} transporte(s)</span></div>
+      <div class="preview-wrap"><table><thead><tr><th>Transporte</th><th>Janela</th><th>Data</th><th>Hora</th><th>Carregamento</th><th>Placa carreta</th><th>Cavalo</th><th>Motorista</th><th>CPF</th><th>Transportadora</th><th>Cliente</th><th>Material</th><th>Qtd</th><th>Container</th></tr></thead>
+      <tbody>${its.map(i => `<tr><td>${esc(i.transporte)}</td><td>${i.janela === 'CONTAINER' ? 'Container' : 'Merc. interno'}</td><td>${P.fmtDateBR(i.data)}</td><td>${esc(i.hora)}</td><td>${esc(i.agendamento)}</td><td>${esc(i.placaL)}</td><td>${esc(i.placaM)}</td><td>${esc(i.motorista)}</td><td>${esc(i.cpf)}</td><td>${esc(i.transportadora)}</td><td>${esc(i.cliente)}</td><td>${esc(i.descricao)}</td><td>${fmtNum(i.qtd, 0)}</td><td>${esc(i.container)}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="alert warn">A página foi reconhecida como Solicitação de Embarque, mas a tabela de itens (Pedido · Entrega · Carga…) não veio na cópia. Copie a página inteira (Ctrl+A, Ctrl+C).</div>';
     updateApply();
   }
   function parseSewPaste() {
@@ -757,6 +796,17 @@
     // transporte criado manualmente que agora chegou do LOG: mantém só o do LOG
     Object.values(state.items).forEach(i => { if (i.manualOnly && ts.has(i.transporte)) delete state.items[i.key]; });
     items.forEach(i => { state.items[i.key] = i; });
+  }
+  function importSolicitacoes(list) {
+    const items = [].concat(...list.map(x => x.items));
+    const ts = new Set(items.map(i => i.transporte));
+    // a página do SEW é a versão mais recente do transporte: substitui os itens dele
+    Object.values(state.items).forEach(i => { if (ts.has(i.transporte)) delete state.items[i.key]; });
+    items.forEach(i => { state.items[i.key] = i; });
+    const keys = new Set(list.map(x => x.carregamento).filter(Boolean));
+    state.sew = state.sew.filter(e => !(e.carregamento && keys.has(e.carregamento))).concat(list.map(x => x.sew));
+    save(true);
+    return items;
   }
   function mergeSew(entries) {
     const keys = new Set(entries.map(s => s.janela + '|' + s.data));
@@ -808,8 +858,13 @@
   }
 
   function applyImport() {
-    let msg = '', focus = null;
-    if (imp.tab === 'log' && imp.log) {
+    let msg = '', focus = null, openT = null;
+    if (imp.tab === 'log' && imp.sol && imp.sol.length) {
+      const its = importSolicitacoes(imp.sol);
+      focus = focusDateOf(its); if (imp.sol.length === 1) openT = its[0].transporte;
+      msg = `${imp.sol.length} solicitação(ões) de embarque importada(s).`;
+      $('#log-paste').value = ''; imp.sol = null; $('#log-preview').innerHTML = '';
+    } else if (imp.tab === 'log' && imp.log) {
       mergeLogItems(imp.log.items, $('#log-replace-dates').checked);
       focus = focusDateOf(imp.log.items);
       msg = `${new Set(imp.log.items.map(i => i.transporte)).size} transporte(s) importado(s) do LOG.`;
@@ -836,6 +891,7 @@
     $('#import-dialog').close();
     if (focus) { ui.date = focus; $('#date-filter').value = focus; }
     renderAll();
+    if (openT) openDetail(openT);
     toast(msg, 'ok');
   }
 

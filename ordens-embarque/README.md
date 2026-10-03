@@ -59,32 +59,64 @@ Se faltar algum, o app avisa antes de imprimir.
 
 ## Como usar
 
-1. **Importar dados** → **Tabela LOG (SAP)**: copie a tabela do sistema e cole. Com
+### Processo principal: Ctrl+C no SEW, Ctrl+V no app
+
+1. No SEW, abra a página **Solicitação de Embarque - Carregamento de Produto
+   Terminado** do carregamento.
+2. Copie a página inteira: **Ctrl+A** e depois **Ctrl+C**.
+3. No app, pressione **Ctrl+V** em qualquer lugar da tela (fora de campos de texto).
+4. O transporte entra na lista do dia e a ordem abre preenchida:
+
+| Da página do SEW | Vai para |
+|---|---|
+| Carga (tabela de itens) | **Transporte** (chave da ordem) |
+| Agendamento / Hora | Data e hora |
+| Origem `PIEN PAINEIS` / `PIEN CONTAINERS` | Janela: mercado interno / **CONTAINER** |
+| Placa Carreta / Placa Cavalo (sem cavalo = truck) | Placas |
+| Nome / CPF / Transportadora | Motorista, CPF e transportadora |
+| Últ. Treinamento + tabela de treinamentos | Treinamento; "expirado" se a validade for anterior ao agendamento |
+| Pedido · Entrega · Cod.Mat · Material · Qtde · Cliente | Itens, pallets, entrega e cliente |
+| Número Container | Nº container do Controle OT |
+| Carregamento, Frete, Peso, Celular, Cidade/UF | Informações no painel |
+
+5. Complete o que não vem do SEW (OT, NF-e, Tara, EXP, Lacre, Ticket) e clique
+   **Imprimir ordem**.
+
+Acentos quebrados da página (ex.: `SolicitaÃ§Ã£o`, `NÃƒO`) são corrigidos
+automaticamente. Também é possível colar várias Solicitações de uma vez em
+**Importar dados → Colar do sistema**.
+
+### Outras formas de entrada
+
+- **Colar do sistema**: aceita também tabelas com as colunas da guia **LOG**. Com
    ou sem cabeçalho, e mesmo que as colunas venham fora de ordem: o app
    reconhece as colunas pelo cabeçalho, pela posição da guia LOG ou pelo conteúdo
    (placas, CPF, datas, horas, nº de transporte/entrega). Confira na
-   pré-visualização e ajuste a coluna pelo seletor se precisar.
-2. **Agendamento SEW**: cole a tela *Agendamento de Cargas* com as duas janelas
-   (PIÊN PAINÉIS = mercado interno, PIÊN CONTAINERS). A janela de cada
-   transporte é definida pela placa da carreta, como na guia SEW ON LINE. O nº do
-   container do agendamento já entra no Controle OT.
-3. Também dá para importar direto a **planilha LOG-AGENDAMENTO (.xlsm)**: as guias
-   LOG, SEW ON LINE, FSC e os campos manuais da Controle OT são lidos.
-4. Digite o número no campo **Transporte** (topo) ou clique na linha da lista.
-   No painel:
-   - corrija ou complete os dados do transporte (o valor alterado fica marcado
-     em amarelo e pode ser desfeito);
-   - preencha o **Controle OT**: OT, Doc, NF-e, Tara, Peso máx. (MWG), EXP,
-     Container, Lacre e Ticket da balança;
-   - botões de cópia para colar em planilhas e no SAP:
-     - **Dados de texto**: `EXP …` / `TARA …` / `Container …` / `Lacre …` (texto da NF-e, Controle OT F1:F4)
-     - **Dados de balança**: linha da verificação de pesagem (Controle OT I2:U2)
-     - **Dados do motorista**: `CPF` e `Placas` no formato do SAP (Controle OT I3:J4)
-   - **Imprimir ordem**: imprime os dois check-lists.
-5. Na lista, marque várias linhas e use **Imprimir selecionadas** para imprimir
-   as ordens em lote. **Copiar lista** copia a lista do dia para o Excel.
-6. Transporte que não está na tabela: digite o número e confirme **Criar
-   transporte manual**.
+   pré-visualização e ajuste a coluna pelo seletor se precisar. Colar uma tabela
+   com Ctrl+V na tela principal abre essa importação já preenchida.
+- **Agendamento SEW**: a tela *Agendamento de Cargas* com as duas janelas
+   (PIÊN PAINÉIS e PIÊN CONTAINERS), como na guia SEW ON LINE.
+- **Planilha LOG-AGENDAMENTO (.xlsm)**: as guias LOG, SEW ON LINE, FSC e os campos
+   manuais da Controle OT são lidos.
+
+### Painel da ordem
+
+Abra pelo campo **Transporte** (topo) ou clicando na linha da lista.
+
+- corrija ou complete os dados do transporte (o valor alterado fica marcado
+  em amarelo e pode ser desfeito);
+- preencha o **Controle OT**: OT, Doc, NF-e, Tara, Peso máx. (MWG), EXP,
+  Container, Lacre e Ticket da balança;
+- botões de cópia para colar em planilhas e no SAP:
+  - **Dados de texto**: `EXP …` / `TARA …` / `Container …` / `Lacre …` (texto da NF-e, Controle OT F1:F4)
+  - **Dados de balança**: linha da verificação de pesagem (Controle OT I2:U2)
+  - **Dados do motorista**: `CPF` e `Placas` no formato do SAP (Controle OT I3:J4)
+- **Imprimir ordem**: imprime os dois check-lists.
+
+Na lista, marque várias linhas e use **Imprimir selecionadas** para imprimir
+as ordens em lote. **Copiar lista** copia a lista do dia para o Excel.
+Transporte que não está em lugar nenhum: digite o número no campo Transporte e
+confirme **Criar transporte manual**.
 
 Impressão: A4 retrato. No Chrome, deixe *Margens: padrão* (o app define margem
 zero) e *Escala: padrão (100%)*.

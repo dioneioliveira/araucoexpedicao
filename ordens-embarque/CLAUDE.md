@@ -7,7 +7,10 @@
   `templates/*.png`, `templates/*-modelo-oficial.pdf` nem `js/templates.js`.
   Eles são gerados a partir dos `.xlsm` oficiais com `tools/build_templates.py`.
   Dados só entram por cima, nas células de dados (mesmas da guia CKL / Check Vc).
-- Os dados de entrada seguem a guia `LOG` da planilha LOG-AGENDAMENTO (colunas
+- Entrada principal: Ctrl+C da página SEW "Solicitação de Embarque" e Ctrl+V no
+  app (`parseSolicitacoes` em `js/parsers.js`). A coluna **Carga** da tabela de
+  itens é o nº do transporte; `Origem` define a janela (PIEN CONTAINERS = container).
+- Os dados de tabela seguem a guia `LOG` da planilha LOG-AGENDAMENTO (colunas
   A..Y) e a chave de ligação é o **Transporte** (LOG col. A).
 - Janela de agendamento: `CONTAINER` quando a placa da carreta (7 primeiros
   caracteres) aparece na janela PIÊN CONTAINERS do SEW. Caso contrário,

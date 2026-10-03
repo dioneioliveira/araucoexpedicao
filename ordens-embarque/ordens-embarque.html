@@ -395,7 +395,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
         <div class="empty" id="empty-state" hidden>
           <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M3 7h13v10H3zM16 10h3l2 3v4h-5M7 19a2 2 0 100-4 2 2 0 000 4zm11 0a2 2 0 100-4 2 2 0 000 4z"/></svg></div>
           <h3>Nenhum transporte para esta data</h3>
-          <p>Cole a tabela do LOG (SAP) em <b>Importar dados</b> para montar a lista diária.</p>
+          <p>No SEW, abra a <b>Solicitação de Embarque</b>, copie a página inteira (<b>Ctrl+A</b>, <b>Ctrl+C</b>)<br>e pressione <b>Ctrl+V</b> aqui. A ordem abre preenchida e pronta para imprimir.</p>
           <div class="empty-actions">
             <button class="btn btn-primary" data-open-import>Importar dados</button>
             <button class="btn btn-ghost" id="btn-demo">Carregar exemplo</button>
@@ -439,7 +439,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       <button class="icon-btn" value="close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="tabs" id="import-tabs">
-      <button type="button" data-tab="log" class="active">Tabela LOG (SAP)</button>
+      <button type="button" data-tab="log" class="active">Colar do sistema</button>
       <button type="button" data-tab="sew">Agendamento SEW</button>
       <button type="button" data-tab="xlsx">Planilha Excel</button>
       <button type="button" data-tab="fsc">Clientes FSC</button>
@@ -447,7 +447,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
     </div>
 
     <div class="tab-pane" data-pane="log">
-      <p class="hint">Copie a tabela do sistema (mesmas colunas da guia <b>LOG</b>) e cole abaixo — com ou sem cabeçalho, mesmo que venha desalinhada. O app identifica as colunas automaticamente; confira na pré-visualização e ajuste se precisar.</p>
+      <p class="hint">Cole aqui a página <b>Solicitação de Embarque</b> do SEW (uma ou várias, uma após a outra) ou uma tabela do sistema com as colunas da guia <b>LOG</b>. Dica: fora desta janela, basta pressionar <b>Ctrl+V</b> em qualquer lugar do app.</p>
       <textarea id="log-paste" placeholder="Cole aqui (Ctrl+V)…" spellcheck="false"></textarea>
       <div class="row-actions">
         <label class="check"><input type="checkbox" id="log-replace-dates" checked> Substituir os transportes das datas coladas</label>
@@ -3682,7 +3682,97 @@ window.ORDEM_TEMPLATES = {
     return out;
   }
 
+  // ---------- texto com acentuação quebrada (UTF-8 lido como Windows-1252) ----------
+  const CP1252 = { 0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88, 0x2030: 0x89, 0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C, 0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97, 0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B, 0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F };
+  function fixMojibake(str) {
+    if (!/[ÃÂ][\u0080-¿Œ-™]/.test(str)) return str;
+    return str.replace(/[Â-ô][\u0080-¿ŒœŠšŸŽžƒˆ˜–-™]{1,3}/g, m => {
+      const bytes = [];
+      for (const ch of m) { const c = ch.charCodeAt(0); const b = c < 256 ? c : CP1252[c]; if (b == null) return m; bytes.push(b); }
+      try { return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes)); } catch (e) { return m; }
+    });
+  }
+
+  // ---------- página "Solicitação de Embarque - Carregamento de Produto Terminado" (SEW) ----------
+  // Uma ficha por carregamento: cabeçalho (agendamento, origem, placas), tabela
+  // de itens (Pedido · Entrega · Carga = nº do transporte · Cod.Mat · Material ·
+  // Qtde · Cliente), dados do motorista e tabela de treinamentos.
+  const isSolicitacao = text => /Solicita\S*\s+de\s+Embarque/i.test(fixMojibake(String(text || ''))) && /Placa\s+(Carreta|Cavalo|Truck)/i.test(text);
+  function parseSolicitacoes(text) {
+    const t = fixMojibake(String(text || '').replace(/\r\n?/g, '\n'));
+    const parts = t.split(/(?=Solicita\S*\s+de\s+Embarque)/i).filter(isSolicitacao);
+    return parts.map(parseSolicitacao).filter(Boolean);
+  }
+  function parseSolicitacao(text) {
+    const lines = text.split('\n').map(l => l.split('\t').map(c => clean(c)));
+    const kv = {};
+    lines.forEach(cells => {
+      for (let i = 0; i < cells.length - 1; i++) {
+        const m = cells[i].match(/^(.+?):$/);
+        if (m) { const k = norm(m[1]); if (kv[k] == null) kv[k] = cells[i + 1]; }
+      }
+    });
+    const g = (...keys) => { for (const k of keys) { const v = kv[norm(k)]; if (v) return v; } return ''; };
+    // itens
+    const hi = lines.findIndex(c => { const n = c.map(norm); return n.includes('PEDIDO') && n.includes('ENTREGA') && n.includes('CARGA'); });
+    const items = [];
+    if (hi >= 0) {
+      const h = lines[hi].map(norm);
+      const col = (...names) => { for (const nm of names) { const i = h.indexOf(nm); if (i >= 0) return i; } return -1; };
+      const c = { pedido: col('PEDIDO'), entrega: col('ENTREGA'), carga: col('CARGA'), mat: col('COD.MAT', 'COD MAT', 'MATERIAL COD'), desc: col('MATERIAL'), texto: col('TEXTO COMERCIAL'), qtd: col('QTDE', 'QTD', 'QUANTIDADE'), cli: col('NOME DO CLIENTE', 'CLIENTE'), cid: col('CIDADE'), uf: col('UF'), dep: col('DEPOSITO') };
+      for (let r = hi + 1; r < lines.length; r++) {
+        const row = lines[r];
+        if (!/^\d{6,12}$/.test(intStr(row[c.carga])) && !/^\d+\s*-\s*\d+$/.test(row[c.pedido] || '')) break;
+        items.push({ pedido: row[c.pedido] || '', entrega: intStr(row[c.entrega]), transporte: intStr(row[c.carga]), material: intStr(row[c.mat]), descricao: row[c.desc] || '', textoComercial: row[c.texto] || '', qtd: toNum(row[c.qtd]), cliente: row[c.cli] || '', cidade: row[c.cid] || '', uf: row[c.uf] || '', deposito: row[c.dep] || '' });
+      }
+    }
+    // treinamentos: maior validade entre os aplicados
+    const ti = lines.findIndex(c => { const n = c.map(norm); return n[0] === 'TREINAMENTO' && n.includes('VALIDADE'); });
+    const treinos = [];
+    if (ti >= 0) {
+      for (let r = ti + 1; r < lines.length; r++) {
+        const [nome, status, data, validade] = lines[r];
+        if (!nome || lines[r].length < 3) break;
+        treinos.push({ nome, aplicado: norm(status) === 'APLICADO', data: toISODate(data), validade: toISODate(validade) });
+      }
+    }
+    const data = toISODate(g('Agendamento')) || toISODate(g('Data'));
+    const placaCarreta = g('Placa Carreta'), placaCavalo = g('Placa Cavalo'), placaTruck = g('Placa Truck', 'Placa');
+    let placaL, placaM;
+    if (placaCarreta) { placaL = normPlate(placaCarreta); placaM = placaCavalo ? normPlate(placaCavalo) : '-'; }
+    else { placaL = normPlate(placaTruck || placaCavalo); placaM = '-'; }
+    const ult = g('Ult.Treinamento', 'Ult. Treinamento', 'Ultimo Treinamento');
+    const aplicados = treinos.filter(x => x.aplicado && x.validade);
+    const validade = aplicados.map(x => x.validade).sort().pop() || '';
+    const cpf = fmtCPF(g('CPF'));
+    let treinamento = ult, cpfStatus = cpf;
+    if (!ult && !aplicados.length && treinos.length) treinamento = 'NUNCA FOI TREINADO';
+    else if (validade && data && validade < data) cpfStatus = '### TREINAMENTO EXPIRADO ###';
+    const origem = g('Origem');
+    const janela = /CONTAINER/i.test(origem) ? 'CONTAINER' : 'MI';
+    const carregamento = intStr(g('Carregamento'));
+    const head = {
+      data, hora: toTime(g('Hora')), incoterm: g('Frete').toUpperCase(), agendamento: carregamento,
+      obs: g('Observacao'), placaL, placaM, tipoVeiculo: g('Carreta', 'Truck', 'Veiculo') || g('Cavalo'),
+      motorista: g('Nome').toUpperCase(), treinamento, transportadora: g('Transportadora'), cpf, cpfStatus,
+      celular: g('Celular'), cnpjTransportadora: g('CNPJ'), origem, janela, sequencia: g('Sequencia'),
+      peso: toNum(g('Peso da Carga')), container: g('Container', 'Numero Container', 'N Container').toUpperCase(),
+      lacre: g('Lacre').toUpperCase(), validadeTreinamento: validade, fonte: 'Solicitação de Embarque',
+    };
+    if (!items.length) return null;
+    const out = items.map((it, i) => {
+      const o = Object.assign({ colC: '', colP: '', colT: '', colW: '' }, head, it);
+      o.agItem = carregamento ? `${carregamento}-${i + 1}` : String(i + 1);
+      if (!isFinite(o.qtd)) o.qtd = null;
+      o.key = [o.transporte, o.agItem, o.material, o.entrega].join('|');
+      return o;
+    });
+    const sew = { janela, data, hora: head.hora, status: 'Solicitação de Embarque', senha: '', seq: head.sequencia, tipoVeiculo: head.tipoVeiculo, carreta: placaL, cavalo: placaM === '-' ? '' : placaM, cpf, container: head.container, transportadora: head.transportadora, cliente: items[0].cliente, incoterm: head.incoterm, volume: null, carregamento, peso: head.peso, celular: head.celular };
+    return { items: out, sew, carregamento, transportes: Array.from(new Set(out.map(o => o.transporte))) };
+  }
+
   global.OEP = {
+    fixMojibake, isSolicitacao, parseSolicitacoes,
     clean, norm, pad, toISODate, toTime, fmtDateBR, todayISO, toNum, intStr, cpfDigits, fmtCPF, isCPFLike,
     normPlate, plate7, plateUF, isPlate, matInfo, parseTSV, parseHTMLTable, trimGrid,
     LOG_COLS, LOG_KEYS, LOG_LABEL, detectLogMapping, rowsToItems, parseSEW, parseFSC, parseControleOT,
@@ -3773,14 +3863,16 @@ window.ORDEM_TEMPLATES = {
       return Object.assign({}, it, { mi, pallets: pal });
     });
     const sew = sewMatch(eff);
-    const janelaAuto = sew ? sew.janela : 'MI';
+    const janelaAuto = f.janela || (sew ? sew.janela : 'MI'); // Origem da Solicitação de Embarque tem prioridade
     const janela = man.janela || janelaAuto;
     const fsc = fscOf(eff.cliente);
     const ot = Object.fromEntries(OT_FIELDS.map(([k]) => [k, man[k] || '']));
+    if (!ot.container && f.container) ot.container = f.container;
     if (!ot.container && sew && sew.container) ot.container = sew.container;
     const missing = REQUIRED.filter(([k]) => !P.clean(eff[k])).map(([, l]) => l);
     return {
-      transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (sew ? 'SEW' : 'padrão'),
+      transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (f.janela ? 'Solicitação de Embarque' : (sew ? 'SEW' : 'padrão')),
+      solic: f.fonte === 'Solicitação de Embarque' ? f : null,
       fsc, ot, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
       printed: state.printed[t] || null, manualOnly: items.every(i => i.manualOnly),
     };
@@ -4050,7 +4142,8 @@ window.ORDEM_TEMPLATES = {
     if (T.missing.length) alerts.push(`<div class="alert err">Faltam dados obrigatórios para imprimir: <b>${esc(T.missing.join(', '))}</b>.</div>`);
     if (T.treino.k === 'err') alerts.push(`<div class="alert warn">Motorista <b>nunca foi treinado</b> — realizar o treinamento antes do carregamento.</div>`);
     if (T.treino.k === 'warn') alerts.push(`<div class="alert warn">Treinamento do motorista <b>expirado</b> — realizar o treinamento.</div>`);
-    if (T.sew) alerts.push(`<div class="alert info">Agendamento SEW · janela <b>${T.sew.janela === 'CONTAINER' ? 'PIÊN CONTAINERS' : 'PIÊN PAINÉIS'}</b> · ${esc(P.fmtDateBR(T.sew.data))} ${esc(T.sew.hora)}${T.sew.senha ? ` · senha ${esc(T.sew.senha)}` : ''}${T.sew.status ? ` · ${esc(T.sew.status)}` : ''}${T.sew.container ? ` · container ${esc(T.sew.container)}` : ''}</div>`);
+    if (T.solic) { const x = T.solic; alerts.push(`<div class="alert info">Solicitação de Embarque · carregamento <b>${esc(x.agendamento)}</b> · origem <b>${esc(x.origem)}</b>${x.sequencia ? ` · sequência ${esc(x.sequencia)}` : ''}${x.peso ? ` · peso ${fmtNum(x.peso, 0)} kg` : ''}${x.celular ? ` · celular do motorista ${esc(x.celular)}` : ''}${x.validadeTreinamento ? ` · treinamento válido até ${esc(P.fmtDateBR(x.validadeTreinamento))}` : ''}${x.cidade ? ` · destino ${esc(x.cidade)}/${esc(x.uf)}` : ''}</div>`); }
+    else if (T.sew) alerts.push(`<div class="alert info">Agendamento SEW · janela <b>${T.sew.janela === 'CONTAINER' ? 'PIÊN CONTAINERS' : 'PIÊN PAINÉIS'}</b> · ${esc(P.fmtDateBR(T.sew.data))} ${esc(T.sew.hora)}${T.sew.senha ? ` · senha ${esc(T.sew.senha)}` : ''}${T.sew.status ? ` · ${esc(T.sew.status)}` : ''}${T.sew.container ? ` · container ${esc(T.sew.container)}` : ''}</div>`);
     else if (!state.sew.length) alerts.push(`<div class="alert info">Sem agendamento SEW importado — janela considerada <b>Mercado interno</b>. Ajuste abaixo se for container.</div>`);
 
     const tot = T.items.reduce((s, i) => s + (i.qtd || 0), 0);
@@ -4265,6 +4358,31 @@ window.ORDEM_TEMPLATES = {
       toast(ok ? `Lista copiada (${rows.length} linha(s)) — cole no Excel.` : 'Não foi possível copiar.', ok ? 'ok' : 'err');
     });
 
+    document.addEventListener('paste', e => {
+      const tg = e.target;
+      if (document.querySelector('dialog[open]') || (tg && (tg.closest('input,textarea,select,[contenteditable]')))) return;
+      const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+      if (!text.trim()) return;
+      e.preventDefault();
+      if (P.isSolicitacao(text)) {
+        const list = P.parseSolicitacoes(text);
+        const its = list.length ? importSolicitacoes(list) : [];
+        if (!its.length) { toast('Página reconhecida, mas sem a tabela de itens. Copie a página inteira (Ctrl+A, Ctrl+C) e cole de novo.', 'err'); return; }
+        const t = its[0].transporte, d = its[0].data;
+        if (d) { ui.date = d; $('#date-filter').value = d; }
+        renderAll(); openDetail(t);
+        const T = getTransport(t);
+        toast(`Transporte ${t} importado da Solicitação de Embarque (${T.janela === 'CONTAINER' ? 'container' : 'mercado interno'}).${T.missing.length ? ' Falta: ' + T.missing.join(', ') : ' Pronto para imprimir.'}`, T.missing.length ? 'warn' : 'ok');
+        return;
+      }
+      // tabela (LOG/SAP, SEW): abre a importação já com o conteúdo colado
+      const html = e.clipboardData.getData('text/html');
+      const sew = /PI[EÊ]N (PAINEIS|PAINÉIS|CONTAINERS)|Tp\.?Ve[ií]culo/i.test(text);
+      imp.tab = sew ? 'sew' : 'log';
+      $('#btn-import').click();
+      if (sew) { imp.sewHtml = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null; $('#sew-paste').value = text; parseSewPaste(); }
+      else { imp.html = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null; $('#log-paste').value = text; parseLogPaste(); }
+    });
     $('#pv-close').addEventListener('click', () => $('#preview-dialog').close());
     $('#btn-demo').addEventListener('click', loadDemo);
     window.addEventListener('resize', () => { if (ui.open) { const T = getTransport(ui.open); if (T) renderThumbs(T); } });
@@ -4388,10 +4506,10 @@ window.ORDEM_TEMPLATES = {
     updateApply();
   }
   function updateApply() {
-    const ready = { log: imp.log && imp.log.items.length, sew: imp.sew && imp.sew.length, fsc: imp.fsc && Object.keys(imp.fsc).length, xlsx: imp.xlsx }[imp.tab];
+    const ready = { log: (imp.log && imp.log.items.length) || (imp.sol && imp.sol.length), sew: imp.sew && imp.sew.length, fsc: imp.fsc && Object.keys(imp.fsc).length, xlsx: imp.xlsx }[imp.tab];
     $('#import-apply').disabled = !ready;
     const msg = {
-      log: imp.log ? `${imp.log.items.length} linha(s) · ${new Set(imp.log.items.map(i => i.transporte)).size} transporte(s)` : '',
+      log: imp.sol ? `${imp.sol.length} solicitação(ões) de embarque` : imp.log ? `${imp.log.items.length} linha(s) · ${new Set(imp.log.items.map(i => i.transporte)).size} transporte(s)` : '',
       sew: imp.sew ? `${imp.sew.length} agendamento(s)` : '',
       fsc: '', xlsx: imp.xlsx ? imp.xlsx.summary : '', backup: '',
     }[imp.tab];
@@ -4404,7 +4522,9 @@ window.ORDEM_TEMPLATES = {
 
   function parseLogPaste() {
     const text = $('#log-paste').value;
+    imp.sol = null;
     if (!text.trim()) { imp.log = null; $('#log-preview').innerHTML = ''; updateApply(); return; }
+    if (P.isSolicitacao(text)) { imp.log = null; imp.sol = P.parseSolicitacoes(text); renderSolPreview(); return; }
     const grid = imp.html && imp.html.length ? imp.html : P.trimGrid(P.parseTSV(text));
     const mapping = P.detectLogMapping(grid);
     imp.log = { grid, mapping, items: [] };
@@ -4425,6 +4545,15 @@ window.ORDEM_TEMPLATES = {
         <thead><tr>${Array.from({ length: ncol }, (_, i) => `<th><select data-col="${i}" class="${mapping.map[i] ? '' : 'unmapped'}">${opts(mapping.map[i])}</select></th>`).join('')}</tr></thead>
         <tbody>${rows.map((r, ri) => `<tr class="${badSet.has(ri + mapping.headerRow + 1) ? 'bad' : ''}">${Array.from({ length: ncol }, (_, i) => `<td>${esc(P.clean(r[i]))}</td>`).join('')}</tr>`).join('')}</tbody>
       </table></div>`;
+    updateApply();
+  }
+  function renderSolPreview() {
+    const its = [].concat(...imp.sol.map(x => x.items));
+    $('#log-preview').innerHTML = its.length ? `
+      <div class="row-actions"><span class="muted">Reconhecida(s) <b>${imp.sol.length} Solicitação(ões) de Embarque</b> · ${new Set(its.map(i => i.transporte)).size} transporte(s)</span></div>
+      <div class="preview-wrap"><table><thead><tr><th>Transporte</th><th>Janela</th><th>Data</th><th>Hora</th><th>Carregamento</th><th>Placa carreta</th><th>Cavalo</th><th>Motorista</th><th>CPF</th><th>Transportadora</th><th>Cliente</th><th>Material</th><th>Qtd</th><th>Container</th></tr></thead>
+      <tbody>${its.map(i => `<tr><td>${esc(i.transporte)}</td><td>${i.janela === 'CONTAINER' ? 'Container' : 'Merc. interno'}</td><td>${P.fmtDateBR(i.data)}</td><td>${esc(i.hora)}</td><td>${esc(i.agendamento)}</td><td>${esc(i.placaL)}</td><td>${esc(i.placaM)}</td><td>${esc(i.motorista)}</td><td>${esc(i.cpf)}</td><td>${esc(i.transportadora)}</td><td>${esc(i.cliente)}</td><td>${esc(i.descricao)}</td><td>${fmtNum(i.qtd, 0)}</td><td>${esc(i.container)}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="alert warn">A página foi reconhecida como Solicitação de Embarque, mas a tabela de itens (Pedido · Entrega · Carga…) não veio na cópia. Copie a página inteira (Ctrl+A, Ctrl+C).</div>';
     updateApply();
   }
   function parseSewPaste() {
@@ -4450,6 +4579,17 @@ window.ORDEM_TEMPLATES = {
     // transporte criado manualmente que agora chegou do LOG: mantém só o do LOG
     Object.values(state.items).forEach(i => { if (i.manualOnly && ts.has(i.transporte)) delete state.items[i.key]; });
     items.forEach(i => { state.items[i.key] = i; });
+  }
+  function importSolicitacoes(list) {
+    const items = [].concat(...list.map(x => x.items));
+    const ts = new Set(items.map(i => i.transporte));
+    // a página do SEW é a versão mais recente do transporte: substitui os itens dele
+    Object.values(state.items).forEach(i => { if (ts.has(i.transporte)) delete state.items[i.key]; });
+    items.forEach(i => { state.items[i.key] = i; });
+    const keys = new Set(list.map(x => x.carregamento).filter(Boolean));
+    state.sew = state.sew.filter(e => !(e.carregamento && keys.has(e.carregamento))).concat(list.map(x => x.sew));
+    save(true);
+    return items;
   }
   function mergeSew(entries) {
     const keys = new Set(entries.map(s => s.janela + '|' + s.data));
@@ -4501,8 +4641,13 @@ window.ORDEM_TEMPLATES = {
   }
 
   function applyImport() {
-    let msg = '', focus = null;
-    if (imp.tab === 'log' && imp.log) {
+    let msg = '', focus = null, openT = null;
+    if (imp.tab === 'log' && imp.sol && imp.sol.length) {
+      const its = importSolicitacoes(imp.sol);
+      focus = focusDateOf(its); if (imp.sol.length === 1) openT = its[0].transporte;
+      msg = `${imp.sol.length} solicitação(ões) de embarque importada(s).`;
+      $('#log-paste').value = ''; imp.sol = null; $('#log-preview').innerHTML = '';
+    } else if (imp.tab === 'log' && imp.log) {
       mergeLogItems(imp.log.items, $('#log-replace-dates').checked);
       focus = focusDateOf(imp.log.items);
       msg = `${new Set(imp.log.items.map(i => i.transporte)).size} transporte(s) importado(s) do LOG.`;
@@ -4529,6 +4674,7 @@ window.ORDEM_TEMPLATES = {
     $('#import-dialog').close();
     if (focus) { ui.date = focus; $('#date-filter').value = focus; }
     renderAll();
+    if (openT) openDetail(openT);
     toast(msg, 'ok');
   }
 

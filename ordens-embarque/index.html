@@ -77,7 +77,7 @@
         <div class="empty" id="empty-state" hidden>
           <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M3 7h13v10H3zM16 10h3l2 3v4h-5M7 19a2 2 0 100-4 2 2 0 000 4zm11 0a2 2 0 100-4 2 2 0 000 4z"/></svg></div>
           <h3>Nenhum transporte para esta data</h3>
-          <p>Cole a tabela do LOG (SAP) em <b>Importar dados</b> para montar a lista diária.</p>
+          <p>No SEW, abra a <b>Solicitação de Embarque</b>, copie a página inteira (<b>Ctrl+A</b>, <b>Ctrl+C</b>)<br>e pressione <b>Ctrl+V</b> aqui. A ordem abre preenchida e pronta para imprimir.</p>
           <div class="empty-actions">
             <button class="btn btn-primary" data-open-import>Importar dados</button>
             <button class="btn btn-ghost" id="btn-demo">Carregar exemplo</button>
@@ -121,7 +121,7 @@
       <button class="icon-btn" value="close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="tabs" id="import-tabs">
-      <button type="button" data-tab="log" class="active">Tabela LOG (SAP)</button>
+      <button type="button" data-tab="log" class="active">Colar do sistema</button>
       <button type="button" data-tab="sew">Agendamento SEW</button>
       <button type="button" data-tab="xlsx">Planilha Excel</button>
       <button type="button" data-tab="fsc">Clientes FSC</button>
@@ -129,7 +129,7 @@
     </div>
 
     <div class="tab-pane" data-pane="log">
-      <p class="hint">Copie a tabela do sistema (mesmas colunas da guia <b>LOG</b>) e cole abaixo — com ou sem cabeçalho, mesmo que venha desalinhada. O app identifica as colunas automaticamente; confira na pré-visualização e ajuste se precisar.</p>
+      <p class="hint">Cole aqui a página <b>Solicitação de Embarque</b> do SEW (uma ou várias, uma após a outra) ou uma tabela do sistema com as colunas da guia <b>LOG</b>. Dica: fora desta janela, basta pressionar <b>Ctrl+V</b> em qualquer lugar do app.</p>
       <textarea id="log-paste" placeholder="Cole aqui (Ctrl+V)…" spellcheck="false"></textarea>
       <div class="row-actions">
         <label class="check"><input type="checkbox" id="log-replace-dates" checked> Substituir os transportes das datas coladas</label>
