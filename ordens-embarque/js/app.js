@@ -13,7 +13,7 @@
 
   // ------------------------------------------------------------------ estado
   const STORE_KEY = 'arauco.ordensEmbarque.v1';
-  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {} });
+  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {} });
   let state = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.v === 1) return Object.assign(emptyState(), s); } catch (e) { /* sem storage */ }
@@ -110,13 +110,18 @@
     const janela = man.janela || janelaAuto;
     const fsc = fscOf(eff.cliente);
     const ot = Object.fromEntries(OT_FIELDS.map(([k]) => [k, man[k] || '']));
+    // OT da tela LT22 (pela entrega), como o PROCV da guia Controle OT
+    const entregas = Array.from(new Set(items.map(i => i.entrega).concat(eff.entrega).filter(Boolean)));
+    const otsMem = Array.from(new Set([].concat(...entregas.map(en => (state.ots[en] && state.ots[en].ots) || []))));
+    let otSrc = man.ot ? 'manual' : '';
+    if (!ot.ot && otsMem.length) { ot.ot = otsMem.join(' / '); otSrc = 'LT22'; }
     if (!ot.container && f.container) ot.container = f.container;
     if (!ot.container && sew && sew.container) ot.container = sew.container;
     const missing = REQUIRED.filter(([k]) => !P.clean(eff[k])).map(([, l]) => l);
     return {
       transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (f.janela ? 'Solicitação de Embarque' : (sew ? 'SEW' : 'padrão')),
       solic: f.fonte === 'Solicitação de Embarque' ? f : null,
-      fsc, ot, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
+      fsc, ot, otSrc, entregas, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
       printed: state.printed[t] || null, faturado: state.faturado[t] || null, manualOnly: items.every(i => i.manualOnly),
     };
   }
@@ -145,7 +150,7 @@
       pallets: palTxt,
       fracionada: pal != null && Math.abs(pal - Math.round(pal)) > 1e-9 ? 'carga fracionada' : '',
       fscClaim: T.fsc ? T.fsc.claim : '',
-      otQr: T.ot.ot,
+      otQr: String(T.ot.ot || '').split('/')[0].trim(),
       ot: T.ot.ot,
       fsc: T.fsc ? T.fsc.fsc : '',
       janelaContainer: cont ? 'CONTAINER' : '',
@@ -377,7 +382,7 @@
     ui.view = v;
     $$('#views button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
     $$('[data-view-of]').forEach(el => { el.hidden = el.dataset.viewOf !== v; });
-    $('#janela-filter').style.display = v === 'agenda' ? 'none' : '';
+    $('#janela-filter').style.display = v === 'lista' ? '' : 'none';
     renderAll();
   }
   function renderAgenda() {
@@ -421,6 +426,55 @@
     $('#v-count-lista').classList.toggle('alt', !!alt);
     const ag = state.sew.filter(e => !e.carregamento && !e.removed && e.data === ui.date).length;
     $('#v-count-agenda').textContent = ag || '';
+    $('#v-count-ots').textContent = Object.keys(state.ots).length || '';
+  }
+  // Acrescenta à memória; nada é apagado quando some da tela (a OT some do SAP
+  // quando a carga é faturada). Entregas de transportes já faturados são ignoradas.
+  function mergeOTs(rows) {
+    const now = new Date().toISOString();
+    const fatEntregas = new Set();
+    Object.keys(state.faturado).forEach(t => { const T = getTransport(t); if (T) T.entregas.forEach(en => fatEntregas.add(en)); });
+    const pasted = new Set(rows.map(r => r.remessa));
+    let novas = 0;
+    rows.forEach(r => {
+      if (fatEntregas.has(r.remessa)) return;
+      const m = state.ots[r.remessa] || (state.ots[r.remessa] = { remessa: r.remessa, ots: [], itens: [], firstSeen: now });
+      if (!m.ots.includes(r.ot)) { m.ots.push(r.ot); novas++; }
+      m.lastSeen = now; m.ausente = false;
+      const k = [r.ot, r.material, r.posicao].join('|');
+      if (!m.itens.some(i => [i.ot, i.material, i.posicao].join('|') === k)) m.itens.push(r);
+    });
+    Object.values(state.ots).forEach(m => { if (!pasted.has(m.remessa)) m.ausente = true; });
+    return { linhas: rows.length, remessas: pasted.size, novas };
+  }
+  function transportByEntrega() {
+    const map = new Map();
+    allTransports().forEach(T => T.entregas.forEach(en => map.set(en, T)));
+    return map;
+  }
+  function renderOTs() {
+    const byEnt = transportByEntrega();
+    const q = P.norm(ui.q);
+    const rows = Object.values(state.ots)
+      .map(m => ({ m, T: byEnt.get(m.remessa) }))
+      .filter(({ m, T }) => !q || P.norm([m.remessa, m.ots.join(' '), m.itens.map(i => i.material + ' ' + i.texto).join(' '), T ? T.transporte + ' ' + T.eff.cliente : ''].join(' ')).includes(q))
+      .sort((a, b) => ((a.T && a.T.eff.hora) || '99').localeCompare((b.T && b.T.eff.hora) || '99') || a.m.remessa.localeCompare(b.m.remessa));
+    const hm = iso => iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    $('#ots-list').innerHTML = rows.length ? `<table class="grid"><thead><tr><th>Remessa (entrega)</th><th>OT</th><th>Material / texto</th><th>Posição</th><th class="num">Qtd</th><th>Transporte</th><th>Data</th><th>Cliente</th><th>Ordem</th><th>Na tela do SAP</th></tr></thead><tbody>${rows.map(({ m, T }) => `
+      <tr ${T ? `data-t="${esc(T.transporte)}"` : ''} class="${m.ausente ? 'ot-ausente' : ''}">
+        <td class="mono"><b>${esc(m.remessa)}</b></td>
+        <td class="mono"><b>${esc(m.ots.join(' / '))}</b></td>
+        <td class="wrap">${m.itens.map(i => `${esc(i.material)} ${esc(i.texto)}`).join('<br>')}</td>
+        <td class="mono">${m.itens.map(i => esc([i.tpDep, i.posicao].filter(Boolean).join(' · '))).join('<br>')}</td>
+        <td class="num">${m.itens.map(i => fmtNum(i.qtd, 0)).join('<br>')}</td>
+        <td class="mono">${T ? `<b>${esc(T.transporte)}</b>` : '<span class="muted">sem transporte</span>'}</td>
+        <td>${T ? esc(P.fmtDateBR(T.eff.data)) : ''}</td>
+        <td class="wrap">${T ? esc(T.eff.cliente) : ''}</td>
+        <td>${T ? statusChip(T) : ''}</td>
+        <td class="small">${m.ausente ? `<span class="chip grey" title="Não veio na última colagem; continua na memória até a ordem ser faturada">não aparece mais</span>` : `<span class="chip ok">sim</span>`}<span class="sub">desde ${esc(hm(m.firstSeen))}</span></td>
+      </tr>`).join('')}</tbody></table>`
+      : `<div class="empty" style="padding:36px"><p>Nenhuma OT na memória. Copie a tela de OTs do SAP (<b>Ctrl+A</b>, <b>Ctrl+C</b>) e pressione <b>Ctrl+V</b> aqui.</p></div>`;
+    $('#ots-sub').textContent = `${rows.length} remessa(s) na memória · ${rows.filter(r => r.T).length} ligada(s) a transporte`;
   }
   function importSewGrid(grids, mode) {
     for (const g of grids) {
@@ -504,7 +558,7 @@
       <div class="section">
         <h3>Controle OT <span class="h-note">campos manuais</span></h3>
         <div class="fgrid three">
-          ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'container' && !T.man.container && T.ot.container ? ' <span class="src">SEW</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
+          ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'container' && !T.man.container && T.ot.container ? ' <span class="src">SEW</span>' : ''}${k === 'ot' && T.otSrc === 'LT22' ? ' <span class="src">tela de OTs</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
         </div>
       </div>
       <div class="section">
@@ -566,6 +620,7 @@
   function renderAll() {
     renderList();
     if (ui.view === 'agenda') renderAgenda();
+    if (ui.view === 'ots') renderOTs();
     renderViewCounts();
     if (ui.open) renderDetail();
   }
@@ -592,10 +647,24 @@
       if (e.target.matches('input[type=checkbox]')) { e.target.checked ? ui.selected.add(t) : ui.selected.delete(t); renderList(); return; }
       openDetail(t);
     });
+    $('#ots').addEventListener('click', e => { const tr = e.target.closest('tr[data-t]'); if (tr) openDetail(tr.dataset.t); });
     $('#agenda').addEventListener('click', e => { const tr = e.target.closest('tr[data-t]'); if (tr) openDetail(tr.dataset.t); });
     $$('#views button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
     $$('#ag-mode button').forEach(b => b.addEventListener('click', () => { $$('#ag-mode button').forEach(x => x.classList.toggle('active', x === b)); ui.agMode = b.dataset.v; }));
-    const setFat = (ts, on) => { const now = new Date().toISOString(); ts.forEach(t => { if (on) state.faturado[t] = now; else delete state.faturado[t]; }); save(true); renderAll(); };
+    const setFat = (ts, on) => {
+      const now = new Date().toISOString();
+      ts.forEach(t => {
+        if (!on) { delete state.faturado[t]; return; }
+        state.faturado[t] = now;
+        // faturada: a OT some da tela do SAP. Ela fica gravada no transporte e a memória é liberada.
+        const T = getTransport(t);
+        if (T) {
+          if (T.ot.ot && !(state.manual[t] || {}).ot) (state.manual[t] = state.manual[t] || {}).ot = T.ot.ot;
+          T.entregas.forEach(en => { delete state.ots[en]; });
+        }
+      });
+      save(true); renderAll();
+    };
     $('#btn-fat-selected').addEventListener('click', () => { const ts = Array.from(ui.selected); setFat(ts, true); ui.selected.clear(); renderAll(); toast(`${ts.length} ordem(ns) marcada(s) como faturada(s).`, 'ok'); });
     $('#d-fat').addEventListener('click', () => { const T = getTransport(ui.open); if (!T) return; setFat([T.transporte], !T.faturado); toast(T.faturado ? `Transporte ${T.transporte}: faturamento desmarcado.` : `Transporte ${T.transporte} marcado como faturado.`, 'ok'); });
     $('#check-all').addEventListener('change', e => {
@@ -701,9 +770,22 @@
         toast(`Transporte ${t} importado da Solicitação de Embarque (${T.janela === 'CONTAINER' ? 'container' : 'mercado interno'}).${T.missing.length ? ' Falta: ' + T.missing.join(', ') : ' Pronto para imprimir.'}`, T.missing.length ? 'warn' : 'ok');
         return;
       }
-      // tela "Agendamento de Cargas": atualiza a guia Agendamentos direto
       const html = e.clipboardData.getData('text/html');
       const htmlGrid = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null;
+      // tela de OTs (LT22): guarda na memória
+      if (ui.view === 'ots' || P.isOTScreen(text)) {
+        let rows = [];
+        for (const g of [htmlGrid, P.trimGrid(P.parseTSV(P.fixMojibake(text)))]) { if (g && g.length) { rows = P.parseOTs(g); if (rows.length) break; } }
+        if (rows.length) {
+          const r = mergeOTs(rows); save(true);
+          if (ui.view !== 'ots') setView('ots'); else renderAll();
+          const lig = rows.filter(x => transportByEntrega().has(x.remessa)).length;
+          toast(`OTs atualizadas: ${r.remessas} remessa(s), ${r.novas} OT(s) nova(s) na memória · ${lig} linha(s) ligada(s) a transporte.`, 'ok');
+          return;
+        }
+        if (ui.view === 'ots') { toast('Não reconheci a tela de OTs. Copie com a linha de títulos (Remessa, Material, … OT, Qtd).', 'err'); return; }
+      }
+      // tela "Agendamento de Cargas": atualiza a guia Agendamentos direto
       const sewLike = ui.view === 'agenda' || /Agendamento de Cargas|PI[EÊ]N (PAINEIS|PAINÉIS|CONTAINERS)|Tp\.?\s*Ve[ií]culo/i.test(P.fixMojibake(text));
       if (sewLike) {
         const r = importSewGrid([htmlGrid, P.parseTSV(P.fixMojibake(text))], ui.agMode);

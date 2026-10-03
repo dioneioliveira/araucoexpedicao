@@ -24,3 +24,6 @@
   com diferença => "Com alterações" (vermelho). Faturadas (`state.faturado`) vão para o fim da lista.
 - Cópias: "Dados do motorista" sem rótulos (CPF, placas); "Dados de balança" = 13 colunas sem
   título, com Peso entrada/saída, Conferência 7%, Peso total e Status em branco.
+- Guia OTs (3ª): colagem da tela de OTs do SAP (layout da guia `lt22`), ligada pela entrega
+  (remessa). `state.ots` só acrescenta; ao faturar, a OT vai para `state.manual[t].ot` e a
+  remessa sai da memória (colagens posteriores dessa remessa são ignoradas).

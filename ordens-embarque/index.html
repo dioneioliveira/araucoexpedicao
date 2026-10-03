@@ -40,6 +40,7 @@
     <nav class="views" id="views" role="tablist">
       <button data-view="lista" class="active" role="tab">Lista diária <span class="count" id="v-count-lista"></span></button>
       <button data-view="agenda" role="tab">Agendamentos <span class="count" id="v-count-agenda"></span></button>
+      <button data-view="ots" role="tab">OTs <span class="count" id="v-count-ots"></span></button>
     </nav>
     <section class="toolbar card">
       <div class="tb-group">
@@ -89,6 +90,16 @@
           </div>
         </div>
       </div>
+    </section>
+    <section id="ots" data-view-of="ots" hidden>
+      <div class="card agenda-help">
+        <div>
+          <h2>OTs para embarque</h2>
+          <p class="muted">Copie a tela de OTs do SAP (Remessa · Material · Texto · Tp.dep · Posição · <b>OT</b> · Qtd) com <b>Ctrl+A</b>, <b>Ctrl+C</b> e pressione <b>Ctrl+V</b> aqui. A OT entra sozinha no transporte da mesma entrega. As OTs ficam guardadas mesmo quando somem da tela; ao <b>faturar</b> a ordem, a OT fica gravada no transporte e sai desta lista.</p>
+        </div>
+        <span class="muted small" id="ots-sub"></span>
+      </div>
+      <div class="card list-card"><div class="table-wrap" style="max-height:none" id="ots-list"></div></div>
     </section>
     <section id="agenda" data-view-of="agenda" hidden>
       <div class="card agenda-help">

@@ -111,7 +111,12 @@
     }
     if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
     // sem tabulação (copiado de PDF/web como texto): separa por 2+ espaços
-    if (rows.length && rows.every(r => r.length === 1)) return rows.map(r => r[0].split(/\s{2,}|\s*;\s*/));
+    if (rows.length && rows.every(r => r.length === 1)) {
+      // lista do SAP GUI: colunas separadas por "|"
+      if (rows.filter(r => (r[0].match(/\|/g) || []).length >= 2).length >= rows.length / 2)
+        return rows.filter(r => !/^[\s\-|]+$/.test(r[0])).map(r => r[0].replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|'));
+      return rows.map(r => r[0].split(/\s{2,}|\s*;\s*/));
+    }
     return rows;
   }
   function parseHTMLTable(html) {
@@ -463,7 +468,42 @@
     return { items: out, sew, carregamento, transportes: Array.from(new Set(out.map(o => o.transporte))) };
   }
 
+  // ---------- tela de OTs por remessa (SAP LT22: Remessa · Material · Texto · Tp.dep · Posição · OT · Qtd) ----------
+  const OT_SYN = {
+    remessa: ['REMESSA', 'ENTREGA', 'FORNECIMENTO', 'N REMESSA', 'NO REMESSA', 'DOC REFERENCIA', 'DOCUMENTO DE REFERENCIA'],
+    ot: ['OT', 'N OT', 'NO OT', 'N OT.', 'NUMERO OT', 'ORDEM TRANSPORTE', 'ORDEM DE TRANSPORTE', 'N ORDEM TRANSPORTE', 'NUMERO DA OT'],
+    material: ['MATERIAL', 'COD MATERIAL', 'COD.MAT'],
+    texto: ['TEXTO BREVE MATERIAL', 'TEXTO BREVE', 'DESCRICAO', 'DENOMINACAO'],
+    tpDep: ['TP.DEP.ORIGEM', 'TP DEP ORIGEM', 'TIPO DEPOSITO ORIGEM', 'TPD'],
+    posicao: ['POSICAO DEP.ORIGEM', 'POSICAO DEP ORIGEM', 'POSICAO', 'POSICAO ORIGEM'],
+    qtd: ['QTD.TEORICA ORIGEM', 'QTD TEORICA ORIGEM', 'QTD', 'QUANTIDADE', 'QTDE'],
+  };
+  const hnorm = h => norm(h).replace(/[º°]/g, '').replace(/[^A-Z0-9. ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const isOTScreen = text => {
+    const t = hnorm(fixMojibake(String(text || '')).split('\n').slice(0, 30).join(' '));
+    return /\bOT\b|ORDEM (DE )?TRANSPORTE/.test(t) && /REMESSA|TP\.?DEP|POSICAO DEP|QTD\.?TEORICA/.test(t);
+  };
+  function parseOTs(grid) {
+    const hr = grid.findIndex(r => { const h = r.map(hnorm); return h.some(x => OT_SYN.ot.includes(x)) && h.some(x => OT_SYN.remessa.includes(x)); });
+    let col = {};
+    if (hr >= 0) {
+      const h = grid[hr].map(hnorm);
+      Object.entries(OT_SYN).forEach(([k, list]) => { const i = h.findIndex(x => list.includes(x)); if (i >= 0) col[k] = i; });
+    } else {
+      col = { remessa: 0, material: 1, texto: 2, tpDep: 3, posicao: 4, ot: 5, qtd: 6 }; // ordem da guia lt22
+    }
+    const out = [];
+    grid.slice(hr + 1).forEach(r => {
+      const remessa = intStr(r[col.remessa]); const ot = intStr(r[col.ot]);
+      if (!/^\d{6,12}$/.test(remessa) || !/^\d{3,12}$/.test(ot)) return;
+      out.push({ remessa, ot, material: col.material != null ? intStr(r[col.material]) : '', texto: col.texto != null ? clean(r[col.texto]) : '',
+        tpDep: col.tpDep != null ? clean(r[col.tpDep]) : '', posicao: col.posicao != null ? clean(r[col.posicao]) : '', qtd: col.qtd != null ? toNum(r[col.qtd]) : null });
+    });
+    return out;
+  }
+
   global.OEP = {
+    isOTScreen, parseOTs,
     fixMojibake, isSolicitacao, parseSolicitacoes,
     clean, norm, pad, toISODate, toTime, fmtDateBR, todayISO, toNum, intStr, cpfDigits, fmtCPF, isCPFLike,
     normPlate, plate7, plateUF, isPlate, matInfo, parseTSV, parseHTMLTable, trimGrid,

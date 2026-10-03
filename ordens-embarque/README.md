@@ -104,6 +104,22 @@ automaticamente. Também é possível colar várias Solicitações de uma vez em
    transportadora, OT…) vindas de uma nova Solicitação de Embarque. Ao imprimir
    de novo, a ordem volta a ficar normal.
 
+### Guia OTs (tela de OTs do SAP)
+
+1. Copie a tela de OTs do SAP (Remessa · Material · Texto breve · Tp.dep.origem ·
+   Posição dep.origem · **OT** · Qtd.teórica, as mesmas colunas da guia `lt22`) com
+   **Ctrl+A**, **Ctrl+C** e pressione **Ctrl+V** no app. Funciona com a tabela
+   copiada do navegador e com a lista do SAP GUI (colunas separadas por `|`).
+2. A OT entra sozinha no **Controle OT** e no check-list do transporte que tem a
+   mesma **entrega** (remessa). No painel aparece a origem "tela de OTs". Se
+   houver mais de uma OT, saem separadas por "/" e o QR code usa a primeira.
+3. **Memória:** cada colagem acrescenta. A OT que some da tela do SAP continua
+   guardada (marcada "não aparece mais").
+4. **Ao faturar** a ordem, a OT fica gravada no transporte e é retirada da memória.
+   Se ela ainda vier numa colagem seguinte, é ignorada.
+5. OT que chega depois de a ordem ter sido impressa deixa a ordem "Com alterações",
+   porque o check-list impresso saiu sem ela. Imprima de novo.
+
 ### Ordens faturadas
 
 No painel, **Marcar como faturada** (ou selecione várias linhas e use **Marcar
