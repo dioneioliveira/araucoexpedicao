@@ -31,24 +31,24 @@
     --font-mono:'IBM Plex Mono',ui-monospace,monospace;
   }
   :root[data-theme="light"]{
-    --bg-void:#ffffff;
+    --bg-void:#f5f3f0;
     --bg-panel:#ffffff;
-    --bg-panel-2:#f3f6f8;
-    --bg-raised:#e6ebf0;
-    --line:#d7dee5;
-    --line-soft:#e4e9ee;
-    --ink:#1b2430;
-    --ink-dim:#5a6675;
-    --ink-faint:#8b97a3;
-    --accent:#0e8fa3;
-    --accent-soft:rgba(14,143,163,.12);
+    --bg-panel-2:#faf8f6;
+    --bg-raised:#f0ece6;
+    --line:#e3ddd3;
+    --line-soft:#ece7df;
+    --ink:#3c3230;
+    --ink-dim:#847669;
+    --ink-faint:#ad9f90;
+    --accent:#02959c;
+    --accent-soft:rgba(2,149,156,.14);
     --accent-ink:#ffffff;
-    --unreg:#a98f8f;
+    --unreg:#8a7568;
     --ir-ok:#1d8a52;
     --ir-warn:#a16a0a;
     --ir-err:#c43f31;
-    --panel-shadow:rgba(30,40,55,.16);
-    --scrollbar-track:rgba(20,30,45,.06);
+    --panel-shadow:rgba(60,50,45,.14);
+    --scrollbar-track:rgba(60,50,45,.06);
   }
   :root{
     --ir-ok:#7fe0a8;
@@ -719,6 +719,32 @@ function getActivePlantCode(){
 const ACTIVE_PLANT = getActivePlantCode();
 const DATA = loadPlantData(ACTIVE_PLANT);
 
+// Each plant carries its own accent color, matching the unit cards on the
+// Arauco institutional site (PB22 turquesa, PB23 bege, PB25 verde-oliva,
+// PB26 laranja) -- applied as an override on top of whichever theme is
+// active (dark or light) so the chrome always reads as "this unit", not
+// just "this theme". Plants not in this map (none today, but loadPlantData
+// falls back to emptyPlantShell for unknown codes) keep the theme's own
+// default --accent untouched.
+const PLANT_BRAND = {
+  PB22: { accent: '#02959c', soft: 'rgba(2,149,156,.16)' },
+  PB23: { accent: '#9c8f66', soft: 'rgba(156,143,102,.18)' },
+  PB25: { accent: '#8fa417', soft: 'rgba(143,164,23,.16)' },
+  PB26: { accent: '#ec7519', soft: 'rgba(236,117,25,.16)' },
+};
+function applyPlantBrand(code){
+  const brand = PLANT_BRAND[code];
+  if (!brand) return;
+  const root = document.documentElement.style;
+  root.setProperty('--accent', brand.accent);
+  root.setProperty('--accent-soft', brand.soft);
+  // White reads fine on all 4 brand colors; both themes otherwise disagree
+  // on --accent-ink (near-black in dark, white in light) because the old
+  // dark-theme accent was a pale cyan, not a mid-saturation brand hue.
+  root.setProperty('--accent-ink', '#ffffff');
+}
+applyPlantBrand(ACTIVE_PLANT);
+
 const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // THEME holds a full palette per mode -- dark is the original look, light is
@@ -761,6 +787,8 @@ const THEME = {
     labelOutline: '#0a0e13',
     codeLabelDim:    '#8a7a7a',
     codeLabelNormal: '#bbd6dc',
+    zoneShipLabelFg: '#fff0df',
+    zoneProdLabelFg: '#d6e3ff',
     wmNW:'#8a9a3b', wmNE:'#ffb366', wmSE:'#9aa4ad', wmSW:'#2ec4b6',
   },
   light: {
@@ -778,8 +806,8 @@ const THEME = {
     blocked: 0x1c1c22,
     shell:   0x1b8aa0,
     hi:      0xc99a2e,
-    floor:   0xf7f8f9,
-    bg:      0xffffff,
+    floor:   0xf2efe9,
+    bg:      0xf5f3f0,
     zoneShip:0xe77824, zoneShipEdge:0xb55c14,
     zoneProd:0x4f7fd6, zoneProdEdge:0x2f58a8,
     zoneSupp:0x4a9d68, zoneSuppEdge:0x2e7a48,
@@ -795,6 +823,8 @@ const THEME = {
     labelOutline: '#ffffff',
     codeLabelDim:    '#8a7a7a',
     codeLabelNormal: '#2b4a52',
+    zoneShipLabelFg: '#7a4210',
+    zoneProdLabelFg: '#1f3a66',
     wmNW:'#6b7a28', wmNE:'#c17a1e', wmSE:'#5c646d', wmSW:'#1f9b8f',
   },
 };
@@ -833,15 +863,21 @@ function cssHex(n){ return '#' + n.toString(16).padStart(6,'0'); }
 // 30-day steps per the requested rule (below 30d = green, above 180d = red),
 // so this table is the single source of truth for coloring, the legend, and
 // the KPI dashboard alike.
+// Buckets store a COLORS key, not a baked-in hex -- COLORS.age0..age180
+// differ between dark/light theme (darker tones in light mode for contrast
+// against the white floor), so a hex frozen here at module load would
+// silently stop matching the theme after a toggle. bucketColor() below
+// always resolves against whatever COLORS holds right now.
 const AGE_BUCKETS = [
-  { max: 30,        label: '0–29 dias',    color: COLORS.age0  },
-  { max: 60,        label: '30–59 dias',   color: COLORS.age30 },
-  { max: 90,        label: '60–89 dias',   color: COLORS.age60 },
-  { max: 120,       label: '90–119 dias',  color: COLORS.age90 },
-  { max: 150,       label: '120–149 dias', color: COLORS.age120},
-  { max: 180,       label: '150–179 dias', color: COLORS.age150},
-  { max: Infinity,  label: '180+ dias',    color: COLORS.age180},
+  { max: 30,        label: '0–29 dias',    key: 'age0'  },
+  { max: 60,        label: '30–59 dias',   key: 'age30' },
+  { max: 90,        label: '60–89 dias',   key: 'age60' },
+  { max: 120,       label: '90–119 dias',  key: 'age90' },
+  { max: 150,       label: '120–149 dias', key: 'age120'},
+  { max: 180,       label: '150–179 dias', key: 'age150'},
+  { max: Infinity,  label: '180+ dias',    key: 'age180'},
 ];
+function bucketColor(bucket){ return COLORS[bucket.key]; }
 function daysSince(ts){
   if (ts == null) return null;
   return Math.max(0, Math.floor((Date.now() - ts) / 86400000));
@@ -853,7 +889,7 @@ function ageBucketFor(days){
 function ageColor(b){
   const days = daysSince(b.entryDate);
   const bucket = ageBucketFor(days);
-  return bucket ? bucket.color : COLORS.unreg;
+  return bucket ? bucketColor(bucket) : COLORS.unreg;
 }
 // Shared by computeFillBaseColor and materialVisible: the list of SKUs
 // actually sitting in this position, each with its own class/família/
@@ -960,12 +996,12 @@ function computeAndRenderKPIs(){
         <div class="kpi-label">Capacidade registrada</div>
         <div class="kpi-value">${fmt(totalCapacity)}<small>m³</small></div>
         <div class="abc-bar">
-          <span style="width:${registeredPct}%;background:#5fd4e8"></span>
-          <span style="width:${100-registeredPct}%;background:#5b4a4a"></span>
+          <span style="width:${registeredPct}%;background:var(--accent)"></span>
+          <span style="width:${100-registeredPct}%;background:var(--unreg)"></span>
         </div>
         <div class="abc-nums">
-          <span><em style="color:#5fd4e8">${fmt(usable.length)}</em> cadastradas</span>
-          <span><em style="color:#8a7a7a">${fmt(unregistered.length)}</em> sem cadastro</span>
+          <span><em style="color:var(--accent)">${fmt(usable.length)}</em> cadastradas</span>
+          <span><em style="color:var(--ink-faint)">${fmt(unregistered.length)}</em> sem cadastro</span>
         </div>
       </div>`;
   } else {
@@ -1150,11 +1186,11 @@ function renderKpiDashboard(){
       <h3>Estoque por idade (posições ocupadas)</h3>
       <div class="kd-section" style="padding-top:16px;padding-bottom:16px;">
         <div class="abc-bar" style="margin-top:0;">
-          ${AGE_BUCKETS.map((bk,i)=>`<span style="width:${d.occupied.length?d.ageBucketCounts[i]/d.occupied.length*100:0}%;background:${cssHex(bk.color)}"></span>`).join('')}
+          ${AGE_BUCKETS.map((bk,i)=>`<span style="width:${d.occupied.length?d.ageBucketCounts[i]/d.occupied.length*100:0}%;background:${cssHex(bucketColor(bk))}"></span>`).join('')}
           ${d.ageUnknownCount?`<span style="width:${d.occupied.length?d.ageUnknownCount/d.occupied.length*100:0}%;background:${cssHex(COLORS.unreg)}"></span>`:''}
         </div>
         <div class="kd-abc-nums">
-          ${AGE_BUCKETS.map((bk,i)=>`<span><em style="color:${cssHex(bk.color)}">${fmt(d.ageBucketCounts[i])}</em> ${bk.label}</span>`).join('')}
+          ${AGE_BUCKETS.map((bk,i)=>`<span><em style="color:${cssHex(bucketColor(bk))}">${fmt(d.ageBucketCounts[i])}</em> ${bk.label}</span>`).join('')}
           ${d.ageUnknownCount?`<span><em style="color:${cssHex(COLORS.unreg)}">${fmt(d.ageUnknownCount)}</em> sem data de entrada</span>`:''}
         </div>
       </div>
@@ -1250,7 +1286,7 @@ function renderKpiDashboard(){
     d.ageRows.slice(0,8).forEach(r=>{
       const bucket = ageBucketFor(r.days);
       ageContainer.appendChild(buildKdRow({
-        label: r.code, pct: Math.min(100, r.days/180*100), color: cssHex(bucket?bucket.color:COLORS.unreg),
+        label: r.code, pct: Math.min(100, r.days/180*100), color: cssHex(bucket?bucketColor(bucket):COLORS.unreg),
         valText: `${fmt(r.days)}d`,
         onClick: ()=>jumpToBox(r.code),
       }));
@@ -1350,18 +1386,24 @@ function renderFamiliaFilter(){
   renderChips();
 }
 
-const CLASS_LEGEND_ROWS = `
-  <div class="legend-row"><span class="legend-swatch" style="background:#f0932f"></span>Classe <b>A</b></div>
-  <div class="legend-row"><span class="legend-swatch" style="background:#3fb6d8"></span>Classe <b>B</b></div>
-  <div class="legend-row"><span class="legend-swatch" style="background:#7b86c4"></span>Classe <b>C</b></div>
+// Both read live COLORS on every call (functions, not consts) so the
+// legend always matches what's actually painted on the boxes right now --
+// dark and light theme intentionally use different class/occupancy hex
+// (darker tones in light theme for contrast against the white floor), and
+// a frozen-at-load string would silently drift from that after a theme
+// toggle, same bug class as the occupancy rows below.
+function classLegendRows(){ return `
+  <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.clsA)}"></span>Classe <b>A</b></div>
+  <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.clsB)}"></span>Classe <b>B</b></div>
+  <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.clsC)}"></span>Classe <b>C</b></div>
   <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.clsNone)}"></span>Não faturável <small>(inutilizado/capa proteção)</small></div>
   <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.clsUnclassified)}"></span>Sem classe <small>(fora da amostra de faturamento)</small></div>
-`;
-const TAIL_LEGEND_ROWS = `
-  <div class="legend-row"><span class="legend-swatch" style="background:transparent;border-color:#79d8e8"></span>Vazia</div>
+`; }
+function tailLegendRows(){ return `
+  <div class="legend-row"><span class="legend-swatch" style="background:transparent;border-color:${cssHex(COLORS.shell)}"></span>Vazia</div>
   <div class="legend-row"><span class="legend-swatch hatched"></span>Sem cadastro</div>
   <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.blocked)}"></span>Bloqueada</div>
-`;
+`; }
 function renderLegend(){
   const body = document.getElementById('legend-body');
   if (state.mode === 'plant'){
@@ -1369,24 +1411,24 @@ function renderLegend(){
     // occupancy gradient, so the legend has to match what's actually on
     // screen, not the gradient it isn't showing.
     const headRows = state.occupancyColors ? `
-      <div class="legend-row"><span class="legend-swatch" style="background:#55c99a"></span>Baixa <b>&lt;50%</b></div>
-      <div class="legend-row"><span class="legend-swatch" style="background:#d5d94f"></span>Média <b>50–80%</b></div>
-      <div class="legend-row"><span class="legend-swatch" style="background:#f2a93b"></span>Alta <b>80–100%</b></div>
-      <div class="legend-row"><span class="legend-swatch" style="background:#e2543c"></span>Acima da capacidade</div>
-    ` : CLASS_LEGEND_ROWS;
-    body.innerHTML = headRows + TAIL_LEGEND_ROWS;
+      <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.occLow)}"></span>Baixa <b>&lt;50%</b></div>
+      <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.occMid)}"></span>Média <b>50–80%</b></div>
+      <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.occHigh)}"></span>Alta <b>80–100%</b></div>
+      <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.occOver)}"></span>Acima da capacidade</div>
+    ` : classLegendRows();
+    body.innerHTML = headRows + tailLegendRows();
   } else if (state.mode === 'age'){
     body.innerHTML = AGE_BUCKETS.map(b =>
-      `<div class="legend-row"><span class="legend-swatch" style="background:${cssHex(b.color)}"></span>${b.label}</div>`
+      `<div class="legend-row"><span class="legend-swatch" style="background:${cssHex(bucketColor(b))}"></span>${b.label}</div>`
     ).join('') + `
       <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.unreg)}"></span>Sem data de entrada</div>
-    ` + TAIL_LEGEND_ROWS;
+    ` + tailLegendRows();
   } else {
     // Curva ABC mode: the "Acima da capacidade" row only applies while the
     // occupancy toggle is on -- off, over-capacity boxes show their class
     // color like everything else, so the row would be misleading.
-    const overRow = state.occupancyColors ? `<div class="legend-row"><span class="legend-swatch" style="background:#e2543c"></span>Acima da capacidade</div>` : '';
-    body.innerHTML = CLASS_LEGEND_ROWS + overRow + TAIL_LEGEND_ROWS;
+    const overRow = state.occupancyColors ? `<div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.occOver)}"></span>Acima da capacidade</div>` : '';
+    body.innerHTML = classLegendRows() + overRow + tailLegendRows();
   }
 }
 renderLegend();
@@ -1564,7 +1606,7 @@ function buildZones(){
     }
 
     if (z.kind === 'shipping'){
-      const label = makeFloorLabel(z.label || 'EMBARQUE E ENLONAMENTO', {color:'#fff0df', size:Math.min(2.2, z.depth*0.85)});
+      const label = makeFloorLabel(z.label || 'EMBARQUE E ENLONAMENTO', {color:COLORS.zoneShipLabelFg, size:Math.min(2.2, z.depth*0.85)});
       label.position.set(z.x, 0.025, z.z);
       scene.add(label);
       zoneObjects.push(label);
@@ -1579,7 +1621,7 @@ function buildZones(){
       // completely different sizes -- every plant gets the same size here,
       // just rotated to fit a narrow zone's long axis when needed.
       const prodVertical = z.depth > z.width;
-      const label = makeFloorLabel(DATA.name, {color:'#d6e3ff', size:4});
+      const label = makeFloorLabel(DATA.name, {color:COLORS.zoneProdLabelFg, size:4});
       label.position.set(z.x, 0.025, z.z);
       if (prodVertical) label.rotation.z = Math.PI/2;
       scene.add(label);
@@ -1975,6 +2017,12 @@ function applyTheme(name){
   registry.forEach(rec=>rebuildFloorCodeLabel(rec, rec.data));
 
   applyVisualState();
+  // Bug found during the Arauco color-palette audit: the legend swatches
+  // and the KPI dashboard's age bars read live COLORS now, but nothing
+  // re-rendered them on a theme switch -- without this they kept showing
+  // whatever was last painted (always the dark-theme hex) forever.
+  renderLegend();
+  if (state.mode === 'kpis') renderKpiDashboard();
 
   const themeBtn = document.getElementById('theme-btn');
   if (themeBtn){
