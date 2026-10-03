@@ -29,3 +29,7 @@
   remessa sai da memória (colagens posteriores dessa remessa são ignoradas).
 - NF-e informada (lista, painel ou Controle OT importada) => faturada (`aplicarNF`, `state.fatNf`).
   Exclusão de transportes direto na lista (`excluirTransportes`), sempre com confirmação.
+- OTs: sem títulos, `parseOTs(grid, knownSets())` lê linha a linha (remessa conhecida/8xxxxxxx +
+  número de 6–12 dígitos que não é material). Várias OTs => `T.otList`, impressas uma por linha.
+- Relatório do dia (`relatorio()`): Excel (SheetJS; CSV sem internet), PDF (página nomeada
+  `relatorio`, A4 paisagem) e e-mail (copia HTML com estilos inline + abre mailto).

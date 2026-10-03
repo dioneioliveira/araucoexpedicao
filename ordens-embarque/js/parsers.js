@@ -483,21 +483,43 @@
     const t = hnorm(fixMojibake(String(text || '')).split('\n').slice(0, 30).join(' '));
     return /\bOT\b|ORDEM (DE )?TRANSPORTE/.test(t) && /REMESSA|TP\.?DEP|POSICAO DEP|QTD\.?TEORICA/.test(t);
   };
-  function parseOTs(grid) {
+  // known = { entregas: Set, materiais: Set } — entregas e materiais já conhecidos no app,
+  // usados para reconhecer a remessa e descartar o código do material quando a
+  // colagem vem sem títulos ou fora de padrão.
+  function parseOTs(grid, known) {
+    known = known || {};
+    const ents = known.entregas || new Set(), mats = known.materiais || new Set();
     const hr = grid.findIndex(r => { const h = r.map(hnorm); return h.some(x => OT_SYN.ot.includes(x)) && h.some(x => OT_SYN.remessa.includes(x)); });
-    let col = {};
-    if (hr >= 0) {
-      const h = grid[hr].map(hnorm);
-      Object.entries(OT_SYN).forEach(([k, list]) => { const i = h.findIndex(x => list.includes(x)); if (i >= 0) col[k] = i; });
-    } else {
-      col = { remessa: 0, material: 1, texto: 2, tpDep: 3, posicao: 4, ot: 5, qtd: 6 }; // ordem da guia lt22
-    }
     const out = [];
-    grid.slice(hr + 1).forEach(r => {
-      const remessa = intStr(r[col.remessa]); const ot = intStr(r[col.ot]);
-      if (!/^\d{6,12}$/.test(remessa) || !/^\d{3,12}$/.test(ot)) return;
-      out.push({ remessa, ot, material: col.material != null ? intStr(r[col.material]) : '', texto: col.texto != null ? clean(r[col.texto]) : '',
-        tpDep: col.tpDep != null ? clean(r[col.tpDep]) : '', posicao: col.posicao != null ? clean(r[col.posicao]) : '', qtd: col.qtd != null ? toNum(r[col.qtd]) : null });
+    if (hr >= 0) {
+      // 1) com títulos: pelas colunas
+      const h = grid[hr].map(hnorm); const col = {};
+      Object.entries(OT_SYN).forEach(([k, list]) => { const i = h.findIndex(x => list.includes(x)); if (i >= 0) col[k] = i; });
+      grid.slice(hr + 1).forEach(r => {
+        const remessa = intStr(r[col.remessa]); const ot = intStr(r[col.ot]);
+        if (!/^\d{6,12}$/.test(remessa) || !/^\d{3,12}$/.test(ot)) return;
+        out.push({ remessa, ot, material: col.material != null ? intStr(r[col.material]) : '', texto: col.texto != null ? clean(r[col.texto]) : '',
+          tpDep: col.tpDep != null ? clean(r[col.tpDep]) : '', posicao: col.posicao != null ? clean(r[col.posicao]) : '', qtd: col.qtd != null ? toNum(r[col.qtd]) : null });
+      });
+      return out;
+    }
+    // 2) sem títulos / fora de padrão: linha a linha. Remessa = entrega conhecida ou
+    //    8xxxxxxx; OT = número de 6 a 12 dígitos na mesma linha que não é a remessa
+    //    nem o material (quantidades têm menos dígitos).
+    grid.forEach(r => {
+      const cells = r.map(c => (typeof c === 'number' ? String(Math.round(c)) : clean(c)));
+      const nums = [];
+      cells.forEach((c, ci) => { (c.match(/\d[\d.]*\d|\d/g) || []).forEach(tok => { const d = tok.replace(/\./g, ''); if (/^\d+$/.test(d) && !/^\d{1,3}(\.\d{3})+$/.test(tok)) nums.push({ d, ci }); }); });
+      let rem = nums.find(n => ents.has(n.d)) || nums.find(n => /^8\d{7}$/.test(n.d));
+      if (!rem) return;
+      const looksMat = n => mats.has(n.d) || (!mats.size && /^1\d{6}$/.test(n.d));
+      const cand = nums.filter(n => n.d !== rem.d && n.d.length >= 6 && n.d.length <= 12 && !looksMat(n) && !ents.has(n.d) && !/^8\d{7}$/.test(n.d));
+      if (!cand.length) return;
+      const ot = cand[0];
+      const mat = nums.find(n => looksMat(n));
+      const texto = cells.find(c => /[A-Z]{3,}/i.test(c) && /\d+\s*x\s*\d+/i.test(c)) || '';
+      const qtd = nums.filter(n => n.ci > ot.ci && n.d.length <= 5).map(n => +n.d)[0];
+      out.push({ remessa: rem.d, ot: ot.d, material: mat ? mat.d : '', texto, tpDep: '', posicao: '', qtd: qtd != null ? qtd : null });
     });
     return out;
   }

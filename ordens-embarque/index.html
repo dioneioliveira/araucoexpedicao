@@ -57,6 +57,7 @@
       <div class="tb-group">
         <button class="btn btn-ghost btn-sm btn-danger" id="btn-del-selected" disabled title="Excluir da lista diária as linhas selecionadas"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Excluir selecionadas</button>
         <button class="btn btn-ghost btn-sm" id="btn-fat-selected" disabled title="Marcar as linhas selecionadas como faturadas (vão para o fim da lista)"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Marcar faturadas</button>
+        <button class="btn btn-ghost btn-sm" id="btn-report" title="Relatório dos embarques do dia: Excel, PDF e e-mail"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 15v-3M12 15V9M16 15v-5"/></svg>Relatório do dia</button>
         <button class="btn btn-ghost btn-sm" id="btn-copy-list" title="Copiar a lista do dia (colar no Excel)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>Copiar lista</button>
         <button class="btn btn-ghost btn-sm" id="btn-new-manual"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Transporte manual</button>
       </div>
@@ -234,6 +235,28 @@
       </div>
     </div>
     <div class="pv-pages" id="pv-pages"></div>
+  </div>
+</dialog>
+
+<dialog id="report-dialog" class="modal modal-wide">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Relatório</div>
+        <h2 id="rel-title">Embarques do dia</h2>
+      </div>
+      <button class="icon-btn" id="rel-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="rel-bar">
+      <label class="field-inline">Para <input type="text" id="rel-to" placeholder="email@arauco.com; outro@arauco.com" spellcheck="false"></label>
+      <div class="rel-actions">
+        <button class="btn btn-ghost" id="rel-xlsx"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M9 13l6 6M15 13l-6 6"/></svg>Baixar Excel</button>
+        <button class="btn btn-ghost" id="rel-pdf"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>PDF / imprimir</button>
+        <button class="btn btn-ghost" id="rel-copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>Copiar relatório</button>
+        <button class="btn btn-primary" id="rel-mail"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 7l9 6 9-6"/></svg>Enviar por e-mail</button>
+      </div>
+    </div>
+    <div class="rel-preview" id="rel-preview"></div>
   </div>
 </dialog>
 

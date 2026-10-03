@@ -324,6 +324,10 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .cf-body{padding:14px 24px;font-size:13.5px}
 .cf-body ul{margin:8px 0;padding-left:18px}
 
+.rel-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 24px;border-bottom:1px solid var(--line-soft)}
+.rel-bar input{min-width:320px}
+.rel-actions{display:flex;gap:8px;flex-wrap:wrap}
+.rel-preview{overflow:auto;padding:18px 24px;background:#fff}
 #toasts{position:fixed;right:22px;bottom:22px;z-index:100;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
 .toast{background:#fff;border:1px solid var(--line);border-left:4px solid var(--turq-strong);border-radius:var(--r-s);padding:10px 14px;box-shadow:var(--shadow-2);font-size:13px;max-width:420px;animation:slideIn .2s ease-out}
 .toast.ok{border-left-color:var(--ok)}
@@ -344,12 +348,16 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 #print-root{display:none}
 #print-root.measuring{display:block;position:fixed;left:-30000px;top:0}
 @page{size:A4 portrait;margin:0}
+@page relatorio{size:A4 landscape;margin:10mm}
 @media print{
   html,body{background:#fff!important;height:auto}
   body > *:not(#print-root){display:none!important}
   #print-root{display:block!important;position:static!important}
   #print-root .page{width:210mm;height:296.8mm;break-after:page;page-break-after:always}
   #print-root .page:last-child{break-after:auto;page-break-after:auto}
+  #print-root .report-page{page:relatorio;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #print-root .report-page table{width:100%}
+  #print-root .report-page td,#print-root .report-page th{font-size:9px!important;padding:3px 4px!important}
 }
 
 /* ---------- responsivo ---------- */
@@ -425,6 +433,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       <div class="tb-group">
         <button class="btn btn-ghost btn-sm btn-danger" id="btn-del-selected" disabled title="Excluir da lista diária as linhas selecionadas"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Excluir selecionadas</button>
         <button class="btn btn-ghost btn-sm" id="btn-fat-selected" disabled title="Marcar as linhas selecionadas como faturadas (vão para o fim da lista)"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Marcar faturadas</button>
+        <button class="btn btn-ghost btn-sm" id="btn-report" title="Relatório dos embarques do dia: Excel, PDF e e-mail"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 15v-3M12 15V9M16 15v-5"/></svg>Relatório do dia</button>
         <button class="btn btn-ghost btn-sm" id="btn-copy-list" title="Copiar a lista do dia (colar no Excel)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>Copiar lista</button>
         <button class="btn btn-ghost btn-sm" id="btn-new-manual"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Transporte manual</button>
       </div>
@@ -602,6 +611,28 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       </div>
     </div>
     <div class="pv-pages" id="pv-pages"></div>
+  </div>
+</dialog>
+
+<dialog id="report-dialog" class="modal modal-wide">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Relatório</div>
+        <h2 id="rel-title">Embarques do dia</h2>
+      </div>
+      <button class="icon-btn" id="rel-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="rel-bar">
+      <label class="field-inline">Para <input type="text" id="rel-to" placeholder="email@arauco.com; outro@arauco.com" spellcheck="false"></label>
+      <div class="rel-actions">
+        <button class="btn btn-ghost" id="rel-xlsx"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M9 13l6 6M15 13l-6 6"/></svg>Baixar Excel</button>
+        <button class="btn btn-ghost" id="rel-pdf"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>PDF / imprimir</button>
+        <button class="btn btn-ghost" id="rel-copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>Copiar relatório</button>
+        <button class="btn btn-primary" id="rel-mail"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 7l9 6 9-6"/></svg>Enviar por e-mail</button>
+      </div>
+    </div>
+    <div class="rel-preview" id="rel-preview"></div>
   </div>
 </dialog>
 
@@ -3879,21 +3910,43 @@ window.ORDEM_TEMPLATES = {
     const t = hnorm(fixMojibake(String(text || '')).split('\n').slice(0, 30).join(' '));
     return /\bOT\b|ORDEM (DE )?TRANSPORTE/.test(t) && /REMESSA|TP\.?DEP|POSICAO DEP|QTD\.?TEORICA/.test(t);
   };
-  function parseOTs(grid) {
+  // known = { entregas: Set, materiais: Set } — entregas e materiais já conhecidos no app,
+  // usados para reconhecer a remessa e descartar o código do material quando a
+  // colagem vem sem títulos ou fora de padrão.
+  function parseOTs(grid, known) {
+    known = known || {};
+    const ents = known.entregas || new Set(), mats = known.materiais || new Set();
     const hr = grid.findIndex(r => { const h = r.map(hnorm); return h.some(x => OT_SYN.ot.includes(x)) && h.some(x => OT_SYN.remessa.includes(x)); });
-    let col = {};
-    if (hr >= 0) {
-      const h = grid[hr].map(hnorm);
-      Object.entries(OT_SYN).forEach(([k, list]) => { const i = h.findIndex(x => list.includes(x)); if (i >= 0) col[k] = i; });
-    } else {
-      col = { remessa: 0, material: 1, texto: 2, tpDep: 3, posicao: 4, ot: 5, qtd: 6 }; // ordem da guia lt22
-    }
     const out = [];
-    grid.slice(hr + 1).forEach(r => {
-      const remessa = intStr(r[col.remessa]); const ot = intStr(r[col.ot]);
-      if (!/^\d{6,12}$/.test(remessa) || !/^\d{3,12}$/.test(ot)) return;
-      out.push({ remessa, ot, material: col.material != null ? intStr(r[col.material]) : '', texto: col.texto != null ? clean(r[col.texto]) : '',
-        tpDep: col.tpDep != null ? clean(r[col.tpDep]) : '', posicao: col.posicao != null ? clean(r[col.posicao]) : '', qtd: col.qtd != null ? toNum(r[col.qtd]) : null });
+    if (hr >= 0) {
+      // 1) com títulos: pelas colunas
+      const h = grid[hr].map(hnorm); const col = {};
+      Object.entries(OT_SYN).forEach(([k, list]) => { const i = h.findIndex(x => list.includes(x)); if (i >= 0) col[k] = i; });
+      grid.slice(hr + 1).forEach(r => {
+        const remessa = intStr(r[col.remessa]); const ot = intStr(r[col.ot]);
+        if (!/^\d{6,12}$/.test(remessa) || !/^\d{3,12}$/.test(ot)) return;
+        out.push({ remessa, ot, material: col.material != null ? intStr(r[col.material]) : '', texto: col.texto != null ? clean(r[col.texto]) : '',
+          tpDep: col.tpDep != null ? clean(r[col.tpDep]) : '', posicao: col.posicao != null ? clean(r[col.posicao]) : '', qtd: col.qtd != null ? toNum(r[col.qtd]) : null });
+      });
+      return out;
+    }
+    // 2) sem títulos / fora de padrão: linha a linha. Remessa = entrega conhecida ou
+    //    8xxxxxxx; OT = número de 6 a 12 dígitos na mesma linha que não é a remessa
+    //    nem o material (quantidades têm menos dígitos).
+    grid.forEach(r => {
+      const cells = r.map(c => (typeof c === 'number' ? String(Math.round(c)) : clean(c)));
+      const nums = [];
+      cells.forEach((c, ci) => { (c.match(/\d[\d.]*\d|\d/g) || []).forEach(tok => { const d = tok.replace(/\./g, ''); if (/^\d+$/.test(d) && !/^\d{1,3}(\.\d{3})+$/.test(tok)) nums.push({ d, ci }); }); });
+      let rem = nums.find(n => ents.has(n.d)) || nums.find(n => /^8\d{7}$/.test(n.d));
+      if (!rem) return;
+      const looksMat = n => mats.has(n.d) || (!mats.size && /^1\d{6}$/.test(n.d));
+      const cand = nums.filter(n => n.d !== rem.d && n.d.length >= 6 && n.d.length <= 12 && !looksMat(n) && !ents.has(n.d) && !/^8\d{7}$/.test(n.d));
+      if (!cand.length) return;
+      const ot = cand[0];
+      const mat = nums.find(n => looksMat(n));
+      const texto = cells.find(c => /[A-Z]{3,}/i.test(c) && /\d+\s*x\s*\d+/i.test(c)) || '';
+      const qtd = nums.filter(n => n.ci > ot.ci && n.d.length <= 5).map(n => +n.d)[0];
+      out.push({ remessa: rem.d, ot: ot.d, material: mat ? mat.d : '', texto, tpDep: '', posicao: '', qtd: qtd != null ? qtd : null });
     });
     return out;
   }
@@ -4026,13 +4079,14 @@ window.ORDEM_TEMPLATES = {
     const otsMem = Array.from(new Set([].concat(...entregas.map(en => (state.ots[en] && state.ots[en].ots) || []))));
     let otSrc = man.ot ? 'manual' : '';
     if (!ot.ot && otsMem.length) { ot.ot = otsMem.join(' / '); otSrc = 'LT22'; }
+    const otList = String(ot.ot || '').split(/[\/,;\s]+/).map(x => x.trim()).filter(Boolean);
     if (!ot.container && f.container) ot.container = f.container;
     if (!ot.container && sew && sew.container) ot.container = sew.container;
     const missing = REQUIRED.filter(([k]) => !P.clean(eff[k])).map(([, l]) => l);
     return {
       transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (f.janela ? 'Solicitação de Embarque' : (sew ? 'SEW' : 'padrão')),
       solic: f.fonte === 'Solicitação de Embarque' ? f : null,
-      fsc, ot, otSrc, entregas, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
+      fsc, ot, otSrc, otList, entregas, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
       printed: state.printed[t] || null, faturado: state.faturado[t] || null, manualOnly: items.every(i => i.manualOnly),
     };
   }
@@ -4061,8 +4115,8 @@ window.ORDEM_TEMPLATES = {
       pallets: palTxt,
       fracionada: pal != null && Math.abs(pal - Math.round(pal)) > 1e-9 ? 'carga fracionada' : '',
       fscClaim: T.fsc ? T.fsc.claim : '',
-      otQr: String(T.ot.ot || '').split('/')[0].trim(),
-      ot: T.ot.ot,
+      otQr: T.otList[0] || '',
+      ot: T.otList.join('\n'), // várias OTs: uma por linha no campo OT
       fsc: T.fsc ? T.fsc.fsc : '',
       janelaContainer: cont ? 'CONTAINER' : '',
       treinamento: e.treinamento,
@@ -4135,6 +4189,7 @@ window.ORDEM_TEMPLATES = {
         const s = el.querySelector('svg'); if (s) { s.removeAttribute('width'); s.removeAttribute('height'); }
       } else {
         if (f.wrap) el.classList.add('wrap');
+        if (String(val).includes('\n')) { el.classList.add('wrap', 'clip'); el.style.whiteSpace = 'pre-line'; el.style.lineHeight = '1.05'; }
         const sp = document.createElement('span'); sp.textContent = val; el.appendChild(sp);
       }
       el.dataset.size = f.size;
@@ -4265,7 +4320,7 @@ window.ORDEM_TEMPLATES = {
         <td class="wrap">${esc(e.motorista)}<span class="sub mono">${esc(P.fmtCPF(e.cpf))}</span></td>
         <td>${treinoChip(T)}</td>
         <td class="wrap">${esc(e.transportadora)}</td>
-        <td class="mono">${esc(T.ot.ot)}</td>
+        <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
         <td class="c-nf"><input class="nf-in" data-nf="${esc(T.transporte)}" value="${esc(T.ot.nf)}" placeholder="NF-e" inputmode="numeric" title="Informe a NF-e: a ordem fica faturada"></td>
         <td class="c-status">${statusChip(T)}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
@@ -4289,6 +4344,101 @@ window.ORDEM_TEMPLATES = {
     const dl = $('#transporte-list');
     const ts = Array.from(new Set(Object.values(state.items).map(i => i.transporte))).sort().reverse().slice(0, 400);
     dl.innerHTML = ts.map(t => `<option value="${esc(t)}">`).join('');
+  }
+
+  // ------------------------------------------------------------------ relatório do dia (Excel / PDF / e-mail)
+  const statusTexto = T => T.faturado ? 'Faturada' : (T.printed && T.alteracoes.length ? 'Com alterações' : (T.printed ? 'Ordem impressa' : (T.missing.length ? 'Dados faltando' : 'Aguardando impressão')));
+  const REL_COLS = ['Hora', 'Transporte', 'Janela', 'Cliente', 'Entrega', 'Materiais', 'Qtd', 'Pallets', 'Placa carreta/truck', 'Placa cavalo', 'Motorista', 'Transportadora', 'OT', 'NF-e', 'Container', 'Lacre', 'Status'];
+  function relatorio() {
+    const list = allTransports().filter(T => T.eff.data === ui.date)
+      .sort((a, b) => (a.eff.hora || '99').localeCompare(b.eff.hora || '99') || a.transporte.localeCompare(b.transporte));
+    const rows = list.map(T => [T.eff.hora, T.transporte, T.janela === 'CONTAINER' ? 'Container' : 'Mercado interno', T.eff.cliente, T.entregas.join(' / '),
+      T.items.map(i => i.descricao).filter(Boolean).join(' | '), T.items.reduce((a, i) => a + (i.qtd || 0), 0), T.pallets == null ? '' : Math.round(T.pallets * 100) / 100,
+      T.eff.placaL, isTruck(T.eff) ? '' : T.eff.placaM, T.eff.motorista, T.eff.transportadora, T.otList.join(' / '), T.ot.nf, T.ot.container, T.ot.lacre, statusTexto(T)]);
+    const c = f => list.filter(f).length;
+    const resumo = [
+      ['Transportes', list.length], ['Mercado interno', c(T => T.janela !== 'CONTAINER')], ['Containers', c(T => T.janela === 'CONTAINER')],
+      ['Pallets', Math.round(list.reduce((a, T) => a + (T.pallets || 0), 0) * 10) / 10], ['Ordens impressas', c(T => T.printed)],
+      ['Faturadas', c(T => T.faturado)], ['Com alterações', c(T => T.printed && !T.faturado && T.alteracoes.length)], ['Dados faltando', c(T => !T.faturado && T.missing.length)],
+    ];
+    return { list, rows, resumo, titulo: `Embarques do dia ${P.fmtDateBR(ui.date)} · Expedição Arauco Piên` };
+  }
+  // HTML com estilos embutidos: mantém a formatação ao colar no Outlook/Gmail
+  function relatorioHTML(r) {
+    const td = 'border:1px solid #D9D9D9;padding:4px 6px;font:12px Arial,sans-serif;color:#4A4A4A;vertical-align:top';
+    const cor = st => ({ 'Faturada': '#7A7A7A', 'Com alterações': '#B4473B', 'Dados faltando': '#B4473B', 'Ordem impressa': '#3F8F6B' }[st] || '#4A4A4A');
+    return `<div style="font:13px Arial,sans-serif;color:#4A4A4A">
+      <div style="border-left:6px solid #B7D9D8;padding:6px 12px;margin-bottom:10px"><div style="font:bold 16px Arial,sans-serif;color:#4A4A4A">${esc(r.titulo)}</div>
+      <div style="font:12px Arial,sans-serif;color:#7A7A7A">Gerado em ${esc(new Date().toLocaleString('pt-BR'))}</div></div>
+      <table style="border-collapse:collapse;margin-bottom:12px"><tr>${r.resumo.map(([l, v]) => `<td style="${td};background:#F8F8F8;text-align:center;min-width:90px"><div style="font:bold 11px Arial,sans-serif;color:#7A7A7A;text-transform:uppercase">${esc(l)}</div><div style="font:bold 18px Arial,sans-serif;color:#4A4A4A">${esc(String(v).replace('.', ','))}</div></td>`).join('')}</tr></table>
+      <table style="border-collapse:collapse"><thead><tr>${REL_COLS.map(h => `<th style="${td};background:#B7D9D8;color:#2f4f4e;font-weight:bold;text-align:left;white-space:nowrap">${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${r.rows.map((row, i) => `<tr style="background:${i % 2 ? '#FAFAFA' : '#FFFFFF'}">${row.map((v, j) => `<td style="${td}${j === row.length - 1 ? `;font-weight:bold;color:${cor(v)}` : ''}${j === 6 || j === 7 ? ';text-align:right' : ''}">${esc(typeof v === 'number' ? fmtNum(v, 2) : v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  function baixar(nome, blob) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  }
+  function relatorioExcel(r) {
+    const nome = `embarques-${ui.date}`;
+    if (window.XLSX) {
+      const wb = XLSX.utils.book_new();
+      const ws1 = XLSX.utils.aoa_to_sheet([[r.titulo], []].concat(r.resumo));
+      ws1['!cols'] = [{ wch: 22 }, { wch: 12 }];
+      const ws2 = XLSX.utils.aoa_to_sheet([REL_COLS].concat(r.rows));
+      ws2['!cols'] = REL_COLS.map((h, i) => ({ wch: [6, 11, 15, 32, 12, 45, 8, 8, 14, 14, 28, 28, 16, 10, 14, 13, 18][i] }));
+      ws2['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r.rows.length, c: REL_COLS.length - 1 } }) };
+      XLSX.utils.book_append_sheet(wb, ws2, 'Embarques'); XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+      XLSX.writeFile(wb, nome + '.xlsx');
+      return 'xlsx';
+    }
+    // sem internet (biblioteca do Excel não carregou): CSV que o Excel abre direto
+    const csv = [REL_COLS].concat(r.rows).map(row => row.map(v => { const t = typeof v === 'number' ? String(v).replace('.', ',') : String(v == null ? '' : v); return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }).join(';')).join('\r\n');
+    baixar(nome + '.csv', new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    return 'csv';
+  }
+  async function copiarHTML(html, texto) {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([texto], { type: 'text/plain' }) })]);
+      return true;
+    } catch (e) {
+      const div = document.createElement('div'); div.contentEditable = 'true'; div.innerHTML = html;
+      Object.assign(div.style, { position: 'fixed', left: '-9999px', top: '0' }); document.body.appendChild(div);
+      const rg = document.createRange(); rg.selectNodeContents(div); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rg);
+      let ok = false; try { ok = document.execCommand('copy'); } catch (er) { ok = false; }
+      sel.removeAllRanges(); div.remove(); return ok;
+    }
+  }
+  const relatorioTexto = r => [r.titulo, '', ...r.resumo.map(([l, v]) => `${l}: ${String(v).replace('.', ',')}`)].join('\n');
+  const EMAIL_KEY = 'arauco.ordensEmbarque.emailRelatorio';
+  function abrirRelatorio() {
+    const r = relatorio();
+    $('#rel-title').textContent = r.titulo;
+    try { $('#rel-to').value = localStorage.getItem(EMAIL_KEY) || ''; } catch (e) { /* sem storage */ }
+    $('#rel-preview').innerHTML = r.rows.length ? relatorioHTML(r) : '<div class="alert warn">Nenhum transporte nesta data.</div>';
+    $('#report-dialog').showModal();
+  }
+  function bindRelatorio() {
+    $('#btn-report').addEventListener('click', abrirRelatorio);
+    $('#rel-close').addEventListener('click', () => $('#report-dialog').close());
+    $('#rel-to').addEventListener('change', e => { try { localStorage.setItem(EMAIL_KEY, e.target.value.trim()); } catch (er) { /* sem storage */ } });
+    $('#rel-xlsx').addEventListener('click', () => { const t = relatorioExcel(relatorio()); toast(t === 'xlsx' ? 'Relatório baixado em Excel (.xlsx).' : 'Relatório baixado em .csv (abre no Excel). Sem internet, o .xlsx não está disponível.', 'ok'); });
+    $('#rel-copy').addEventListener('click', async () => { const r = relatorio(); const ok = await copiarHTML(relatorioHTML(r), relatorioTexto(r)); toast(ok ? 'Relatório copiado — cole (Ctrl+V) no corpo do e-mail.' : 'Não foi possível copiar.', ok ? 'ok' : 'err'); });
+    $('#rel-pdf').addEventListener('click', async () => {
+      const r = relatorio(); const root = $('#print-root');
+      root.innerHTML = `<div class="report-page">${relatorioHTML(r)}</div>`; root.dataset.key = 'relatorio';
+      $('#report-dialog').close();
+      printing = true; window.print(); printing = false;
+    });
+    $('#rel-mail').addEventListener('click', async () => {
+      const r = relatorio();
+      const ok = await copiarHTML(relatorioHTML(r), relatorioTexto(r));
+      const to = $('#rel-to').value.trim();
+      try { localStorage.setItem(EMAIL_KEY, to); } catch (e) { /* sem storage */ }
+      const body = `${relatorioTexto(r)}\n\n${ok ? '(Cole aqui o relatório completo: Ctrl+V)' : ''}\n`;
+      const para = to.split(/[;,\s]+/).filter(x => /^[^@\s]+@[^@\s]+$/.test(x)).join(',');
+      window.location.href = `mailto:${para}?subject=${encodeURIComponent(r.titulo)}&body=${encodeURIComponent(body)}`;
+      toast(ok ? 'E-mail aberto. O relatório completo já está copiado: clique no corpo do e-mail e pressione Ctrl+V. Para anexar a planilha, use "Baixar Excel".' : 'E-mail aberto (não foi possível copiar o relatório).', ok ? 'ok' : 'warn');
+    });
   }
 
   // ------------------------------------------------------------------ faturamento / exclusão
@@ -4399,6 +4549,12 @@ window.ORDEM_TEMPLATES = {
     });
     Object.values(state.ots).forEach(m => { if (!pasted.has(m.remessa)) m.ausente = true; });
     return { linhas: rows.length, remessas: pasted.size, novas };
+  }
+  function knownSets() {
+    const entregas = new Set(), materiais = new Set();
+    Object.values(state.items).forEach(i => { if (i.entrega) entregas.add(i.entrega); if (i.material) materiais.add(i.material); });
+    Object.keys(state.ots).forEach(e => entregas.add(e));
+    return { entregas, materiais };
   }
   function transportByEntrega() {
     const map = new Map();
@@ -4511,7 +4667,7 @@ window.ORDEM_TEMPLATES = {
       <div class="section">
         <h3>Controle OT <span class="h-note">campos manuais</span></h3>
         <div class="fgrid three">
-          ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'container' && !T.man.container && T.ot.container ? ' <span class="src">SEW</span>' : ''}${k === 'ot' && T.otSrc === 'LT22' ? ' <span class="src">tela de OTs</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
+          ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'ot' && T.otList.length > 1 ? ` (${T.otList.length})` : ''}${k === 'container' && !T.man.container && T.ot.container ? ' <span class="src">SEW</span>' : ''}${k === 'ot' && T.otSrc === 'LT22' ? ' <span class="src">tela de OTs</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
         </div>
       </div>
       <div class="section">
@@ -4725,7 +4881,7 @@ window.ORDEM_TEMPLATES = {
       // tela de OTs (LT22): guarda na memória
       if (ui.view === 'ots' || P.isOTScreen(text)) {
         let rows = [];
-        for (const g of [htmlGrid, P.trimGrid(P.parseTSV(P.fixMojibake(text)))]) { if (g && g.length) { rows = P.parseOTs(g); if (rows.length) break; } }
+        for (const g of [htmlGrid, P.trimGrid(P.parseTSV(P.fixMojibake(text)))]) { if (g && g.length) { rows = P.parseOTs(g, knownSets()); if (rows.length) break; } }
         if (rows.length) {
           const r = mergeOTs(rows); save(true);
           if (ui.view !== 'ots') setView('ots'); else renderAll();
@@ -5119,7 +5275,7 @@ window.ORDEM_TEMPLATES = {
     if (!TPL) { document.body.innerHTML = '<p style="padding:40px">Modelos de impressão não encontrados (js/templates.js).</p>'; return; }
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
-    bind(); bindImport();
+    bind(); bindImport(); bindRelatorio();
     setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });

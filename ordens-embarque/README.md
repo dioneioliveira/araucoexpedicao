@@ -104,21 +104,39 @@ automaticamente. Também é possível colar várias Solicitações de uma vez em
    transportadora, OT…) vindas de uma nova Solicitação de Embarque. Ao imprimir
    de novo, a ordem volta a ficar normal.
 
-### Guia OTs (tela de OTs do SAP)
+### Guia OTs (tela de OTs do SAP / LT22)
 
-1. Copie a tela de OTs do SAP (Remessa · Material · Texto breve · Tp.dep.origem ·
-   Posição dep.origem · **OT** · Qtd.teórica, as mesmas colunas da guia `lt22`) com
-   **Ctrl+A**, **Ctrl+C** e pressione **Ctrl+V** no app. Funciona com a tabela
-   copiada do navegador e com a lista do SAP GUI (colunas separadas por `|`).
-2. A OT entra sozinha no **Controle OT** e no check-list do transporte que tem a
-   mesma **entrega** (remessa). No painel aparece a origem "tela de OTs". Se
-   houver mais de uma OT, saem separadas por "/" e o QR code usa a primeira.
-3. **Memória:** cada colagem acrescenta. A OT que some da tela do SAP continua
-   guardada (marcada "não aparece mais").
-4. **Ao faturar** a ordem, a OT fica gravada no transporte e é retirada da memória.
-   Se ela ainda vier numa colagem seguinte, é ignorada.
-5. OT que chega depois de a ordem ter sido impressa deixa a ordem "Com alterações",
-   porque o check-list impresso saiu sem ela. Imprima de novo.
+1. Na guia **OTs**, cole a tela de OTs (**Ctrl+A**, **Ctrl+C**, **Ctrl+V**).
+   - Com a linha de títulos (Remessa · Material · Texto · Tp.dep · Posição · **OT** · Qtd),
+     as colunas são lidas pelos títulos. Funciona com a tabela do navegador e com a lista do
+     SAP GUI (colunas separadas por `|`).
+   - **Sem títulos ou fora do padrão**, o app lê linha a linha: a remessa é uma entrega já
+     conhecida no app (ou um número 8xxxxxxx) e a OT é o outro número de 6 a 12 dígitos na
+     mesma linha que não é o material. Quantidades, posições e datas são ignoradas.
+2. A OT entra sozinha no transporte que tem a mesma **entrega**.
+3. **Várias OTs no mesmo transporte** (várias linhas da mesma entrega, ou várias entregas):
+   todas aparecem na lista (uma por linha), no painel (Controle OT, separadas por "/") e
+   no **check-list impresso**, uma por linha no campo OT. O QR code usa a primeira OT.
+4. **Memória:** cada colagem acrescenta. A OT que some da tela continua guardada
+   ("não aparece mais").
+5. **Ao faturar**, as OTs ficam gravadas no transporte e saem da memória. Colagens
+   seguintes dessa remessa são ignoradas.
+6. OT que chega depois da impressão deixa a ordem "Com alterações". Imprima de novo.
+
+### Relatório do dia
+
+Botão **Relatório do dia** (barra da lista). Mostra o resumo (transportes, mercado
+interno, containers, pallets, impressas, faturadas, com alterações, dados faltando) e a
+tabela dos embarques da data selecionada.
+
+- **Baixar Excel**: `embarques-AAAA-MM-DD.xlsx` com as guias *Embarques* (com filtro) e
+  *Resumo*. Sem internet, sai um `.csv` que o Excel abre direto.
+- **PDF / imprimir**: relatório em A4 deitado. No Chrome, escolha *Salvar como PDF*.
+- **Copiar relatório**: copia o relatório já formatado para colar no corpo de um e-mail.
+- **Enviar por e-mail**: informe os destinatários em **Para** (ficam salvos). O app copia o
+  relatório e abre o e-mail (Outlook ou o programa padrão) com assunto e resumo. Clique no
+  corpo e pressione **Ctrl+V** para colar a tabela. Para mandar a planilha anexa, use
+  *Baixar Excel* e anexe o arquivo: o navegador não consegue anexar sozinho.
 
 ### Ordens faturadas e exclusão
 

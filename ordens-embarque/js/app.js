@@ -115,13 +115,14 @@
     const otsMem = Array.from(new Set([].concat(...entregas.map(en => (state.ots[en] && state.ots[en].ots) || []))));
     let otSrc = man.ot ? 'manual' : '';
     if (!ot.ot && otsMem.length) { ot.ot = otsMem.join(' / '); otSrc = 'LT22'; }
+    const otList = String(ot.ot || '').split(/[\/,;\s]+/).map(x => x.trim()).filter(Boolean);
     if (!ot.container && f.container) ot.container = f.container;
     if (!ot.container && sew && sew.container) ot.container = sew.container;
     const missing = REQUIRED.filter(([k]) => !P.clean(eff[k])).map(([, l]) => l);
     return {
       transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (f.janela ? 'Solicitação de Embarque' : (sew ? 'SEW' : 'padrão')),
       solic: f.fonte === 'Solicitação de Embarque' ? f : null,
-      fsc, ot, otSrc, entregas, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
+      fsc, ot, otSrc, otList, entregas, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
       printed: state.printed[t] || null, faturado: state.faturado[t] || null, manualOnly: items.every(i => i.manualOnly),
     };
   }
@@ -150,8 +151,8 @@
       pallets: palTxt,
       fracionada: pal != null && Math.abs(pal - Math.round(pal)) > 1e-9 ? 'carga fracionada' : '',
       fscClaim: T.fsc ? T.fsc.claim : '',
-      otQr: String(T.ot.ot || '').split('/')[0].trim(),
-      ot: T.ot.ot,
+      otQr: T.otList[0] || '',
+      ot: T.otList.join('\n'), // várias OTs: uma por linha no campo OT
       fsc: T.fsc ? T.fsc.fsc : '',
       janelaContainer: cont ? 'CONTAINER' : '',
       treinamento: e.treinamento,
@@ -224,6 +225,7 @@
         const s = el.querySelector('svg'); if (s) { s.removeAttribute('width'); s.removeAttribute('height'); }
       } else {
         if (f.wrap) el.classList.add('wrap');
+        if (String(val).includes('\n')) { el.classList.add('wrap', 'clip'); el.style.whiteSpace = 'pre-line'; el.style.lineHeight = '1.05'; }
         const sp = document.createElement('span'); sp.textContent = val; el.appendChild(sp);
       }
       el.dataset.size = f.size;
@@ -354,7 +356,7 @@
         <td class="wrap">${esc(e.motorista)}<span class="sub mono">${esc(P.fmtCPF(e.cpf))}</span></td>
         <td>${treinoChip(T)}</td>
         <td class="wrap">${esc(e.transportadora)}</td>
-        <td class="mono">${esc(T.ot.ot)}</td>
+        <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
         <td class="c-nf"><input class="nf-in" data-nf="${esc(T.transporte)}" value="${esc(T.ot.nf)}" placeholder="NF-e" inputmode="numeric" title="Informe a NF-e: a ordem fica faturada"></td>
         <td class="c-status">${statusChip(T)}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
@@ -378,6 +380,101 @@
     const dl = $('#transporte-list');
     const ts = Array.from(new Set(Object.values(state.items).map(i => i.transporte))).sort().reverse().slice(0, 400);
     dl.innerHTML = ts.map(t => `<option value="${esc(t)}">`).join('');
+  }
+
+  // ------------------------------------------------------------------ relatório do dia (Excel / PDF / e-mail)
+  const statusTexto = T => T.faturado ? 'Faturada' : (T.printed && T.alteracoes.length ? 'Com alterações' : (T.printed ? 'Ordem impressa' : (T.missing.length ? 'Dados faltando' : 'Aguardando impressão')));
+  const REL_COLS = ['Hora', 'Transporte', 'Janela', 'Cliente', 'Entrega', 'Materiais', 'Qtd', 'Pallets', 'Placa carreta/truck', 'Placa cavalo', 'Motorista', 'Transportadora', 'OT', 'NF-e', 'Container', 'Lacre', 'Status'];
+  function relatorio() {
+    const list = allTransports().filter(T => T.eff.data === ui.date)
+      .sort((a, b) => (a.eff.hora || '99').localeCompare(b.eff.hora || '99') || a.transporte.localeCompare(b.transporte));
+    const rows = list.map(T => [T.eff.hora, T.transporte, T.janela === 'CONTAINER' ? 'Container' : 'Mercado interno', T.eff.cliente, T.entregas.join(' / '),
+      T.items.map(i => i.descricao).filter(Boolean).join(' | '), T.items.reduce((a, i) => a + (i.qtd || 0), 0), T.pallets == null ? '' : Math.round(T.pallets * 100) / 100,
+      T.eff.placaL, isTruck(T.eff) ? '' : T.eff.placaM, T.eff.motorista, T.eff.transportadora, T.otList.join(' / '), T.ot.nf, T.ot.container, T.ot.lacre, statusTexto(T)]);
+    const c = f => list.filter(f).length;
+    const resumo = [
+      ['Transportes', list.length], ['Mercado interno', c(T => T.janela !== 'CONTAINER')], ['Containers', c(T => T.janela === 'CONTAINER')],
+      ['Pallets', Math.round(list.reduce((a, T) => a + (T.pallets || 0), 0) * 10) / 10], ['Ordens impressas', c(T => T.printed)],
+      ['Faturadas', c(T => T.faturado)], ['Com alterações', c(T => T.printed && !T.faturado && T.alteracoes.length)], ['Dados faltando', c(T => !T.faturado && T.missing.length)],
+    ];
+    return { list, rows, resumo, titulo: `Embarques do dia ${P.fmtDateBR(ui.date)} · Expedição Arauco Piên` };
+  }
+  // HTML com estilos embutidos: mantém a formatação ao colar no Outlook/Gmail
+  function relatorioHTML(r) {
+    const td = 'border:1px solid #D9D9D9;padding:4px 6px;font:12px Arial,sans-serif;color:#4A4A4A;vertical-align:top';
+    const cor = st => ({ 'Faturada': '#7A7A7A', 'Com alterações': '#B4473B', 'Dados faltando': '#B4473B', 'Ordem impressa': '#3F8F6B' }[st] || '#4A4A4A');
+    return `<div style="font:13px Arial,sans-serif;color:#4A4A4A">
+      <div style="border-left:6px solid #B7D9D8;padding:6px 12px;margin-bottom:10px"><div style="font:bold 16px Arial,sans-serif;color:#4A4A4A">${esc(r.titulo)}</div>
+      <div style="font:12px Arial,sans-serif;color:#7A7A7A">Gerado em ${esc(new Date().toLocaleString('pt-BR'))}</div></div>
+      <table style="border-collapse:collapse;margin-bottom:12px"><tr>${r.resumo.map(([l, v]) => `<td style="${td};background:#F8F8F8;text-align:center;min-width:90px"><div style="font:bold 11px Arial,sans-serif;color:#7A7A7A;text-transform:uppercase">${esc(l)}</div><div style="font:bold 18px Arial,sans-serif;color:#4A4A4A">${esc(String(v).replace('.', ','))}</div></td>`).join('')}</tr></table>
+      <table style="border-collapse:collapse"><thead><tr>${REL_COLS.map(h => `<th style="${td};background:#B7D9D8;color:#2f4f4e;font-weight:bold;text-align:left;white-space:nowrap">${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${r.rows.map((row, i) => `<tr style="background:${i % 2 ? '#FAFAFA' : '#FFFFFF'}">${row.map((v, j) => `<td style="${td}${j === row.length - 1 ? `;font-weight:bold;color:${cor(v)}` : ''}${j === 6 || j === 7 ? ';text-align:right' : ''}">${esc(typeof v === 'number' ? fmtNum(v, 2) : v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  function baixar(nome, blob) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  }
+  function relatorioExcel(r) {
+    const nome = `embarques-${ui.date}`;
+    if (window.XLSX) {
+      const wb = XLSX.utils.book_new();
+      const ws1 = XLSX.utils.aoa_to_sheet([[r.titulo], []].concat(r.resumo));
+      ws1['!cols'] = [{ wch: 22 }, { wch: 12 }];
+      const ws2 = XLSX.utils.aoa_to_sheet([REL_COLS].concat(r.rows));
+      ws2['!cols'] = REL_COLS.map((h, i) => ({ wch: [6, 11, 15, 32, 12, 45, 8, 8, 14, 14, 28, 28, 16, 10, 14, 13, 18][i] }));
+      ws2['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r.rows.length, c: REL_COLS.length - 1 } }) };
+      XLSX.utils.book_append_sheet(wb, ws2, 'Embarques'); XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+      XLSX.writeFile(wb, nome + '.xlsx');
+      return 'xlsx';
+    }
+    // sem internet (biblioteca do Excel não carregou): CSV que o Excel abre direto
+    const csv = [REL_COLS].concat(r.rows).map(row => row.map(v => { const t = typeof v === 'number' ? String(v).replace('.', ',') : String(v == null ? '' : v); return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }).join(';')).join('\r\n');
+    baixar(nome + '.csv', new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    return 'csv';
+  }
+  async function copiarHTML(html, texto) {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([texto], { type: 'text/plain' }) })]);
+      return true;
+    } catch (e) {
+      const div = document.createElement('div'); div.contentEditable = 'true'; div.innerHTML = html;
+      Object.assign(div.style, { position: 'fixed', left: '-9999px', top: '0' }); document.body.appendChild(div);
+      const rg = document.createRange(); rg.selectNodeContents(div); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rg);
+      let ok = false; try { ok = document.execCommand('copy'); } catch (er) { ok = false; }
+      sel.removeAllRanges(); div.remove(); return ok;
+    }
+  }
+  const relatorioTexto = r => [r.titulo, '', ...r.resumo.map(([l, v]) => `${l}: ${String(v).replace('.', ',')}`)].join('\n');
+  const EMAIL_KEY = 'arauco.ordensEmbarque.emailRelatorio';
+  function abrirRelatorio() {
+    const r = relatorio();
+    $('#rel-title').textContent = r.titulo;
+    try { $('#rel-to').value = localStorage.getItem(EMAIL_KEY) || ''; } catch (e) { /* sem storage */ }
+    $('#rel-preview').innerHTML = r.rows.length ? relatorioHTML(r) : '<div class="alert warn">Nenhum transporte nesta data.</div>';
+    $('#report-dialog').showModal();
+  }
+  function bindRelatorio() {
+    $('#btn-report').addEventListener('click', abrirRelatorio);
+    $('#rel-close').addEventListener('click', () => $('#report-dialog').close());
+    $('#rel-to').addEventListener('change', e => { try { localStorage.setItem(EMAIL_KEY, e.target.value.trim()); } catch (er) { /* sem storage */ } });
+    $('#rel-xlsx').addEventListener('click', () => { const t = relatorioExcel(relatorio()); toast(t === 'xlsx' ? 'Relatório baixado em Excel (.xlsx).' : 'Relatório baixado em .csv (abre no Excel). Sem internet, o .xlsx não está disponível.', 'ok'); });
+    $('#rel-copy').addEventListener('click', async () => { const r = relatorio(); const ok = await copiarHTML(relatorioHTML(r), relatorioTexto(r)); toast(ok ? 'Relatório copiado — cole (Ctrl+V) no corpo do e-mail.' : 'Não foi possível copiar.', ok ? 'ok' : 'err'); });
+    $('#rel-pdf').addEventListener('click', async () => {
+      const r = relatorio(); const root = $('#print-root');
+      root.innerHTML = `<div class="report-page">${relatorioHTML(r)}</div>`; root.dataset.key = 'relatorio';
+      $('#report-dialog').close();
+      printing = true; window.print(); printing = false;
+    });
+    $('#rel-mail').addEventListener('click', async () => {
+      const r = relatorio();
+      const ok = await copiarHTML(relatorioHTML(r), relatorioTexto(r));
+      const to = $('#rel-to').value.trim();
+      try { localStorage.setItem(EMAIL_KEY, to); } catch (e) { /* sem storage */ }
+      const body = `${relatorioTexto(r)}\n\n${ok ? '(Cole aqui o relatório completo: Ctrl+V)' : ''}\n`;
+      const para = to.split(/[;,\s]+/).filter(x => /^[^@\s]+@[^@\s]+$/.test(x)).join(',');
+      window.location.href = `mailto:${para}?subject=${encodeURIComponent(r.titulo)}&body=${encodeURIComponent(body)}`;
+      toast(ok ? 'E-mail aberto. O relatório completo já está copiado: clique no corpo do e-mail e pressione Ctrl+V. Para anexar a planilha, use "Baixar Excel".' : 'E-mail aberto (não foi possível copiar o relatório).', ok ? 'ok' : 'warn');
+    });
   }
 
   // ------------------------------------------------------------------ faturamento / exclusão
@@ -488,6 +585,12 @@
     });
     Object.values(state.ots).forEach(m => { if (!pasted.has(m.remessa)) m.ausente = true; });
     return { linhas: rows.length, remessas: pasted.size, novas };
+  }
+  function knownSets() {
+    const entregas = new Set(), materiais = new Set();
+    Object.values(state.items).forEach(i => { if (i.entrega) entregas.add(i.entrega); if (i.material) materiais.add(i.material); });
+    Object.keys(state.ots).forEach(e => entregas.add(e));
+    return { entregas, materiais };
   }
   function transportByEntrega() {
     const map = new Map();
@@ -600,7 +703,7 @@
       <div class="section">
         <h3>Controle OT <span class="h-note">campos manuais</span></h3>
         <div class="fgrid three">
-          ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'container' && !T.man.container && T.ot.container ? ' <span class="src">SEW</span>' : ''}${k === 'ot' && T.otSrc === 'LT22' ? ' <span class="src">tela de OTs</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
+          ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'ot' && T.otList.length > 1 ? ` (${T.otList.length})` : ''}${k === 'container' && !T.man.container && T.ot.container ? ' <span class="src">SEW</span>' : ''}${k === 'ot' && T.otSrc === 'LT22' ? ' <span class="src">tela de OTs</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
         </div>
       </div>
       <div class="section">
@@ -814,7 +917,7 @@
       // tela de OTs (LT22): guarda na memória
       if (ui.view === 'ots' || P.isOTScreen(text)) {
         let rows = [];
-        for (const g of [htmlGrid, P.trimGrid(P.parseTSV(P.fixMojibake(text)))]) { if (g && g.length) { rows = P.parseOTs(g); if (rows.length) break; } }
+        for (const g of [htmlGrid, P.trimGrid(P.parseTSV(P.fixMojibake(text)))]) { if (g && g.length) { rows = P.parseOTs(g, knownSets()); if (rows.length) break; } }
         if (rows.length) {
           const r = mergeOTs(rows); save(true);
           if (ui.view !== 'ots') setView('ots'); else renderAll();
@@ -1208,7 +1311,7 @@
     if (!TPL) { document.body.innerHTML = '<p style="padding:40px">Modelos de impressão não encontrados (js/templates.js).</p>'; return; }
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
-    bind(); bindImport();
+    bind(); bindImport(); bindRelatorio();
     setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });
