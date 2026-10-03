@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arauco Ordens de Embarque</title>
+<meta name="theme-color" content="#FFFFFF">
+<link rel="icon" href="assets/arauco-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app">
+  <aside class="side-bar" aria-hidden="true"><span></span><span></span><span></span></aside>
+
+  <header id="topbar">
+    <div class="brand">
+      <img src="assets/arauco-logo.png" alt="Arauco" class="brand-logo">
+      <span class="brand-div"></span>
+      <span class="brand-mark">ORDENS DE <b>EMBARQUE</b></span>
+      <span class="brand-sub">Expedição · Piên</span>
+    </div>
+
+    <form class="transporte-box" id="transporte-form" autocomplete="off">
+      <label for="transporte-input">Transporte</label>
+      <input id="transporte-input" inputmode="numeric" placeholder="Nº do transporte" list="transporte-list">
+      <datalist id="transporte-list"></datalist>
+      <button type="submit" class="btn btn-primary btn-sm" title="Abrir ordem de embarque">Abrir</button>
+    </form>
+
+    <div class="top-actions">
+      <button class="btn btn-ghost" id="btn-import"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Importar dados</button>
+      <button class="btn btn-ghost" id="btn-print-selected" disabled><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>Imprimir selecionadas <span class="count" id="sel-count">0</span></button>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="toolbar card">
+      <div class="tb-group">
+        <label class="field-inline">Data
+          <input type="date" id="date-filter">
+        </label>
+        <div class="seg" id="janela-filter" role="tablist">
+          <button data-v="ALL" class="active">Todas</button>
+          <button data-v="MI">Mercado interno</button>
+          <button data-v="CONTAINER">Containers</button>
+        </div>
+        <input type="search" id="search" placeholder="Buscar cliente, placa, motorista…">
+      </div>
+      <div class="tb-group">
+        <button class="btn btn-ghost btn-sm" id="btn-copy-list" title="Copiar a lista do dia (colar no Excel)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>Copiar lista</button>
+        <button class="btn btn-ghost btn-sm" id="btn-new-manual"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Transporte manual</button>
+      </div>
+    </section>
+
+    <section class="kpis" id="kpis"></section>
+
+    <section class="card list-card">
+      <div class="list-head">
+        <h2 id="list-title">Lista diária</h2>
+        <span class="muted" id="list-sub"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="grid" id="daily-table">
+          <thead>
+            <tr>
+              <th class="c-check"><input type="checkbox" id="check-all" title="Selecionar todas"></th>
+              <th>Hora</th><th>Transporte</th><th>Janela</th><th>Cliente</th><th>Entrega</th>
+              <th>Material</th><th class="num">Pallets</th><th>Placas</th><th>Motorista</th>
+              <th>Treinamento</th><th>Transportadora</th><th>OT</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="empty" id="empty-state" hidden>
+          <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M3 7h13v10H3zM16 10h3l2 3v4h-5M7 19a2 2 0 100-4 2 2 0 000 4zm11 0a2 2 0 100-4 2 2 0 000 4z"/></svg></div>
+          <h3>Nenhum transporte para esta data</h3>
+          <p>Cole a tabela do LOG (SAP) em <b>Importar dados</b> para montar a lista diária.</p>
+          <div class="empty-actions">
+            <button class="btn btn-primary" data-open-import>Importar dados</button>
+            <button class="btn btn-ghost" id="btn-demo">Carregar exemplo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Painel da ordem de embarque -->
+  <aside id="detail" class="drawer" hidden>
+    <div class="drawer-head">
+      <div>
+        <div class="eyebrow">Ordem de embarque · Transporte</div>
+        <h2 id="d-title">—</h2>
+        <div class="d-chips" id="d-chips"></div>
+      </div>
+      <button class="icon-btn" id="d-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="drawer-body" id="d-body"></div>
+    <div class="drawer-foot">
+      <div class="copy-row">
+        <button class="btn btn-copy" data-copy="texto"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Dados de texto</button>
+        <button class="btn btn-copy" data-copy="balanca"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 006 0L5 7zm14 0l-3 7a4 4 0 006 0l-3-7z"/></svg>Dados de balança</button>
+        <button class="btn btn-copy" data-copy="motorista"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>Dados do motorista</button>
+      </div>
+      <button class="btn btn-primary btn-lg" id="d-print"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>Imprimir ordem (2 check-lists)</button>
+    </div>
+  </aside>
+  <div id="scrim" hidden></div>
+</div>
+
+<!-- Modal de importação -->
+<dialog id="import-dialog" class="modal">
+  <form method="dialog" class="modal-inner">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Dados de entrada</div>
+        <h2>Importar dados</h2>
+      </div>
+      <button class="icon-btn" value="close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="tabs" id="import-tabs">
+      <button type="button" data-tab="log" class="active">Tabela LOG (SAP)</button>
+      <button type="button" data-tab="sew">Agendamento SEW</button>
+      <button type="button" data-tab="xlsx">Planilha Excel</button>
+      <button type="button" data-tab="fsc">Clientes FSC</button>
+      <button type="button" data-tab="backup">Backup</button>
+    </div>
+
+    <div class="tab-pane" data-pane="log">
+      <p class="hint">Copie a tabela do sistema (mesmas colunas da guia <b>LOG</b>) e cole abaixo — com ou sem cabeçalho, mesmo que venha desalinhada. O app identifica as colunas automaticamente; confira na pré-visualização e ajuste se precisar.</p>
+      <textarea id="log-paste" placeholder="Cole aqui (Ctrl+V)…" spellcheck="false"></textarea>
+      <div class="row-actions">
+        <label class="check"><input type="checkbox" id="log-replace-dates" checked> Substituir os transportes das datas coladas</label>
+        <button type="button" class="btn btn-ghost btn-sm" id="log-clear">Limpar</button>
+      </div>
+      <div id="log-preview"></div>
+    </div>
+
+    <div class="tab-pane" data-pane="sew" hidden>
+      <p class="hint">Cole a tela <b>Agendamento de Cargas</b> (janelas <b>PIÊN PAINÉIS</b> = mercado interno e <b>PIÊN CONTAINERS</b>). A janela de cada transporte é identificada pela placa da carreta, como na guia <b>SEW ON LINE</b>.</p>
+      <div class="seg seg-sm" id="sew-mode">
+        <button type="button" data-v="auto" class="active">Detectar janelas</button>
+        <button type="button" data-v="MI">Só Mercado interno</button>
+        <button type="button" data-v="CONTAINER">Só Containers</button>
+      </div>
+      <textarea id="sew-paste" placeholder="Cole aqui (Ctrl+V)…" spellcheck="false"></textarea>
+      <div id="sew-preview"></div>
+    </div>
+
+    <div class="tab-pane" data-pane="xlsx" hidden>
+      <p class="hint">Selecione a planilha <b>LOG-AGENDAMENTO (.xlsm/.xlsx)</b>. Serão lidas as guias <b>LOG</b>, <b>SEW ON LINE</b>, <b>FSC</b> e os campos manuais da <b>Controle OT</b> (OT, Doc, NF, Tara, MWG, EXP, Container, Lacre, Ticket).</p>
+      <label class="file-drop" id="xlsx-drop">
+        <input type="file" id="xlsx-file" accept=".xlsx,.xlsm,.xls">
+        <svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M9 15l3-3 3 3M12 12v6"/></svg>
+        <span>Clique ou arraste a planilha aqui</span>
+      </label>
+      <div id="xlsx-status" class="muted"></div>
+    </div>
+
+    <div class="tab-pane" data-pane="fsc" hidden>
+      <p class="hint">Cole a lista de clientes certificados (guia <b>FSC</b>: Data de ingresso · Data de exclusão · Data de reingresso · Cód. Cliente · Nome Cliente · Vendedor · Gerente · FSC · claim). Fica salva somente neste navegador.</p>
+      <textarea id="fsc-paste" placeholder="Cole aqui (Ctrl+V)…" spellcheck="false"></textarea>
+      <div id="fsc-preview" class="muted"></div>
+    </div>
+
+    <div class="tab-pane" data-pane="backup" hidden>
+      <p class="hint">Os dados ficam salvos neste navegador. Exporte um backup para levar a outro computador ou guardar o histórico.</p>
+      <div class="row-actions">
+        <button type="button" class="btn btn-ghost" id="backup-export">Exportar backup (.json)</button>
+        <label class="btn btn-ghost">Restaurar backup<input type="file" id="backup-import" accept=".json" hidden></label>
+        <button type="button" class="btn btn-danger" id="backup-clear-old">Apagar transportes de dias anteriores</button>
+      </div>
+      <div id="backup-info" class="muted"></div>
+    </div>
+
+    <div class="modal-foot">
+      <span class="muted" id="import-msg"></span>
+      <button type="button" class="btn btn-primary" id="import-apply" disabled>Importar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Pré-visualização / impressão -->
+<dialog id="preview-dialog" class="modal modal-wide">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Pré-visualização de impressão</div>
+        <h2 id="pv-title">Ordem de embarque</h2>
+      </div>
+      <div class="pv-actions">
+        <button class="btn btn-primary" id="pv-print">Imprimir</button>
+        <button class="icon-btn" id="pv-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+    </div>
+    <div class="pv-pages" id="pv-pages"></div>
+  </div>
+</dialog>
+
+<dialog id="confirm-dialog" class="modal modal-sm">
+  <form method="dialog" class="modal-inner">
+    <div class="modal-head"><h2 id="cf-title">Confirmar</h2></div>
+    <div id="cf-body" class="cf-body"></div>
+    <div class="modal-foot">
+      <button value="cancel" class="btn btn-ghost">Voltar</button>
+      <button value="ok" class="btn btn-primary" id="cf-ok">Continuar</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toasts" aria-live="polite"></div>
+<div id="print-root" aria-hidden="true"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<script src="js/templates.js"></script>
+<script src="js/parsers.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
