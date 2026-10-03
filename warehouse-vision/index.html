@@ -1570,8 +1570,18 @@ function buildZones(){
       zoneObjects.push(label);
     }
     if (z.kind === 'production'){
-      const label = makeFloorLabel(z.label || 'LINHAS DE PRODUÇÃO', {color:'#d6e3ff', size:Math.min(2.6, z.depth*0.09)});
+      // The plant/unit name, not the zone's own descriptive label -- the
+      // stock-volume markers that used to sit here (buildProdMarkers) are
+      // gone, so this now just helps orient whoever's looking at the floor.
+      // Fixed size on purpose: production zones vary wildly in footprint
+      // across plants (PB23's is a 6.5m-wide sliver, PB25's is 70x63m), so
+      // scaling the text to the zone would make "PB23" and "PB25" read at
+      // completely different sizes -- every plant gets the same size here,
+      // just rotated to fit a narrow zone's long axis when needed.
+      const prodVertical = z.depth > z.width;
+      const label = makeFloorLabel(DATA.name, {color:'#d6e3ff', size:4});
       label.position.set(z.x, 0.025, z.z);
+      if (prodVertical) label.rotation.z = Math.PI/2;
       scene.add(label);
       zoneObjects.push(label);
     }
@@ -2532,10 +2542,16 @@ document.addEventListener('click', (e)=>{
 });
 
 /* ================= em-produção markers ================= */
-/* Items whose stock row is positioned "em-produção" don't belong to any box --
-   they're rendered as small pickable markers scattered over the production
-   zone instead, sharing the same selection/tag/detail machinery as boxes. */
-const PROD_ZONE = DATA.zones.find(z=>z.kind==='production') || null;
+/* Items whose stock row is positioned "em-produção" don't belong to any box.
+   They used to be rendered as small pickable markers scattered over the
+   production zone floor, but that turned into visual clutter sitting under
+   the zone's own label -- the zone now just shows the plant name instead
+   (see the production-zone branch above), and these items stay reachable
+   through the KPI "em produção" count and the pendências spreadsheet export
+   instead of a 3D marker. buildProdMarkers()/clearProdMarkers() are kept
+   (still called from the import/demo/reset paths) purely to guarantee any
+   markers from a stale prior build get torn down; they no longer create
+   new ones. */
 let prodMarkerGroup = new THREE.Group();
 scene.add(prodMarkerGroup);
 
@@ -2553,35 +2569,6 @@ function clearProdMarkers(){
 
 function buildProdMarkers(items){
   clearProdMarkers();
-  if (!PROD_ZONE || !items.length) return;
-  const cols = Math.max(1, Math.ceil(Math.sqrt(items.length)));
-  const rows = Math.ceil(items.length/cols);
-  const cellW = PROD_ZONE.width/(cols+1);
-  const cellD = PROD_ZONE.depth/(rows+1);
-  const x0 = PROD_ZONE.x - PROD_ZONE.width/2;
-  const z0 = PROD_ZONE.z - PROD_ZONE.depth/2;
-  const color = COLORS.zoneProdEdge;
-
-  items.forEach((it, i)=>{
-    const col = i % cols, row = Math.floor(i/cols);
-    const x = x0 + cellW*(col+1);
-    const z = z0 + cellD*(row+1);
-    const code = 'PROD:'+it.sku;
-
-    const geo = new THREE.BoxGeometry(0.85, 0.55, 0.85);
-    const mat = new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.4, roughness:0.4, metalness:0.2});
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, 0.3, z);
-    mesh.userData.code = code;
-    prodMarkerGroup.add(mesh);
-    pickables.push(mesh);
-
-    const label = makeFloorLabel(it.sku, {color:'#d6e3ff', size:0.5});
-    label.position.set(x, 0.6, z);
-    prodMarkerGroup.add(label);
-
-    prodRegistry.set(code, {data:{sku:it.sku, item:it.item, qty:it.qty, volume:it.volume, x, z}, group:mesh});
-  });
 }
 
 /* ================= import pipeline ================= */
