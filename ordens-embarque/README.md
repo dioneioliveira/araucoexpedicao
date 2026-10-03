@@ -20,6 +20,9 @@ redesenha** os check-lists:
    exporta a página exatamente como ela é (mesma escala, margens, cabeçalho
    "For internal use only…", logos e imagens). Só as células de dados (as que
    no arquivo tinham fórmula e apareciam como `#REF!`) ficam vazias.
+   Células vazias com texto girado (ex.: A54:D64 da carga) têm o giro zerado na
+   renderização: no Excel o giro não aparece em célula vazia, mas o LibreOffice
+   inclinava as bordas dos quadrinhos "Frontal".
 2. Essa página vira o fundo da impressão (`templates/*.png`, 300 dpi). Uma
    cópia do PDF em branco fica em `templates/*-modelo-oficial.pdf`.
 3. Os dados são escritos **por cima**, nas mesmas células que as guias `CKL` e
@@ -92,7 +95,21 @@ Tudo fica salvo **somente no navegador** (localStorage): nenhum CPF, nome ou
 placa vai para o repositório ou para servidores. Use **Importar dados → Backup**
 para exportar e restaurar, ou para apagar dias anteriores.
 
-## Rodar localmente
+## Arquivo único (HTML)
+
+**`ordens-embarque.html`** é o app inteiro em um só arquivo (estilos, código,
+logo, modelos dos check-lists e gerador de QR embutidos). Basta copiar para o
+computador e abrir com duplo clique no Chrome/Edge; não precisa de servidor nem
+de internet. A internet só é usada para ler planilha `.xlsm` (biblioteca
+SheetJS). Os dados ficam salvos no navegador daquele computador.
+
+Depois de alterar `index.html`, `css/` ou `js/`, gere o arquivo de novo:
+
+```bash
+python3 tools/build_single_html.py
+```
+
+## Rodar a versão de desenvolvimento
 
 Páginas estáticas, sem build:
 
@@ -102,4 +119,4 @@ python3 -m http.server 8080
 # http://localhost:8080
 ```
 
-Bibliotecas por CDN: `qrcode-generator` (QR da OT) e `SheetJS` (leitura do `.xlsm`).
+Bibliotecas: `qrcode-generator` (QR da OT, em `vendor/`) e `SheetJS` (leitura do `.xlsm`, via CDN).

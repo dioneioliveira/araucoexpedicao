@@ -48,6 +48,11 @@ def main(src, sheet_name, out):
             if cell.Type == FORMULA:
                 cleared.append(cell.AbsoluteName)
                 cell.setString("")
+            # Célula VAZIA com texto girado (ex.: A54:D64 da carga): no Excel o
+            # giro não aparece e as bordas ficam retas, mas o LibreOffice
+            # inclina as bordas. Zerar o giro reproduz o que o Excel imprime.
+            if cell.RotateAngle and cell.getString() == "":
+                cell.RotateAngle = 0
     # grade de colunas/linhas (1/100 mm) para posicionar os campos no PDF
     cols = [sh.getCellByPosition(c, 0).Position.X
             for c in range(end.EndColumn + 2)]

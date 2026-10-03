@@ -14,3 +14,5 @@
   mercado interno.
 - Repositório público: não versionar dados reais (CPF, nomes, placas, lista FSC).
   Eles ficam só no localStorage do navegador. Use apenas dados fictícios em exemplos.
+- `ordens-embarque.html` (arquivo único) é gerado por `tools/build_single_html.py`:
+  depois de mudar `index.html`, `css/`, `js/` ou `templates/`, gere de novo e versione junto.
