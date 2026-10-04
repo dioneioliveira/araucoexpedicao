@@ -121,6 +121,12 @@ criar manualmente. Ao fechar a ordem, o cursor volta para o campo.
 | **Container agendado na janela de mercado interno** (PIÊN PAINÉIS): nº de container na Solicitação/agendamento/Controle OT ou tipo de veículo de container | **CABOTAGEM** (e os "N/A", como container) |
 | Janela PIÊN CONTAINERS | **CONTAINER** (e os "N/A" de tipo de caminhão e lona) |
 
+**Amostra:** se a palavra "amostra" aparece na carga (descrição ou texto comercial do
+material, ou observação da Solicitação), o check-list da carga imprime
+**"Amostra-conferir cliente"** ao lado da quantidade de lotes (mesmo campo de "carga
+fracionada"; se as duas valerem, saem juntas). A lista mostra a etiqueta "Amostra" e o
+painel, um aviso.
+
 Prioridade quando mais de uma se aplica: Exportação terrestre → Breakbulk → Cabotagem → Container.
 A lista diária mostra uma etiqueta "Exp. terrestre", "Breakbulk" ou "Cabotagem" ao lado da janela.
 

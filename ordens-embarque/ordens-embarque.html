@@ -4175,7 +4175,8 @@ window.ORDEM_TEMPLATES = {
       cavalo: truck ? '' : e.placaM,
       naContainer: cont || isCabotagem(T) ? 'N/A' : '', // cabotagem também é container
       pallets: palTxt,
-      fracionada: pal != null && Math.abs(pal - Math.round(pal)) > 1e-9 ? 'carga fracionada' : '',
+      // ao lado da quantidade de lotes (C23): carga fracionada e/ou aviso de amostra
+      fracionada: [pal != null && Math.abs(pal - Math.round(pal)) > 1e-9 ? 'carga fracionada' : '', isAmostra(T) ? 'Amostra-conferir cliente' : ''].filter(Boolean).join(' · '),
       fscClaim: T.fsc ? T.fsc.claim : '',
       otQr: T.otList[0] || '',
       ot: T.otList.join('\n'), // várias OTs: uma por linha no campo OT
@@ -4191,6 +4192,8 @@ window.ORDEM_TEMPLATES = {
   // ARAUCO MADERAS => EXPORTAÇÃO TERRESTRE (25% transparente); material "EB/" => BREAKBULK;
   // container na janela de mercado interno => CABOTAGEM; janela de containers => CONTAINER.
   const isAraucoMaderas = T => /ARAUCO\s+MADERAS/.test(P.norm(T.eff.cliente));
+  // "amostra" na carga: descrição / texto comercial do material ou observação
+  const isAmostra = T => /\bAMOSTRAS?\b/.test(P.norm([T.eff.obs, ...T.items.map(i => [i.descricao, i.textoComercial, i.obs].join(' '))].join(' ')));
   const isBreakbulk = T => T.items.some(i => /EB\//i.test(i.descricao || ''));
   // Container agendado na janela de MERCADO INTERNO (PIÊN PAINÉIS): nº de container na
   // Solicitação / agendamento / Controle OT, ou tipo de veículo de container.
@@ -4340,7 +4343,8 @@ window.ORDEM_TEMPLATES = {
   // ------------------------------------------------------------------ renderização
   function janelaChip(T) {
     const c = T.janela === 'CONTAINER';
-    const extra = isAraucoMaderas(T) ? ' <span class="chip grey">Exp. terrestre</span>' : (isBreakbulk(T) ? ' <span class="chip grey">Breakbulk</span>' : (isCabotagem(T) ? ' <span class="chip ct">Cabotagem</span>' : ''));
+    const amostra = isAmostra(T) ? ' <span class="chip warn">Amostra</span>' : '';
+    const extra = amostra + (isAraucoMaderas(T) ? ' <span class="chip grey">Exp. terrestre</span>' : (isBreakbulk(T) ? ' <span class="chip grey">Breakbulk</span>' : (isCabotagem(T) ? ' <span class="chip ct">Cabotagem</span>' : '')));
     return extra + `<span class="chip ${c ? 'ct' : 'mi'}" title="Origem: ${esc(T.janelaSrc)}"><span class="dot"></span>${c ? 'Container' : 'Mercado interno'}</span>`;
   }
   function statusChip(T) {
@@ -4698,6 +4702,7 @@ window.ORDEM_TEMPLATES = {
     $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
     const e = T.eff;
     const alerts = [];
+    if (isAmostra(T)) alerts.push(`<div class="alert warn"><b>Amostra — conferir cliente.</b> A carga contém amostra; o aviso sai no check-list ao lado da quantidade de lotes.</div>`);
     if (T.faturado) alerts.push(`<div class="alert ok">Ordem <b>faturada</b> em ${esc(new Date(T.faturado).toLocaleString('pt-BR'))}.</div>`);
     if (T.printed && T.alteracoes.length) alerts.push(`<div class="alert err"><b>Com alterações</b>: a ordem foi impressa em ${esc(new Date(T.printed).toLocaleString('pt-BR'))} e o agendamento mudou depois disso. Imprima novamente.<ul>${T.alteracoes.map(a => `<li>${esc(a.campo)}: <s>${esc(a.de || '—')}</s> → <b>${esc(a.para || '—')}</b></li>`).join('')}</ul></div>`);
     if (T.missing.length) alerts.push(`<div class="alert err">Faltam dados obrigatórios para imprimir: <b>${esc(T.missing.join(', '))}</b>.</div>`);

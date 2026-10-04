@@ -41,3 +41,5 @@
 - Tela inicial: 4 botões `data-colar` (ordem | MI | CONTAINER | ots) → `colarPorBotao` lê a área de
   transferência (ou abre `#paste-dialog`) → `processarColagem(text, html, tipo)`; Ctrl+V solto usa tipo null
   (detecção). Solicitação de Embarque sempre vira "ordem".
+- "amostra" na carga (`isAmostra`: descrição, texto comercial ou observação) => "Amostra-conferir cliente"
+  na célula C23 (ao lado dos lotes), junto de "carga fracionada" se houver.
