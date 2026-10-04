@@ -4129,7 +4129,7 @@ window.ORDEM_TEMPLATES = {
       truck: truck ? e.placaL : '',
       carreta: truck ? '' : e.placaL,
       cavalo: truck ? '' : e.placaM,
-      naContainer: cont ? 'N/A' : '',
+      naContainer: cont || isCabotagem(T) ? 'N/A' : '', // cabotagem também é container
       pallets: palTxt,
       fracionada: pal != null && Math.abs(pal - Math.round(pal)) > 1e-9 ? 'carga fracionada' : '',
       fscClaim: T.fsc ? T.fsc.claim : '',
@@ -4145,12 +4145,18 @@ window.ORDEM_TEMPLATES = {
 
   // Texto grande em "Disposição dos pallets" (célula A41 da carga):
   // ARAUCO MADERAS => EXPORTAÇÃO TERRESTRE (25% transparente); material "EB/" => BREAKBULK;
-  // janela de containers => CONTAINER.
+  // container na janela de mercado interno => CABOTAGEM; janela de containers => CONTAINER.
   const isAraucoMaderas = T => /ARAUCO\s+MADERAS/.test(P.norm(T.eff.cliente));
   const isBreakbulk = T => T.items.some(i => /EB\//i.test(i.descricao || ''));
+  // Container agendado na janela de MERCADO INTERNO (PIÊN PAINÉIS): nº de container na
+  // Solicitação / agendamento / Controle OT, ou tipo de veículo de container.
+  const RE_CONT = /CONTAINER|CONTEINER|PORTA.?CONT/;
+  const isCabotagem = T => T.janela !== 'CONTAINER' && (!!P.clean(T.ot.container) ||
+    RE_CONT.test(P.norm(T.eff.tipoVeiculo)) || (!!T.sew && T.sew.janela === 'MI' && (!!P.clean(T.sew.container) || RE_CONT.test(P.norm(T.sew.tipoVeiculo)))));
   function destaque(T, cont) {
     if (isAraucoMaderas(T)) return 'EXPORTAÇÃO TERRESTRE';
     if (isBreakbulk(T)) return 'BREAKBULK';
+    if (isCabotagem(T)) return 'CABOTAGEM';
     return cont ? 'CONTAINER' : '';
   }
 
@@ -4290,7 +4296,7 @@ window.ORDEM_TEMPLATES = {
   // ------------------------------------------------------------------ renderização
   function janelaChip(T) {
     const c = T.janela === 'CONTAINER';
-    const extra = isAraucoMaderas(T) ? ' <span class="chip grey">Exp. terrestre</span>' : (isBreakbulk(T) ? ' <span class="chip grey">Breakbulk</span>' : '');
+    const extra = isAraucoMaderas(T) ? ' <span class="chip grey">Exp. terrestre</span>' : (isBreakbulk(T) ? ' <span class="chip grey">Breakbulk</span>' : (isCabotagem(T) ? ' <span class="chip ct">Cabotagem</span>' : ''));
     return extra + `<span class="chip ${c ? 'ct' : 'mi'}" title="Origem: ${esc(T.janelaSrc)}"><span class="dot"></span>${c ? 'Container' : 'Mercado interno'}</span>`;
   }
   function statusChip(T) {
@@ -4385,7 +4391,7 @@ window.ORDEM_TEMPLATES = {
   function relatorio() {
     const list = allTransports().filter(T => T.eff.data === ui.date)
       .sort((a, b) => (a.eff.hora || '99').localeCompare(b.eff.hora || '99') || a.transporte.localeCompare(b.transporte));
-    const rows = list.map(T => [T.eff.hora, T.transporte, T.janela === 'CONTAINER' ? 'Container' : 'Mercado interno', T.eff.cliente, T.entregas.join(' / '),
+    const rows = list.map(T => [T.eff.hora, T.transporte, T.janela === 'CONTAINER' ? 'Container' : (isCabotagem(T) ? 'Mercado interno (cabotagem)' : 'Mercado interno'), T.eff.cliente, T.entregas.join(' / '),
       T.items.map(i => i.descricao).filter(Boolean).join(' | '), T.items.reduce((a, i) => a + (i.qtd || 0), 0), T.pallets == null ? '' : Math.round(T.pallets * 100) / 100,
       T.eff.placaL, isTruck(T.eff) ? '' : T.eff.placaM, T.eff.motorista, T.eff.transportadora, T.otList.join(' / '), T.ot.nf, T.ot.container, T.ot.lacre, statusTexto(T)]);
     const c = f => list.filter(f).length;

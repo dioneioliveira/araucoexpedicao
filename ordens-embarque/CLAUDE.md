@@ -35,5 +35,6 @@
 - Relatório do dia (`relatorio()`): Excel (SheetJS; CSV sem internet), PDF (página nomeada
   `relatorio`, A4 paisagem) e e-mail (copia HTML com estilos inline + abre mailto).
 - Texto grande da célula A41 (carga), em `destaque()`: cliente ARAUCO MADERAS => "EXPORTAÇÃO TERRESTRE"
-  (opacidade 0.75); material com "EB/" => "BREAKBULK"; janela container => "CONTAINER".
+  (opacidade 0.75); material com "EB/" => "BREAKBULK"; container na janela de mercado interno => "CABOTAGEM"
+  (`isCabotagem`, também marca os N/A); janela container => "CONTAINER". Nessa ordem de prioridade.
 - Cópia "Placa p/ nota": `0001` + quebra de linha + placa da carreta com UF (Controle OT T3:T4).
