@@ -30,18 +30,25 @@
   </header>
 
   <main id="main">
-    <form class="transporte-hero card" id="transporte-form" autocomplete="off">
-      <div class="th-label">
-        <label for="transporte-input">Transporte</label>
-        <span>digite o nº e pressione Enter: a ordem abre com todos os dados ligados a ele</span>
+    <section class="home-hero card">
+      <form class="transporte-hero" id="transporte-form" autocomplete="off">
+        <label for="transporte-input" class="th-title">Transporte</label>
+        <div class="th-field">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input id="transporte-input" inputmode="numeric" placeholder="Nº do transporte" list="transporte-list" autofocus>
+          <datalist id="transporte-list"></datalist>
+          <button type="submit" class="btn btn-primary btn-lg" title="Abrir ordem de embarque">Abrir ordem</button>
+        </div>
+        <span class="th-hint">Referência de tudo: digite o nº e pressione Enter. A ordem abre com Solicitação, agendamento, OTs e Controle OT ligados a ele.</span>
+      </form>
+      <div class="colar-grid" aria-label="Colar dados (Ctrl+C no sistema, depois clique)">
+        <button type="button" class="colar-btn" data-colar="ordem"><span class="cb-ico"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M8 13h8M8 17h5"/></svg></span><span><b>Importar ordem</b><small>Solicitação de Embarque</small></span></button>
+        <button type="button" class="colar-btn" data-colar="MI"><span class="cb-ico mi"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span><span><b>Agendamento</b><small>Mercado interno · PIÊN PAINÉIS</small></span></button>
+        <button type="button" class="colar-btn" data-colar="CONTAINER"><span class="cb-ico ct"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="1"/><path d="M6 7v11M10 7v11M14 7v11M18 7v11"/></svg></span><span><b>Agendamento</b><small>Exportação · PIÊN CONTAINERS</small></span></button>
+        <button type="button" class="colar-btn" data-colar="ots"><span class="cb-ico"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span><span><b>LT22 · OTs</b><small>OT por entrega</small></span></button>
+        <p class="colar-hint">Copie a tela no sistema (<b>Ctrl+A</b>, <b>Ctrl+C</b>) e clique no botão do processo.</p>
       </div>
-      <div class="th-field">
-        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-        <input id="transporte-input" inputmode="numeric" placeholder="Nº do transporte" list="transporte-list" autofocus>
-        <datalist id="transporte-list"></datalist>
-        <button type="submit" class="btn btn-primary btn-lg" title="Abrir ordem de embarque">Abrir ordem</button>
-      </div>
-    </form>
+    </section>
     <nav class="views" id="views" role="tablist">
       <button data-view="lista" class="active" role="tab">Lista diária <span class="count" id="v-count-lista"></span></button>
       <button data-view="agenda" role="tab">Agendamentos <span class="count" id="v-count-agenda"></span></button>
@@ -263,6 +270,22 @@
       </div>
     </div>
     <div class="rel-preview" id="rel-preview"></div>
+  </div>
+</dialog>
+
+<dialog id="paste-dialog" class="modal modal-sm">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Colar dados</div>
+        <h2 id="paste-title">Colar</h2>
+      </div>
+      <button class="icon-btn" id="paste-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="cf-body">
+      <p class="muted" id="paste-hint"></p>
+      <textarea id="paste-area" class="paste-area" placeholder="Pressione Ctrl+V aqui" spellcheck="false"></textarea>
+    </div>
   </div>
 </dialog>
 

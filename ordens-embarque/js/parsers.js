@@ -507,7 +507,8 @@
     //    8xxxxxxx; OT = número de 6 a 12 dígitos na mesma linha que não é a remessa
     //    nem o material (quantidades têm menos dígitos).
     grid.forEach(r => {
-      const cells = r.map(c => (typeof c === 'number' ? String(Math.round(c)) : clean(c)));
+      // pedido-item ("6984037 - 10") e datas não são OT
+      const cells = r.map(c => (typeof c === 'number' ? String(Math.round(c)) : clean(c)).replace(/\b\d{5,}\s*-\s*\d{1,4}\b/g, ' ').replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, ' '));
       const nums = [];
       cells.forEach((c, ci) => { (c.match(/\d[\d.]*\d|\d/g) || []).forEach(tok => { const d = tok.replace(/\./g, ''); if (/^\d+$/.test(d) && !/^\d{1,3}(\.\d{3})+$/.test(tok)) nums.push({ d, ci }); }); });
       let rem = nums.find(n => ents.has(n.d)) || nums.find(n => /^8\d{7}$/.test(n.d));

@@ -59,6 +59,25 @@ Se faltar algum, o app avisa antes de imprimir.
 
 ## Como usar
 
+### Tela inicial
+
+- **Transporte** (em destaque no topo): a referência de tudo. Digite o nº e pressione Enter.
+- **Quatro botões de colagem**, sem precisar entrar nas guias: copie a tela no sistema
+  (**Ctrl+A**, **Ctrl+C**) e clique no botão do processo:
+  - **Importar ordem**: Solicitação de Embarque (SEW);
+  - **Agendamento · Mercado interno**: Agendamento de Cargas, PIÊN PAINÉIS;
+  - **Agendamento · Exportação**: Agendamento de Cargas, PIÊN CONTAINERS;
+  - **LT22 · OTs**: tela de OTs por entrega.
+
+  Na primeira vez, o navegador pede permissão para ler a área de transferência. Se não
+  houver permissão, abre uma caixa: é só pressionar Ctrl+V nela. O botão define o
+  processo. Exceção: a Solicitação de Embarque é sempre reconhecida e importada como ordem,
+  mesmo se colada em outro botão. Ctrl+V solto na tela continua funcionando, e aí o
+  processo é detectado pelo conteúdo.
+- **Lista diária** compacta: texto menor e uma linha por carga (cliente, material,
+  motorista e transportadora longos são cortados com "…"; o texto completo aparece ao
+  parar o mouse e no painel da ordem).
+
 ### Processo principal: Ctrl+C no SEW, Ctrl+V no app
 
 1. No SEW, abra a página **Solicitação de Embarque - Carregamento de Produto

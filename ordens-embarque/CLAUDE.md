@@ -38,3 +38,6 @@
   (opacidade 0.75); material com "EB/" => "BREAKBULK"; container na janela de mercado interno => "CABOTAGEM"
   (`isCabotagem`, também marca os N/A); janela container => "CONTAINER". Nessa ordem de prioridade.
 - Cópia "Placa p/ nota": `0001` + quebra de linha + placa da carreta com UF (Controle OT T3:T4).
+- Tela inicial: 4 botões `data-colar` (ordem | MI | CONTAINER | ots) → `colarPorBotao` lê a área de
+  transferência (ou abre `#paste-dialog`) → `processarColagem(text, html, tipo)`; Ctrl+V solto usa tipo null
+  (detecção). Solicitação de Embarque sempre vira "ordem".

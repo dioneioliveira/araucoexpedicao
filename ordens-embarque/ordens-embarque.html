@@ -78,19 +78,29 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .brand-mark b{color:var(--ink);font-weight:800}
 .brand-sub{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
 
-.transporte-hero{
-  display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
-  padding:20px 24px 20px 28px;position:relative;overflow:hidden;
-  background:linear-gradient(110deg,#FFFFFF 0%,#FFFFFF 55%,rgba(183,217,216,.28) 100%);
-}
-.transporte-hero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:linear-gradient(180deg,var(--turq),var(--lime))}
-.th-label{display:flex;flex-direction:column;gap:4px}
-.th-label label{font-family:var(--f-title);font-weight:800;font-size:22px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
-.th-label span{font-size:13px;color:var(--ink-dim)}
-.th-field{display:flex;align-items:center;gap:12px;flex:1 1 460px;max-width:720px;background:#fff;border:2px solid var(--turq);border-radius:16px;padding:6px 6px 6px 18px;box-shadow:var(--shadow-1)}
+.home-hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:28px;align-items:center;
+  padding:24px 26px 24px 32px;position:relative;overflow:hidden;
+  background:linear-gradient(110deg,#FFFFFF 0%,#FFFFFF 50%,rgba(183,217,216,.30) 100%)}
+.home-hero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:linear-gradient(180deg,var(--turq),var(--lime))}
+.transporte-hero{display:flex;flex-direction:column;gap:10px;min-width:0}
+.th-title{font-family:var(--f-title);font-weight:800;font-size:26px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink)}
+.th-hint{font-size:12.5px;color:var(--ink-dim)}
+.colar-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.colar-btn{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:rgba(255,255,255,.85);border-radius:14px;padding:12px 14px;cursor:pointer;box-shadow:var(--shadow-1);transition:transform .12s,border-color .15s,background .15s}
+.colar-btn:hover{border-color:var(--turq-strong);background:#fff;transform:translateY(-1px)}
+.colar-btn b{display:block;font-size:13.5px;color:var(--ink)}
+.colar-btn small{display:block;font-size:11.5px;color:var(--ink-dim)}
+.cb-ico{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--turq-ghost);color:var(--turq-strong);flex:0 0 auto}
+.cb-ico.mi{background:var(--turq-soft);color:#3d6f6d}
+.cb-ico.ct{background:var(--lime-soft);color:#6b6900}
+.cb-ico svg{width:20px;height:20px}
+.colar-hint{grid-column:1/-1;margin:2px 0 0;font-size:12px;color:var(--ink-dim)}
+.paste-area{width:100%;min-height:150px;border:2px dashed var(--turq);border-radius:var(--r-m);padding:14px;font-family:var(--f-mono);font-size:12px;outline:0;resize:vertical;margin-top:8px}
+.paste-area:focus{border-color:var(--turq-strong);background:var(--turq-ghost)}
+.th-field{display:flex;align-items:center;gap:12px;background:#fff;border:2px solid var(--turq);border-radius:16px;padding:6px 6px 6px 18px;box-shadow:var(--shadow-1)}
 .th-field:focus-within{border-color:var(--turq-strong);box-shadow:0 0 0 5px var(--turq-ghost),var(--shadow-1)}
 .th-field svg{width:24px;height:24px;color:var(--turq-strong)}
-.th-field input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:var(--f-mono);font-size:30px;font-weight:600;letter-spacing:.06em;color:var(--ink);padding:6px 0}
+.th-field input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:var(--f-mono);font-size:40px;font-weight:600;letter-spacing:.06em;color:var(--ink);padding:6px 0}
 .th-field input::placeholder{color:var(--ink-faint);font-size:20px;letter-spacing:0}
 .transporte-box{
   display:flex;align-items:center;gap:8px;margin-left:auto;
@@ -182,6 +192,15 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .grid .wrap{white-space:normal;min-width:160px;max-width:260px}
 .c-check{width:34px}
 .c-act{width:44px;min-width:44px;text-align:center}
+/* lista diária compacta: mais linhas visíveis */
+#daily-table{font-size:11.5px}
+#daily-table td{padding:5px 8px;line-height:1.3}
+#daily-table thead th{padding:7px 8px;font-size:10px}
+#daily-table .mono{font-size:11px}
+#daily-table .sub{font-size:10px}
+#daily-table .chip{font-size:10px;padding:1px 7px}
+#daily-table .wrap{min-width:110px;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#daily-table .row-del{width:26px;height:26px}
 /* NF-e, Status e Excluir ficam fixos à direita, sempre visíveis */
 .grid tbody tr{--row-bg:#fff}
 .grid tbody tr:hover{--row-bg:#f0f7f7}
@@ -256,7 +275,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .drawer-foot{padding:14px 22px 18px 26px;border-top:1px solid var(--line-soft);background:var(--glass);backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px}
 .drawer-foot #d-print{width:100%}
 #d-fat.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
-.copy-row{display:flex;gap:8px}
+.copy-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
 .section{background:#fff;border:1px solid var(--line-soft);border-radius:var(--r-m);padding:14px 16px;box-shadow:0 1px 2px rgba(74,74,74,.03)}
 .section h3{margin:0 0 10px;font-family:var(--f-title);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--title);display:flex;align-items:center;gap:8px}
@@ -376,7 +395,8 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 /* ---------- responsivo ---------- */
 @media (max-width:1100px){
   .brand-sub{display:none}
-  .th-field input{font-size:24px}
+  .th-field input{font-size:26px}
+  .home-hero{grid-template-columns:1fr}
   .top-actions{margin-left:auto}
 }
 @media (max-width:720px){
@@ -418,18 +438,25 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
   </header>
 
   <main id="main">
-    <form class="transporte-hero card" id="transporte-form" autocomplete="off">
-      <div class="th-label">
-        <label for="transporte-input">Transporte</label>
-        <span>digite o nº e pressione Enter: a ordem abre com todos os dados ligados a ele</span>
+    <section class="home-hero card">
+      <form class="transporte-hero" id="transporte-form" autocomplete="off">
+        <label for="transporte-input" class="th-title">Transporte</label>
+        <div class="th-field">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input id="transporte-input" inputmode="numeric" placeholder="Nº do transporte" list="transporte-list" autofocus>
+          <datalist id="transporte-list"></datalist>
+          <button type="submit" class="btn btn-primary btn-lg" title="Abrir ordem de embarque">Abrir ordem</button>
+        </div>
+        <span class="th-hint">Referência de tudo: digite o nº e pressione Enter. A ordem abre com Solicitação, agendamento, OTs e Controle OT ligados a ele.</span>
+      </form>
+      <div class="colar-grid" aria-label="Colar dados (Ctrl+C no sistema, depois clique)">
+        <button type="button" class="colar-btn" data-colar="ordem"><span class="cb-ico"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M8 13h8M8 17h5"/></svg></span><span><b>Importar ordem</b><small>Solicitação de Embarque</small></span></button>
+        <button type="button" class="colar-btn" data-colar="MI"><span class="cb-ico mi"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span><span><b>Agendamento</b><small>Mercado interno · PIÊN PAINÉIS</small></span></button>
+        <button type="button" class="colar-btn" data-colar="CONTAINER"><span class="cb-ico ct"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="1"/><path d="M6 7v11M10 7v11M14 7v11M18 7v11"/></svg></span><span><b>Agendamento</b><small>Exportação · PIÊN CONTAINERS</small></span></button>
+        <button type="button" class="colar-btn" data-colar="ots"><span class="cb-ico"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span><span><b>LT22 · OTs</b><small>OT por entrega</small></span></button>
+        <p class="colar-hint">Copie a tela no sistema (<b>Ctrl+A</b>, <b>Ctrl+C</b>) e clique no botão do processo.</p>
       </div>
-      <div class="th-field">
-        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-        <input id="transporte-input" inputmode="numeric" placeholder="Nº do transporte" list="transporte-list" autofocus>
-        <datalist id="transporte-list"></datalist>
-        <button type="submit" class="btn btn-primary btn-lg" title="Abrir ordem de embarque">Abrir ordem</button>
-      </div>
-    </form>
+    </section>
     <nav class="views" id="views" role="tablist">
       <button data-view="lista" class="active" role="tab">Lista diária <span class="count" id="v-count-lista"></span></button>
       <button data-view="agenda" role="tab">Agendamentos <span class="count" id="v-count-agenda"></span></button>
@@ -651,6 +678,22 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       </div>
     </div>
     <div class="rel-preview" id="rel-preview"></div>
+  </div>
+</dialog>
+
+<dialog id="paste-dialog" class="modal modal-sm">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Colar dados</div>
+        <h2 id="paste-title">Colar</h2>
+      </div>
+      <button class="icon-btn" id="paste-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="cf-body">
+      <p class="muted" id="paste-hint"></p>
+      <textarea id="paste-area" class="paste-area" placeholder="Pressione Ctrl+V aqui" spellcheck="false"></textarea>
+    </div>
   </div>
 </dialog>
 
@@ -3952,7 +3995,8 @@ window.ORDEM_TEMPLATES = {
     //    8xxxxxxx; OT = número de 6 a 12 dígitos na mesma linha que não é a remessa
     //    nem o material (quantidades têm menos dígitos).
     grid.forEach(r => {
-      const cells = r.map(c => (typeof c === 'number' ? String(Math.round(c)) : clean(c)));
+      // pedido-item ("6984037 - 10") e datas não são OT
+      const cells = r.map(c => (typeof c === 'number' ? String(Math.round(c)) : clean(c)).replace(/\b\d{5,}\s*-\s*\d{1,4}\b/g, ' ').replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, ' '));
       const nums = [];
       cells.forEach((c, ci) => { (c.match(/\d[\d.]*\d|\d/g) || []).forEach(tok => { const d = tok.replace(/\./g, ''); if (/^\d+$/.test(d) && !/^\d{1,3}(\.\d{3})+$/.test(tok)) nums.push({ d, ci }); }); });
       let rem = nums.find(n => ents.has(n.d)) || nums.find(n => /^8\d{7}$/.test(n.d));
@@ -4352,14 +4396,14 @@ window.ORDEM_TEMPLATES = {
         <td class="mono">${esc(e.hora)}</td>
         <td class="mono"><b>${esc(T.transporte)}</b></td>
         <td>${janelaChip(T)}</td>
-        <td class="wrap">${esc(e.cliente)}${T.fsc ? ` <span class="chip mi">FSC</span>` : ''}</td>
+        <td class="wrap" title="${esc(e.cliente)}">${esc(e.cliente)}${T.fsc ? ` <span class="chip mi">FSC</span>` : ''}</td>
         <td class="mono">${esc(e.entrega)}</td>
-        <td class="wrap">${esc(first.descricao || '')}${more}</td>
+        <td class="wrap" title="${esc(T.items.map(i => i.descricao).join('\n'))}">${esc(first.descricao || '')}${more}</td>
         <td class="num">${fmtNum(T.pallets, 2)}</td>
         <td>${placasHTML(e)}</td>
-        <td class="wrap">${esc(e.motorista)}<span class="sub mono">${esc(P.fmtCPF(e.cpf))}</span></td>
+        <td class="wrap" title="${esc(e.motorista)}">${esc(e.motorista)}<span class="sub mono">${esc(P.fmtCPF(e.cpf))}</span></td>
         <td>${treinoChip(T)}</td>
-        <td class="wrap">${esc(e.transportadora)}</td>
+        <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
         <td class="c-status">${statusChip(T)}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
@@ -4898,56 +4942,103 @@ window.ORDEM_TEMPLATES = {
       const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
       if (!text.trim()) return;
       e.preventDefault();
-      if (P.isSolicitacao(text)) {
-        const list = P.parseSolicitacoes(text);
-        const its = list.length ? importSolicitacoes(list) : [];
-        if (!its.length) { toast('Página reconhecida, mas sem a tabela de itens. Copie a página inteira (Ctrl+A, Ctrl+C) e cole de novo.', 'err'); return; }
-        const t = its[0].transporte, d = its[0].data;
-        if (d) { ui.date = d; $('#date-filter').value = d; }
-        renderAll(); openDetail(t);
-        const T = getTransport(t);
-        toast(`Transporte ${t} importado da Solicitação de Embarque (${T.janela === 'CONTAINER' ? 'container' : 'mercado interno'}).${T.missing.length ? ' Falta: ' + T.missing.join(', ') : ' Pronto para imprimir.'}`, T.missing.length ? 'warn' : 'ok');
-        return;
-      }
-      const html = e.clipboardData.getData('text/html');
-      const htmlGrid = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null;
-      // tela de OTs (LT22): guarda na memória
-      if (ui.view === 'ots' || P.isOTScreen(text)) {
-        let rows = [];
-        for (const g of [htmlGrid, P.trimGrid(P.parseTSV(P.fixMojibake(text)))]) { if (g && g.length) { rows = P.parseOTs(g, knownSets()); if (rows.length) break; } }
-        if (rows.length) {
-          const r = mergeOTs(rows); save(true);
-          if (ui.view !== 'ots') setView('ots'); else renderAll();
-          const lig = rows.filter(x => transportByEntrega().has(x.remessa)).length;
-          toast(`OTs atualizadas: ${r.remessas} remessa(s), ${r.novas} OT(s) nova(s) na memória · ${lig} linha(s) ligada(s) a transporte.`, 'ok');
-          return;
-        }
-        if (ui.view === 'ots') { toast('Não reconheci a tela de OTs. Copie com a linha de títulos (Remessa, Material, … OT, Qtd).', 'err'); return; }
-      }
-      // tela "Agendamento de Cargas": atualiza a guia Agendamentos direto
-      const sewLike = ui.view === 'agenda' || /Agendamento de Cargas|PI[EÊ]N (PAINEIS|PAINÉIS|CONTAINERS)|Tp\.?\s*Ve[ií]culo/i.test(P.fixMojibake(text));
-      if (sewLike) {
-        const r = importSewGrid([htmlGrid, P.parseTSV(P.fixMojibake(text))], ui.agMode);
-        if (r) {
-          save(true);
-          const ds = Array.from(new Set(r.entries.map(x => x.data))).sort();
-          if (ds.length && !ds.includes(ui.date)) { ui.date = ds.includes(P.todayISO()) ? P.todayISO() : ds[0]; $('#date-filter').value = ui.date; }
-          if (ui.view !== 'agenda') setView('agenda'); else renderAll();
-          const mi = r.entries.filter(x => x.janela === 'MI').length, ct = r.entries.length - mi;
-          const alt = allTransports().filter(T => T.printed && !T.faturado && T.alteracoes.length).length;
-          toast(`Agendamentos atualizados: ${mi} mercado interno · ${ct} containers.${r.res.alteradas ? ` ${r.res.alteradas} alterado(s).` : ''}${r.res.novas ? ` ${r.res.novas} novo(s).` : ''}${r.res.removidas ? ` ${r.res.removidas} removido(s).` : ''}${alt ? ` ${alt} ordem(ns) impressa(s) com alterações!` : ''}`, alt ? 'err' : 'ok');
-          return;
-        }
-        if (ui.view === 'agenda') { toast('Não reconheci a tela de agendamento. Copie a página com a linha de títulos (Data, Hora, Seq, Senha, Carreta…).', 'err'); return; }
-      }
-      // tabela (LOG/SAP): abre a importação já com o conteúdo colado
-      imp.tab = 'log';
-      $('#btn-import').click();
-      imp.html = htmlGrid; $('#log-paste').value = text; parseLogPaste();
+      processarColagem(text, e.clipboardData.getData('text/html'), null);
     });
+    // botões de colagem da tela inicial (cada um já sabe qual processo é)
+    $$('[data-colar]').forEach(b => b.addEventListener('click', () => colarPorBotao(b.dataset.colar)));
+    $('#paste-area').addEventListener('paste', e => {
+      const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+      if (!text.trim()) return;
+      e.preventDefault();
+      const tipo = $('#paste-dialog').dataset.tipo;
+      $('#paste-dialog').close();
+      processarColagem(text, e.clipboardData.getData('text/html'), tipo);
+    });
+    $('#paste-close').addEventListener('click', () => $('#paste-dialog').close());
     $('#pv-close').addEventListener('click', () => $('#preview-dialog').close());
     $('#btn-demo').addEventListener('click', loadDemo);
     window.addEventListener('resize', () => { if (ui.open) { const T = getTransport(ui.open); if (T) renderThumbs(T); } });
+  }
+
+  // ------------------------------------------------------------------ colagem (Ctrl+V) por processo
+  const COLAR = {
+    ordem: { titulo: 'Ordem — Solicitação de Embarque', dica: 'No SEW, abra a Solicitação de Embarque, Ctrl+A e Ctrl+C.' },
+    MI: { titulo: 'Agendamento — Mercado interno', dica: 'No SEW, Agendamento de Cargas · PIÊN PAINÉIS, Ctrl+A e Ctrl+C.' },
+    CONTAINER: { titulo: 'Agendamento — Exportação (containers)', dica: 'No SEW, Agendamento de Cargas · PIÊN CONTAINERS, Ctrl+A e Ctrl+C.' },
+    ots: { titulo: 'LT22 — OTs', dica: 'No SAP, tela de OTs (LT22), Ctrl+A e Ctrl+C.' },
+  };
+  async function colarPorBotao(tipo) {
+    // tenta ler a área de transferência direto; se o navegador não deixar, abre a caixa de colar
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        let text = '', html = '';
+        for (const it of items) {
+          if (it.types.includes('text/plain')) text = await (await it.getType('text/plain')).text();
+          if (it.types.includes('text/html')) html = await (await it.getType('text/html')).text();
+        }
+        if (text.trim()) { processarColagem(text, html, tipo); return; }
+      }
+    } catch (e) { /* sem permissão: usa a caixa */ }
+    const dlg = $('#paste-dialog');
+    dlg.dataset.tipo = tipo;
+    $('#paste-title').textContent = COLAR[tipo].titulo;
+    $('#paste-hint').textContent = COLAR[tipo].dica;
+    $('#paste-area').value = '';
+    dlg.showModal();
+    setTimeout(() => $('#paste-area').focus(), 30);
+  }
+  // tipo: 'ordem' | 'MI' | 'CONTAINER' | 'ots' | null (detectar pelo conteúdo)
+  function processarColagem(text, html, tipo) {
+    text = P.fixMojibake(text);
+    const htmlGrid = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null;
+    // a Solicitação de Embarque é inconfundível: vai para "ordem" mesmo que o botão seja outro
+    if (tipo && tipo !== 'ordem' && P.isSolicitacao(text)) { toast(`Isso é uma Solicitação de Embarque (não ${COLAR[tipo].titulo}). Importei como ordem.`, 'warn'); tipo = 'ordem'; }
+    const auto = !tipo;
+    if ((tipo === 'ordem' || auto) && P.isSolicitacao(text)) {
+      const list = P.parseSolicitacoes(text);
+      const its = list.length ? importSolicitacoes(list) : [];
+      if (!its.length) { toast('Página reconhecida, mas sem a tabela de itens. Copie a página inteira (Ctrl+A, Ctrl+C) e cole de novo.', 'err'); return; }
+      const t = its[0].transporte, d = its[0].data;
+      if (d) { ui.date = d; $('#date-filter').value = d; }
+      if (ui.view !== 'lista') setView('lista');
+      renderAll(); openDetail(t);
+      const T = getTransport(t);
+      toast(`Transporte ${t} importado da Solicitação de Embarque (${T.janela === 'CONTAINER' ? 'container' : 'mercado interno'}).${T.missing.length ? ' Falta: ' + T.missing.join(', ') : ' Pronto para imprimir.'}`, T.missing.length ? 'warn' : 'ok');
+      return;
+    }
+    // LT22 / OTs
+    if (tipo === 'ots' || (auto && (ui.view === 'ots' || P.isOTScreen(text)))) {
+      let rows = [];
+      for (const g of [htmlGrid, P.trimGrid(P.parseTSV(text))]) { if (g && g.length) { rows = P.parseOTs(g, knownSets()); if (rows.length) break; } }
+      if (rows.length) {
+        const r = mergeOTs(rows); save(true); renderAll();
+        const lig = rows.filter(x => transportByEntrega().has(x.remessa)).length;
+        toast(`OTs (LT22) atualizadas: ${r.remessas} remessa(s), ${r.novas} OT(s) nova(s) · ${lig} linha(s) ligada(s) a transporte. Detalhes na guia OTs.`, 'ok');
+        return;
+      }
+      if (!auto || ui.view === 'ots') { toast('Não reconheci a tela de OTs. Confira se copiou a tela LT22 com as linhas de remessa e OT.', 'err'); return; }
+    }
+    // Agendamento de Cargas (mercado interno / exportação)
+    const sewLike = tipo === 'MI' || tipo === 'CONTAINER' || (auto && (ui.view === 'agenda' || /Agendamento de Cargas|PI[EÊ]N (PAINEIS|PAINÉIS|CONTAINERS)|Tp\.?\s*Ve[ií]culo/i.test(text)));
+    if (sewLike) {
+      const r = importSewGrid([htmlGrid, P.parseTSV(text)], tipo === 'MI' || tipo === 'CONTAINER' ? tipo : ui.agMode);
+      if (r) {
+        save(true);
+        const ds = Array.from(new Set(r.entries.map(x => x.data))).sort();
+        if (ds.length && !ds.includes(ui.date)) { ui.date = ds.includes(P.todayISO()) ? P.todayISO() : ds[0]; $('#date-filter').value = ui.date; }
+        renderAll();
+        const mi = r.entries.filter(x => x.janela === 'MI').length, ct = r.entries.length - mi;
+        const alt = allTransports().filter(T => T.printed && !T.faturado && T.alteracoes.length).length;
+        toast(`Agendamentos atualizados: ${mi} mercado interno · ${ct} exportação/containers.${r.res.alteradas ? ` ${r.res.alteradas} alterado(s).` : ''}${r.res.novas ? ` ${r.res.novas} novo(s).` : ''}${r.res.removidas ? ` ${r.res.removidas} removido(s).` : ''}${alt ? ` ${alt} ordem(ns) impressa(s) com alterações!` : ''} Detalhes na guia Agendamentos.`, alt ? 'err' : 'ok');
+        return;
+      }
+      if (!auto || ui.view === 'agenda') { toast('Não reconheci a tela de agendamento. Copie a página com a linha de títulos (Data, Hora, Seq, Senha, Carreta…).', 'err'); return; }
+    }
+    // tabela (LOG/SAP): abre a importação já com o conteúdo colado
+    imp.tab = 'log';
+    $('#btn-import').click();
+    imp.html = htmlGrid; $('#log-paste').value = text; parseLogPaste();
   }
 
   // atualiza sem perder o foco do campo que está sendo digitado

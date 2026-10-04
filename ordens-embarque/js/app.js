@@ -370,14 +370,14 @@
         <td class="mono">${esc(e.hora)}</td>
         <td class="mono"><b>${esc(T.transporte)}</b></td>
         <td>${janelaChip(T)}</td>
-        <td class="wrap">${esc(e.cliente)}${T.fsc ? ` <span class="chip mi">FSC</span>` : ''}</td>
+        <td class="wrap" title="${esc(e.cliente)}">${esc(e.cliente)}${T.fsc ? ` <span class="chip mi">FSC</span>` : ''}</td>
         <td class="mono">${esc(e.entrega)}</td>
-        <td class="wrap">${esc(first.descricao || '')}${more}</td>
+        <td class="wrap" title="${esc(T.items.map(i => i.descricao).join('\n'))}">${esc(first.descricao || '')}${more}</td>
         <td class="num">${fmtNum(T.pallets, 2)}</td>
         <td>${placasHTML(e)}</td>
-        <td class="wrap">${esc(e.motorista)}<span class="sub mono">${esc(P.fmtCPF(e.cpf))}</span></td>
+        <td class="wrap" title="${esc(e.motorista)}">${esc(e.motorista)}<span class="sub mono">${esc(P.fmtCPF(e.cpf))}</span></td>
         <td>${treinoChip(T)}</td>
-        <td class="wrap">${esc(e.transportadora)}</td>
+        <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
         <td class="c-status">${statusChip(T)}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
@@ -916,56 +916,103 @@
       const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
       if (!text.trim()) return;
       e.preventDefault();
-      if (P.isSolicitacao(text)) {
-        const list = P.parseSolicitacoes(text);
-        const its = list.length ? importSolicitacoes(list) : [];
-        if (!its.length) { toast('Página reconhecida, mas sem a tabela de itens. Copie a página inteira (Ctrl+A, Ctrl+C) e cole de novo.', 'err'); return; }
-        const t = its[0].transporte, d = its[0].data;
-        if (d) { ui.date = d; $('#date-filter').value = d; }
-        renderAll(); openDetail(t);
-        const T = getTransport(t);
-        toast(`Transporte ${t} importado da Solicitação de Embarque (${T.janela === 'CONTAINER' ? 'container' : 'mercado interno'}).${T.missing.length ? ' Falta: ' + T.missing.join(', ') : ' Pronto para imprimir.'}`, T.missing.length ? 'warn' : 'ok');
-        return;
-      }
-      const html = e.clipboardData.getData('text/html');
-      const htmlGrid = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null;
-      // tela de OTs (LT22): guarda na memória
-      if (ui.view === 'ots' || P.isOTScreen(text)) {
-        let rows = [];
-        for (const g of [htmlGrid, P.trimGrid(P.parseTSV(P.fixMojibake(text)))]) { if (g && g.length) { rows = P.parseOTs(g, knownSets()); if (rows.length) break; } }
-        if (rows.length) {
-          const r = mergeOTs(rows); save(true);
-          if (ui.view !== 'ots') setView('ots'); else renderAll();
-          const lig = rows.filter(x => transportByEntrega().has(x.remessa)).length;
-          toast(`OTs atualizadas: ${r.remessas} remessa(s), ${r.novas} OT(s) nova(s) na memória · ${lig} linha(s) ligada(s) a transporte.`, 'ok');
-          return;
-        }
-        if (ui.view === 'ots') { toast('Não reconheci a tela de OTs. Copie com a linha de títulos (Remessa, Material, … OT, Qtd).', 'err'); return; }
-      }
-      // tela "Agendamento de Cargas": atualiza a guia Agendamentos direto
-      const sewLike = ui.view === 'agenda' || /Agendamento de Cargas|PI[EÊ]N (PAINEIS|PAINÉIS|CONTAINERS)|Tp\.?\s*Ve[ií]culo/i.test(P.fixMojibake(text));
-      if (sewLike) {
-        const r = importSewGrid([htmlGrid, P.parseTSV(P.fixMojibake(text))], ui.agMode);
-        if (r) {
-          save(true);
-          const ds = Array.from(new Set(r.entries.map(x => x.data))).sort();
-          if (ds.length && !ds.includes(ui.date)) { ui.date = ds.includes(P.todayISO()) ? P.todayISO() : ds[0]; $('#date-filter').value = ui.date; }
-          if (ui.view !== 'agenda') setView('agenda'); else renderAll();
-          const mi = r.entries.filter(x => x.janela === 'MI').length, ct = r.entries.length - mi;
-          const alt = allTransports().filter(T => T.printed && !T.faturado && T.alteracoes.length).length;
-          toast(`Agendamentos atualizados: ${mi} mercado interno · ${ct} containers.${r.res.alteradas ? ` ${r.res.alteradas} alterado(s).` : ''}${r.res.novas ? ` ${r.res.novas} novo(s).` : ''}${r.res.removidas ? ` ${r.res.removidas} removido(s).` : ''}${alt ? ` ${alt} ordem(ns) impressa(s) com alterações!` : ''}`, alt ? 'err' : 'ok');
-          return;
-        }
-        if (ui.view === 'agenda') { toast('Não reconheci a tela de agendamento. Copie a página com a linha de títulos (Data, Hora, Seq, Senha, Carreta…).', 'err'); return; }
-      }
-      // tabela (LOG/SAP): abre a importação já com o conteúdo colado
-      imp.tab = 'log';
-      $('#btn-import').click();
-      imp.html = htmlGrid; $('#log-paste').value = text; parseLogPaste();
+      processarColagem(text, e.clipboardData.getData('text/html'), null);
     });
+    // botões de colagem da tela inicial (cada um já sabe qual processo é)
+    $$('[data-colar]').forEach(b => b.addEventListener('click', () => colarPorBotao(b.dataset.colar)));
+    $('#paste-area').addEventListener('paste', e => {
+      const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+      if (!text.trim()) return;
+      e.preventDefault();
+      const tipo = $('#paste-dialog').dataset.tipo;
+      $('#paste-dialog').close();
+      processarColagem(text, e.clipboardData.getData('text/html'), tipo);
+    });
+    $('#paste-close').addEventListener('click', () => $('#paste-dialog').close());
     $('#pv-close').addEventListener('click', () => $('#preview-dialog').close());
     $('#btn-demo').addEventListener('click', loadDemo);
     window.addEventListener('resize', () => { if (ui.open) { const T = getTransport(ui.open); if (T) renderThumbs(T); } });
+  }
+
+  // ------------------------------------------------------------------ colagem (Ctrl+V) por processo
+  const COLAR = {
+    ordem: { titulo: 'Ordem — Solicitação de Embarque', dica: 'No SEW, abra a Solicitação de Embarque, Ctrl+A e Ctrl+C.' },
+    MI: { titulo: 'Agendamento — Mercado interno', dica: 'No SEW, Agendamento de Cargas · PIÊN PAINÉIS, Ctrl+A e Ctrl+C.' },
+    CONTAINER: { titulo: 'Agendamento — Exportação (containers)', dica: 'No SEW, Agendamento de Cargas · PIÊN CONTAINERS, Ctrl+A e Ctrl+C.' },
+    ots: { titulo: 'LT22 — OTs', dica: 'No SAP, tela de OTs (LT22), Ctrl+A e Ctrl+C.' },
+  };
+  async function colarPorBotao(tipo) {
+    // tenta ler a área de transferência direto; se o navegador não deixar, abre a caixa de colar
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        let text = '', html = '';
+        for (const it of items) {
+          if (it.types.includes('text/plain')) text = await (await it.getType('text/plain')).text();
+          if (it.types.includes('text/html')) html = await (await it.getType('text/html')).text();
+        }
+        if (text.trim()) { processarColagem(text, html, tipo); return; }
+      }
+    } catch (e) { /* sem permissão: usa a caixa */ }
+    const dlg = $('#paste-dialog');
+    dlg.dataset.tipo = tipo;
+    $('#paste-title').textContent = COLAR[tipo].titulo;
+    $('#paste-hint').textContent = COLAR[tipo].dica;
+    $('#paste-area').value = '';
+    dlg.showModal();
+    setTimeout(() => $('#paste-area').focus(), 30);
+  }
+  // tipo: 'ordem' | 'MI' | 'CONTAINER' | 'ots' | null (detectar pelo conteúdo)
+  function processarColagem(text, html, tipo) {
+    text = P.fixMojibake(text);
+    const htmlGrid = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null;
+    // a Solicitação de Embarque é inconfundível: vai para "ordem" mesmo que o botão seja outro
+    if (tipo && tipo !== 'ordem' && P.isSolicitacao(text)) { toast(`Isso é uma Solicitação de Embarque (não ${COLAR[tipo].titulo}). Importei como ordem.`, 'warn'); tipo = 'ordem'; }
+    const auto = !tipo;
+    if ((tipo === 'ordem' || auto) && P.isSolicitacao(text)) {
+      const list = P.parseSolicitacoes(text);
+      const its = list.length ? importSolicitacoes(list) : [];
+      if (!its.length) { toast('Página reconhecida, mas sem a tabela de itens. Copie a página inteira (Ctrl+A, Ctrl+C) e cole de novo.', 'err'); return; }
+      const t = its[0].transporte, d = its[0].data;
+      if (d) { ui.date = d; $('#date-filter').value = d; }
+      if (ui.view !== 'lista') setView('lista');
+      renderAll(); openDetail(t);
+      const T = getTransport(t);
+      toast(`Transporte ${t} importado da Solicitação de Embarque (${T.janela === 'CONTAINER' ? 'container' : 'mercado interno'}).${T.missing.length ? ' Falta: ' + T.missing.join(', ') : ' Pronto para imprimir.'}`, T.missing.length ? 'warn' : 'ok');
+      return;
+    }
+    // LT22 / OTs
+    if (tipo === 'ots' || (auto && (ui.view === 'ots' || P.isOTScreen(text)))) {
+      let rows = [];
+      for (const g of [htmlGrid, P.trimGrid(P.parseTSV(text))]) { if (g && g.length) { rows = P.parseOTs(g, knownSets()); if (rows.length) break; } }
+      if (rows.length) {
+        const r = mergeOTs(rows); save(true); renderAll();
+        const lig = rows.filter(x => transportByEntrega().has(x.remessa)).length;
+        toast(`OTs (LT22) atualizadas: ${r.remessas} remessa(s), ${r.novas} OT(s) nova(s) · ${lig} linha(s) ligada(s) a transporte. Detalhes na guia OTs.`, 'ok');
+        return;
+      }
+      if (!auto || ui.view === 'ots') { toast('Não reconheci a tela de OTs. Confira se copiou a tela LT22 com as linhas de remessa e OT.', 'err'); return; }
+    }
+    // Agendamento de Cargas (mercado interno / exportação)
+    const sewLike = tipo === 'MI' || tipo === 'CONTAINER' || (auto && (ui.view === 'agenda' || /Agendamento de Cargas|PI[EÊ]N (PAINEIS|PAINÉIS|CONTAINERS)|Tp\.?\s*Ve[ií]culo/i.test(text)));
+    if (sewLike) {
+      const r = importSewGrid([htmlGrid, P.parseTSV(text)], tipo === 'MI' || tipo === 'CONTAINER' ? tipo : ui.agMode);
+      if (r) {
+        save(true);
+        const ds = Array.from(new Set(r.entries.map(x => x.data))).sort();
+        if (ds.length && !ds.includes(ui.date)) { ui.date = ds.includes(P.todayISO()) ? P.todayISO() : ds[0]; $('#date-filter').value = ui.date; }
+        renderAll();
+        const mi = r.entries.filter(x => x.janela === 'MI').length, ct = r.entries.length - mi;
+        const alt = allTransports().filter(T => T.printed && !T.faturado && T.alteracoes.length).length;
+        toast(`Agendamentos atualizados: ${mi} mercado interno · ${ct} exportação/containers.${r.res.alteradas ? ` ${r.res.alteradas} alterado(s).` : ''}${r.res.novas ? ` ${r.res.novas} novo(s).` : ''}${r.res.removidas ? ` ${r.res.removidas} removido(s).` : ''}${alt ? ` ${alt} ordem(ns) impressa(s) com alterações!` : ''} Detalhes na guia Agendamentos.`, alt ? 'err' : 'ok');
+        return;
+      }
+      if (!auto || ui.view === 'agenda') { toast('Não reconheci a tela de agendamento. Copie a página com a linha de títulos (Data, Hora, Seq, Senha, Carreta…).', 'err'); return; }
+    }
+    // tabela (LOG/SAP): abre a importação já com o conteúdo colado
+    imp.tab = 'log';
+    $('#btn-import').click();
+    imp.html = htmlGrid; $('#log-paste').value = text; parseLogPaste();
   }
 
   // atualiza sem perder o foco do campo que está sendo digitado
