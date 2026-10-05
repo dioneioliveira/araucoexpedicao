@@ -23,6 +23,7 @@
       <span class="brand-sub">Expedição · Piên</span>
     </div>
 
+    <button type="button" class="sync-pill local" id="sync-pill"><span class="dot"></span><span id="sync-txt">Dados só neste computador</span></button>
     <div class="top-actions">
       <button class="btn btn-ghost" id="btn-import"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Importar dados</button>
       <button class="btn btn-ghost" id="btn-print-selected" disabled><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>Imprimir selecionadas <span class="count" id="sel-count">0</span></button>
@@ -289,6 +290,34 @@
   </div>
 </dialog>
 
+<dialog id="sync-dialog" class="modal modal-sm">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Equipe</div>
+        <h2>Dados compartilhados</h2>
+      </div>
+      <button class="icon-btn" id="sync-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="cf-body">
+      <p id="sync-info" class="muted"></p>
+      <p>Para todos verem os mesmos dados, o app grava num <b>arquivo único na pasta de rede da expedição</b> (ou pasta sincronizada do OneDrive/SharePoint). Cada computador conecta uma vez; depois abre já com os dados preenchidos pelos outros e atualiza sozinho a cada 15 segundos.</p>
+      <ol class="sync-steps">
+        <li><b>Primeiro computador:</b> <i>Criar arquivo compartilhado</i> e salvar na pasta de rede (ex.: <code>\\servidor\expedicao\ordens-embarque-dados.json</code>).</li>
+        <li><b>Demais computadores:</b> <i>Conectar a arquivo existente</i> e escolher esse mesmo arquivo.</li>
+      </ol>
+      <div class="sync-actions">
+        <button class="btn btn-primary" id="sync-open">Conectar a arquivo existente</button>
+        <button class="btn btn-ghost" id="sync-create">Criar arquivo compartilhado</button>
+        <button class="btn btn-ghost" id="sync-reconnect" hidden>Reconectar</button>
+        <button class="btn btn-ghost" id="sync-now">Sincronizar agora</button>
+        <button class="btn btn-danger" id="sync-disconnect" hidden>Desconectar</button>
+      </div>
+      <p class="muted small">Funciona no Google Chrome e no Microsoft Edge. Ao abrir o app, o navegador pode pedir para liberar o acesso ao arquivo: clique no aviso <b>Reconectar dados compartilhados</b> no topo.</p>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="confirm-dialog" class="modal modal-sm">
   <form method="dialog" class="modal-inner">
     <div class="modal-head"><h2 id="cf-title">Confirmar</h2></div>
@@ -307,6 +336,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script src="js/templates.js"></script>
 <script src="js/parsers.js"></script>
+<script src="js/sync.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

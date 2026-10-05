@@ -98,6 +98,18 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .transporte-box input{border:0;outline:0;background:transparent;font-family:var(--f-mono);font-size:15px;font-weight:600;width:150px;color:var(--ink)}
 .transporte-box:focus-within{border-color:var(--turq-strong);box-shadow:0 0 0 4px var(--turq-ghost),var(--shadow-1)}
 .top-actions{display:flex;gap:8px}
+.sync-pill{margin-left:auto;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--ink-dim);cursor:pointer;white-space:nowrap}
+.sync-pill .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-faint)}
+.sync-pill.ok{border-color:rgba(63,143,107,.45);color:var(--ok)}
+.sync-pill.ok .dot{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.sync-pill.warn{border-color:var(--lime);background:var(--lime-soft);color:#6b6900;animation:pulse 1.6s ease-in-out infinite}
+.sync-pill.warn .dot{background:var(--lime)}
+.sync-pill.err{border-color:var(--err);color:var(--err)}
+.sync-pill.err .dot{background:var(--err)}
+@keyframes pulse{50%{box-shadow:0 0 0 5px rgba(208,204,0,.18)}}
+.sync-steps{margin:8px 0 12px;padding-left:18px;font-size:13px}
+.sync-steps li{margin-bottom:4px}
+.sync-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 
 /* ---------- botões ---------- */
 .btn{

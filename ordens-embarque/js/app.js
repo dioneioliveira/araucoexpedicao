@@ -23,10 +23,14 @@
   function save(now) {
     clearTimeout(saveTimer);
     const pr = document.getElementById('print-root'); if (pr && !printing) pr.dataset.key = ''; // dados mudaram
-    const run = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { toast('Não foi possível salvar no navegador (armazenamento cheio ou bloqueado).', 'err'); } };
+    const run = () => {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { toast('Não foi possível salvar no navegador (armazenamento cheio ou bloqueado).', 'err'); }
+      if (sync) sync.changed(); // grava também no arquivo compartilhado
+    };
     if (now) run(); else saveTimer = setTimeout(run, 250);
   }
   let printing = false;
+  let sync = null;
   const ui = { date: '', janela: 'ALL', q: '', selected: new Set(), open: null, view: 'lista', agMode: 'auto' };
 
   // campos do transporte que podem ser corrigidos/preenchidos à mão
@@ -1373,12 +1377,61 @@
     return new Promise(res => dlg.addEventListener('close', () => res(dlg.returnValue === 'ok'), { once: true }));
   }
 
+  // ------------------------------------------------------------------ dados compartilhados (arquivo na rede)
+  function syncPill(st) {
+    const pill = $('#sync-pill'); if (!pill) return;
+    const hm = st.at ? new Date(st.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+    let cls = 'local', txt = 'Dados só neste computador', tip = 'Clique para conectar ao arquivo compartilhado da equipe';
+    if (st.mode === 'shared') { cls = st.error ? 'err' : 'ok'; txt = st.error ? `Compartilhado · erro` : `Compartilhado · ${hm}`; tip = `${st.name}${st.error ? ' — ' + st.error : ' — sincronizado às ' + hm}`; }
+    if (st.mode === 'permission') { cls = 'warn'; txt = 'Reconectar dados compartilhados'; tip = `Clique para liberar o acesso a ${st.name}`; }
+    if (st.mode === 'unsupported') { cls = 'local'; txt = 'Dados só neste computador'; tip = 'Para compartilhar, abra no Chrome ou Edge'; }
+    pill.className = `sync-pill ${cls}`; pill.title = tip; $('#sync-txt').textContent = txt;
+    const info = $('#sync-info');
+    if (info) info.innerHTML = st.mode === 'shared' ? `Conectado a <b>${esc(st.name)}</b>${hm ? ` · última sincronização ${esc(hm)}` : ''}${st.error ? ` · <span class="txt-alt">${esc(st.error)}</span>` : ''}`
+      : st.mode === 'permission' ? `Arquivo <b>${esc(st.name)}</b> configurado. O navegador pede para liberar o acesso: clique em <b>Reconectar</b>.`
+      : st.mode === 'unsupported' ? 'Este navegador não permite gravar arquivos. Use o <b>Google Chrome</b> ou o <b>Microsoft Edge</b>.'
+      : 'Os dados estão salvos só neste computador.';
+    $('#sync-reconnect').hidden = st.mode !== 'permission';
+    $('#sync-disconnect').hidden = !(st.mode === 'shared' || st.mode === 'permission');
+  }
+  function bindSync() {
+    sync = window.OESync.create({
+      getState: () => state,
+      setState: s => { state = Object.assign(emptyState(), s); try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* cheio */ } },
+      empty: emptyState,
+      sewKey,
+      onStatus: syncPill,
+      onRemoteChange: () => {
+        // chegaram dados de outro usuário: se a data aberta está vazia, vai para a data com cargas
+        if (!allTransports().some(T => T.eff.data === ui.date)) { ui.date = pickDefaultDate(); $('#date-filter').value = ui.date; }
+        renderAll();
+      },
+    });
+    const run = async (fn, okMsg) => {
+      try { await fn(); $('#sync-dialog').close(); if (okMsg) toast(okMsg, 'ok'); }
+      catch (e) { if (e && e.name === 'AbortError') return; toast('Não foi possível usar o arquivo: ' + (e.message || e), 'err'); }
+    };
+    $('#sync-pill').addEventListener('click', async () => {
+      if (sync.status().mode === 'permission') { const ok = await sync.reconnect(); toast(ok ? 'Dados compartilhados reconectados.' : 'Acesso não liberado.', ok ? 'ok' : 'warn'); return; }
+      $('#sync-dialog').showModal();
+    });
+    $('#sync-create').addEventListener('click', () => run(() => sync.createFile(), 'Arquivo compartilhado criado. Os outros computadores devem usar "Conectar a arquivo existente" e escolher este mesmo arquivo.'));
+    $('#sync-open').addEventListener('click', () => run(() => sync.openFile(), 'Conectado ao arquivo compartilhado. Os dados da equipe foram carregados.'));
+    $('#sync-reconnect').addEventListener('click', () => run(async () => { if (!(await sync.reconnect())) throw new Error('acesso não liberado'); }, 'Dados compartilhados reconectados.'));
+    $('#sync-disconnect').addEventListener('click', () => run(() => sync.disconnect(), 'Desconectado. Os dados continuam neste computador.'));
+    $('#sync-now').addEventListener('click', () => run(() => sync.syncNow(), null));
+    $('#sync-close').addEventListener('click', () => $('#sync-dialog').close());
+    if (!sync.supported()) { $('#sync-create').disabled = true; $('#sync-open').disabled = true; }
+    window.__oeSync = sync; // usado nos testes automáticos
+    sync.init().catch(e => syncPill({ mode: 'local', error: e.message }));
+  }
+
   // ------------------------------------------------------------------ início
   function init() {
     if (!TPL) { document.body.innerHTML = '<p style="padding:40px">Modelos de impressão não encontrados (js/templates.js).</p>'; return; }
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
-    bind(); bindImport(); bindRelatorio();
+    bind(); bindImport(); bindRelatorio(); bindSync();
     setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });

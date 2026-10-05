@@ -43,3 +43,7 @@
   (detecção). Solicitação de Embarque sempre vira "ordem".
 - "amostra" na carga (`isAmostra`: descrição, texto comercial ou observação) => "Amostra-conferir cliente"
   na célula C23 (ao lado dos lotes), junto de "carga fracionada" se houver.
+- Compartilhamento entre usuários (`js/sync.js`, `OESync`): arquivo .json na pasta de rede via File System
+  Access API (Chrome/Edge); atalho do arquivo no IndexedDB. Estado achatado em registros com horário
+  (`item:`, `man:<t>|<campo>`, `printed:`, `snap:`, `fat:`, `fatnf:`, `ot:`, `sew:`, `fsc`) + exclusões
+  (`tomb`); `mergeDocs` = mais recente vence. Dados reais ficam nesse arquivo da rede, nunca no repositório.

@@ -235,11 +235,34 @@ confirme **Criar transporte manual**.
 Impressão: A4 retrato. No Chrome, deixe *Margens: padrão* (o app define margem
 zero) e *Escala: padrão (100%)*.
 
-## Dados
+## Dados compartilhados entre usuários
 
-Tudo fica salvo **somente no navegador** (localStorage): nenhum CPF, nome ou
-placa vai para o repositório ou para servidores. Use **Importar dados → Backup**
-para exportar e restaurar, ou para apagar dias anteriores.
+Para todos abrirem o app **já com os dados preenchidos pelos outros**, o app grava num
+**arquivo único na pasta de rede da expedição** (ou numa pasta sincronizada do
+OneDrive/SharePoint). Não há servidor nem nuvem externa: os dados ficam na rede da Arauco.
+
+1. **Primeiro computador:** clique no aviso do topo (*Dados só neste computador*) →
+   **Criar arquivo compartilhado** → salve na pasta de rede, por exemplo
+   `\\servidor\expedicao\ordens-embarque-dados.json`.
+2. **Demais computadores:** mesmo aviso → **Conectar a arquivo existente** → escolha o
+   mesmo arquivo. Os dados da equipe aparecem na hora.
+3. Pronto: cada alteração (colagens, Controle OT, impressão, faturamento, exclusão) é
+   gravada no arquivo em menos de 1 segundo, e cada computador busca as novidades a cada
+   15 segundos (e ao voltar para a janela do app). O topo mostra
+   *Compartilhado · hh:mm:ss* com a última sincronização.
+
+- **Duas pessoas ao mesmo tempo:** o app junta as alterações registro por registro (cada
+  transporte, cada campo do Controle OT, cada OT, cada agendamento), valendo a mais
+  recente. Editar campos diferentes do mesmo transporte não apaga nada; exclusões também
+  se propagam.
+- **Ao abrir o app**, o Chrome/Edge pode pedir para liberar o acesso ao arquivo: o aviso
+  do topo fica amarelo, *Reconectar dados compartilhados*. Basta clicar.
+- Funciona no **Google Chrome** e no **Microsoft Edge** (no Firefox os dados ficam só no
+  computador). Cada computador continua com uma cópia local, então o app funciona mesmo
+  se a rede cair e sincroniza quando voltar.
+- O primeiro computador a conectar com dados antigos não sobrescreve o que já está no
+  arquivo: os dados locais antigos só entram se não existirem lá.
+- **Backup** (Importar dados → Backup) continua disponível para guardar o histórico.
 
 ## Arquivo único (HTML)
 
