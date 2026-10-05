@@ -782,7 +782,8 @@
     const t = ui.open; const T = t && getTransport(t);
     if (!T) { closeDetail(); return; }
     $('#d-title').textContent = T.transporte;
-    $('#d-fat').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
+    $('#d-print-sub').textContent = isExport(T) ? '4 páginas: check-lists + separação + identificador' : '2 check-lists';
+    $('#d-fat-txt').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
     $('#d-fat').classList.toggle('on', !!T.faturado);
     $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
     const e = T.eff;
@@ -853,8 +854,7 @@
         <h3>Documentos da ordem <span class="h-note">clique para ampliar</span></h3>
         <div class="pv-thumbs" id="pv-thumbs"></div>
         <div class="doc-extra">
-          ${isExport(T) ? '<span class="chip ct">Exportação</span> <span class="muted small">a impressão da ordem inclui também a <b>separação</b> e o <b>identificador</b> da carga</span>' : '<span class="muted small">Separação e identificador são impressos automaticamente nas exportações. Imprimir à parte:</span>'}
-          <div class="doc-btns"><button type="button" class="btn btn-ghost btn-sm" data-doc="sep">Imprimir separação</button><button type="button" class="btn btn-ghost btn-sm" data-doc="id">Imprimir identificador (A4 deitado)</button><button type="button" class="btn btn-ghost btn-sm" data-doc="ver">Ver todos</button></div>
+          ${isExport(T) ? '<span class="chip ct">Exportação</span> <span class="muted small">a impressão da ordem inclui também a <b>separação</b> e o <b>identificador</b> da carga</span>' : '<span class="muted small">Separação e identificador saem automaticamente nas exportações; para imprimir à parte, use os botões da lateral.</span>'}
         </div>
       </div>`;
     renderThumbs(T);
@@ -1015,6 +1015,13 @@
       // sem redesenhar o painel: o usuário pode estar clicando no próximo campo
       save(); softRefresh();
     });
+    $('#d-del').addEventListener('click', () => { if (ui.open) excluirTransportes([ui.open]); });
+    $('#d-actions').addEventListener('click', e => {
+      const doc = e.target.closest('[data-doc]'); if (!doc) return;
+      const T = getTransport(ui.open); if (!T) return;
+      if (doc.dataset.doc === 'ver') { openPreview([T]); return; }
+      imprimirAvulso([doc.dataset.doc === 'sep' ? buildSeparacao(T) : buildIdentificador(T)]);
+    });
     $('#d-body').addEventListener('click', e => {
       const doc = e.target.closest('[data-doc]');
       if (doc) {
@@ -1033,7 +1040,7 @@
       const { text, need } = copyText(b.dataset.copy, T);
       const ok = await toClipboard(text);
       b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 1200);
-      const nome = { texto: 'Dados de texto', balanca: 'Dados de balança', motorista: 'Dados do motorista', placa: 'Placa p/ nota' }[b.dataset.copy];
+      const nome = { texto: 'Dados de texto (VL02N/texto)', balanca: 'Dados de balança', motorista: 'Dados do motorista (VT02N)', placa: 'Placa p/ nota (VL02N/placa)' }[b.dataset.copy];
       toast(`${ok ? 'Copiado' : 'Não foi possível copiar'}: ${nome}${need.length ? ` — em branco: ${need.join(', ')}` : ''}`, ok ? (need.length ? 'warn' : 'ok') : 'err', text);
     }));
 
@@ -1159,7 +1166,7 @@
     softTimer = setTimeout(() => {
       const T = getTransport(ui.open); if (!T) return;
       $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
-      $('#d-fat').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
+      $('#d-fat-txt').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
       $('#d-fat').classList.toggle('on', !!T.faturado);
       $$('[data-ov]', $('#d-body')).forEach(inp => {
         const k = inp.dataset.ov; const f = inp.closest('.f');

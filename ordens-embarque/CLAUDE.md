@@ -56,3 +56,6 @@
 - Exportação (`isExport`): container | Arauco Maderas | breakbulk | material P/E → `pagesFor` acrescenta
   `buildSeparacao` (A4 em pé, linhas da LT22) e `buildIdentificador` (A4 deitado, `@page ident`, textos
   `data-fit` ajustados por `fitBig`). Botões no painel imprimem só um deles (`imprimirAvulso`).
+- Painel da ordem: meia tela (`.drawer` max(50vw, 860px)); ações na coluna `#d-actions` (imprimir, separação,
+  identificador, cópias "Dados de texto (VL02N/texto)", "Placa p/ nota (VL02N/placa)", "Dados do motorista (VT02N)",
+  balança, faturar, excluir).

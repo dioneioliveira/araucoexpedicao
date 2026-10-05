@@ -258,7 +258,15 @@ tabela dos embarques da data selecionada.
 
 ### Painel da ordem
 
-Abra pelo campo **Transporte** (topo) ou clicando na linha da lista.
+Abra pelo campo **Transporte** (topo) ou clicando na linha da lista. O painel abre em **meia
+tela**: à esquerda os dados para conferir e preencher; na **coluna lateral direita, todos os
+botões de ação**:
+
+- **Imprimir:** Imprimir ordem (2 check-lists, ou 4 páginas na exportação) · Separação ·
+  Identificador da carga · Ver documentos
+- **Copiar para SAP / planilhas:** Dados de texto (VL02N/texto) · Placa p/ nota (VL02N/placa) ·
+  Dados do motorista (VT02N) · Dados de balança
+- **Status:** Marcar como faturada · Excluir da lista
 
 - corrija ou complete os dados do transporte (o valor alterado fica marcado
   em amarelo e pode ser desfeito);

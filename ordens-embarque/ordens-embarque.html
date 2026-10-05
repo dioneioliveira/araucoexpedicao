@@ -273,7 +273,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 /* ---------- painel do transporte ---------- */
 #scrim{position:fixed;inset:0;background:rgba(74,74,74,.12);backdrop-filter:blur(2px);z-index:39}
 .drawer{
-  position:fixed;top:0;right:0;bottom:0;width:min(620px,100vw);z-index:40;
+  position:fixed;top:0;right:0;bottom:0;width:max(50vw,min(860px,100vw));z-index:40;
   display:flex;flex-direction:column;
   background:linear-gradient(180deg,#FFFFFF,#F8F8F8);
   border-left:1px solid var(--line-soft);box-shadow:var(--shadow-2);
@@ -285,7 +285,17 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .eyebrow{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--turq-strong)}
 .drawer-head h2{margin:2px 0 8px;font-family:var(--f-mono);font-size:26px;font-weight:600;color:var(--ink)}
 .d-chips{display:flex;gap:6px;flex-wrap:wrap}
-.drawer-body{flex:1;overflow:auto;padding:16px 22px 22px 26px;display:flex;flex-direction:column;gap:16px}
+.drawer-main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 236px}
+.drawer-body{overflow:auto;padding:16px 20px 22px 26px;display:flex;flex-direction:column;gap:16px;min-height:0}
+.d-actions{overflow:auto;border-left:1px solid var(--line-soft);background:linear-gradient(180deg,rgba(248,248,248,.9),rgba(255,255,255,.95));padding:16px 14px;display:flex;flex-direction:column;gap:16px}
+.da-group{display:flex;flex-direction:column;gap:7px}
+.da-title{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--title);padding-left:2px;display:flex;align-items:center;gap:6px}
+.da-title::before{content:"";width:10px;height:3px;border-radius:2px;background:var(--lime)}
+.da-btn{justify-content:flex-start;text-align:left;width:100%;border-radius:12px;padding:9px 12px;white-space:normal;font-size:12.5px}
+.da-btn span{display:flex;flex-direction:column;line-height:1.2}
+.da-btn small{font-size:10.5px;font-weight:500;color:var(--ink-dim);margin-top:1px}
+.da-main{padding:13px 12px;font-size:14px}
+.da-main small{color:#3d6f6d}
 .drawer-foot{padding:14px 22px 18px 26px;border-top:1px solid var(--line-soft);background:var(--glass);backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px}
 .drawer-foot #d-print{width:100%}
 #d-fat.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
@@ -467,6 +477,13 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
   .home-hero{grid-template-columns:1fr}
   .top-actions{margin-left:auto}
 }
+@media (max-width:900px){
+  .drawer-main{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+  .d-actions{border-left:0;border-top:1px solid var(--line-soft);flex-direction:row;overflow-x:auto;padding:10px 12px;gap:12px}
+  .da-group{flex-direction:row;flex:0 0 auto}
+  .da-title{display:none}
+  .da-btn{width:auto;white-space:nowrap}
+}
 @media (max-width:720px){
   #app{padding-left:6px}
   .side-bar{width:6px}
@@ -625,16 +642,29 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       </div>
       <button class="icon-btn" id="d-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
-    <div class="drawer-body" id="d-body"></div>
-    <div class="drawer-foot">
-      <div class="copy-row">
-        <button class="btn btn-copy" data-copy="texto"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Dados de texto</button>
-        <button class="btn btn-copy" data-copy="balanca"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 006 0L5 7zm14 0l-3 7a4 4 0 006 0l-3-7z"/></svg>Dados de balança</button>
-        <button class="btn btn-copy" data-copy="placa" title="0001 e a placa da carreta com UF, em duas linhas"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h10"/></svg>Placa p/ nota</button>
-        <button class="btn btn-copy" data-copy="motorista"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>Dados do motorista</button>
-      </div>
-      <button class="btn btn-ghost" id="d-fat"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Marcar como faturada</button>
-      <button class="btn btn-primary btn-lg" id="d-print"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg>Imprimir ordem (2 check-lists)</button>
+    <div class="drawer-main">
+      <div class="drawer-body" id="d-body"></div>
+      <nav class="d-actions" id="d-actions" aria-label="Ações da ordem">
+        <div class="da-group">
+          <div class="da-title">Imprimir</div>
+          <button class="btn btn-primary da-btn da-main" id="d-print"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg><span>Imprimir ordem<small id="d-print-sub">2 check-lists</small></span></button>
+          <button class="btn btn-ghost da-btn" data-doc="sep"><svg viewBox="0 0 24 24"><path d="M9 5h11M9 12h11M9 19h11M4 5h.01M4 12h.01M4 19h.01"/></svg><span>Separação<small>A4 em pé</small></span></button>
+          <button class="btn btn-ghost da-btn" data-doc="id"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="1"/><path d="M6 10h8M6 14h5"/></svg><span>Identificador da carga<small>A4 deitado</small></span></button>
+          <button class="btn btn-ghost da-btn" data-doc="ver"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Ver documentos</span></button>
+        </div>
+        <div class="da-group">
+          <div class="da-title">Copiar para SAP / planilhas</div>
+          <button class="btn btn-copy da-btn" data-copy="texto"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Dados de texto<small>VL02N / texto</small></span></button>
+          <button class="btn btn-copy da-btn" data-copy="placa" title="0001 e a placa da carreta com UF, em duas linhas"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h10"/></svg><span>Placa p/ nota<small>VL02N / placa</small></span></button>
+          <button class="btn btn-copy da-btn" data-copy="motorista"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg><span>Dados do motorista<small>VT02N</small></span></button>
+          <button class="btn btn-copy da-btn" data-copy="balanca"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 006 0L5 7zm14 0l-3 7a4 4 0 006 0l-3-7z"/></svg><span>Dados de balança<small>planilha da balança</small></span></button>
+        </div>
+        <div class="da-group">
+          <div class="da-title">Status</div>
+          <button class="btn btn-ghost da-btn" id="d-fat"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg><span id="d-fat-txt">Marcar como faturada</span></button>
+          <button class="btn btn-ghost da-btn btn-danger" id="d-del"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span>Excluir da lista</span></button>
+        </div>
+      </nav>
     </div>
   </aside>
   <div id="scrim" hidden></div>
@@ -5180,7 +5210,8 @@ window.ORDEM_TEMPLATES = {
     const t = ui.open; const T = t && getTransport(t);
     if (!T) { closeDetail(); return; }
     $('#d-title').textContent = T.transporte;
-    $('#d-fat').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
+    $('#d-print-sub').textContent = isExport(T) ? '4 páginas: check-lists + separação + identificador' : '2 check-lists';
+    $('#d-fat-txt').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
     $('#d-fat').classList.toggle('on', !!T.faturado);
     $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
     const e = T.eff;
@@ -5251,8 +5282,7 @@ window.ORDEM_TEMPLATES = {
         <h3>Documentos da ordem <span class="h-note">clique para ampliar</span></h3>
         <div class="pv-thumbs" id="pv-thumbs"></div>
         <div class="doc-extra">
-          ${isExport(T) ? '<span class="chip ct">Exportação</span> <span class="muted small">a impressão da ordem inclui também a <b>separação</b> e o <b>identificador</b> da carga</span>' : '<span class="muted small">Separação e identificador são impressos automaticamente nas exportações. Imprimir à parte:</span>'}
-          <div class="doc-btns"><button type="button" class="btn btn-ghost btn-sm" data-doc="sep">Imprimir separação</button><button type="button" class="btn btn-ghost btn-sm" data-doc="id">Imprimir identificador (A4 deitado)</button><button type="button" class="btn btn-ghost btn-sm" data-doc="ver">Ver todos</button></div>
+          ${isExport(T) ? '<span class="chip ct">Exportação</span> <span class="muted small">a impressão da ordem inclui também a <b>separação</b> e o <b>identificador</b> da carga</span>' : '<span class="muted small">Separação e identificador saem automaticamente nas exportações; para imprimir à parte, use os botões da lateral.</span>'}
         </div>
       </div>`;
     renderThumbs(T);
@@ -5413,6 +5443,13 @@ window.ORDEM_TEMPLATES = {
       // sem redesenhar o painel: o usuário pode estar clicando no próximo campo
       save(); softRefresh();
     });
+    $('#d-del').addEventListener('click', () => { if (ui.open) excluirTransportes([ui.open]); });
+    $('#d-actions').addEventListener('click', e => {
+      const doc = e.target.closest('[data-doc]'); if (!doc) return;
+      const T = getTransport(ui.open); if (!T) return;
+      if (doc.dataset.doc === 'ver') { openPreview([T]); return; }
+      imprimirAvulso([doc.dataset.doc === 'sep' ? buildSeparacao(T) : buildIdentificador(T)]);
+    });
     $('#d-body').addEventListener('click', e => {
       const doc = e.target.closest('[data-doc]');
       if (doc) {
@@ -5431,7 +5468,7 @@ window.ORDEM_TEMPLATES = {
       const { text, need } = copyText(b.dataset.copy, T);
       const ok = await toClipboard(text);
       b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 1200);
-      const nome = { texto: 'Dados de texto', balanca: 'Dados de balança', motorista: 'Dados do motorista', placa: 'Placa p/ nota' }[b.dataset.copy];
+      const nome = { texto: 'Dados de texto (VL02N/texto)', balanca: 'Dados de balança', motorista: 'Dados do motorista (VT02N)', placa: 'Placa p/ nota (VL02N/placa)' }[b.dataset.copy];
       toast(`${ok ? 'Copiado' : 'Não foi possível copiar'}: ${nome}${need.length ? ` — em branco: ${need.join(', ')}` : ''}`, ok ? (need.length ? 'warn' : 'ok') : 'err', text);
     }));
 
@@ -5557,7 +5594,7 @@ window.ORDEM_TEMPLATES = {
     softTimer = setTimeout(() => {
       const T = getTransport(ui.open); if (!T) return;
       $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
-      $('#d-fat').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
+      $('#d-fat-txt').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
       $('#d-fat').classList.toggle('on', !!T.faturado);
       $$('[data-ov]', $('#d-body')).forEach(inp => {
         const k = inp.dataset.ov; const f = inp.closest('.f');
