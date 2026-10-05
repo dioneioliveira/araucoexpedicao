@@ -81,6 +81,8 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .cb-ico.mi{background:var(--turq-soft);color:#3d6f6d}
 .cb-ico.ct{background:var(--lime-soft);color:#6b6900}
 .cb-ico svg{width:20px;height:20px}
+.colar-wide{grid-column:1/-1;padding:9px 14px}
+.colar-wide .cb-ico{width:32px;height:32px}
 .colar-hint{grid-column:1/-1;margin:2px 0 0;font-size:12px;color:var(--ink-dim)}
 .paste-area{width:100%;min-height:150px;border:2px dashed var(--turq);border-radius:var(--r-m);padding:14px;font-family:var(--f-mono);font-size:12px;outline:0;resize:vertical;margin-top:8px}
 .paste-area:focus{border-color:var(--turq-strong);background:var(--turq-ghost)}

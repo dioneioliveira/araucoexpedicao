@@ -79,11 +79,32 @@
     // não repetir a mesma mudança vinda das duas fontes
     const seen = new Set(); return out.filter(o => { const k = o.campo.split(' ')[0] + '|' + P.clean(o.para); if (seen.has(k)) return false; seen.add(k); return true; });
   }
+  // Cliente FSC: relação pelo nome do cliente (a Solicitação não traz o código).
+  // 1) nome igual  2) igual sem acentos/pontuação/LTDA/S.A.  3) nome cortado pelo SAP
+  // (um começa com o outro, 12+ letras)  4) mesmas palavras (85%+ em comum).
+  let fscIdx = null, fscIdxRef = null;
+  function fscIndex() {
+    if (fscIdxRef === state.fsc && fscIdx) return fscIdx;
+    fscIdxRef = state.fsc;
+    fscIdx = Object.entries(state.fsc).map(([k, v]) => ({ k, v, chave: P.nomeChave(v.nome || k), tok: new Set(P.nomeTokens(v.nome || k)) }));
+    return fscIdx;
+  }
   function fscOf(cliente) {
     const n = P.norm(cliente); if (!n) return null;
-    if (state.fsc[n]) return state.fsc[n];
-    if (n.length >= 30) { const k = Object.keys(state.fsc).find(x => x.startsWith(n)); if (k) return state.fsc[k]; } // nome truncado pelo SAP
-    return null;
+    const ok = v => (v && v.ativo !== false ? v : null);
+    if (state.fsc[n]) return ok(state.fsc[n]);
+    const idx = fscIndex(); const ch = P.nomeChave(cliente);
+    let hit = idx.find(x => x.chave === ch);
+    if (!hit && ch.length >= 12) hit = idx.find(x => x.chave.length >= 12 && (x.chave.startsWith(ch) || ch.startsWith(x.chave)));
+    if (!hit) {
+      const t = new Set(P.nomeTokens(cliente));
+      if (t.size >= 2) {
+        let best = null, bs = 0;
+        idx.forEach(x => { const inter = [...t].filter(w => x.tok.has(w)).length; const sc = inter / Math.max(t.size, x.tok.size); if (sc > bs) { bs = sc; best = x; } });
+        if (bs >= 0.85) hit = best;
+      }
+    }
+    return hit ? ok(hit.v) : null;
   }
   function treino(e) {
     const s = P.norm(e.treinamento), y = P.norm(e.cpfStatus);
@@ -112,7 +133,9 @@
     const sew = sewMatch(eff);
     const janelaAuto = f.janela || (sew ? sew.janela : 'MI'); // Origem da Solicitação de Embarque tem prioridade
     const janela = man.janela || janelaAuto;
-    const fsc = fscOf(eff.cliente);
+    // FSC: automático pela lista de clientes, ou forçado no painel (Sim/Não)
+    const fscAuto = fscOf(eff.cliente);
+    const fsc = man.fscSel === 'NAO' ? null : (man.fscSel === 'SIM' ? (fscAuto || { fsc: 'FSC', claim: '', nome: eff.cliente }) : fscAuto);
     const ot = Object.fromEntries(OT_FIELDS.map(([k]) => [k, man[k] || '']));
     // OT da tela LT22 (pela entrega), como o PROCV da guia Controle OT
     const entregas = Array.from(new Set(items.map(i => i.entrega).concat(eff.entrega).filter(Boolean)));
@@ -126,7 +149,7 @@
     return {
       transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (f.janela ? 'Solicitação de Embarque' : (sew ? 'SEW' : 'padrão')),
       solic: f.fonte === 'Solicitação de Embarque' ? f : null,
-      fsc, ot, otSrc, otList, entregas, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
+      fsc, fscAuto, ot, otSrc, otList, entregas, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
       printed: state.printed[t] || null, faturado: state.faturado[t] || null, manualOnly: items.every(i => i.manualOnly),
     };
   }
@@ -728,6 +751,12 @@
               <option value="MI" ${T.man.janela === 'MI' ? 'selected' : ''}>Mercado interno</option>
               <option value="CONTAINER" ${T.man.janela === 'CONTAINER' ? 'selected' : ''}>Container</option>
             </select></div>
+          <div class="f"><label for="f-fsc">FSC (ao lado da OT) <span class="src">${T.man.fscSel ? 'manual' : (T.fscAuto ? 'lista FSC' : (Object.keys(state.fsc).length ? 'não está na lista' : 'lista FSC não importada'))}</span></label>
+            <select id="f-fsc">
+              <option value="">Automático (${T.fscAuto ? 'FSC' : 'sem FSC'})</option>
+              <option value="SIM" ${T.man.fscSel === 'SIM' ? 'selected' : ''}>Sim, imprimir FSC</option>
+              <option value="NAO" ${T.man.fscSel === 'NAO' ? 'selected' : ''}>Não</option>
+            </select>${T.fscAuto && T.fscAuto.nome && P.norm(T.fscAuto.nome) !== P.norm(e.cliente) ? `<span class="sub">na lista como: ${esc(T.fscAuto.nome)}</span>` : ''}</div>
         </div>
       </div>
       <div class="section">
@@ -889,6 +918,7 @@
       const t = ui.open; if (!t) return;
       const man = state.manual[t] || (state.manual[t] = {});
       if (e.target.dataset.ot === 'nf') { aplicarNF(t, e.target.value); softRefresh(); return; }
+      if (e.target.id === 'f-fsc') { if (e.target.value) man.fscSel = e.target.value; else delete man.fscSel; save(); renderAll(); return; }
       if (e.target.id === 'f-janela') { if (e.target.value) man.janela = e.target.value; else delete man.janela; save(); renderAll(); return; }
       if (e.target.dataset.ov === 'cpf' && man.cpf) { man.cpf = P.fmtCPF(man.cpf); e.target.value = man.cpf; }
       if ((e.target.dataset.ov === 'placaL' || e.target.dataset.ov === 'placaM') && man[e.target.dataset.ov]) { man[e.target.dataset.ov] = P.normPlate(man[e.target.dataset.ov]); e.target.value = man[e.target.dataset.ov]; }
@@ -951,6 +981,7 @@
     ots: { titulo: 'LT22 — OTs', dica: 'No SAP, tela de OTs (LT22), Ctrl+A e Ctrl+C.' },
   };
   async function colarPorBotao(tipo) {
+    if (tipo === 'fsc') { imp.tab = 'fsc'; $('#btn-import').click(); setTimeout(() => $('#fsc-file').click(), 120); return; }
     // tenta ler a área de transferência direto; se o navegador não deixar, abre a caixa de colar
     try {
       if (navigator.clipboard && navigator.clipboard.read) {
@@ -1090,12 +1121,12 @@
     // FSC
     let ft; $('#fsc-paste').addEventListener('input', () => { clearTimeout(ft); ft = setTimeout(() => {
       const g = P.trimGrid(P.parseTSV($('#fsc-paste').value));
-      imp.fsc = g.length ? P.parseFSC(g) : null;
-      const n = imp.fsc ? Object.keys(imp.fsc).length : 0;
-      $('#fsc-preview').textContent = n ? `${n} cliente(s) reconhecido(s). A lista atual (${Object.keys(state.fsc).length}) será substituída.` : '';
-      updateApply();
+      imp.fsc = g.length ? P.parseFSC(g) : null; imp.fscArquivo = 'colado';
+      mostrarPreviaFSC();
     }, 150); });
 
+    // planilha FSC (arquivo)
+    $('#fsc-file').addEventListener('change', e => { const f = e.target.files[0]; if (f) lerPlanilhaFSC(f); });
     // XLSX
     const fi = $('#xlsx-file'); const drop = $('#xlsx-drop');
     fi.addEventListener('change', () => fi.files[0] && readWorkbook(fi.files[0]));
@@ -1136,11 +1167,47 @@
 
     $('#import-apply').addEventListener('click', () => { applyImport(); });
   }
+  async function lerPlanilhaFSC(file) {
+    const st = $('#fsc-preview');
+    try {
+      let grid = null;
+      if (/\.csv$|\.txt$/i.test(file.name)) grid = P.trimGrid(P.parseTSV((await file.text()).replace(/;/g, '\t')));
+      else {
+        if (!window.XLSX) throw new Error('a leitura de Excel precisa de internet (biblioteca SheetJS). Sem internet, salve a planilha como CSV ou copie e cole as linhas abaixo.');
+        const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: false });
+        const nomes = wb.SheetNames.slice().sort((a, b) => (P.norm(b) === 'FSC') - (P.norm(a) === 'FSC'));
+        for (const n of nomes) {
+          const g = P.trimGrid(XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: '' }));
+          if (g.length && Object.keys(P.parseFSC(g)).length) { grid = g; break; }
+        }
+      }
+      imp.fsc = grid ? P.parseFSC(grid) : null;
+      imp.fscArquivo = file.name;
+      mostrarPreviaFSC();
+    } catch (er) { imp.fsc = null; st.innerHTML = `<div class="alert err">Não foi possível ler a planilha: ${esc(er.message || er)}</div>`; updateApply(); }
+  }
+  function mostrarPreviaFSC() {
+    const lista = imp.fsc ? Object.values(imp.fsc) : [];
+    const ativos = lista.filter(x => x.ativo !== false).length;
+    const hoje = allTransports().filter(T => T.eff.data === ui.date);
+    const old = state.fsc; state.fsc = imp.fsc || {}; fscIdx = null;
+    const casam = hoje.filter(T => fscOf(T.eff.cliente));
+    state.fsc = old; fscIdx = null;
+    $('#fsc-preview').innerHTML = lista.length ? `<div class="alert info"><b>${lista.length}</b> cliente(s) na planilha · <b>${ativos}</b> ativo(s)${lista.length - ativos ? ` · ${lista.length - ativos} excluído(s)` : ''}.
+      ${hoje.length ? `Nas cargas de ${esc(P.fmtDateBR(ui.date))}: <b>${casam.length}</b> de ${hoje.length} são FSC${casam.length ? ` (${esc(casam.slice(0, 5).map(T => T.eff.cliente).join(', '))}${casam.length > 5 ? '…' : ''})` : ''}.` : ''}
+      A lista atual (${Object.keys(state.fsc).length}) será substituída e ficará guardada${sync && sync.status().mode === 'shared' ? ' e compartilhada com a equipe' : ''}.</div>`
+      : '<div class="alert warn">Nenhum cliente reconhecido. A planilha precisa ter a coluna com o nome do cliente (ex.: "Nome Cliente").</div>';
+    updateApply();
+  }
   function setTab(tab) {
     imp.tab = tab;
     $$('#import-tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     $$('#import-dialog .tab-pane').forEach(p => p.hidden = p.dataset.pane !== tab);
     $('#import-apply').hidden = tab === 'backup';
+    if (tab === 'fsc') {
+      const inf = state.fscInfo, n = Object.keys(state.fsc).length;
+      $('#fsc-atual').innerHTML = n ? `Lista atual: <b>${n}</b> cliente(s)${inf ? ` · importada em ${esc(new Date(inf.em).toLocaleString('pt-BR'))}${inf.arquivo ? ` (${esc(inf.arquivo)})` : ''}` : ''}.` : 'Nenhuma lista FSC importada ainda.';
+    }
     updateApply();
   }
   function updateApply() {
@@ -1318,8 +1385,10 @@
       mergeSew(imp.sew); msg = `${imp.sew.length} agendamento(s) SEW importado(s).`;
       $('#sew-paste').value = ''; imp.sew = null; imp.sewHtml = null; $('#sew-preview').innerHTML = '';
     } else if (imp.tab === 'fsc' && imp.fsc) {
-      state.fsc = imp.fsc; msg = `${Object.keys(imp.fsc).length} cliente(s) FSC salvos.`;
-      $('#fsc-paste').value = ''; imp.fsc = null; $('#fsc-preview').textContent = '';
+      state.fsc = imp.fsc; fscIdx = null;
+      state.fscInfo = { em: new Date().toISOString(), arquivo: imp.fscArquivo || '', total: Object.keys(imp.fsc).length };
+      msg = `Planilha FSC importada: ${Object.keys(imp.fsc).length} cliente(s). O campo FSC ao lado da OT já usa a nova lista.`;
+      $('#fsc-paste').value = ''; $('#fsc-file').value = ''; imp.fsc = null; $('#fsc-preview').textContent = '';
     } else if (imp.tab === 'xlsx' && imp.xlsx) {
       const x = imp.xlsx;
       if (x.items) { mergeLogItems(x.items, true); focus = focusDateOf(x.items); }

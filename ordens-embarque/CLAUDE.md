@@ -47,3 +47,7 @@
   Access API (Chrome/Edge); atalho do arquivo no IndexedDB. Estado achatado em registros com horário
   (`item:`, `man:<t>|<campo>`, `printed:`, `snap:`, `fat:`, `fatnf:`, `ot:`, `sew:`, `fsc`) + exclusões
   (`tomb`); `mergeDocs` = mais recente vence. Dados reais ficam nesse arquivo da rede, nunca no repositório.
+- FSC (célula V23:X23, ao lado da OT): planilha FSC importada (`parseFSC`, arquivo via SheetJS ou colagem) →
+  `state.fsc` + `state.fscInfo` (sincronizados). `fscOf` relaciona pelo nome do cliente (exato → `nomeChave`
+  sem acentos/pontuação/LTDA/S.A. → prefixo 12+ → 85% das palavras); exclusão sem reingresso = inativo.
+  Override por transporte: `manual.fscSel` = SIM | NAO.

@@ -348,20 +348,40 @@
   }
 
   // ---------- FSC ----------
+  // Planilha de clientes FSC (guia FSC: Data de ingresso · Data de exclusão · Data de
+  // reingresso · Cód. Cliente · Nome Cliente · Vendedor · Gerente · FSC · claim).
+  // Aceita outras ordens de colunas: identifica pelos títulos. Cliente excluído (com data
+  // de exclusão e sem reingresso posterior) fica marcado como inativo.
   function parseFSC(grid) {
-    let hr = grid.findIndex(r => r.some(c => norm(c) === 'NOME CLIENTE'));
-    let cName = 4, cFsc = 7, cClaim = 8;
+    const H = r => r.map(c => norm(c).replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim());
+    const isName = h => /^(NOME( DO)? CLIENTE|CLIENTE|RAZAO SOCIAL|NOME|RECEBEDOR|NOME DO RECEBEDOR)$/.test(h);
+    let hr = grid.findIndex(r => H(r).some(isName));
+    let c = { nome: 4, cod: 3, exc: 1, rein: 2, fsc: 7, claim: 8 };
     if (hr >= 0) {
-      const h = grid[hr].map(norm);
-      cName = h.indexOf('NOME CLIENTE'); const f = h.indexOf('FSC'); if (f >= 0) { cFsc = f; cClaim = f + 1; }
+      const h = H(grid[hr]); const f = re => h.findIndex(x => re.test(x));
+      c = {
+        nome: h.findIndex(x => /^(NOME( DO)? CLIENTE|RAZAO SOCIAL)$/.test(x)) >= 0 ? h.findIndex(x => /^(NOME( DO)? CLIENTE|RAZAO SOCIAL)$/.test(x)) : h.findIndex(isName),
+        cod: f(/^(COD|CODIGO)( DO)? ?CLIENTE$|^COD$|^CODIGO$/), exc: f(/EXCLUS/), rein: f(/REINGRESS/),
+        fsc: f(/^FSC$|CERTIFIC|^FSC /), claim: f(/CLAIM|DECLARA/),
+      };
+      if (c.claim < 0 && c.fsc >= 0 && !h[c.fsc + 1]) c.claim = c.fsc + 1;
     }
     const out = {};
     grid.slice(hr + 1).forEach(r => {
-      const name = norm(r[cName]); if (!name) return;
-      out[name] = { fsc: clean(r[cFsc]), claim: clean(r[cClaim]) };
+      const nome = clean(r[c.nome]); const key = norm(nome);
+      if (!key || key.length < 3) return;
+      const exc = c.exc >= 0 ? toISODate(r[c.exc]) : '', rein = c.rein >= 0 ? toISODate(r[c.rein]) : '';
+      const ativo = !exc || (!!rein && rein >= exc);
+      const fscVal = c.fsc >= 0 ? clean(r[c.fsc]) : '';
+      out[key] = { nome, codigo: c.cod >= 0 ? intStr(r[c.cod]) : '', fsc: fscVal || 'FSC', claim: c.claim >= 0 ? clean(r[c.claim]) : '', ativo, exclusao: exc, reingresso: rein };
     });
     return out;
   }
+
+  // chave de comparação de nomes de cliente: sem acento, pontuação e sufixos (LTDA, S/A, ME…)
+  const STOP = new Set(['LTDA', 'LTD', 'ME', 'EPP', 'EIRELI', 'SA', 'S', 'A', 'CIA', 'DE', 'DA', 'DO', 'DOS', 'DAS', 'E', 'THE', 'INC', 'SAS', 'SRL', 'CV']);
+  const nomeTokens = n => norm(n).replace(/[^A-Z0-9 ]/g, ' ').split(/\s+/).filter(t => t && !STOP.has(t));
+  const nomeChave = n => nomeTokens(n).join(' ');
 
   // ---------- Controle OT (campos manuais) ----------
   function parseControleOT(grid) {
@@ -530,6 +550,6 @@
     fixMojibake, isSolicitacao, parseSolicitacoes,
     clean, norm, pad, toISODate, toTime, fmtDateBR, todayISO, toNum, intStr, cpfDigits, fmtCPF, isCPFLike,
     normPlate, plate7, plateUF, isPlate, matInfo, parseTSV, parseHTMLTable, trimGrid,
-    LOG_COLS, LOG_KEYS, LOG_LABEL, detectLogMapping, rowsToItems, parseSEW, parseFSC, parseControleOT,
+    LOG_COLS, LOG_KEYS, LOG_LABEL, detectLogMapping, rowsToItems, parseSEW, parseFSC, parseControleOT, nomeTokens, nomeChave,
   };
 })(window);

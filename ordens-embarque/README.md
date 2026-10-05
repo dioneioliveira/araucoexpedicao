@@ -78,6 +78,28 @@ Se faltar algum, o app avisa antes de imprimir.
   motorista e transportadora longos são cortados com "…"; o texto completo aparece ao
   parar o mouse e no painel da ordem).
 
+### Clientes FSC (campo ao lado da OT)
+
+O espaço ao lado do número da OT no check-list da carga é o campo **FSC**. Ele é
+preenchido pela **relação por cliente**:
+
+1. Na tela inicial, botão **Clientes FSC** (ou Importar dados → Clientes FSC) → selecione a
+   planilha FSC (.xlsx, .xls ou .csv), com as colunas da guia FSC: Data de ingresso · Data de
+   exclusão · Data de reingresso · Cód. Cliente · **Nome Cliente** · Vendedor · Gerente · FSC ·
+   claim. Também dá para copiar as linhas da planilha e colar.
+2. A prévia mostra quantos clientes há, quantos estão ativos e quantas cargas do dia são FSC.
+   Clique **Importar**: a lista substitui a anterior e fica **guardada** no app (e
+   compartilhada com a equipe, se o arquivo compartilhado estiver conectado).
+3. Quando o cliente da carga está na lista, o check-list imprime **FSC** ao lado da OT (e o
+   claim, se houver, no campo à esquerda da OT). A lista diária mostra a etiqueta FSC.
+
+- **Comparação dos nomes:** a Solicitação de Embarque não traz o código do cliente, então a
+  relação é pelo nome. O app ignora acentos, pontuação e sufixos (LTDA, S.A., ME, EIRELI…),
+  aceita nome cortado pelo SAP e nomes com as mesmas palavras.
+- Cliente com **data de exclusão** e sem reingresso posterior não conta como FSC.
+- No painel da ordem, o campo **FSC** mostra a origem e permite forçar *Sim* ou *Não*
+  naquele transporte.
+
 ### Processo principal: Ctrl+C no SEW, Ctrl+V no app
 
 1. No SEW, abra a página **Solicitação de Embarque - Carregamento de Produto

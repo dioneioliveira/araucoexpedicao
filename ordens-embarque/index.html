@@ -47,6 +47,7 @@
         <button type="button" class="colar-btn" data-colar="MI"><span class="cb-ico mi"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span><span><b>Agendamento</b><small>Mercado interno · PIÊN PAINÉIS</small></span></button>
         <button type="button" class="colar-btn" data-colar="CONTAINER"><span class="cb-ico ct"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="1"/><path d="M6 7v11M10 7v11M14 7v11M18 7v11"/></svg></span><span><b>Agendamento</b><small>Exportação · PIÊN CONTAINERS</small></span></button>
         <button type="button" class="colar-btn" data-colar="ots"><span class="cb-ico"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span><span><b>LT22 · OTs</b><small>OT por entrega</small></span></button>
+        <button type="button" class="colar-btn colar-wide" data-colar="fsc"><span class="cb-ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span><span><b>Clientes FSC</b><small>Importar planilha (relação por cliente)</small></span></button>
         <p class="colar-hint">Copie a tela no sistema (<b>Ctrl+A</b>, <b>Ctrl+C</b>) e clique no botão do processo.</p>
       </div>
     </section>
@@ -213,7 +214,14 @@
     </div>
 
     <div class="tab-pane" data-pane="fsc" hidden>
-      <p class="hint">Cole a lista de clientes certificados (guia <b>FSC</b>: Data de ingresso · Data de exclusão · Data de reingresso · Cód. Cliente · Nome Cliente · Vendedor · Gerente · FSC · claim). Fica salva somente neste navegador.</p>
+      <p class="hint">Planilha de clientes certificados <b>FSC</b> (como a guia FSC: Data de ingresso · Data de exclusão · Data de reingresso · Cód. Cliente · <b>Nome Cliente</b> · Vendedor · Gerente · FSC · claim). A relação é <b>por cliente</b>: quando o cliente da carga está na lista, o check-list imprime <b>FSC</b> ao lado da OT. Clientes com data de exclusão (sem reingresso) não contam. A lista fica guardada no app (e compartilhada com a equipe, se o arquivo compartilhado estiver conectado).</p>
+      <p class="muted" id="fsc-atual"></p>
+      <label class="file-drop" style="padding:22px">
+        <input type="file" id="fsc-file" accept=".xlsx,.xlsm,.xls,.csv,.txt">
+        <svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M9 15l3-3 3 3M12 12v6"/></svg>
+        <span>Selecionar a planilha FSC (.xlsx, .xls ou .csv)</span>
+      </label>
+      <p class="muted small">ou copie as linhas da planilha (com a linha de títulos) e cole abaixo:</p>
       <textarea id="fsc-paste" placeholder="Cole aqui (Ctrl+V)…" spellcheck="false"></textarea>
       <div id="fsc-preview" class="muted"></div>
     </div>
