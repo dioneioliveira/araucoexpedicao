@@ -51,3 +51,8 @@
   `state.fsc` + `state.fscInfo` (sincronizados). `fscOf` relaciona pelo nome do cliente (exato → `nomeChave`
   sem acentos/pontuação/LTDA/S.A. → prefixo 12+ → 85% das palavras); exclusão sem reingresso = inativo.
   Override por transporte: `manual.fscSel` = SIM | NAO.
+- LT22 real = lista SAP em colunas fixas: `parseLT22Lista` (OT=1º token, material=2º, remessa = número de 8–10
+  dígitos após "qtd UMA tpDest", zeros à esquerda removidos; Tp./posição de origem guardados).
+- Exportação (`isExport`): container | Arauco Maderas | breakbulk | material P/E → `pagesFor` acrescenta
+  `buildSeparacao` (A4 em pé, linhas da LT22) e `buildIdentificador` (A4 deitado, `@page ident`, textos
+  `data-fit` ajustados por `fitBig`). Botões no painel imprimem só um deles (`imprimirAvulso`).

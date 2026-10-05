@@ -296,12 +296,87 @@
         size *= 0.94; el.style.fontSize = size.toFixed(2) + 'pt';
       }
     });
+    fitBig(root);
     if (measuring) root.classList.remove('measuring');
   }
-  function pagesFor(T) {
+  function pagesFor(T, opts) {
     const d = printData(T);
     // mesma ordem da macro impress2026ordens: Check do veículo, depois Check da carga
-    return [buildPage('veiculo', d), buildPage('carga', d)];
+    const pages = [buildPage('veiculo', d), buildPage('carga', d)];
+    // exportação: também o formulário de separação e o identificador da carga
+    if ((!opts || opts.extras !== false) && isExport(T)) pages.push(buildSeparacao(T), buildIdentificador(T));
+    return pages;
+  }
+
+  // ------------------------------------------------------------------ exportação: separação + identificador
+  // exportação = janela de containers, Arauco Maderas (terrestre), breakbulk ou material de exportação (P/E…)
+  const isExport = T => T.janela === 'CONTAINER' || isAraucoMaderas(T) || isBreakbulk(T) || T.items.some(i => i.mi && i.mi.mercado === 'Exportação');
+  const fmtContainer = c => { const x = P.clean(c).toUpperCase().replace(/\s+/g, ''); const m = x.match(/^([A-Z]{4})(\d{6})(\d)$/); return m ? `${m[1]} ${m[2]}-${m[3]}` : x; };
+  const logoSrc = () => { const i = document.querySelector('.brand-logo'); return i ? i.src : ''; };
+  function linhasSeparacao(T) {
+    // linhas da LT22 (OT · posição · qtd) das entregas do transporte; senão, os itens da ordem
+    const lt = [].concat(...T.entregas.map(en => (state.ots[en] && state.ots[en].itens) || []));
+    if (lt.length) return lt.map(r => ({ ot: r.ot, material: r.material, texto: r.texto || ((T.items.find(i => i.material === r.material) || {}).descricao || ''), tp: r.tpDep, pos: r.posicao, qtd: r.qtd }));
+    return T.items.map(i => ({ ot: T.otList.join(' / '), material: i.material, texto: i.descricao, tp: '', pos: '', qtd: i.qtd, pallets: i.pallets }));
+  }
+  function buildSeparacao(T) {
+    const e = T.eff, d = printData(T), sol = T.solic || {};
+    const el = document.createElement('div'); el.className = 'sheet sheet-sep'; el.dataset.wpt = '595.3'; el.dataset.hpt = '841.9';
+    const linhas = linhasSeparacao(T);
+    const totQtd = linhas.reduce((a, l) => a + (l.qtd || 0), 0);
+    const tipo = d.janelaContainer || (T.janela === 'CONTAINER' ? 'CONTAINER' : 'EXPORTAÇÃO');
+    const cel = (l, v, big) => `<div class="sp-cel${big ? ' big' : ''}"><span>${esc(l)}</span><b>${esc(v || '—')}</b></div>`;
+    el.innerHTML = `
+      <div class="sp-head">
+        <img src="${logoSrc()}" alt="Arauco">
+        <div class="sp-title"><div>SEPARAÇÃO DE CARGA</div><small>EXPORTAÇÃO · ${esc(tipo)}</small></div>
+        <div class="sp-tr"><span>TRANSPORTE</span><b>${esc(T.transporte)}</b><small>${esc(P.fmtDateBR(e.data))} · ${esc(e.hora || '--:--')}</small></div>
+      </div>
+      <div class="sp-grid">
+        ${cel('Cliente', e.cliente)}${cel('Destino', sol.cidade ? `${sol.cidade}/${sol.uf}` : '')}${cel('Entrega(s)', T.entregas.join(' / '))}${cel('OT(s)', T.otList.join(' / '))}
+        ${cel('Container', fmtContainer(T.ot.container), 1)}${cel('Lacre', T.ot.lacre, 1)}${cel('Tara', T.ot.tara)}${cel('Peso máx. (MWG)', T.ot.mwg)}
+        ${cel('Placa carreta', isTruck(e) ? e.placaL + ' (truck)' : e.placaL)}${cel('Placa cavalo', isTruck(e) ? '' : e.placaM)}${cel('Motorista', e.motorista)}${cel('Transportadora', e.transportadora)}
+        ${cel('Pallets / lotes', d.pallets)}${cel('Peso da carga', sol.peso ? fmtNum(sol.peso, 0) + ' kg' : '')}${cel('Incoterm', e.incoterm)}${cel('FSC', T.fsc ? (T.fsc.fsc || 'FSC') : 'Não')}
+      </div>
+      ${isAmostra(T) ? '<div class="sp-alert">ATENÇÃO: AMOSTRA — CONFERIR CLIENTE</div>' : ''}
+      <table class="sp-tab"><thead><tr><th>OT</th><th>Material</th><th>Descrição</th><th>Tp.</th><th>Posição</th><th class="n">Qtd</th><th class="ck">Separado</th><th class="ck">Conferido</th></tr></thead>
+      <tbody>${linhas.map(l => `<tr><td>${esc(l.ot)}</td><td>${esc(l.material)}</td><td class="tx">${esc(l.texto)}</td><td>${esc(l.tp)}</td><td><b>${esc(l.pos)}</b></td><td class="n">${fmtNum(l.qtd, 0)}</td><td class="ck">☐</td><td class="ck">☐</td></tr>`).join('')}
+        ${Array.from({ length: Math.max(0, 6 - linhas.length) }, () => '<tr class="vazia"><td></td><td></td><td></td><td></td><td></td><td></td><td class="ck">☐</td><td class="ck">☐</td></tr>').join('')}</tbody>
+      <tfoot><tr><td colspan="5">Total${d.fracionada ? ' · ' + esc(d.fracionada) : ''}</td><td class="n">${fmtNum(totQtd, 0)}</td><td colspan="2"></td></tr></tfoot></table>
+      <div class="sp-sign">
+        <div><span>Separador</span><i></i><em>Início ___:___ &nbsp; Fim ___:___</em></div>
+        <div><span>Operador de empilhadeira</span><i></i><em>Início ___:___ &nbsp; Fim ___:___</em></div>
+        <div><span>Conferente</span><i></i><em>Data ___/___/______</em></div>
+      </div>
+      <div class="sp-obs"><span>Observações</span></div>
+      <div class="sp-foot">Arauco · Expedição Piên · gerado em ${esc(new Date().toLocaleString('pt-BR'))}</div>`;
+    return el;
+  }
+  function buildIdentificador(T) {
+    const e = T.eff, d = printData(T);
+    const el = document.createElement('div'); el.className = 'sheet sheet-id'; el.dataset.wpt = '841.9'; el.dataset.hpt = '595.3';
+    const cont = fmtContainer(T.ot.container);
+    const tipo = d.janelaContainer || (T.janela === 'CONTAINER' ? 'CONTAINER' : 'EXPORTAÇÃO');
+    const box = (l, v, max) => `<div class="id-box"><span>${esc(l)}</span><b data-fit="${max}">${esc(v || '—')}</b></div>`;
+    el.innerHTML = `
+      <div class="id-top"><img src="${logoSrc()}" alt="Arauco"><div class="id-kind">${esc(tipo)}</div><div class="id-date">${esc(P.fmtDateBR(e.data))}</div></div>
+      <div class="id-main"><span>${cont ? 'CONTAINER' : 'TIPO DE CARGA'}</span><b data-fit="175">${esc(cont || tipo)}</b></div>
+      <div class="id-main id-tr"><span>TRANSPORTE</span><b data-fit="190">${esc(T.transporte)}</b></div>
+      <div class="id-row">
+        ${box('PLACA CARRETA', isTruck(e) ? e.placaL : P.plate7(e.placaL) + (P.plateUF(e.placaL) ? ' ' + P.plateUF(e.placaL) : ''), 46)}
+        ${box('HORÁRIO', e.hora, 46)}
+        ${box('OT', T.otList.join(' / '), 40)}
+        ${box('LACRE', T.ot.lacre, 40)}
+      </div>
+      <div class="id-cli"><span>CLIENTE</span><b data-fit="26">${esc(e.cliente)}${T.solic && T.solic.cidade ? ` · ${esc(T.solic.cidade)}/${esc(T.solic.uf)}` : ''}</b></div>`;
+    return el;
+  }
+  // textos grandes do identificador: maior fonte que cabe na largura
+  function fitBig(root) {
+    $$('[data-fit]', root).forEach(b => {
+      let size = parseFloat(b.dataset.fit); b.style.fontSize = size + 'pt'; let g = 0;
+      while (g++ < 60 && size > 8 && b.scrollWidth > b.clientWidth + 1) { size *= 0.94; b.style.fontSize = size.toFixed(1) + 'pt'; }
+    });
   }
   const waitImages = root => Promise.all($$('img', root).map(img =>
     (img.complete && img.naturalWidth ? Promise.resolve() : new Promise(r => { img.onload = img.onerror = r; }))
@@ -328,7 +403,16 @@
     list.forEach(T => { state.printed[T.transporte] = now; state.snap[T.transporte] = { at: now, d: snapshotOf(T) }; });
     save(true);
     renderAll();
-    toast(`${list.length} ordem(ns) enviada(s) para impressão — ${list.length * 2} página(s).`, 'ok');
+    const nExp = list.filter(isExport).length;
+    toast(`${list.length} ordem(ns) enviada(s) para impressão — ${root.children.length} página(s)${nExp ? ` (inclui separação e identificador de ${nExp} exportação(ões))` : ''}.`, 'ok');
+  }
+  // imprime só a separação ou só o identificador (não marca a ordem como impressa)
+  async function imprimirAvulso(pages) {
+    const root = $('#print-root');
+    root.innerHTML = ''; root.dataset.key = 'avulso';
+    pages.forEach(p => root.appendChild(p));
+    await waitImages(root); fitFields(root);
+    printing = true; window.print(); printing = false;
   }
   window.addEventListener('beforeprint', () => {
     // Ctrl+P do navegador: imprime a ordem aberta (nunca uma página em branco)
@@ -768,12 +852,16 @@
       <div class="section">
         <h3>Documentos da ordem <span class="h-note">clique para ampliar</span></h3>
         <div class="pv-thumbs" id="pv-thumbs"></div>
+        <div class="doc-extra">
+          ${isExport(T) ? '<span class="chip ct">Exportação</span> <span class="muted small">a impressão da ordem inclui também a <b>separação</b> e o <b>identificador</b> da carga</span>' : '<span class="muted small">Separação e identificador são impressos automaticamente nas exportações. Imprimir à parte:</span>'}
+          <div class="doc-btns"><button type="button" class="btn btn-ghost btn-sm" data-doc="sep">Imprimir separação</button><button type="button" class="btn btn-ghost btn-sm" data-doc="id">Imprimir identificador (A4 deitado)</button><button type="button" class="btn btn-ghost btn-sm" data-doc="ver">Ver todos</button></div>
+        </div>
       </div>`;
     renderThumbs(T);
   }
 
   function scalePage(page, boxWidth) {
-    const pw = 595.304 * 96 / 72;
+    const pw = parseFloat(page.dataset.wpt || 595.304) * 96 / 72;
     const s = boxWidth / pw;
     page.style.transform = `scale(${s})`;
   }
@@ -781,7 +869,7 @@
     const box = $('#pv-thumbs'); if (!box) return;
     box.innerHTML = '';
     const caps = ['Check list do veículo', 'Check list da carga'];
-    const pages = pagesFor(T);
+    const pages = pagesFor(T, { extras: false });
     pages.forEach((p, i) => {
       const th = document.createElement('div'); th.className = 'thumb'; th.title = 'Ampliar';
       th.appendChild(p);
@@ -800,11 +888,13 @@
     wrap.innerHTML = '';
     $('#pv-title').textContent = list.length === 1 ? `Transporte ${list[0].transporte}` : `${list.length} ordens selecionadas`;
     dlg.showModal();
-    const w = Math.min(640, Math.max(320, (wrap.clientWidth - 80) / 2));
+    const w = Math.min(640, Math.max(320, (wrap.clientWidth - 80) / 2)); let w0 = w;
     list.forEach(T => pagesFor(T).forEach(p => {
       const box = document.createElement('div'); box.className = 'pv-page-wrap';
-      box.style.width = w + 'px'; box.style.height = (w * 841.89 / 595.304) + 'px';
-      box.appendChild(p); wrap.appendChild(box); scalePage(p, w);
+      const pw = parseFloat(p.dataset.wpt || 595.304), ph = parseFloat(p.dataset.hpt || 841.89);
+      const bw = pw > ph ? w * 1.4 : w;
+      box.style.width = bw + 'px'; box.style.height = (bw * ph / pw) + 'px'; w0 = bw;
+      box.appendChild(p); wrap.appendChild(box); scalePage(p, w0);
     }));
     fitFields(wrap);
     $('#pv-print').onclick = () => { dlg.close(); printTransports(list.map(T => getTransport(T.transporte)).filter(Boolean)); };
@@ -926,6 +1016,13 @@
       save(); softRefresh();
     });
     $('#d-body').addEventListener('click', e => {
+      const doc = e.target.closest('[data-doc]');
+      if (doc) {
+        const T = getTransport(ui.open); if (!T) return;
+        if (doc.dataset.doc === 'ver') { openPreview([T]); return; }
+        imprimirAvulso([doc.dataset.doc === 'sep' ? buildSeparacao(T) : buildIdentificador(T)]);
+        return;
+      }
       const b = e.target.closest('[data-reset]'); if (!b) return;
       const man = state.manual[ui.open] || {}; delete man[b.dataset.reset]; save(); renderAll();
     });
@@ -1023,8 +1120,8 @@
     }
     // LT22 / OTs
     if (tipo === 'ots' || (auto && (ui.view === 'ots' || P.isOTScreen(text)))) {
-      let rows = [];
-      for (const g of [htmlGrid, P.trimGrid(P.parseTSV(text))]) { if (g && g.length) { rows = P.parseOTs(g, knownSets()); if (rows.length) break; } }
+      let rows = P.parseLT22Lista(text); // lista do SAP (formato da LT22)
+      if (!rows.length) for (const g of [htmlGrid, P.trimGrid(P.parseTSV(text))]) { if (g && g.length) { rows = P.parseOTs(g, knownSets()); if (rows.length) break; } }
       if (rows.length) {
         const r = mergeOTs(rows); save(true); renderAll();
         const lig = rows.filter(x => transportByEntrega().has(x.remessa)).length;

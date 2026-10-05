@@ -378,16 +378,70 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .page .fld svg{width:auto;height:100%;stroke:none;fill:#000}
 .page .fld.qr{padding:1pt}
 
+/* ---------- separação (A4 em pé) e identificador da carga (A4 deitado) ---------- */
+.sheet{position:relative;background:#fff;color:#000;font-family:Arial,'Liberation Sans',Helvetica,sans-serif;overflow:hidden;box-sizing:border-box;transform-origin:0 0}
+.pv-page-wrap .sheet{position:absolute;left:0;top:0}
+.sheet-sep{width:210mm;height:297mm;padding:11mm 11mm 9mm;display:flex;flex-direction:column;gap:3.2mm;font-size:9.5pt}
+.sp-head{display:grid;grid-template-columns:40mm 1fr 52mm;align-items:center;gap:4mm;border-bottom:1.2mm solid #000;padding-bottom:3mm}
+.sp-head img{width:38mm}
+.sp-title div{font-size:19pt;font-weight:800;letter-spacing:.5pt}
+.sp-title small{font-size:10pt;font-weight:700;color:#333;letter-spacing:1pt}
+.sp-tr{border:.6mm solid #000;border-radius:2mm;padding:1.5mm 3mm;text-align:center}
+.sp-tr span{display:block;font-size:7.5pt;font-weight:700;letter-spacing:1pt}
+.sp-tr b{display:block;font-size:20pt;font-family:'Courier New',monospace;font-weight:800}
+.sp-tr small{font-size:8.5pt}
+.sp-grid{display:grid;grid-template-columns:repeat(4,1fr);border:.35mm solid #000;border-right:0;border-bottom:0}
+.sp-cel{border-right:.35mm solid #000;border-bottom:.35mm solid #000;padding:1.2mm 2mm;min-height:10mm}
+.sp-cel span{display:block;font-size:6.8pt;font-weight:700;text-transform:uppercase;color:#444}
+.sp-cel b{display:block;font-size:9.5pt;word-break:break-word}
+.sp-cel.big b{font-size:13pt;font-family:'Courier New',monospace}
+.sp-alert{border:.8mm solid #000;background:#eee;text-align:center;font-weight:800;font-size:13pt;padding:1.5mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.sp-tab{width:100%;border-collapse:collapse;font-size:9pt}
+.sp-tab th{background:#000;color:#fff;font-size:7.5pt;text-transform:uppercase;padding:1.5mm 1.5mm;text-align:left;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.sp-tab td{border:.3mm solid #000;padding:1.6mm 1.5mm;height:7mm}
+.sp-tab .n{text-align:right}.sp-tab td.ck{text-align:center;font-size:13pt;width:17mm}.sp-tab th.ck{text-align:center;width:17mm}
+.sp-tab .tx{font-size:8pt}
+.sp-tab tfoot td{font-weight:800;border-top:.6mm solid #000}
+.sp-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:5mm;margin-top:2mm}
+.sp-sign div{display:flex;flex-direction:column;gap:1mm}
+.sp-sign span{font-size:7.5pt;font-weight:700;text-transform:uppercase}
+.sp-sign i{display:block;border-bottom:.35mm solid #000;height:9mm}
+.sp-sign em{font-style:normal;font-size:8pt}
+.sp-obs{flex:1;border:.35mm solid #000;padding:1.5mm 2mm;min-height:18mm}
+.sp-obs span{font-size:7.5pt;font-weight:700;text-transform:uppercase}
+.sp-foot{font-size:7pt;color:#555;text-align:right}
+.sheet-id{width:297mm;height:210mm;padding:7mm 10mm;display:flex;flex-direction:column;justify-content:space-between;gap:2mm;border:3mm solid #000}
+.id-top{display:flex;align-items:center;gap:6mm;border-bottom:1mm solid #000;padding-bottom:3mm}
+.id-top img{width:46mm}
+.id-kind{flex:1;text-align:center;font-size:30pt;font-weight:900;letter-spacing:2pt}
+.id-date{font-size:20pt;font-weight:800;font-family:'Courier New',monospace}
+.id-main{display:flex;flex-direction:column;min-width:0}
+.id-main span,.id-box span,.id-cli span{font-size:12pt;font-weight:800;letter-spacing:2pt;color:#000}
+.id-main b{display:block;white-space:nowrap;overflow:hidden;font-family:Arial,'Liberation Sans',sans-serif;font-weight:900;line-height:1;letter-spacing:1pt}
+.id-tr{border-top:.8mm solid #000;padding-top:2mm}
+.id-row{display:grid;grid-template-columns:1.3fr .8fr 1.2fr 1fr;gap:0;border:1mm solid #000}
+.id-box{padding:2mm 3mm;border-right:1mm solid #000;min-width:0}
+.id-box:last-child{border-right:0}
+.id-box b{display:block;white-space:nowrap;overflow:hidden;font-weight:900;line-height:1.05;font-family:Arial,'Liberation Sans',sans-serif}
+.id-cli{min-width:0}
+.id-cli b{display:block;white-space:nowrap;overflow:hidden;font-weight:800}
+.doc-extra{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.doc-btns{display:flex;flex-wrap:wrap;gap:6px}
+
 #print-root{display:none}
 #print-root.measuring{display:block;position:fixed;left:-30000px;top:0}
 @page{size:A4 portrait;margin:0}
 @page relatorio{size:A4 landscape;margin:10mm}
+@page ident{size:A4 landscape;margin:0}
 @media print{
   html,body{background:#fff!important;height:auto}
   body > *:not(#print-root){display:none!important}
   #print-root{display:block!important;position:static!important}
   #print-root .page{width:210mm;height:296.8mm;break-after:page;page-break-after:always}
   #print-root .page:last-child{break-after:auto;page-break-after:auto}
+  #print-root .sheet{break-after:page;page-break-after:always}
+  #print-root .sheet-id{page:ident}
+  #print-root > :last-child{break-after:auto!important;page-break-after:auto!important}
   #print-root .report-page{page:relatorio;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #print-root .report-page table{width:100%}
   #print-root .report-page td,#print-root .report-page th{font-size:9px!important;padding:3px 4px!important}

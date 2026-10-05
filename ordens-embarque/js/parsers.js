@@ -500,9 +500,36 @@
   };
   const hnorm = h => norm(h).replace(/[º°]/g, '').replace(/[^A-Z0-9. ]/g, ' ').replace(/\s+/g, ' ').trim();
   const isOTScreen = text => {
-    const t = hnorm(fixMojibake(String(text || '')).split('\n').slice(0, 30).join(' '));
+    const raw = fixMojibake(String(text || '')).split('\n').slice(0, 30).join(' ');
+    if (/N[º°o.]?\s*OT\b/i.test(raw) && /(Pos\.?\s*origem|Posi\S*\s*Dest|UD\s+destino|QtdTe)/i.test(raw)) return true; // lista LT22 do SAP
+    const t = hnorm(raw);
     return /\bOT\b|ORDEM (DE )?TRANSPORTE/.test(t) && /REMESSA|TP\.?DEP|POSICAO DEP|QTD\.?TEORICA/.test(t);
   };
+  // Lista LT22 do SAP (colunas fixas, copiada da tela):
+  // Nº OT · Material · T · Texto breve · Tp. · Pos.origem · UD origem · QtdTeó · UMA · Tp. ·
+  // PosiçDest · UD destino · Dt.criação · Hora · …  — a posição de destino é a remessa
+  // (entrega) com zeros à esquerda: 0085714382 => 85714382.
+  function parseLT22Lista(text) {
+    const out = [];
+    fixMojibake(String(text || '')).replace(/\r/g, '').split('\n').forEach(line => {
+      const tk = line.replace(/\t/g, ' ').trim().split(/\s+/);
+      if (tk.length < 6 || !/^\d{6,12}$/.test(tk[0]) || !/^\d{5,10}$/.test(tk[1])) return;
+      // remessa: 1º número de 8–10 dígitos depois do material, precedido de "qtd UMA tpDest"
+      let j = -1;
+      for (let i = 2; i < tk.length; i++) { if (/^\d{8,10}$/.test(tk[i]) && /^\d{3}$/.test(tk[i - 1] || '') && /^[A-Z]{1,4}$/i.test(tk[i - 2] || '')) { j = i; break; } }
+      if (j < 0) for (let i = 2; i < tk.length; i++) { if (/^0*8\d{7}$/.test(tk[i])) { j = i; break; } }
+      if (j < 0) return;
+      const ot = tk[0].replace(/^0+(?=\d)/, ''), remessa = tk[j].replace(/^0+(?=\d)/, ''), material = tk[1].replace(/^0+(?=\d)/, '');
+      const qtdTok = /^[A-Z]{1,4}$/i.test(tk[j - 2] || '') ? tk[j - 3] : '';
+      // depois do material: [T] texto … Tp.origem Pos.origem [UD origem] qtd
+      const meio = tk.slice(2, qtdTok ? j - 3 : j);
+      let tpDep = '', posicao = '';
+      for (let i = meio.length - 2; i >= 0; i--) { if (/^[A-Z0-9]{3}$/.test(meio[i]) && /^[A-Z0-9][A-Z0-9\-]{1,9}$/.test(meio[i + 1]) && /[A-Z]/.test(meio[i])) { tpDep = meio[i]; posicao = meio[i + 1]; meio.splice(i); break; } }
+      const texto = meio.join(' ').replace(/,$/, '');
+      out.push({ remessa, ot, material, texto, tpDep, posicao, qtd: qtdTok ? toNum(qtdTok) : null });
+    });
+    return out;
+  }
   // known = { entregas: Set, materiais: Set } — entregas e materiais já conhecidos no app,
   // usados para reconhecer a remessa e descartar o código do material quando a
   // colagem vem sem títulos ou fora de padrão.
@@ -528,9 +555,9 @@
     //    nem o material (quantidades têm menos dígitos).
     grid.forEach(r => {
       // pedido-item ("6984037 - 10") e datas não são OT
-      const cells = r.map(c => (typeof c === 'number' ? String(Math.round(c)) : clean(c)).replace(/\b\d{5,}\s*-\s*\d{1,4}\b/g, ' ').replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, ' '));
+      const cells = r.map(c => (typeof c === 'number' ? String(Math.round(c)) : clean(c)).replace(/\b\d{5,}\s*-\s*\d{1,4}\b/g, ' ').replace(/\b\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}\b/g, ' ').replace(/\b\d{1,2}:\d{2}(:\d{2})?\b/g, ' '));
       const nums = [];
-      cells.forEach((c, ci) => { (c.match(/\d[\d.]*\d|\d/g) || []).forEach(tok => { const d = tok.replace(/\./g, ''); if (/^\d+$/.test(d) && !/^\d{1,3}(\.\d{3})+$/.test(tok)) nums.push({ d, ci }); }); });
+      cells.forEach((c, ci) => { (c.match(/\d[\d.]*\d|\d/g) || []).forEach(tok => { const d = tok.replace(/\./g, '').replace(/^0+(?=\d)/, ''); if (/^\d+$/.test(d) && !/^\d{1,3}(\.\d{3})+$/.test(tok)) nums.push({ d, ci }); }); });
       let rem = nums.find(n => ents.has(n.d)) || nums.find(n => /^8\d{7}$/.test(n.d));
       if (!rem) return;
       const looksMat = n => mats.has(n.d) || (!mats.size && /^1\d{6}$/.test(n.d));
@@ -546,7 +573,7 @@
   }
 
   global.OEP = {
-    isOTScreen, parseOTs,
+    isOTScreen, parseOTs, parseLT22Lista,
     fixMojibake, isSolicitacao, parseSolicitacoes,
     clean, norm, pad, toISODate, toTime, fmtDateBR, todayISO, toNum, intStr, cpfDigits, fmtCPF, isCPFLike,
     normPlate, plate7, plateUF, isPlate, matInfo, parseTSV, parseHTMLTable, trimGrid,

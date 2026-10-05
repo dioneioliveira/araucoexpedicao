@@ -78,6 +78,24 @@ Se faltar algum, o app avisa antes de imprimir.
   motorista e transportadora longos são cortados com "…"; o texto completo aparece ao
   parar o mouse e no painel da ordem).
 
+### Exportação: separação + identificador da carga
+
+Quando a ordem é de **exportação** (janela PIÊN CONTAINERS, ARAUCO MADERAS/exportação terrestre,
+breakbulk ou material de exportação `P/E…`), **Imprimir ordem** imprime 4 páginas:
+
+1. Check list visual do veículo (oficial)
+2. Check List de Expedição (oficial)
+3. **Separação de carga** (A4 em pé): transporte, data/hora, cliente/destino, entregas, OTs,
+   container, lacre, tara, MWG, placas, motorista, transportadora, pallets, peso, incoterm, FSC;
+   tabela de separação com as linhas da **LT22** (OT · material · descrição · tipo de depósito ·
+   **posição** · quantidade · ☐ separado · ☐ conferido) e campos de separador, operador de
+   empilhadeira, conferente, horários e observações. Sem LT22, a tabela traz os itens da ordem.
+4. **Identificador da carga** (A4 deitado), para fixar em frente à carga: **nº do container** e
+   **transporte** em letras gigantes, e placa da carreta, horário, OT, lacre e cliente/destino.
+
+No painel da ordem há botões para imprimir só a separação ou só o identificador (qualquer
+ordem, também mercado interno), sem marcar a ordem como impressa.
+
 ### Clientes FSC (campo ao lado da OT)
 
 O espaço ao lado do número da OT no check-list da carga é o campo **FSC**. Ele é
@@ -171,6 +189,12 @@ A lista diária mostra uma etiqueta "Exp. terrestre", "Breakbulk" ou "Cabotagem"
    de novo, a ordem volta a ficar normal.
 
 ### Guia OTs (tela de OTs do SAP / LT22)
+
+**Formato da LT22 (lista do SAP):** copie a lista como ela aparece (Nº OT · Material · T · Texto
+breve · Tp. · Pos.origem · UD origem · QtdTeó · UMA · Tp. · PosiçDest · UD destino · Dt.criação ·
+Hora…) e use o botão **LT22 · OTs**. A **posição de destino** é a remessa/entrega com zeros à
+esquerda (`0085714382` → entrega `85714382`) e a OT também vem com zeros (`0002202883` →
+`2202883`). Tipo de depósito, posição de origem e quantidade de cada linha vão para a separação.
 
 1. Na guia **OTs**, cole a tela de OTs (**Ctrl+A**, **Ctrl+C**, **Ctrl+V**).
    - Com a linha de títulos (Remessa · Material · Texto · Tp.dep · Posição · **OT** · Qtd),
