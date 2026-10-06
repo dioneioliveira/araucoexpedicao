@@ -118,6 +118,21 @@ preenchido pela **relação por cliente**:
 - No painel da ordem, o campo **FSC** mostra a origem e permite forçar *Sim* ou *Não*
   naquele transporte.
 
+### Lista diária = agendamento completo do dia
+
+A lista principal mostra **todos os agendamentos do dia** (janelas de mercado interno e
+containers coladas na guia/botão de Agendamento), em ordem de horário:
+
+- **Com a ordem importada** (Solicitação de Embarque ou LOG): a linha completa de sempre, com
+  status Pronta p/ imprimir / Impressa / Com alterações / Faturada.
+- **Ainda sem ordem importada:** linha com os dados do agendamento (hora, senha, janela,
+  cliente, tipo de veículo, volume, placas, CPF, transportadora, container) **transparente, em
+  cinza** e marcada **"Não impressa"**. Ao clicar, o app lembra de importar a Solicitação.
+- A ligação é pela **placa da carreta no mesmo dia**. Se o mesmo caminhão tem vários horários,
+  a ordem fica com o agendamento de horário mais próximo; os outros continuam como linhas de
+  agendamento.
+- Ordens sem agendamento colado continuam aparecendo normalmente.
+
 ### Processo principal: Ctrl+C no SEW, Ctrl+V no app
 
 1. No SEW, abra a página **Solicitação de Embarque - Carregamento de Produto

@@ -62,3 +62,6 @@
 - Visual da tela inicial: campo Transporte compacto (fonte 30px), botões de colagem em 3 colunas, contadores
   em etiquetas pequenas (`.kpi` em linha); lista diária em destaque com legenda; linha impressa verde com
   "Impressa hh:mm", alterada vermelha, faturada esmaecida. Rodapé `.credit` com o crédito do autor.
+- Lista diária inclui agendamentos sem ordem (`agendamentosSemOrdem` → `linhaAgendamento`, `tr.ghost`, chip
+  "Não impressa"): agendamentos SEW do dia não ligados a nenhum transporte pela placa da carreta (um agendamento
+  por transporte, horário mais próximo). Não entram em seleção, impressão, contadores nem relatório.

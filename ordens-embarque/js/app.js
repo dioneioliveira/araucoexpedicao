@@ -473,11 +473,58 @@
     ].map(([l, v, s, c]) => `<div class="card kpi ${c}" title="${esc(s)}"><div class="k-label">${l}</div><div class="k-val">${v}</div></div>`).join('');
   }
 
+  // Agendamentos do dia (tela SEW) que ainda não têm ordem importada: viram linhas "fantasma".
+  // Ligação pela placa da carreta no mesmo dia; com vários horários da mesma placa, a ordem
+  // fica com o agendamento de horário mais próximo.
+  const minutos = h => { const m = String(h || '').match(/(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : null; };
+  function agendamentosSemOrdem() {
+    const ags = state.sew.filter(e => !e.carregamento && !e.removed && e.data === ui.date);
+    if (!ags.length) return [];
+    const usados = new Set();
+    allTransports().filter(T => T.eff.data === ui.date).forEach(T => {
+      const p = P.plate7(T.eff.placaL); if (!p) return;
+      const cands = ags.filter((e, i) => !usados.has(i) && P.plate7(e.carreta) === p).map(e => ags.indexOf(e));
+      if (!cands.length) return;
+      const mt = minutos(T.eff.hora);
+      cands.sort((a, b) => Math.abs((minutos(ags[a].hora) ?? 0) - (mt ?? 0)) - Math.abs((minutos(ags[b].hora) ?? 0) - (mt ?? 0)));
+      usados.add(cands[0]);
+    });
+    const q = P.norm(ui.q);
+    return ags.filter((e, i) => !usados.has(i))
+      .filter(e => ui.janela === 'ALL' || e.janela === ui.janela)
+      .filter(e => !q || P.norm([e.carreta, e.cavalo, e.cpf, e.transportadora, e.cliente, e.container, e.senha, e.tipoVeiculo].join(' ')).includes(q));
+  }
+  function linhaAgendamento(e) {
+    const ct = e.janela === 'CONTAINER';
+    return `<tr class="ghost" data-ag="1" title="Agendamento sem ordem importada. Copie a Solicitação de Embarque no SEW e clique em Importar ordem.">
+      <td class="c-check"></td>
+      <td class="mono">${esc(e.hora)}</td>
+      <td class="mono"><span class="muted">senha ${esc(e.senha || '—')}</span></td>
+      <td><span class="chip ${ct ? 'ct' : 'mi'}"><span class="dot"></span>${ct ? 'Container' : 'Mercado interno'}</span></td>
+      <td class="wrap" title="${esc(e.cliente)}">${esc(e.cliente)}</td>
+      <td class="mono"></td>
+      <td class="wrap" title="${esc(e.tipoVeiculo)}">${esc(e.tipoVeiculo)}</td>
+      <td class="num">${e.volume ? fmtNum(e.volume, 3) : ''}</td>
+      <td><span class="mono">${esc(e.carreta)}</span>${e.cavalo ? `<span class="sub">cavalo ${esc(e.cavalo)}</span>` : ''}</td>
+      <td class="wrap"><span class="sub mono">${esc(e.cpf)}</span></td>
+      <td></td>
+      <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
+      <td class="mono">${ct && e.container ? esc(e.container) : ''}</td>
+      <td class="c-status"><span class="chip nimp">Não impressa</span></td>
+      <td class="c-act"></td>
+    </tr>`;
+  }
+
   function renderList() {
     const list = visibleTransports();
     renderKPIs(list);
     const tb = $('#daily-table tbody');
-    tb.innerHTML = list.map(T => {
+    const fantasmas = agendamentosSemOrdem();
+    const linhas = list.map(T => ({ hora: T.eff.hora, fat: !!T.faturado, html: null, T }))
+      .concat(fantasmas.map(e => ({ hora: e.hora, fat: false, html: linhaAgendamento(e) })))
+      // mesma regra da lista: por horário, faturadas no fim
+      .sort((a, b) => (a.fat - b.fat) || (a.hora || '99').localeCompare(b.hora || '99'));
+    tb.innerHTML = linhas.map(L => L.html || (T => {
       const e = T.eff; const first = T.items[0] || {};
       const more = T.items.length > 1 ? ` <span class="chip grey">+${T.items.length - 1}</span>` : '';
       return `<tr data-t="${esc(T.transporte)}" class="${ui.open === T.transporte ? 'active' : ''} ${T.printed && !T.faturado ? 'printed' : (!T.printed ? 'pendente' : '')} ${T.faturado ? 'faturada' : ''} ${T.printed && !T.faturado && T.alteracoes.length ? 'alterada' : ''}">
@@ -497,13 +544,13 @@
         <td class="c-status">${statusChip(T)}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
-    }).join('');
-    $('#empty-state').hidden = list.length > 0;
-    $('#daily-table').style.display = list.length ? '' : 'none';
+    })(L.T)).join('');
+    $('#empty-state').hidden = linhas.length > 0;
+    $('#daily-table').style.display = linhas.length ? '' : 'none';
     $('#list-title').textContent = `Lista diária · ${P.fmtDateBR(ui.date)}`;
     const altN = list.filter(T => T.printed && !T.faturado && T.alteracoes.length).length;
     const ag = state.sew.filter(s => !s.carregamento && !s.removed && s.data === ui.date).length;
-    $('#list-sub').textContent = `${list.length} transporte(s)${ag ? ` · ${ag} agendamento(s) SEW` : ''}${altN ? ` · ${altN} impressa(s) com alterações` : ''} · faturadas ficam no fim da lista`;
+    $('#list-sub').textContent = `${list.length} ordem(ns)${fantasmas.length ? ` · ${fantasmas.length} agendamento(s) sem ordem importada` : ''}${ag ? ` · ${ag} agendamento(s) SEW` : ''}${altN ? ` · ${altN} impressa(s) com alterações` : ''} · faturadas ficam no fim da lista`;
     // seleção
     const vis = new Set(list.map(T => T.transporte));
     Array.from(ui.selected).forEach(t => { if (!vis.has(t)) ui.selected.delete(t); });
@@ -937,6 +984,7 @@
     let st; $('#search').addEventListener('input', e => { clearTimeout(st); st = setTimeout(() => { ui.q = e.target.value; renderAll(); }, 120); });
 
     $('#daily-table tbody').addEventListener('click', e => {
+      if (e.target.closest('tr[data-ag]')) { toast('Este agendamento ainda não tem ordem importada. No SEW, copie a Solicitação de Embarque (Ctrl+A, Ctrl+C) e clique em "Importar ordem".', 'warn'); return; }
       const tr = e.target.closest('tr[data-t]'); if (!tr) return;
       const t = tr.dataset.t;
       const del = e.target.closest('[data-del]');
