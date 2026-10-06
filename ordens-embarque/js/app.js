@@ -435,7 +435,7 @@
   function statusChip(T) {
     if (T.faturado) return `<span class="chip fat" title="Faturada em ${esc(new Date(T.faturado).toLocaleString('pt-BR'))}">Faturada</span>`;
     if (T.printed && T.alteracoes.length) return `<span class="chip alt" title="${esc(T.alteracoes.map(a => `${a.campo}: ${a.de || '—'} → ${a.para || '—'}`).join('\n'))}">Com alterações</span>`;
-    if (T.printed) return `<span class="chip ok" title="${esc(new Date(T.printed).toLocaleString('pt-BR'))}">Ordem impressa</span>`;
+    if (T.printed) return `<span class="chip imp" title="Impressa em ${esc(new Date(T.printed).toLocaleString('pt-BR'))}"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Impressa ${esc(new Date(T.printed).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))}</span>`;
     if (T.missing.length) return `<span class="chip err" title="Falta: ${esc(T.missing.join(', '))}">Dados faltando</span>`;
     return `<span class="chip grey">Pronta p/ imprimir</span>`;
   }
@@ -470,7 +470,7 @@
       ['Ordens impressas', `${printed}<span class="k-sub"> / ${dayAll.length}</span>`, `${dayAll.length - printed} a imprimir · ${fat} faturada(s)`, ''],
       ['Com alterações', alt, 'impressas com agendamento alterado', alt ? 'red' : 'grey'],
       ['Atenção', pend + tr, `${pend} com dados faltando · ${tr} treinamento`, 'lime'],
-    ].map(([l, v, s, c]) => `<div class="card kpi ${c}"><div class="k-label">${l}</div><div class="k-val">${v}</div><div class="k-sub">${esc(s)}</div></div>`).join('');
+    ].map(([l, v, s, c]) => `<div class="card kpi ${c}" title="${esc(s)}"><div class="k-label">${l}</div><div class="k-val">${v}</div></div>`).join('');
   }
 
   function renderList() {
@@ -480,7 +480,7 @@
     tb.innerHTML = list.map(T => {
       const e = T.eff; const first = T.items[0] || {};
       const more = T.items.length > 1 ? ` <span class="chip grey">+${T.items.length - 1}</span>` : '';
-      return `<tr data-t="${esc(T.transporte)}" class="${ui.open === T.transporte ? 'active' : ''} ${T.printed ? 'printed' : ''} ${T.faturado ? 'faturada' : ''} ${T.printed && !T.faturado && T.alteracoes.length ? 'alterada' : ''}">
+      return `<tr data-t="${esc(T.transporte)}" class="${ui.open === T.transporte ? 'active' : ''} ${T.printed && !T.faturado ? 'printed' : (!T.printed ? 'pendente' : '')} ${T.faturado ? 'faturada' : ''} ${T.printed && !T.faturado && T.alteracoes.length ? 'alterada' : ''}">
         <td class="c-check"><input type="checkbox" ${ui.selected.has(T.transporte) ? 'checked' : ''} aria-label="Selecionar ${esc(T.transporte)}"></td>
         <td class="mono">${esc(e.hora)}</td>
         <td class="mono"><b>${esc(T.transporte)}</b></td>
