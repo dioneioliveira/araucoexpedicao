@@ -39,6 +39,7 @@
     Object.entries(state.fatNf || {}).forEach(([k, v]) => put('fatnf:' + k, v));
     Object.entries(state.ots || {}).forEach(([k, v]) => put('ot:' + k, v));
     (state.sew || []).forEach(e => put('sew:' + cfg.sewKey(e), e));
+    Object.entries(state.pesos || {}).forEach(([k, v]) => put('peso:' + k, v));
     if (state.fsc && Object.keys(state.fsc).length) put('fsc', state.fsc);
     if (state.fscInfo) put('fscinfo', state.fscInfo);
     return out;
@@ -58,6 +59,7 @@
         case 'fatnf': s.fatNf[id] = v; break;
         case 'ot': s.ots[id] = v; break;
         case 'sew': s.sew.push(v); break;
+        case 'peso': (s.pesos = s.pesos || {})[id] = v; break;
         case 'fsc': s.fsc = v; break;
         case 'fscinfo': s.fscInfo = v; break;
         default: break;

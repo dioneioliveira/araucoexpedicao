@@ -65,3 +65,6 @@
 - Lista diária inclui agendamentos sem ordem (`agendamentosSemOrdem` → `linhaAgendamento`, `tr.ghost`, chip
   "Não impressa"): agendamentos SEW do dia não ligados a nenhum transporte pela placa da carreta (um agendamento
   por transporte, horário mais próximo). Não entram em seleção, impressão, contadores nem relatório.
+- Guia Pesos (`renderPesos`/`analisePesos`): base importada (`parsePesos`, títulos flexíveis; chave NF) em
+  `state.pesos` (sync `peso:`); NF liga à carga via `manual.nf` (`nfParaTransporte`). kg/pç = peso / qtd
+  (média ponderada por material e mês), comparação com o mês anterior e tolerância ±% (`pesoUI.tol`).

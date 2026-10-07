@@ -572,7 +572,51 @@
     return out;
   }
 
+  // ---------- base de pesos (análise de peso por item) ----------
+  // Colunas reconhecidas pelos títulos (vários nomes possíveis). A NF é a chave mestra.
+  const PESO_SYN = {
+    nf: [/^(N[ºO°]?\.?\s*)?(DA\s+)?(NF|NFE|NF-E|NOTA|NOTA FISCAL|N NF|NUM(ERO)? (DA )?(NF|NOTA)( FISCAL)?|DOC(UMENTO)? FISCAL)$/, /NOTA FISCAL|^NF/],
+    data: [/^DATA( DE)?( EMISSAO| DOC(UMENTO)?| FATURAMENTO| SAIDA)?$|^EMISSAO$|^DT\.? ?(EMIS|DOC|FAT)/],
+    material: [/^(COD(IGO)?\.? ?)?MATERIAL$|^COD\.? ?MAT|^ITEM$|^PRODUTO$|^COD(IGO)? (DO )?PRODUTO$|^SKU$/],
+    descricao: [/DESCRI|TEXTO BREVE|DENOMINA|TEXTO COMERCIAL|NOME (DO )?PRODUTO/],
+    qtd: [/^(QTD|QTDE|QUANTIDADE)( FATURADA| PECAS| PC| EM PECAS)?$|^PECAS$|^PCS$/],
+    unidade: [/^(UM|UN|UNID|UNIDADE|UMB|UMV)$/],
+    pl: [/PESO\s*LIQ|^P\.?\s*LIQ|^PL$|LIQUIDO/],
+    pb: [/PESO\s*BRU|^P\.?\s*BRU|^PB$|BRUTO/],
+    volume: [/^(VOLUME|M3|M³|VOL)$/],
+    cliente: [/^(CLIENTE|NOME (DO )?CLIENTE|RECEBEDOR|DESTINATARIO|RAZAO SOCIAL)$/],
+    transporte: [/^TRANSPORTE$|^N[ºO]? ?TRANSPORTE$/],
+    entrega: [/^(ENTREGA|REMESSA|FORNECIMENTO)$/],
+    placa: [/^PLACA/],
+  };
+  const PESO_LABEL = { nf: 'NF-e', data: 'Data', material: 'Material', descricao: 'Descrição', qtd: 'Quantidade', unidade: 'Unidade', pl: 'Peso líquido', pb: 'Peso bruto', volume: 'Volume', cliente: 'Cliente', transporte: 'Transporte', entrega: 'Entrega', placa: 'Placa' };
+  const nfNorm = v => { const d = intStr(v).replace(/\D/g, '').replace(/^0+(?=\d)/, ''); return d; };
+  function parsePesos(grid) {
+    const H = r => r.map(c => norm(c).replace(/[º°]/g, 'O').replace(/[^A-Z0-9 .\-³]/g, ' ').replace(/\s+/g, ' ').trim());
+    const hr = grid.findIndex(r => { const h = H(r); return h.some(x => PESO_SYN.nf.some(re => re.test(x))) && h.some(x => PESO_SYN.pl[0].test(x) || PESO_SYN.pb[0].test(x)); });
+    if (hr < 0) return { rows: [], map: {}, erro: 'Não encontrei a linha de títulos com NF e peso (líquido ou bruto).' };
+    const h = H(grid[hr]); const map = {};
+    Object.entries(PESO_SYN).forEach(([k, res]) => {
+      for (const re of res) { const i = h.findIndex((x, j) => re.test(x) && !Object.values(map).includes(j)); if (i >= 0) { map[k] = i; break; } }
+    });
+    const rows = [];
+    grid.slice(hr + 1).forEach(r => {
+      const nf = nfNorm(r[map.nf]); if (!nf || nf.length < 3) return;
+      const get = k => (map[k] != null ? r[map[k]] : '');
+      const row = {
+        nf, data: toISODate(get('data')), material: intStr(get('material')).replace(/^0+(?=\d)/, ''), descricao: clean(get('descricao')),
+        qtd: toNum(get('qtd')), unidade: clean(get('unidade')).toUpperCase(), pl: toNum(get('pl')), pb: toNum(get('pb')), volume: toNum(get('volume')),
+        cliente: clean(get('cliente')), transporte: intStr(get('transporte')), entrega: intStr(get('entrega')).replace(/^0+(?=\d)/, ''), placa: clean(get('placa')).toUpperCase(),
+      };
+      ['qtd', 'pl', 'pb', 'volume'].forEach(k => { if (!isFinite(row[k])) row[k] = null; });
+      if (row.pl == null && row.pb == null) return;
+      rows.push(row);
+    });
+    return { rows, map, header: grid[hr] };
+  }
+
   global.OEP = {
+    parsePesos, nfNorm, PESO_LABEL,
     isOTScreen, parseOTs, parseLT22Lista,
     fixMojibake, isSolicitacao, parseSolicitacoes,
     clean, norm, pad, toISODate, toTime, fmtDateBR, todayISO, toNum, intStr, cpfDigits, fmtCPF, isCPFLike,

@@ -55,6 +55,7 @@
       <button data-view="lista" class="active" role="tab">Lista diária <span class="count" id="v-count-lista"></span></button>
       <button data-view="agenda" role="tab">Agendamentos <span class="count" id="v-count-agenda"></span></button>
       <button data-view="ots" role="tab">OTs <span class="count" id="v-count-ots"></span></button>
+      <button data-view="pesos" role="tab">Pesos</button>
     </nav>
     <section class="toolbar card">
       <div class="tb-group">
@@ -107,6 +108,28 @@
           </div>
         </div>
       </div>
+    </section>
+    <section id="pesos" data-view-of="pesos" hidden>
+      <div class="card agenda-help">
+        <div>
+          <h2>Análise de pesos por item</h2>
+          <p class="muted">Cole (<b>Ctrl+V</b>) ou importe a base de pesos (NF · peso líquido · peso bruto · material · quantidade · data…). A <b>NF</b> é o dado mestre: cada NF se liga à carga em que foi lançada no Controle OT, e de lá vêm transporte, cliente, materiais e quantidades. A análise mostra o <b>kg por peça</b> de cada item no mês e a variação contra o mês anterior.</p>
+        </div>
+        <div class="agenda-tools">
+          <div class="ps-ctrl">
+            <label class="field-inline">Mês <input type="month" id="ps-mes"></label>
+            <label class="field-inline">Tolerância ± <input type="number" id="ps-tol" min="0.1" step="0.5" style="width:70px"> %</label>
+          </div>
+          <div class="ps-ctrl">
+            <button class="btn btn-ghost btn-sm" id="ps-colar">Colar base</button>
+            <label class="btn btn-ghost btn-sm">Importar arquivo<input type="file" id="ps-file" accept=".xlsx,.xls,.xlsm,.csv,.txt" hidden></label>
+            <button class="btn btn-primary btn-sm" id="ps-xlsx">Exportar Excel</button>
+          </div>
+        </div>
+      </div>
+      <section class="kpis" id="ps-resumo" style="margin-bottom:12px"></section>
+      <div class="card list-card"><div class="table-wrap" style="max-height:none" id="ps-tabela"></div></div>
+      <div class="ps-pend" id="ps-pend"></div>
     </section>
     <section id="ots" data-view-of="ots" hidden>
       <div class="card agenda-help">

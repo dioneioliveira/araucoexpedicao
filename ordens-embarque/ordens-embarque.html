@@ -523,6 +523,17 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .grid tbody tr.ghost:hover{--row-bg:#f4f4f4;background:#f4f4f4}
 .chip.nimp{background:#fff;color:var(--ink-dim);border:1px dashed var(--ink-faint);filter:none!important;opacity:1!important}
 
+/* guia Pesos */
+.ps-ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.ps-grid{font-size:12px}
+.ps-grid tr.ps-item{cursor:pointer}
+.ps-grid td.ps-alerta{color:var(--err);font-weight:700}
+.ps-det>td{background:#fafafa;padding:8px 14px!important}
+.ps-det tr.ps-fora td{color:var(--err);font-weight:600}
+.ps-pend{display:flex;flex-direction:column;gap:8px;margin-top:12px;font-size:12.5px}
+.ps-pend details{background:#fff;border:1px solid var(--line-soft);border-radius:var(--r-s);padding:8px 12px}
+.ps-pend summary{cursor:pointer}
+
 </style>
 </head>
 <body>
@@ -569,6 +580,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       <button data-view="lista" class="active" role="tab">Lista diária <span class="count" id="v-count-lista"></span></button>
       <button data-view="agenda" role="tab">Agendamentos <span class="count" id="v-count-agenda"></span></button>
       <button data-view="ots" role="tab">OTs <span class="count" id="v-count-ots"></span></button>
+      <button data-view="pesos" role="tab">Pesos</button>
     </nav>
     <section class="toolbar card">
       <div class="tb-group">
@@ -621,6 +633,28 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
           </div>
         </div>
       </div>
+    </section>
+    <section id="pesos" data-view-of="pesos" hidden>
+      <div class="card agenda-help">
+        <div>
+          <h2>Análise de pesos por item</h2>
+          <p class="muted">Cole (<b>Ctrl+V</b>) ou importe a base de pesos (NF · peso líquido · peso bruto · material · quantidade · data…). A <b>NF</b> é o dado mestre: cada NF se liga à carga em que foi lançada no Controle OT, e de lá vêm transporte, cliente, materiais e quantidades. A análise mostra o <b>kg por peça</b> de cada item no mês e a variação contra o mês anterior.</p>
+        </div>
+        <div class="agenda-tools">
+          <div class="ps-ctrl">
+            <label class="field-inline">Mês <input type="month" id="ps-mes"></label>
+            <label class="field-inline">Tolerância ± <input type="number" id="ps-tol" min="0.1" step="0.5" style="width:70px"> %</label>
+          </div>
+          <div class="ps-ctrl">
+            <button class="btn btn-ghost btn-sm" id="ps-colar">Colar base</button>
+            <label class="btn btn-ghost btn-sm">Importar arquivo<input type="file" id="ps-file" accept=".xlsx,.xls,.xlsm,.csv,.txt" hidden></label>
+            <button class="btn btn-primary btn-sm" id="ps-xlsx">Exportar Excel</button>
+          </div>
+        </div>
+      </div>
+      <section class="kpis" id="ps-resumo" style="margin-bottom:12px"></section>
+      <div class="card list-card"><div class="table-wrap" style="max-height:none" id="ps-tabela"></div></div>
+      <div class="ps-pend" id="ps-pend"></div>
     </section>
     <section id="ots" data-view-of="ots" hidden>
       <div class="card agenda-help">
@@ -4218,7 +4252,51 @@ window.ORDEM_TEMPLATES = {
     return out;
   }
 
+  // ---------- base de pesos (análise de peso por item) ----------
+  // Colunas reconhecidas pelos títulos (vários nomes possíveis). A NF é a chave mestra.
+  const PESO_SYN = {
+    nf: [/^(N[ºO°]?\.?\s*)?(DA\s+)?(NF|NFE|NF-E|NOTA|NOTA FISCAL|N NF|NUM(ERO)? (DA )?(NF|NOTA)( FISCAL)?|DOC(UMENTO)? FISCAL)$/, /NOTA FISCAL|^NF/],
+    data: [/^DATA( DE)?( EMISSAO| DOC(UMENTO)?| FATURAMENTO| SAIDA)?$|^EMISSAO$|^DT\.? ?(EMIS|DOC|FAT)/],
+    material: [/^(COD(IGO)?\.? ?)?MATERIAL$|^COD\.? ?MAT|^ITEM$|^PRODUTO$|^COD(IGO)? (DO )?PRODUTO$|^SKU$/],
+    descricao: [/DESCRI|TEXTO BREVE|DENOMINA|TEXTO COMERCIAL|NOME (DO )?PRODUTO/],
+    qtd: [/^(QTD|QTDE|QUANTIDADE)( FATURADA| PECAS| PC| EM PECAS)?$|^PECAS$|^PCS$/],
+    unidade: [/^(UM|UN|UNID|UNIDADE|UMB|UMV)$/],
+    pl: [/PESO\s*LIQ|^P\.?\s*LIQ|^PL$|LIQUIDO/],
+    pb: [/PESO\s*BRU|^P\.?\s*BRU|^PB$|BRUTO/],
+    volume: [/^(VOLUME|M3|M³|VOL)$/],
+    cliente: [/^(CLIENTE|NOME (DO )?CLIENTE|RECEBEDOR|DESTINATARIO|RAZAO SOCIAL)$/],
+    transporte: [/^TRANSPORTE$|^N[ºO]? ?TRANSPORTE$/],
+    entrega: [/^(ENTREGA|REMESSA|FORNECIMENTO)$/],
+    placa: [/^PLACA/],
+  };
+  const PESO_LABEL = { nf: 'NF-e', data: 'Data', material: 'Material', descricao: 'Descrição', qtd: 'Quantidade', unidade: 'Unidade', pl: 'Peso líquido', pb: 'Peso bruto', volume: 'Volume', cliente: 'Cliente', transporte: 'Transporte', entrega: 'Entrega', placa: 'Placa' };
+  const nfNorm = v => { const d = intStr(v).replace(/\D/g, '').replace(/^0+(?=\d)/, ''); return d; };
+  function parsePesos(grid) {
+    const H = r => r.map(c => norm(c).replace(/[º°]/g, 'O').replace(/[^A-Z0-9 .\-³]/g, ' ').replace(/\s+/g, ' ').trim());
+    const hr = grid.findIndex(r => { const h = H(r); return h.some(x => PESO_SYN.nf.some(re => re.test(x))) && h.some(x => PESO_SYN.pl[0].test(x) || PESO_SYN.pb[0].test(x)); });
+    if (hr < 0) return { rows: [], map: {}, erro: 'Não encontrei a linha de títulos com NF e peso (líquido ou bruto).' };
+    const h = H(grid[hr]); const map = {};
+    Object.entries(PESO_SYN).forEach(([k, res]) => {
+      for (const re of res) { const i = h.findIndex((x, j) => re.test(x) && !Object.values(map).includes(j)); if (i >= 0) { map[k] = i; break; } }
+    });
+    const rows = [];
+    grid.slice(hr + 1).forEach(r => {
+      const nf = nfNorm(r[map.nf]); if (!nf || nf.length < 3) return;
+      const get = k => (map[k] != null ? r[map[k]] : '');
+      const row = {
+        nf, data: toISODate(get('data')), material: intStr(get('material')).replace(/^0+(?=\d)/, ''), descricao: clean(get('descricao')),
+        qtd: toNum(get('qtd')), unidade: clean(get('unidade')).toUpperCase(), pl: toNum(get('pl')), pb: toNum(get('pb')), volume: toNum(get('volume')),
+        cliente: clean(get('cliente')), transporte: intStr(get('transporte')), entrega: intStr(get('entrega')).replace(/^0+(?=\d)/, ''), placa: clean(get('placa')).toUpperCase(),
+      };
+      ['qtd', 'pl', 'pb', 'volume'].forEach(k => { if (!isFinite(row[k])) row[k] = null; });
+      if (row.pl == null && row.pb == null) return;
+      rows.push(row);
+    });
+    return { rows, map, header: grid[hr] };
+  }
+
   global.OEP = {
+    parsePesos, nfNorm, PESO_LABEL,
     isOTScreen, parseOTs, parseLT22Lista,
     fixMojibake, isSolicitacao, parseSolicitacoes,
     clean, norm, pad, toISODate, toTime, fmtDateBR, todayISO, toNum, intStr, cpfDigits, fmtCPF, isCPFLike,
@@ -4270,6 +4348,7 @@ window.ORDEM_TEMPLATES = {
     Object.entries(state.fatNf || {}).forEach(([k, v]) => put('fatnf:' + k, v));
     Object.entries(state.ots || {}).forEach(([k, v]) => put('ot:' + k, v));
     (state.sew || []).forEach(e => put('sew:' + cfg.sewKey(e), e));
+    Object.entries(state.pesos || {}).forEach(([k, v]) => put('peso:' + k, v));
     if (state.fsc && Object.keys(state.fsc).length) put('fsc', state.fsc);
     if (state.fscInfo) put('fscinfo', state.fscInfo);
     return out;
@@ -4289,6 +4368,7 @@ window.ORDEM_TEMPLATES = {
         case 'fatnf': s.fatNf[id] = v; break;
         case 'ot': s.ots[id] = v; break;
         case 'sew': s.sew.push(v); break;
+        case 'peso': (s.pesos = s.pesos || {})[id] = v; break;
         case 'fsc': s.fsc = v; break;
         case 'fscinfo': s.fscInfo = v; break;
         default: break;
@@ -4464,7 +4544,7 @@ window.ORDEM_TEMPLATES = {
 
   // ------------------------------------------------------------------ estado
   const STORE_KEY = 'arauco.ordensEmbarque.v1';
-  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {} });
+  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {} });
   let state = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.v === 1) return Object.assign(emptyState(), s); } catch (e) { /* sem storage */ }
@@ -5150,12 +5230,149 @@ window.ORDEM_TEMPLATES = {
     toast(`${ts.length} transporte(s) excluído(s) da lista.`, 'ok');
   }
 
+  // ------------------------------------------------------------------ guia Pesos (análise mensal de peso por item)
+  // Dado mestre: a NF. Cada linha da base de pesos se liga à carga em que a NF foi lançada
+  // (Controle OT → NF-e). Da carga vêm transporte, cliente, data, materiais e quantidades.
+  const pesoUI = { mes: '', tol: 3, aberto: null };
+  function nfParaTransporte() {
+    const m = new Map();
+    Object.entries(state.manual).forEach(([t, man]) => {
+      String(man.nf || '').split(/[\/,;\s]+/).map(P.nfNorm).filter(Boolean).forEach(nf => m.set(nf, t));
+    });
+    return m;
+  }
+  function mergePesos(rows) {
+    const nfs = new Set(rows.map(r => r.nf));
+    Object.keys(state.pesos).forEach(k => { if (nfs.has(state.pesos[k].nf)) delete state.pesos[k]; }); // NF reimportada substitui
+    const cont = {};
+    rows.forEach(r => { const b = r.nf + '|' + (r.material || ''); cont[b] = (cont[b] || 0) + 1; state.pesos[b + '|' + cont[b]] = r; });
+    return { linhas: rows.length, nfs: nfs.size };
+  }
+  // registros analisáveis do mês: uma linha por NF+material, com kg/peça
+  function registrosPesos(mes) {
+    const nf2t = nfParaTransporte(); const out = [];
+    Object.values(state.pesos).forEach(r => {
+      const t = nf2t.get(r.nf) || (r.transporte && getTransport(r.transporte) ? r.transporte : null);
+      const T = t ? getTransport(t) : null;
+      const data = r.data || (T ? T.eff.data : '');
+      if (mes && (data || '').slice(0, 7) !== mes) return;
+      let material = r.material, qtd = r.qtd, desc = r.descricao, misto = false;
+      if (T) {
+        const mats = Array.from(new Set(T.items.map(i => i.material).filter(Boolean)));
+        if (!material && mats.length === 1) material = mats[0];
+        else if (!material && mats.length > 1) misto = true;
+        const its = T.items.filter(i => i.material === material);
+        if (qtd == null && its.length) qtd = its.reduce((a, i) => a + (i.qtd || 0), 0);
+        if (!desc && its.length) desc = its[0].descricao;
+      }
+      out.push({ nf: r.nf, data, transporte: t || r.transporte || '', cliente: (T && T.eff.cliente) || r.cliente || '', material: misto ? '(vários materiais)' : (material || '(sem material)'),
+        desc: misto ? (T ? T.items.map(i => i.material).join(', ') : '') : (desc || ''), qtd, pl: r.pl, pb: r.pb, misto, vinculada: !!T,
+        kgL: qtd && r.pl != null && !misto ? r.pl / qtd : null, kgB: qtd && r.pb != null && !misto ? r.pb / qtd : null });
+    });
+    return out;
+  }
+  function estat(vals) {
+    const v = vals.filter(x => x != null && isFinite(x)); if (!v.length) return null;
+    const m = v.reduce((a, x) => a + x, 0) / v.length;
+    const sd = Math.sqrt(v.reduce((a, x) => a + (x - m) ** 2, 0) / v.length);
+    return { min: Math.min(...v), max: Math.max(...v), cv: m ? sd / m : 0 };
+  }
+  function analisePesos(mes) {
+    const regs = registrosPesos(mes);
+    const prevMes = (() => { const [y, m] = mes.split('-').map(Number); const d = new Date(y, m - 2, 1); return `${d.getFullYear()}-${P.pad(d.getMonth() + 1)}`; })();
+    const agrupa = rs => {
+      const g = new Map();
+      rs.forEach(r => { if (!g.has(r.material)) g.set(r.material, []); g.get(r.material).push(r); });
+      return g;
+    };
+    const ant = agrupa(registrosPesos(prevMes));
+    const mediaPond = (rs, k) => { const q = rs.filter(r => r[k === 'kgL' ? 'pl' : 'pb'] != null && r.qtd && !r.misto); const sq = q.reduce((a, r) => a + r.qtd, 0); return sq ? q.reduce((a, r) => a + r[k === 'kgL' ? 'pl' : 'pb'], 0) / sq : null; };
+    const itens = Array.from(agrupa(regs), ([material, rs]) => {
+      const mL = mediaPond(rs, 'kgL'), mB = mediaPond(rs, 'kgB');
+      const eL = estat(rs.map(r => r.kgL));
+      const pa = ant.get(material); const mAnt = pa ? mediaPond(pa, 'kgL') : null;
+      const fora = rs.filter(r => r.kgL != null && mL && Math.abs(r.kgL - mL) / mL > pesoUI.tol / 100);
+      rs.forEach(r => { r.desvio = r.kgL != null && mL ? (r.kgL - mL) / mL : null; r.fora = fora.includes(r); });
+      return {
+        material, desc: (rs.find(r => r.desc) || {}).desc || '', rs, nfs: new Set(rs.map(r => r.nf)).size,
+        qtd: rs.reduce((a, r) => a + (r.qtd || 0), 0), pl: rs.reduce((a, r) => a + (r.pl || 0), 0), pb: rs.reduce((a, r) => a + (r.pb || 0), 0),
+        mL, mB, e: eL, mAnt, varAnt: mL && mAnt ? (mL - mAnt) / mAnt : null, fora: fora.length,
+        misto: rs.every(r => r.misto),
+      };
+    }).sort((a, b) => (a.misto - b.misto) || (b.fora - a.fora) || (Math.abs(b.varAnt || 0) - Math.abs(a.varAnt || 0)) || b.nfs - a.nfs);
+    const nf2t = nfParaTransporte();
+    const semCarga = Array.from(new Set(regs.filter(r => !r.vinculada).map(r => r.nf)));
+    const nfsBase = new Set(Object.values(state.pesos).map(r => r.nf));
+    const semPeso = allTransports().filter(T => (T.eff.data || '').slice(0, 7) === mes && T.ot.nf).filter(T => !String(T.ot.nf).split(/[\/,;\s]+/).map(P.nfNorm).some(n => nfsBase.has(n)));
+    return { regs, itens, prevMes, semCarga, semPeso, vinculadas: new Set(regs.filter(r => r.vinculada).map(r => r.nf)).size, nfs: new Set(regs.map(r => r.nf)).size, nf2t };
+  }
+  const kg = (v, d = 1) => v == null ? '—' : fmtNum(v, d);
+  const pct = v => v == null ? '—' : (v > 0 ? '+' : '') + fmtNum(v * 100, 1) + '%';
+  const nomeMes = m => { const [y, mm] = m.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+mm - 1] + '/' + y; };
+  function renderPesos() {
+    if (!pesoUI.mes) pesoUI.mes = (ui.date || P.todayISO()).slice(0, 7);
+    $('#ps-mes').value = pesoUI.mes; $('#ps-tol').value = pesoUI.tol;
+    const A = analisePesos(pesoUI.mes);
+    const total = Object.keys(state.pesos).length;
+    $('#ps-resumo').innerHTML = [
+      ['Linhas no mês', A.regs.length], ['NFs no mês', A.nfs], ['NFs ligadas a cargas', A.vinculadas],
+      ['NFs sem carga', A.semCarga.length, A.semCarga.length ? 'lime' : 'grey'], ['Cargas com NF sem peso', A.semPeso.length, A.semPeso.length ? 'lime' : 'grey'],
+      ['Itens fora da tolerância', A.itens.reduce((a, i) => a + (i.fora ? 1 : 0), 0), A.itens.some(i => i.fora) ? 'red' : 'grey'], ['Base total (linhas)', total, 'grey'],
+    ].map(([l, v, c]) => `<div class="card kpi ${c || ''}"><div class="k-label">${l}</div><div class="k-val">${v}</div></div>`).join('');
+    const tb = A.itens.map(it => {
+      const aberto = pesoUI.aberto === it.material;
+      const det = aberto ? `<tr class="ps-det"><td colspan="13"><table class="items"><thead><tr><th>Data</th><th>NF-e</th><th>Transporte</th><th>Cliente</th><th class="num">Qtd</th><th class="num">Peso líq. (kg)</th><th class="num">Peso bruto (kg)</th><th class="num">kg/pç líq.</th><th class="num">kg/pç bruto</th><th class="num">Desvio da média</th></tr></thead><tbody>${it.rs.sort((a, b) => (a.data || '').localeCompare(b.data || '')).map(r => `<tr class="${r.fora ? 'ps-fora' : ''}"><td>${esc(P.fmtDateBR(r.data))}</td><td class="mono">${esc(r.nf)}</td><td class="mono">${r.transporte ? `<a href="#" data-pt="${esc(r.transporte)}">${esc(r.transporte)}</a>` : '<span class="muted">sem carga</span>'}</td><td>${esc(r.cliente)}</td><td class="num">${kg(r.qtd, 0)}</td><td class="num">${kg(r.pl)}</td><td class="num">${kg(r.pb)}</td><td class="num">${kg(r.kgL, 3)}</td><td class="num">${kg(r.kgB, 3)}</td><td class="num">${pct(r.desvio)}</td></tr>`).join('')}</tbody></table></td></tr>` : '';
+      const varCls = it.varAnt != null && Math.abs(it.varAnt) > pesoUI.tol / 100 ? 'ps-alerta' : '';
+      return `<tr class="ps-item ${aberto ? 'active' : ''} ${it.misto ? 'ghost' : ''}" data-mat="${esc(it.material)}">
+        <td class="mono"><b>${esc(it.material)}</b></td><td class="wrap" title="${esc(it.desc)}">${esc(it.desc)}</td><td class="num">${it.nfs}</td><td class="num">${kg(it.qtd, 0)}</td>
+        <td class="num">${kg(it.pl, 0)}</td><td class="num">${kg(it.pb, 0)}</td><td class="num"><b>${kg(it.mL, 3)}</b></td><td class="num">${kg(it.mB, 3)}</td>
+        <td class="num">${it.e ? `${kg(it.e.min, 3)} – ${kg(it.e.max, 3)}` : '—'}</td><td class="num">${it.e ? fmtNum(it.e.cv * 100, 1) + '%' : '—'}</td>
+        <td class="num">${kg(it.mAnt, 3)}</td><td class="num ${varCls}">${pct(it.varAnt)}</td>
+        <td class="num">${it.fora ? `<span class="chip alt">${it.fora}</span>` : '<span class="muted">0</span>'}</td></tr>${det}`;
+    }).join('');
+    $('#ps-tabela').innerHTML = A.itens.length ? `<table class="grid ps-grid"><thead><tr><th>Material</th><th>Descrição</th><th class="num">NFs</th><th class="num">Qtd (pç)</th><th class="num">Peso líq. total (kg)</th><th class="num">Peso bruto total (kg)</th><th class="num">kg/pç líq. (média)</th><th class="num">kg/pç bruto</th><th class="num">Faixa kg/pç líq.</th><th class="num">Dispersão</th><th class="num">${esc(nomeMes(A.prevMes))} kg/pç</th><th class="num">Variação</th><th class="num">Fora da tolerância</th></tr></thead><tbody>${tb}</tbody></table>`
+      : `<div class="empty" style="padding:36px"><p>${total ? `Nenhuma linha da base em ${esc(nomeMes(pesoUI.mes))}.` : 'Nenhuma base de pesos importada.'} Copie a base (com a linha de títulos: NF, peso líquido, peso bruto…) e pressione <b>Ctrl+V</b> nesta guia, ou use <b>Importar arquivo</b>.</p></div>`;
+    $('#ps-pend').innerHTML = (A.semCarga.length ? `<details><summary><b>${A.semCarga.length}</b> NF(s) da base sem carga com essa NF no app</summary><p class="mono small">${A.semCarga.map(esc).join(' · ')}</p><p class="muted small">Lance a NF-e no Controle OT da carga para ligar.</p></details>` : '')
+      + (A.semPeso.length ? `<details><summary><b>${A.semPeso.length}</b> carga(s) do mês com NF-e lançada, mas sem peso na base</summary><p class="small">${A.semPeso.map(T => `<a href="#" data-pt="${esc(T.transporte)}">${esc(T.transporte)}</a> (NF ${esc(T.ot.nf)})`).join(' · ')}</p></details>` : '');
+    return A;
+  }
+  function exportarPesos() {
+    const A = analisePesos(pesoUI.mes);
+    const resumo = [['Material', 'Descrição', 'NFs', 'Qtd (pç)', 'Peso líq. total (kg)', 'Peso bruto total (kg)', 'kg/pç líq. (média)', 'kg/pç bruto (média)', 'kg/pç líq. mín', 'kg/pç líq. máx', 'Dispersão (%)', `kg/pç líq. ${nomeMes(A.prevMes)}`, 'Variação vs mês anterior (%)', `Fora da tolerância (±${pesoUI.tol}%)`]]
+      .concat(A.itens.map(i => [i.material, i.desc, i.nfs, i.qtd, round(i.pl, 1), round(i.pb, 1), round(i.mL, 4), round(i.mB, 4), i.e ? round(i.e.min, 4) : '', i.e ? round(i.e.max, 4) : '', i.e ? round(i.e.cv * 100, 2) : '', round(i.mAnt, 4), i.varAnt == null ? '' : round(i.varAnt * 100, 2), i.fora]));
+    const det = [['Material', 'Data', 'NF-e', 'Transporte', 'Cliente', 'Qtd (pç)', 'Peso líq. (kg)', 'Peso bruto (kg)', 'kg/pç líq.', 'kg/pç bruto', 'Desvio da média (%)', 'Fora da tolerância']]
+      .concat([].concat(...A.itens.map(i => i.rs.map(r => [r.material, P.fmtDateBR(r.data), r.nf, r.transporte, r.cliente, r.qtd, r.pl, r.pb, round(r.kgL, 4), round(r.kgB, 4), r.desvio == null ? '' : round(r.desvio * 100, 2), r.fora ? 'SIM' : '']))));
+    const nome = `analise-pesos-${pesoUI.mes}`;
+    if (window.XLSX) {
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), 'Por item');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(det), 'Por NF');
+      XLSX.writeFile(wb, nome + '.xlsx'); return 'xlsx';
+    }
+    const csv = resumo.map(r => r.map(v => typeof v === 'number' ? String(v).replace('.', ',') : `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+    baixar(nome + '.csv', new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })); return 'csv';
+  }
+  const round = (v, d) => v == null || !isFinite(v) ? '' : Math.round(v * 10 ** d) / 10 ** d;
+  function importarPesosGrid(grid, origem) {
+    const r = P.parsePesos(grid);
+    if (!r.rows.length) { toast(r.erro || 'Nenhuma linha com NF e peso reconhecida na base.', 'err'); return false; }
+    const res = mergePesos(r.rows); save(true);
+    const cols = Object.keys(r.map).map(k => P.PESO_LABEL[k]).join(', ');
+    const meses = Array.from(new Set(r.rows.map(x => (x.data || '').slice(0, 7)).filter(Boolean))).sort();
+    if (meses.length && !meses.includes(pesoUI.mes)) pesoUI.mes = meses[meses.length - 1];
+    if (ui.view !== 'pesos') setView('pesos'); else renderAll();
+    const lig = r.rows.filter(x => nfParaTransporte().has(x.nf)).length;
+    toast(`Base de pesos (${origem}): ${res.linhas} linha(s), ${res.nfs} NF(s) · ${lig} ligada(s) a cargas. Colunas reconhecidas: ${cols}.`, 'ok');
+    return true;
+  }
+
   // ------------------------------------------------------------------ guia Agendamentos
   function setView(v) {
     ui.view = v;
     $$('#views button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
     $$('[data-view-of]').forEach(el => { el.hidden = el.dataset.viewOf !== v; });
     $('#janela-filter').style.display = v === 'lista' ? '' : 'none';
+    $('.toolbar').style.display = v === 'pesos' ? 'none' : '';
     renderAll();
   }
   function renderAgenda() {
@@ -5414,6 +5631,7 @@ window.ORDEM_TEMPLATES = {
     renderList();
     if (ui.view === 'agenda') renderAgenda();
     if (ui.view === 'ots') renderOTs();
+    if (ui.view === 'pesos') renderPesos();
     renderViewCounts();
     if (ui.open) renderDetail();
   }
@@ -5442,6 +5660,24 @@ window.ORDEM_TEMPLATES = {
       if (del) { excluirTransportes([del.dataset.del]); return; }
       if (e.target.matches('input[type=checkbox]')) { e.target.checked ? ui.selected.add(t) : ui.selected.delete(t); renderList(); return; }
       openDetail(t);
+    });
+    $('#ps-mes').addEventListener('change', e => { pesoUI.mes = e.target.value || pesoUI.mes; pesoUI.aberto = null; renderPesos(); });
+    $('#ps-tol').addEventListener('change', e => { pesoUI.tol = Math.max(0.1, P.toNum(e.target.value) || 3); renderPesos(); });
+    $('#ps-colar').addEventListener('click', () => colarPorBotao('pesos'));
+    $('#ps-xlsx').addEventListener('click', () => { const t = exportarPesos(); toast(t === 'xlsx' ? 'Análise de pesos exportada (.xlsx).' : 'Exportada em .csv (sem internet, o .xlsx não está disponível).', 'ok'); });
+    $('#ps-file').addEventListener('change', async e => {
+      const f = e.target.files[0]; if (!f) return; e.target.value = '';
+      try {
+        let grid;
+        if (/\.(csv|txt)$/i.test(f.name)) grid = P.trimGrid(P.parseTSV((await f.text()).replace(/;/g, '\t')));
+        else { if (!window.XLSX) throw new Error('a leitura de Excel precisa de internet. Salve como CSV ou copie e cole.'); const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' }); grid = P.trimGrid(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' })); }
+        importarPesosGrid(grid, f.name);
+      } catch (er) { toast('Não foi possível ler o arquivo: ' + (er.message || er), 'err'); }
+    });
+    $('#pesos').addEventListener('click', e => {
+      const a = e.target.closest('[data-pt]'); if (a) { e.preventDefault(); openDetail(a.dataset.pt); return; }
+      const tr = e.target.closest('tr.ps-item'); if (!tr) return;
+      pesoUI.aberto = pesoUI.aberto === tr.dataset.mat ? null : tr.dataset.mat; renderPesos();
     });
     $('#ots').addEventListener('click', e => { const tr = e.target.closest('tr[data-t]'); if (tr) openDetail(tr.dataset.t); });
     $('#agenda').addEventListener('click', e => { const tr = e.target.closest('tr[data-t]'); if (tr) openDetail(tr.dataset.t); });
@@ -5582,6 +5818,7 @@ window.ORDEM_TEMPLATES = {
     MI: { titulo: 'Agendamento — Mercado interno', dica: 'No SEW, Agendamento de Cargas · PIÊN PAINÉIS, Ctrl+A e Ctrl+C.' },
     CONTAINER: { titulo: 'Agendamento — Exportação (containers)', dica: 'No SEW, Agendamento de Cargas · PIÊN CONTAINERS, Ctrl+A e Ctrl+C.' },
     ots: { titulo: 'LT22 — OTs', dica: 'No SAP, tela de OTs (LT22), Ctrl+A e Ctrl+C.' },
+    pesos: { titulo: 'Base de pesos', dica: 'Copie a base com a linha de títulos (NF, peso líquido, peso bruto…), Ctrl+C.' },
   };
   async function colarPorBotao(tipo) {
     if (tipo === 'fsc') { imp.tab = 'fsc'; $('#btn-import').click(); setTimeout(() => $('#fsc-file').click(), 120); return; }
@@ -5623,6 +5860,11 @@ window.ORDEM_TEMPLATES = {
       const T = getTransport(t);
       toast(`Transporte ${t} importado da Solicitação de Embarque (${T.janela === 'CONTAINER' ? 'container' : 'mercado interno'}).${T.missing.length ? ' Falta: ' + T.missing.join(', ') : ' Pronto para imprimir.'}`, T.missing.length ? 'warn' : 'ok');
       return;
+    }
+    // base de pesos (NF + peso líquido/bruto)
+    if (tipo === 'pesos' || (auto && (ui.view === 'pesos' || (/peso\s*(l[ií]q|bru)/i.test(text) && /\b(NF|NF-?e|nota)/i.test(text))))) {
+      for (const g of [htmlGrid, P.trimGrid(P.parseTSV(text))]) { if (g && g.length && P.parsePesos(g).rows.length) { importarPesosGrid(g, 'colada'); return; } }
+      if (tipo === 'pesos' || ui.view === 'pesos') { toast('Não reconheci a base de pesos. Copie com a linha de títulos (NF, Peso líquido, Peso bruto…).', 'err'); return; }
     }
     // LT22 / OTs
     if (tipo === 'ots' || (auto && (ui.view === 'ots' || P.isOTScreen(text)))) {

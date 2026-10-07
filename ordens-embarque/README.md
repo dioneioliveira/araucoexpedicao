@@ -96,6 +96,27 @@ breakbulk ou material de exportação `P/E…`), **Imprimir ordem** imprime 4 p�
 No painel da ordem há botões para imprimir só a separação ou só o identificador (qualquer
 ordem, também mercado interno), sem marcar a ordem como impressa.
 
+### Guia Pesos — análise mensal de variação de peso por item
+
+1. Na guia **Pesos**, cole (**Ctrl+V**) ou use **Importar arquivo** (.xlsx/.csv) com a base de
+   pesos. A linha de títulos precisa ter a **NF** e o **peso líquido** e/ou **peso bruto**; as
+   demais colunas são opcionais e reconhecidas pelo nome: Data (emissão), Material, Descrição,
+   Quantidade, Unidade, Volume, Cliente, Transporte, Entrega, Placa. Números no formato brasileiro
+   (18.150,40) são aceitos. NF reimportada substitui a anterior; a base fica guardada (e
+   compartilhada com a equipe).
+2. **A NF é o dado mestre:** cada linha da base se liga à carga em que a NF foi lançada no
+   **Controle OT → NF-e**. Da carga vêm transporte, cliente, data, materiais e quantidades. Se a
+   base não tiver material/quantidade e a carga tiver um único material, ele é usado; carga com
+   vários materiais e base sem material vai para "(vários materiais)" (soma o peso, mas não entra
+   no kg/peça).
+3. **Análise do mês** (seletor de mês), por material: NFs, quantidade, peso líquido e bruto totais,
+   **kg/peça** líquido e bruto (média ponderada), faixa mín–máx, dispersão, **kg/peça do mês
+   anterior e variação %**, e quantas NFs ficaram fora da **tolerância** (± %, ajustável). Clique no
+   item para ver NF a NF (com desvio da média; fora da tolerância em vermelho).
+4. Pendências: NFs da base sem carga com essa NF no app, e cargas do mês com NF-e lançada sem peso
+   na base.
+5. **Exportar Excel**: guias *Por item* e *Por NF*.
+
 ### Clientes FSC (campo ao lado da OT)
 
 O espaço ao lado do número da OT no check-list da carga é o campo **FSC**. Ele é

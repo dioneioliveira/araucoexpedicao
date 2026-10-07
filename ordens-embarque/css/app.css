@@ -509,3 +509,14 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .grid tbody tr.ghost .chip{filter:grayscale(1);opacity:.8}
 .grid tbody tr.ghost:hover{--row-bg:#f4f4f4;background:#f4f4f4}
 .chip.nimp{background:#fff;color:var(--ink-dim);border:1px dashed var(--ink-faint);filter:none!important;opacity:1!important}
+
+/* guia Pesos */
+.ps-ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.ps-grid{font-size:12px}
+.ps-grid tr.ps-item{cursor:pointer}
+.ps-grid td.ps-alerta{color:var(--err);font-weight:700}
+.ps-det>td{background:#fafafa;padding:8px 14px!important}
+.ps-det tr.ps-fora td{color:var(--err);font-weight:600}
+.ps-pend{display:flex;flex-direction:column;gap:8px;margin-top:12px;font-size:12.5px}
+.ps-pend details{background:#fff;border:1px solid var(--line-soft);border-radius:var(--r-s);padding:8px 12px}
+.ps-pend summary{cursor:pointer}
