@@ -218,6 +218,14 @@
   .import-btn svg{width:15px;height:15px;flex:0 0 auto;}
   .import-btn:hover{color:var(--accent);border-color:var(--accent);}
   .import-btn.busy{opacity:.6;pointer-events:none;}
+  .import-btn:disabled{opacity:.45;cursor:not-allowed;}
+  .import-btn:disabled:hover{color:inherit;border-color:inherit;}
+  /* The topbar already runs out of room below ~1700px wide -- below 2000px the
+     export button shrinks to its icon (full text stays in the tooltip). */
+  @media (max-width:1999px){
+    #export-btn{padding:0 11px;}
+    #export-btn .btn-label{display:none;}
+  }
 
   .demo-btn{
     appearance:none;height:36px;display:flex;align-items:center;gap:7px;
@@ -497,6 +505,10 @@
         Importar
       </button>
       <input type="file" id="import-file" accept=".xlsx,.xls" hidden>
+      <button class="import-btn" id="export-btn" disabled title="Exportar o estoque por Box, lote a lote (disponível depois de importar uma planilha com LX02)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M4 20h16"/></svg>
+        <span class="btn-label">Exportar</span>
+      </button>
       <button class="demo-btn" id="demo-btn" title="Carregar dados de demonstração (ocupação, curva ABC e itens em produção de exemplo, sem alterar a planta)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v6.5L4.5 18a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 8.5V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
         <span id="demo-btn-label">Demo</span>
@@ -693,7 +705,7 @@ const ACTIVE_PLANT_STORAGE_KEY = 'warehouseVision.activePlant';
 // blocked position) would otherwise keep booting into that stale geometry
 // forever on every future file -- loadPlantData below throws the cached
 // blob away instead of using it whenever its seedBuild doesn't match.
-const SEED_BUILD = 'rev-2026-10-07b';
+const SEED_BUILD = 'rev-2026-10-08a';
 function emptyPlantShell(code){
   return { name: code, width: SEED_DATA_PB26.width, depth: SEED_DATA_PB26.depth, boxes: [], zones: [], aisleLabels: [], prodItems: [] };
 }
@@ -2923,7 +2935,10 @@ function isInutilizadoMaterial(familia, texto){
   return false;
 }
 function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap, report, stockFromLx02=false}){
-  const result = {byBox: new Map(), prodItems: [], unclassified: new Map(), unmatchedPos: new Map(), semDimensaoList: new Map()};
+  const result = {byBox: new Map(), prodItems: [], unclassified: new Map(), unmatchedPos: new Map(), semDimensaoList: new Map(),
+    // Lote-level capture for the "Exportar" workbook (see buildStockExport): lotRows = lotes that landed in a digitized box,
+    // excludedRows = lotes that didn't (with a reason code), skuInfo = per-material description/class/família.
+    lotRows: [], excludedRows: [], skuInfo: {}, ignoredZeroQty: 0, rowsRead: mb52Rows.length, source: stockFromLx02 ? 'LX02' : 'MB52 + LX02'};
   if (!mb52Rows.length){ report.warn('Guia "MB52" está vazia.'); return result; }
   if (!lx02Rows.length){ report.warn('Guia "LX02" está vazia — nenhuma posição pôde ser localizada.'); }
 
@@ -3036,7 +3051,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     const material = String(row[matKey]||'').trim().toUpperCase();
     const lote = normLote(row[loteKeyMB52]);
     const qty = Number(row[qtyKey]) || 0;
-    if (!material || qty <= 0) continue;
+    if (!material || qty <= 0){ result.ignoredZeroQty++; continue; }
     const texto = txtKey ? String(row[txtKey]||'').trim() : '';
     if (texto) textoBySku.set(material, texto);
     const m3PerChapa = parseSheetVolumeM3(texto);
@@ -3053,16 +3068,20 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     const familia = cadastros.familiaBySku[material] || null;
     if (!cls) result.unclassified.set(material, texto || cadastros.textoBySku[material] || '');
     const inutilizado = isInutilizadoMaterial(familia, texto);
+    if (!result.skuInfo[material] || (texto && !result.skuInfo[material].texto)) result.skuInfo[material] = {texto: texto || cadastros.textoBySku[material] || '', cls, familia};
+    const entryTs = lote ? dateByLote.get(lote) : null;
+    const exclude = (reason, where) => result.excludedRows.push([reason, where || '', material, lote, qty, volume, entryTs ?? null]);
 
     const pos = stockFromLx02 ? (normPosCode(row[rowPosKey]) || undefined) : (lote ? posByLote.get(lote) : undefined);
-    if (pos === undefined){ semLote++; continue; } // lote not found in LX02 at all
-    if (pos === 'EM-PEDIDO'){ emPedido++; continue; } // ordered but not yet physically received
+    if (pos === undefined){ semLote++; exclude('sem_posicao'); continue; } // lote not found in LX02 at all
+    if (pos === 'EM-PEDIDO'){ emPedido++; exclude('em_pedido', pos); continue; } // ordered but not yet physically received
     if (isEmProducao(pos)){
       result.prodItems.push({sku:material, item:texto, qty, volume});
-      emProducao++; continue;
+      emProducao++; exclude('em_producao', pos); continue;
     }
     if (!boxByCode.has(pos) || (hasCapMap && !isRegisteredBoxPos(pos))){
       result.unmatchedPos.set(pos, (result.unmatchedPos.get(pos)||0) + 1);
+      exclude(boxByCode.has(pos) ? 'sem_capacidade' : 'fora_layout', pos);
       continue;
     }
     posMatched++;
@@ -3073,8 +3092,8 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     if (!inutilizado) acc.billableVolume += volume; // company-wide totals only -- see isInutilizadoMaterial above
     acc.skus.set(material, (acc.skus.get(material)||0) + volume);
     if (!acc.item && texto) acc.item = texto;
-    const entryTs = lote ? dateByLote.get(lote) : null;
     if (entryTs != null && (acc.entryDate == null || entryTs < acc.entryDate)) acc.entryDate = entryTs;
+    result.lotRows.push([pos, material, lote, qty, m3PerChapa, volume, entryTs ?? null, inutilizado ? 1 : 0]);
   }
   for (const [, acc] of result.byBox){
     let bestSku = null, bestVol = -1;
@@ -3234,6 +3253,196 @@ function downloadImportIssuesSheet(){
 }
 document.getElementById('import-report-export-btn').addEventListener('click', downloadImportIssuesSheet);
 document.getElementById('unclassified-badge').addEventListener('click', downloadImportIssuesSheet);
+
+/* ================= "Exportar": estoque por Box, lote a lote ================= */
+/* One workbook with what the app is showing, rebuilt from the lote-level rows
+   captured during the last stock import (computeEstoqueFromSAP -> lotRows /
+   excludedRows / skuInfo): "Estoque por Box" (one row per lote, ordered Box ->
+   item -> lote), "Resumo por Box" (one row per Box + a reconciliation block
+   proving nothing went missing) and "Fora do 3D" (every lote that did not land
+   in a Box, with the reason). Kept in its own localStorage key -- separate
+   from the plant's DATA blob -- so a quota failure here can never take down
+   the plant's own persistence. */
+const LOT_EXPORT_PREFIX = 'warehouseVision.lotExport.';
+let lotExportData = null;
+let lotExportPersisted = true;
+const EXPORT_REASONS = {
+  fora_layout:    {order:1, label:'Posição fora do layout 3D',
+    detail: p => `Código "${p}" da LX02 não corresponde a nenhum Box desenhado no layout (área não mapeada, zona de apoio ou Box ainda não desenhado)`},
+  sem_capacidade: {order:2, label:'Box sem capacidade cadastrada',
+    detail: p => `O Box ${p} existe no layout, mas não tem capacidade (m³) na guia de capacidade`},
+  em_producao:    {order:3, label:'Em produção (sem posição física)',
+    detail: p => `A posição "${p}" indica material ainda em produção`},
+  em_pedido:      {order:4, label:'Em pedido — ainda não recebido',
+    detail: () => 'Lote ordenado, ainda não recebido fisicamente'},
+  sem_posicao:    {order:5, label:'Lote sem posição na LX02',
+    detail: () => 'O lote do estoque não aparece na LX02, então não há posição para ele'},
+};
+
+function updateExportBtn(){
+  const btn = document.getElementById('export-btn');
+  if (!btn) return;
+  const ready = !!lotExportData && !demoActive;
+  btn.disabled = !ready;
+  btn.title = ready
+    ? `Exportar o estoque por Box, lote a lote (${lotExportData.lotRows.length.toLocaleString('pt-BR')} lotes em Box, ${lotExportData.excludedRows.length.toLocaleString('pt-BR')} fora do 3D)${lotExportPersisted ? '' : ' — atenção: não coube no armazenamento do navegador, exporte antes de recarregar a página'}`
+    : demoActive
+      ? 'Indisponível no modo Demo (os dados são fictícios) — saia da demo para exportar o estoque real'
+      : 'Exportar o estoque por Box, lote a lote (disponível depois de importar uma planilha com LX02)';
+}
+function setLotExport(stock){
+  lotExportData = (stock && Array.isArray(stock.lotRows)) ? {
+    plant: ACTIVE_PLANT, builtAt: Date.now(), source: stock.source || '',
+    lotRows: stock.lotRows, excludedRows: stock.excludedRows || [], skuInfo: stock.skuInfo || {},
+    ignoredZeroQty: stock.ignoredZeroQty || 0, rowsRead: stock.rowsRead || 0,
+  } : null;
+  lotExportPersisted = true;
+  try {
+    if (lotExportData) localStorage.setItem(LOT_EXPORT_PREFIX + ACTIVE_PLANT, JSON.stringify(lotExportData));
+    else localStorage.removeItem(LOT_EXPORT_PREFIX + ACTIVE_PLANT);
+  } catch (e){
+    lotExportPersisted = false;
+    console.warn('Dados de exportação não couberam no armazenamento do navegador', ACTIVE_PLANT, e);
+  }
+  updateExportBtn();
+}
+function loadLotExport(){
+  try {
+    const raw = localStorage.getItem(LOT_EXPORT_PREFIX + ACTIVE_PLANT);
+    if (raw){
+      const d = JSON.parse(raw);
+      if (d && Array.isArray(d.lotRows) && Array.isArray(d.excludedRows)) lotExportData = d;
+    }
+  } catch (e){ console.warn('Falha ao ler dados de exportação', ACTIVE_PLANT, e); }
+  updateExportBtn();
+}
+
+// Excel serial (calendar day, no time zone drift) for a JS timestamp.
+function xlDate(ts){
+  if (ts == null) return '';
+  const d = new Date(ts);
+  return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) + 25569;
+}
+function cmpBoxCode(a, b){
+  const pa = String(a).match(/^([A-Z]+)(\d+)(.*)$/i), pb = String(b).match(/^([A-Z]+)(\d+)(.*)$/i);
+  if (!pa || !pb) return String(a).localeCompare(String(b));
+  return pa[1].localeCompare(pb[1]) || (Number(pa[2]) - Number(pb[2])) || pa[3].localeCompare(pb[3]);
+}
+function exportSheet(aoa, widths, fmts, filterLastRow){
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = widths.map(w => ({wch: w}));
+  for (let r = 1; r < aoa.length; r++){
+    for (const [c, z] of Object.entries(fmts || {})){
+      const cell = ws[XLSX.utils.encode_cell({r, c:Number(c)})];
+      if (cell && cell.t === 'n') cell.z = z;
+    }
+  }
+  if (filterLastRow != null) ws['!autofilter'] = {ref: XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:filterLastRow, c:widths.length-1}})};
+  return ws;
+}
+
+function buildStockExportWorkbook(){
+  const d = lotExportData;
+  const info = sku => d.skuInfo[sku] || {texto:'', cls:null, familia:null};
+  const classeOf = sku => info(sku).cls || 'Sem curva ABC';
+  const familiaOf = sku => info(sku).familia || 'Sem família cadastrada';
+
+  // lotRow = [pos, sku, lote, qty, m3PerChapa, volume, entryTs, inutilizado]
+  // outRow = [reasonCode, position, sku, lote, qty, volume, entryTs]
+  const placed = new Map();
+  const outRows = [];
+  for (const r of d.lotRows){
+    if (boxByCode.has(r[0])){ if (!placed.has(r[0])) placed.set(r[0], []); placed.get(r[0]).push(r); }
+    else outRows.push(['fora_layout', r[0], r[1], r[2], r[3], r[5], r[6]]);
+  }
+  for (const e of d.excludedRows) outRows.push(e);
+
+  const sortedBoxes = [...boxes].sort((a, b) => cmpBoxCode(a.code, b.code));
+  const H1 = ['Box','Item (material)','Descrição','Família','Classe','Lote','Volume do lote (m³)','Chapas do lote','m³ por chapa','Data de entrada','Dias em estoque','Inutilizado','Observação','Corredor','Capacidade do Box (m³)','Volume do Box (m³)'];
+  const H2 = ['Corredor','Box','Nº de itens','Nº de lotes','Chapas','Volume (m³)','Volume inutilizado (fora dos totais) (m³)','Capacidade (m³)','Ocupação (%)','Classe dominante','Item dominante','Descrição do item dominante','Família dominante','Data de entrada mais antiga','Dias (mais antigo)'];
+  const rows1 = [H1], rows2 = [H2];
+  let totItems = 0, totLots = 0, totQty = 0, totVol = 0, totInut = 0, totCap = 0;
+
+  for (const b of sortedBoxes){
+    const lots = placed.get(b.code) || [];
+    const blockedNote = b.blocked ? `Box bloqueado${b.blockReason ? ': ' + b.blockReason : ''}` : '';
+    if (!lots.length){
+      rows1.push([b.code, '— sem estoque —', '', '', '', '', '', '', '', '', '', '', ['Box vazio', blockedNote].filter(Boolean).join(' · '), b.aisle, b.capacity || '', 0]);
+      rows2.push([b.aisle, b.code, 0, 0, 0, 0, 0, b.capacity || '', '', '—', '—', '', '', '', '']);
+      totCap += b.capacity || 0;
+      continue;
+    }
+    const skuVol = new Map();
+    lots.forEach(r => skuVol.set(r[1], (skuVol.get(r[1]) || 0) + r[5]));
+    lots.sort((a, c) => (skuVol.get(c[1]) - skuVol.get(a[1])) || String(a[1]).localeCompare(String(c[1])) || ((a[6] ?? Infinity) - (c[6] ?? Infinity)) || String(a[2]).localeCompare(String(c[2])));
+    const boxVol = lots.reduce((s, r) => s + r[5], 0);
+    const boxQty = lots.reduce((s, r) => s + r[3], 0);
+    const boxInut = lots.reduce((s, r) => s + (r[7] ? r[5] : 0), 0);
+    let oldest = null;
+    for (const r of lots){
+      const [pos, sku, lote, qty, m3, vol, ts, inut] = r;
+      if (ts != null && (oldest == null || ts < oldest)) oldest = ts;
+      const obs = [];
+      if (m3 == null) obs.push('Descrição sem dimensões (LxWxT) — m³ não calculado');
+      if (inut) obs.push('Material inutilizado — não entra nos totais da empresa');
+      if (blockedNote) obs.push(blockedNote);
+      rows1.push([b.code, sku, info(sku).texto, familiaOf(sku), classeOf(sku), lote, vol, qty, m3 == null ? '' : m3, xlDate(ts), ts == null ? '' : daysSince(ts), inut ? 'Sim' : 'Não', obs.join(' · '), b.aisle, b.capacity || '', boxVol]);
+    }
+    const domSku = [...skuVol.entries()].sort((x, y) => y[1] - x[1])[0][0];
+    rows2.push([b.aisle, b.code, skuVol.size, lots.length, boxQty, boxVol, boxInut, b.capacity || '', b.capacity > 0 ? boxVol / b.capacity * 100 : '', classeOf(domSku), domSku, info(domSku).texto, familiaOf(domSku), xlDate(oldest), oldest == null ? '' : daysSince(oldest)]);
+    totItems += skuVol.size; totLots += lots.length; totQty += boxQty; totVol += boxVol; totInut += boxInut; totCap += b.capacity || 0;
+  }
+  const boxRows2 = rows2.length - 1;
+  rows2.push(['TOTAL', '', totItems, totLots, totQty, totVol, totInut, totCap || '', totCap > 0 ? totVol / totCap * 100 : '', '', '', '', '', '', '']);
+
+  // Reconciliation: every lote with stock is either in a Box or listed in "Fora do 3D".
+  const outVol = outRows.reduce((s, r) => s + r[5], 0);
+  const byReason = new Map();
+  for (const r of outRows){
+    const e = byReason.get(r[0]) || {n:0, vol:0};
+    e.n++; e.vol += r[5]; byReason.set(r[0], e);
+  }
+  const allLots = d.lotRows.length + d.excludedRows.length;
+  const allVol = d.lotRows.reduce((s, r) => s + r[5], 0) + d.excludedRows.reduce((s, r) => s + r[5], 0);
+  rows2.push([]);
+  rows2.push(['RECONCILIAÇÃO — todas as linhas lidas da planilha de estoque', '', '', 'Lotes', '', 'Volume (m³)']);
+  rows2.push([`Linhas lidas (${d.source || 'estoque'})`, '', '', d.rowsRead]);
+  rows2.push(['Ignoradas: quantidade zero/negativa ou sem material', '', '', d.ignoredZeroQty]);
+  rows2.push(['Lotes com estoque considerados', '', '', allLots, '', allVol]);
+  rows2.push(['  → Dentro de um Box (3D)', '', '', totLots, '', totVol]);
+  for (const [code, meta] of Object.entries(EXPORT_REASONS).sort((a, b) => a[1].order - b[1].order)){
+    const e = byReason.get(code);
+    if (e) rows2.push([`  → Fora do 3D: ${meta.label}`, '', '', e.n, '', e.vol]);
+  }
+  rows2.push(['Diferença (deve ser 0)', '', '', allLots - totLots - outRows.length, '', Math.round((allVol - totVol - outVol) * 1000) / 1000]);
+
+  // "Fora do 3D": one row per lote, reason first.
+  const H3 = ['Motivo','Detalhe','Posição (LX02)','Item (material)','Descrição','Família','Classe','Lote','Chapas','Volume (m³)','Data de entrada','Dias em estoque'];
+  const rows3 = [H3];
+  outRows.sort((a, b) => (EXPORT_REASONS[a[0]].order - EXPORT_REASONS[b[0]].order) || String(a[1]).localeCompare(String(b[1])) || String(a[2]).localeCompare(String(b[2])) || String(a[3]).localeCompare(String(b[3])));
+  for (const [reason, where, sku, lote, qty, vol, ts] of outRows){
+    const meta = EXPORT_REASONS[reason];
+    rows3.push([meta.label, meta.detail(where), where, sku, info(sku).texto, familiaOf(sku), classeOf(sku), lote, qty, vol, xlDate(ts), ts == null ? '' : daysSince(ts)]);
+  }
+  if (!outRows.length) rows3.push(['Nada ficou de fora', 'Todos os lotes com estoque estão dentro de um Box do 3D', '', '', '', '', '', '', '', '', '', '']);
+  if (d.ignoredZeroQty){
+    rows3.push([]);
+    rows3.push([`Obs.: ${d.ignoredZeroQty} linha(s) com quantidade zero/negativa ou sem material foram ignoradas — não são estoque, por isso não aparecem aqui.`]);
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, exportSheet(rows1, [9,16,46,22,16,13,16,12,12,14,12,11,48,10,18,16], {6:'#,##0.000',7:'#,##0',8:'0.0000',9:'dd/mm/yyyy',10:'0',14:'#,##0.0',15:'#,##0.000'}, rows1.length - 1), 'Estoque por Box');
+  XLSX.utils.book_append_sheet(wb, exportSheet(rows2, [10,10,11,11,12,14,20,14,12,16,14,46,22,16,14], {2:'0',3:'0',4:'#,##0',5:'#,##0.000',6:'#,##0.000',7:'#,##0.0',8:'0.0',13:'dd/mm/yyyy',14:'0'}, boxRows2), 'Resumo por Box');
+  XLSX.utils.book_append_sheet(wb, exportSheet(rows3, [32,70,16,16,46,22,16,13,12,14,14,12], {8:'#,##0',9:'#,##0.000',10:'dd/mm/yyyy',11:'0'}, outRows.length ? outRows.length : null), 'Fora do 3D');
+  return wb;
+}
+function downloadStockExport(){
+  if (!lotExportData || demoActive || typeof XLSX === 'undefined') return;
+  const wb = buildStockExportWorkbook();
+  const day = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `${DATA.name}_estoque_por_box_${day}.xlsx`);
+}
+document.getElementById('export-btn').addEventListener('click', downloadStockExport);
 importFileInput.addEventListener('change', (e)=>{
   const file = e.target.files && e.target.files[0];
   if (!file) return;
@@ -3254,6 +3463,7 @@ function setDemoActive(on){
   demoBtn.title = on
     ? 'Sair da demonstração e voltar ao modo produtivo (remove os dados de exemplo)'
     : 'Carregar dados de demonstração (ocupação, curva ABC e itens em produção de exemplo, sem alterar a planta)';
+  updateExportBtn();
 }
 if (demoBtn) demoBtn.addEventListener('click', ()=>{
   if (demoActive) clearDemoData(); else loadDemoData();
@@ -3355,6 +3565,7 @@ async function runImport(file){
       hasCap: true, hasEst, hasFat,
       doneTitle: 'Importação concluída',
     });
+    if (hasEst) setLotExport(stock); // only a real stock import replaces the lote-level export data
     if (demoActive) setDemoActive(false); // real data now on the plant -- no longer a demo
     persistActivePlant();
   } catch (err){
@@ -3758,6 +3969,7 @@ if (DATA.importIssues) setImportIssuesExport({
   capacidadeNaoEncontrada: DATA.importIssues.capacidadeNaoEncontrada || [],
   multiplosSkus: DATA.importIssues.multiplosSkus || [],
 });
+loadLotExport();
 
 /* ================= resize ================= */
 function resize(){
