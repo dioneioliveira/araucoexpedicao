@@ -48,13 +48,14 @@
   (`item:`, `man:<t>|<campo>`, `printed:`, `snap:`, `fat:`, `fatnf:`, `ot:`, `sew:`, `fsc`) + exclusões
   (`tomb`); `mergeDocs` = mais recente vence. Dados reais ficam nesse arquivo da rede, nunca no repositório.
 - FSC (célula V23:X23, ao lado da OT): planilha FSC importada (`parseFSC`, arquivo via SheetJS ou colagem) →
-  `state.fsc` + `state.fscInfo` (sincronizados). `fscOf` relaciona pelo nome do cliente (exato → `nomeChave`
+  `state.fsc` + `state.fscInfo` (sincronizados), salvos na hora ao ler o arquivo/colagem (`salvarFSC`, sem botão Importar). `fscOf` relaciona pelo nome do cliente (exato → `nomeChave`
   sem acentos/pontuação/LTDA/S.A. → prefixo 12+ → 85% das palavras); exclusão sem reingresso = inativo.
   Override por transporte: `manual.fscSel` = SIM | NAO.
 - LT22 real = lista SAP em colunas fixas: `parseLT22Lista` (OT=1º token, material=2º, remessa = número de 8–10
   dígitos após "qtd UMA tpDest", zeros à esquerda removidos; Tp./posição de origem guardados).
 - Exportação (`isExport`): container | Arauco Maderas | breakbulk | material P/E → `pagesFor` acrescenta
-  `buildSeparacao` (A4 em pé, linhas da LT22) e `buildIdentificador` (A4 deitado, `@page ident`, textos
+  `buildSeparacao` (A4 em pé, linhas da LT22; só se `comSeparacao`: exportação terrestre/Arauco Maderas e breakbulk
+  NÃO levam romaneio de separação) e `buildIdentificador` (A4 deitado, `@page ident`, textos
   `data-fit` ajustados por `fitBig`). Botões no painel imprimem só um deles (`imprimirAvulso`).
 - Painel da ordem: meia tela (`.drawer` max(50vw, 860px)); ações na coluna `#d-actions` (imprimir, separação,
   identificador, cópias "Dados de texto (VL02N/texto)", "Placa p/ nota (VL02N/placa)", "Dados do motorista (VT02N)",

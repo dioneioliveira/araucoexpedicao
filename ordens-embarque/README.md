@@ -96,6 +96,10 @@ breakbulk ou material de exportação `P/E…`), **Imprimir ordem** imprime 4 p�
 No painel da ordem há botões para imprimir só a separação ou só o identificador (qualquer
 ordem, também mercado interno), sem marcar a ordem como impressa.
 
+**Exportação terrestre (ARAUCO MADERAS) e breakbulk (`EB/`) não levam o romaneio de separação**:
+a impressão da ordem sai com 3 páginas (os dois check-lists + identificador). Se precisar da
+separação nesses casos, use o botão da lateral do painel.
+
 ### Guia Pesos — análise mensal de variação de peso por item
 
 1. Na guia **Pesos**, cole (**Ctrl+V**) ou use **Importar arquivo** (.xlsx/.csv) com a base de
@@ -126,9 +130,10 @@ preenchido pela **relação por cliente**:
    planilha FSC (.xlsx, .xls ou .csv), com as colunas da guia FSC: Data de ingresso · Data de
    exclusão · Data de reingresso · Cód. Cliente · **Nome Cliente** · Vendedor · Gerente · FSC ·
    claim. Também dá para copiar as linhas da planilha e colar.
-2. A prévia mostra quantos clientes há, quantos estão ativos e quantas cargas do dia são FSC.
-   Clique **Importar**: a lista substitui a anterior e fica **guardada** no app (e
-   compartilhada com a equipe, se o arquivo compartilhado estiver conectado).
+2. Assim que o arquivo é lido (ou as linhas coladas), a base **já fica salva no app**, sem
+   clicar em Importar: substitui a anterior, fica guardada (e compartilhada com a equipe, se o
+   arquivo compartilhado estiver conectado) e o resumo mostra quantos clientes há, quantos estão
+   ativos e quantas cargas do dia são FSC.
 3. Quando o cliente da carga está na lista, o check-list imprime **FSC** ao lado da OT (e o
    claim, se houver, no campo à esquerda da OT). A lista diária mostra a etiqueta FSC.
 

@@ -299,12 +299,17 @@
     fitBig(root);
     if (measuring) root.classList.remove('measuring');
   }
+  // exportação terrestre (Arauco Maderas) e breakbulk não levam romaneio de separação
+  const comSeparacao = T => !(isAraucoMaderas(T) || isBreakbulk(T));
   function pagesFor(T, opts) {
     const d = printData(T);
     // mesma ordem da macro impress2026ordens: Check do veículo, depois Check da carga
     const pages = [buildPage('veiculo', d), buildPage('carga', d)];
-    // exportação: também o formulário de separação e o identificador da carga
-    if ((!opts || opts.extras !== false) && isExport(T)) pages.push(buildSeparacao(T), buildIdentificador(T));
+    // exportação: formulário de separação (exceto exportação terrestre/breakbulk) e identificador da carga
+    if ((!opts || opts.extras !== false) && isExport(T)) {
+      if (comSeparacao(T)) pages.push(buildSeparacao(T));
+      pages.push(buildIdentificador(T));
+    }
     return pages;
   }
 
@@ -403,8 +408,8 @@
     list.forEach(T => { state.printed[T.transporte] = now; state.snap[T.transporte] = { at: now, d: snapshotOf(T) }; });
     save(true);
     renderAll();
-    const nExp = list.filter(isExport).length;
-    toast(`${list.length} ordem(ns) enviada(s) para impressão — ${root.children.length} página(s)${nExp ? ` (inclui separação e identificador de ${nExp} exportação(ões))` : ''}.`, 'ok');
+    const nExp = list.filter(isExport).length, nSep = list.filter(T => isExport(T) && comSeparacao(T)).length;
+    toast(`${list.length} ordem(ns) enviada(s) para impressão — ${root.children.length} página(s)${nExp ? ` (inclui identificador de ${nExp} exportação(ões)${nSep ? `, separação de ${nSep}` : ''})` : ''}.`, 'ok');
   }
   // imprime só a separação ou só o identificador (não marca a ordem como impressa)
   async function imprimirAvulso(pages) {
@@ -966,7 +971,7 @@
     const t = ui.open; const T = t && getTransport(t);
     if (!T) { closeDetail(); return; }
     $('#d-title').textContent = T.transporte;
-    $('#d-print-sub').textContent = isExport(T) ? '4 páginas: check-lists + separação + identificador' : '2 check-lists';
+    $('#d-print-sub').textContent = !isExport(T) ? '2 check-lists' : comSeparacao(T) ? '4 páginas: check-lists + separação + identificador' : '3 páginas: check-lists + identificador';
     $('#d-fat-txt').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
     $('#d-fat').classList.toggle('on', !!T.faturado);
     $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
@@ -1038,7 +1043,7 @@
         <h3>Documentos da ordem <span class="h-note">clique para ampliar</span></h3>
         <div class="pv-thumbs" id="pv-thumbs"></div>
         <div class="doc-extra">
-          ${isExport(T) ? '<span class="chip ct">Exportação</span> <span class="muted small">a impressão da ordem inclui também a <b>separação</b> e o <b>identificador</b> da carga</span>' : '<span class="muted small">Separação e identificador saem automaticamente nas exportações; para imprimir à parte, use os botões da lateral.</span>'}
+          ${isExport(T) ? '<span class="chip ct">Exportação</span> <span class="muted small">' + (comSeparacao(T) ? 'a impressão da ordem inclui também a <b>separação</b> e o <b>identificador</b> da carga' : 'a impressão da ordem inclui também o <b>identificador</b> da carga (exportação terrestre/breakbulk: sem romaneio de separação)') + '</span>' : '<span class="muted small">Separação e identificador saem automaticamente nas exportações; para imprimir à parte, use os botões da lateral.</span>'}
         </div>
       </div>`;
     renderThumbs(T);
@@ -1435,9 +1440,9 @@
     // FSC
     let ft; $('#fsc-paste').addEventListener('input', () => { clearTimeout(ft); ft = setTimeout(() => {
       const g = P.trimGrid(P.parseTSV($('#fsc-paste').value));
-      imp.fsc = g.length ? P.parseFSC(g) : null; imp.fscArquivo = 'colado';
-      mostrarPreviaFSC();
-    }, 150); });
+      if (!g.length) return;
+      salvarFSC(P.parseFSC(g), 'colado');
+    }, 400); });
 
     // planilha FSC (arquivo)
     $('#fsc-file').addEventListener('change', e => { const f = e.target.files[0]; if (f) lerPlanilhaFSC(f); });
@@ -1495,33 +1500,40 @@
           if (g.length && Object.keys(P.parseFSC(g)).length) { grid = g; break; }
         }
       }
-      imp.fsc = grid ? P.parseFSC(grid) : null;
-      imp.fscArquivo = file.name;
-      mostrarPreviaFSC();
+      salvarFSC(grid ? P.parseFSC(grid) : null, file.name);
     } catch (er) { imp.fsc = null; st.innerHTML = `<div class="alert err">Não foi possível ler a planilha: ${esc(er.message || er)}</div>`; updateApply(); }
   }
-  function mostrarPreviaFSC() {
-    const lista = imp.fsc ? Object.values(imp.fsc) : [];
-    const ativos = lista.filter(x => x.ativo !== false).length;
+  // base FSC importada (arquivo ou colagem) fica salva no app na hora, sem precisar clicar em Importar
+  function salvarFSC(lista, arquivo) {
+    const n = lista ? Object.keys(lista).length : 0;
+    imp.fsc = null;
+    if (!n) {
+      $('#fsc-preview').innerHTML = '<div class="alert warn">Nenhum cliente reconhecido. A planilha precisa ter a coluna com o nome do cliente (ex.: "Nome Cliente"). A lista atual foi mantida.</div>';
+      return updateApply();
+    }
+    state.fsc = lista; fscIdx = null;
+    state.fscInfo = { em: new Date().toISOString(), arquivo: arquivo || '', total: n };
+    save(true); renderAll();
+    const vals = Object.values(lista), ativos = vals.filter(x => x.ativo !== false).length;
     const hoje = allTransports().filter(T => T.eff.data === ui.date);
-    const old = state.fsc; state.fsc = imp.fsc || {}; fscIdx = null;
     const casam = hoje.filter(T => fscOf(T.eff.cliente));
-    state.fsc = old; fscIdx = null;
-    $('#fsc-preview').innerHTML = lista.length ? `<div class="alert info"><b>${lista.length}</b> cliente(s) na planilha · <b>${ativos}</b> ativo(s)${lista.length - ativos ? ` · ${lista.length - ativos} excluído(s)` : ''}.
+    $('#fsc-preview').innerHTML = `<div class="alert ok"><b>Base FSC salva no app</b>: ${n} cliente(s) · <b>${ativos}</b> ativo(s)${n - ativos ? ` · ${n - ativos} excluído(s)` : ''}.
       ${hoje.length ? `Nas cargas de ${esc(P.fmtDateBR(ui.date))}: <b>${casam.length}</b> de ${hoje.length} são FSC${casam.length ? ` (${esc(casam.slice(0, 5).map(T => T.eff.cliente).join(', '))}${casam.length > 5 ? '…' : ''})` : ''}.` : ''}
-      A lista atual (${Object.keys(state.fsc).length}) será substituída e ficará guardada${sync && sync.status().mode === 'shared' ? ' e compartilhada com a equipe' : ''}.</div>`
-      : '<div class="alert warn">Nenhum cliente reconhecido. A planilha precisa ter a coluna com o nome do cliente (ex.: "Nome Cliente").</div>';
-    updateApply();
+      ${sync && sync.status().mode === 'shared' ? 'Compartilhada com a equipe.' : ''}</div>`;
+    $('#fsc-paste').value = ''; $('#fsc-file').value = '';
+    atualizaFscAtual(); updateApply();
+    toast(`Base FSC salva: ${n} cliente(s). O campo FSC ao lado da OT já usa a nova lista.`, 'ok');
+  }
+  function atualizaFscAtual() {
+    const inf = state.fscInfo, n = Object.keys(state.fsc).length;
+    $('#fsc-atual').innerHTML = n ? `Lista salva no app: <b>${n}</b> cliente(s)${inf ? ` · importada em ${esc(new Date(inf.em).toLocaleString('pt-BR'))}${inf.arquivo ? ` (${esc(inf.arquivo)})` : ''}` : ''}.` : 'Nenhuma lista FSC importada ainda.';
   }
   function setTab(tab) {
     imp.tab = tab;
     $$('#import-tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     $$('#import-dialog .tab-pane').forEach(p => p.hidden = p.dataset.pane !== tab);
-    $('#import-apply').hidden = tab === 'backup';
-    if (tab === 'fsc') {
-      const inf = state.fscInfo, n = Object.keys(state.fsc).length;
-      $('#fsc-atual').innerHTML = n ? `Lista atual: <b>${n}</b> cliente(s)${inf ? ` · importada em ${esc(new Date(inf.em).toLocaleString('pt-BR'))}${inf.arquivo ? ` (${esc(inf.arquivo)})` : ''}` : ''}.` : 'Nenhuma lista FSC importada ainda.';
-    }
+    $('#import-apply').hidden = tab === 'backup' || tab === 'fsc';
+    if (tab === 'fsc') atualizaFscAtual();
     updateApply();
   }
   function updateApply() {
@@ -1707,7 +1719,7 @@
       const x = imp.xlsx;
       if (x.items) { mergeLogItems(x.items, true); focus = focusDateOf(x.items); }
       if (x.sew) mergeSew(x.sew);
-      if (x.fsc && Object.keys(x.fsc).length) state.fsc = x.fsc;
+      if (x.fsc && Object.keys(x.fsc).length) { state.fsc = x.fsc; fscIdx = null; state.fscInfo = { em: new Date().toISOString(), arquivo: 'planilha LOG', total: Object.keys(x.fsc).length }; }
       if (x.manual) Object.entries(x.manual).forEach(([t, m]) => {
         const cur = state.manual[t] || (state.manual[t] = {});
         Object.entries(m).forEach(([k, v]) => { if (!cur[k]) cur[k] = v; }); // não sobrescreve o que já foi digitado no app
