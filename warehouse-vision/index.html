@@ -112,16 +112,6 @@
     transition:border-color .15s;
   }
   .plant-select:hover,.plant-select:focus{border-color:var(--accent);}
-  .brand-sub{
-    font-family:var(--font-mono);
-    font-size:10.5px;
-    color:var(--ink-faint);
-    letter-spacing:.09em;
-    text-transform:uppercase;
-    border-left:1px solid var(--line);
-    padding-left:9px;
-    white-space:nowrap;
-  }
   .example-tag{
     flex:0 0 auto;
     font-family:var(--font-mono);
@@ -147,17 +137,19 @@
   #unclassified-badge:not([hidden]){ display:inline-block; }
 
   .kpi-strip{display:flex;align-items:stretch;gap:0;flex:1 1 auto;min-width:0;overflow:hidden;}
+  .kpi-strip.kpi-strip-off{visibility:hidden;}
   .kpi{
     display:flex;flex-direction:column;justify-content:center;
     padding:4px 14px;border-left:1px solid var(--line-soft);
-    min-width:56px;flex:1 1 auto;overflow:hidden;
+    flex:0 0 auto;white-space:nowrap;
   }
+  .kpi.kpi-hidden{display:none;}
   .kpi:first-child{border-left:none;}
-  .kpi-label{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .kpi-label{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:2px;white-space:nowrap;}
   .kpi-label small{text-transform:none;letter-spacing:0;}
-  .kpi-value{font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .kpi-value{font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
   .kpi-value small{font-size:11px;font-weight:400;color:var(--ink-dim);margin-left:3px;}
-  .kpi-abc{min-width:140px;flex:1 1 150px;}
+  .kpi-abc{min-width:140px;}
   .abc-bar{display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;margin-top:5px;width:100%;background:var(--line-soft);}
   .abc-bar span{height:100%;}
   .abc-nums{display:flex;gap:8px;margin-top:3px;font-family:var(--font-mono);font-size:9.5px;color:var(--ink-dim);overflow:hidden;white-space:nowrap;}
@@ -227,20 +219,6 @@
     #export-btn{padding:0 11px;}
     #export-btn .btn-label{display:none;}
   }
-
-  .demo-btn{
-    appearance:none;height:36px;display:flex;align-items:center;gap:7px;
-    background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--radius-s);color:var(--ink-dim);
-    cursor:pointer;font-family:var(--font-ui);font-weight:600;font-size:12.5px;padding:0 16px;
-    transition:color .15s,border-color .15s;
-  }
-  .demo-btn svg{width:15px;height:15px;flex:0 0 auto;}
-  .demo-btn:hover{color:#c9a4ff;border-color:#c9a4ff;}
-  .demo-btn.busy{opacity:.6;pointer-events:none;}
-  /* "on" state -- a toggle, not a one-shot loader, so it's obvious at a
-     glance that the plant is showing sample data and how to leave it. */
-  .demo-btn.active{background:linear-gradient(180deg,#d9bfff,#a06eea);border-color:transparent;color:#210f38;}
-  .demo-btn.active:hover{color:#210f38;border-color:transparent;}
 
   #import-report{
     top:60px;right:16px;width:340px;padding:16px;z-index:26;max-height:calc(100% - 90px);overflow-y:auto;
@@ -397,7 +375,8 @@
 
   /* info popover */
   #info-pop{
-    top:60px;right:16px;width:290px;padding:16px;z-index:25;
+    top:60px;right:16px;width:330px;padding:16px;z-index:25;
+    max-height:calc(100% - 90px);overflow-y:auto;
     display:none;
   }
   #info-pop.open{display:block;}
@@ -405,42 +384,6 @@
   #info-pop ul{margin:0 0 14px;padding-left:16px;font-size:12px;color:var(--ink-dim);line-height:1.55;}
   #info-pop ul:last-of-type{margin-bottom:0;}
   #info-pop li::marker{color:var(--ink-faint);}
-
-  /* KPI dashboard tab -- replaces the 3D stage entirely while active, so it
-     fills the same footprint the other panels share instead of floating
-     over the canvas like a rail. */
-  #kpi-dashboard{
-    top:16px;left:16px;right:16px;bottom:16px;z-index:8;
-    padding:22px 28px;overflow-y:auto;
-    display:flex;flex-direction:column;gap:24px;
-  }
-  #kpi-dashboard h3{margin:0 0 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);}
-  .kd-empty-state{max-width:440px;}
-  .kd-empty-state p{font-size:13px;color:var(--ink-dim);line-height:1.6;}
-  .kd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;}
-  .kd-card{background:var(--bg-panel-2);border:1px solid var(--line-soft);border-radius:16px;padding:15px 17px;}
-  .kd-label{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:7px;}
-  .kd-value{font-family:var(--font-mono);font-size:25px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
-  .kd-value small{font-size:14px;font-weight:400;color:var(--ink-dim);}
-  .kd-sub{font-size:11.5px;color:var(--ink-dim);margin-top:5px;}
-  .kd-mini-bar{height:5px;border-radius:3px;background:var(--line-soft);overflow:hidden;margin-top:10px;}
-  .kd-mini-bar span{display:block;height:100%;}
-  /* Deliberately its own class, not a reuse of .abc-nums -- that class
-     carries a topbar-only "hide under 1750px" rule (see the kpi-strip
-     media queries) that would silently blank this section on ordinary
-     laptop widths. */
-  .kd-abc-nums{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:9px;font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);}
-  .kd-abc-nums em{font-style:normal;font-weight:600;}
-  .kd-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;}
-  .kd-section{background:var(--bg-panel-2);border:1px solid var(--line-soft);border-radius:16px;padding:6px 17px;}
-  .kd-row{display:flex;align-items:center;gap:11px;padding:9px 0;font-size:12.5px;color:var(--ink-dim);}
-  .kd-row + .kd-row{border-top:1px solid var(--line-soft);}
-  .kd-row-label{width:86px;flex:0 0 auto;font-family:var(--font-mono);color:var(--ink);cursor:pointer;background:none;border:none;padding:0;text-align:left;font-size:12.5px;}
-  .kd-row-label:hover{color:var(--accent);text-decoration:underline;}
-  .kd-row-bar{flex:1 1 auto;height:8px;border-radius:4px;background:var(--line-soft);overflow:hidden;}
-  .kd-row-bar span{display:block;height:100%;}
-  .kd-row-val{width:52px;flex:0 0 auto;text-align:right;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-dim);}
-  .kd-empty-row{font-size:12px;color:var(--ink-faint);padding:12px 0;}
 
   #loading{
     position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -471,7 +414,6 @@
   @media (max-width:880px){
     #controls{width:170px;}
     #detail{width:230px;}
-    .brand-sub{display:none;}
   }
 </style>
 
@@ -481,7 +423,6 @@
       <span class="brand-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
       <span class="brand-mark">ARAUCO <b>WAREHOUSE VISION</b></span>
       <select class="plant-select" id="plant-select" title="Selecionar planta" aria-label="Selecionar planta"></select>
-      <span class="brand-sub" id="plant-name">PB26</span>
     </div>
     <span class="example-tag" id="import-status-tag">Estoque não carregado</span>
     <button class="example-tag" id="unclassified-badge" hidden title="Baixar planilha de SKUs sem Curva ABC cadastrada"></button>
@@ -493,7 +434,6 @@
         <button data-mode="plant" class="active">Planta 3D</button>
         <button data-mode="abc">Curva ABC</button>
         <button data-mode="age" title="Estoque por Idade"><span class="mt-full">Estoque por Idade</span><span class="mt-short">Idade</span></button>
-        <button data-mode="kpis">KPIs</button>
       </div>
       <div class="search-box">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -501,7 +441,7 @@
         <div class="search-msg" id="search-msg">não encontrado</div>
         <div class="search-results" id="search-results" hidden></div>
       </div>
-      <button class="import-btn" id="import-btn" title="Importar planilha de dados (layout, capacidade, faturamento, estoque)">
+      <button class="import-btn" id="import-btn" title="Importar a base padrão (capacidade, curva ABC, MB52, LX02)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
         Importar
       </button>
@@ -510,12 +450,8 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M4 20h16"/></svg>
         <span class="btn-label">Exportar</span>
       </button>
-      <button class="demo-btn" id="demo-btn" title="Carregar dados de demonstração (ocupação, curva ABC e itens em produção de exemplo, sem alterar a planta)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v6.5L4.5 18a2 2 0 0 0 1.7 3h11.6a2 2 0 0 0 1.7-3L14 8.5V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>
-        <span id="demo-btn-label">Demo</span>
-      </button>
       <button class="icon-btn" id="theme-btn" title="Mudar para tema claro">☀</button>
-      <button class="icon-btn" id="info-btn" title="Roteiro do projeto">i</button>
+      <button class="icon-btn" id="info-btn" title="O que o app faz">i</button>
     </div>
   </div>
 
@@ -533,10 +469,11 @@
           <button class="mini-info-btn" id="abc-info-btn" type="button" title="Como a Curva ABC é calculada" aria-label="Como a Curva ABC é calculada">i</button>
         </div>
         <div class="abc-info-pop" id="abc-info-pop">
-          Os materiais são ordenados pelo faturamento dos últimos 12 meses (do maior para o menor) e classificados pelo percentual acumulado da receita total — a curva de Pareto:
-          <div class="abc-info-row"><span class="dot" style="background:var(--cls-a)"></span><b>Classe A</b> — somam até 80% do faturamento acumulado.</div>
-          <div class="abc-info-row"><span class="dot" style="background:var(--cls-b)"></span><b>Classe B</b> — de 80% a 95% do faturamento acumulado.</div>
-          <div class="abc-info-row"><span class="dot" style="background:var(--cls-c)"></span><b>Classe C</b> — os 5% finais, itens de menor giro.</div>
+          A classe de cada material vem da guia <b>ABC</b> (ou Classe/Cadastro) da base padrão — não é recalculada no app:
+          <div class="abc-info-row"><span class="dot" style="background:var(--cls-a)"></span><b>Classe A</b> — itens de maior giro/faturamento.</div>
+          <div class="abc-info-row"><span class="dot" style="background:var(--cls-b)"></span><b>Classe B</b> — giro intermediário.</div>
+          <div class="abc-info-row"><span class="dot" style="background:var(--cls-c)"></span><b>Classe C</b> — itens de menor giro.</div>
+          <div class="abc-info-row"><span class="dot" style="background:var(--ink-faint)"></span><b>Sem classe</b> — material que não está na guia; aparece na planilha de pendências.</div>
         </div>
         <div class="chip-row" id="filter-chips"></div>
       </div>
@@ -580,8 +517,6 @@
       <span><b>Clique no vazio</b> — voltar</span>
     </div>
 
-    <div class="panel" id="kpi-dashboard" hidden></div>
-
     <div class="panel" id="detail">
       <div class="detail-head">
         <div>
@@ -614,20 +549,33 @@
     </div>
 
     <div class="panel" id="info-pop">
+      <h4>O que o app faz</h4>
+      <ul>
+        <li>Mostra em 3D o estoque de cada unidade (PB22, PB23, PB25, PB26), posição a posição: ocupação, curva ABC e idade do estoque (data de produção).</li>
+        <li>Os layouts estão fechados — só mudam sob solicitação, junto com uma amostra do layout.</li>
+      </ul>
       <h4>Estado atual</h4>
       <ul id="info-status-list">
-        <li>Geometria real da planta PB26, importada da planilha de layout.</li>
-        <li>Nenhum estoque importado ainda — todas as posições cadastradas aparecem vazias.</li>
-        <li>Visão 3D com modos Planta, Curva ABC, Estoque por Idade e KPIs já prontos, à espera dos dados.</li>
-        <li>Zoom por clique direito, retorno pela área vazia, busca por código.</li>
+        <li>Nenhum estoque importado ainda — todas as posições aparecem vazias.</li>
       </ul>
-      <h4>Como importar</h4>
+      <h4>Como importar (base padrão de todas as unidades)</h4>
       <ul>
-        <li>Clique em <b>Importar</b> e selecione a planilha (.xlsx) com as guias <b>layout</b>, <b>capacidade</b>, <b>faturamento</b> e <b>estoque</b>.</li>
-        <li><b>faturamento</b>: últimos 12 meses de venda por item — usado para calcular a curva ABC (Pareto).</li>
-        <li><b>estoque</b>: posição atual de cada item; itens marcados como <b>em-produção</b> aparecem sobre a linha de produção, não em uma posição.</li>
-        <li>A planilha de layout pode ser reimportada a qualquer momento para incluir novas posições — as demais guias atualizam capacidade, ABC e ocupação.</li>
-        <li>Sem uma planilha em mãos, use o botão <b>Demo</b> para carregar ocupação, curva ABC e itens em produção de exemplo — a capacidade de cada posição continua a da planta real. Clique nele de novo para remover a demonstração e voltar ao modo produtivo.</li>
+        <li>Clique em <b>Importar</b> e escolha a planilha (.xlsx) com as guias:</li>
+        <li><b>capacidade</b> — m³ de cada Box.</li>
+        <li><b>ABC</b> (ou Classe/Cadastro) — classe A/B/C por material; coluna Família é opcional.</li>
+        <li><b>MB52</b> — estoque: volume = chapas (utilização livre + controle de qualidade) × dimensões da descrição do material.</li>
+        <li><b>LX02</b> — posição de cada lote e data de produção (coluna Data EM).</li>
+      </ul>
+      <h4>Regras</h4>
+      <ul>
+        <li>Só o volume que está em Box do 3D (com capacidade) é desenhado; o restante não aparece na planta, mas conta no total em estoque do topo.</li>
+        <li>Material inutilizado fica fora dos totais; lote sem dimensões na descrição vira pendência (botão vermelho de pendências).</li>
+        <li><b>Exportar</b> gera um Excel com o estoque por Box lote a lote, o resumo por Box e o que ficou fora do 3D, com o motivo.</li>
+      </ul>
+      <h4>Como navegar</h4>
+      <ul>
+        <li>Arrastar gira · Shift+arrastar (ou botão do meio) move · roda dá zoom · botão direito foca um ponto · clique no vazio volta.</li>
+        <li>Busque por posição ou código de material; use os filtros de classe e família e os modos Curva ABC e Idade.</li>
       </ul>
     </div>
   </div>
@@ -959,25 +907,15 @@ const boxByCode = new Map(boxes.map(b=>[b.code, b]));
 
 function fmt(n, d=0){ return (n||0).toLocaleString('pt-BR', {minimumFractionDigits:d, maximumFractionDigits:d}); }
 
-document.getElementById('plant-name').textContent = `${DATA.name} · ${fmt(DATA.width,0)}×${fmt(DATA.depth,0)} m · ${SEED_BUILD}`;
+document.getElementById('plant-select').title = `Planta ${DATA.name} · ${fmt(DATA.width,0)}×${fmt(DATA.depth,0)} m · versão ${SEED_BUILD}`;
 document.title = `Arauco Warehouse Vision ${DATA.name}`;
 
 const importState = { done:false, prodItems: [], outside: null };
 
-/* Snapshot of whatever stock DATA shipped with (real stock computed offline
-   and baked in, or none at all) -- this is "a fresh page load" as far as
-   Demo mode is concerned. Demo previews a sample dataset on top of the real
-   plant without altering it (see the Demo button's own tooltip); clearing
-   Demo restores exactly this snapshot instead of hard-wiping to empty, so
-   toggling Demo can never destroy real data that was already loaded. */
+/* Stock DATA shipped with (real stock computed offline and baked in, or none at all): boots straight into the "live" view. */
 const BASELINE_DONE = boxes.some(b => b.status === 'filled' || b.status === 'over');
 const BASELINE_PROD_ITEMS = Array.isArray(DATA.prodItems) ? DATA.prodItems : [];
 const BASELINE_OUTSIDE = DATA.outside3d || null;
-const BASELINE_STOCK = new Map(boxes.map(b => [b.code, {
-  occupied: b.occupied, occupancy: b.occupancy, status: b.status, cls: b.cls, familia: b.familia || null,
-  billableVolume: b.billableVolume, sku: b.sku, item: b.item, qty: b.qty, mixed: b.mixed, entryDate: b.entryDate,
-  skuBreakdown: b.skuBreakdown || [],
-}]));
 
 // Valid stock that sits outside the digitized Boxes (not drawn in the 3D, but
 // part of the company-wide KPI sums) -- see computeEstoqueFromSAP's result.outside.
@@ -1056,285 +994,28 @@ function computeAndRenderKPIs(){
     </div>
     ${abcCard}
   `;
+  fitKpiStrip();
+}
+/* The header's KPI cards are never shown half-cut: when the topbar is too
+   narrow, whole cards are hidden by priority (Sem cadastro, then Posições,
+   then Ocupadas/Vazias) until the rest fits; the Curva ABC / total-em-estoque
+   card always stays, and if even that one doesn't fit the strip is blanked
+   instead of clipping a number. */
+function fitKpiStrip(){
+  const strip = document.getElementById('kpi-strip');
+  if (!strip) return;
+  const cards = [...strip.children];
+  strip.classList.remove('kpi-strip-off');
+  cards.forEach(c => c.classList.remove('kpi-hidden'));
+  const overflows = () => strip.scrollWidth > strip.clientWidth + 1;
+  for (const i of [2, 0, 1]){
+    if (!overflows()) return;
+    if (cards[i]) cards[i].classList.add('kpi-hidden');
+  }
+  if (overflows()) strip.classList.add('kpi-strip-off');
 }
 computeAndRenderKPIs();
-
-/* ================= KPI dashboard (3rd tab) ================= */
-/* A read-only logistics summary of the same box data the 3D view already
-   holds -- occupancy, ABC volume split, busiest aisles and capacity
-   alerts -- so a stock manager gets a scannable overview without hunting
-   for it position by position. Nothing here is fetched separately: it's
-   all derived from `boxes` + `importState`, so it always matches what's
-   on screen in the other two tabs. */
-function computeInventoryDashboard(){
-  const usable = boxes.filter(b=>b.status!=='unregistered');
-  const unregistered = boxes.filter(b=>b.status==='unregistered');
-  const occupied = boxes.filter(b=>b.status==='filled'||b.status==='over');
-  const overBoxes = boxes.filter(b=>b.status==='over');
-  const mixedBoxes = boxes.filter(b=>b.mixed);
-  const totalCapacity = usable.reduce((s,b)=>s+b.capacity,0);
-  const occupiedVol = occupied.reduce((s,b)=>s+(b.billableVolume ?? b.occupied ?? 0),0); // excludes inutilizado volume -- see isInutilizadoMaterial
-  const volPct = totalCapacity ? occupiedVol/totalCapacity*100 : 0;
-  const occPct = usable.length ? occupied.length/usable.length*100 : 0;
-
-  const clsCounts = {A:0,B:0,C:0};
-  const clsVol = {A:0,B:0,C:0,none:0};   // inside the Boxes (by each Box's dominant class)
-  occupied.forEach(b=>{
-    const v = (b.billableVolume ?? b.occupied ?? 0); // excludes inutilizado volume -- see isInutilizadoMaterial
-    if (b.cls){ clsCounts[b.cls]++; clsVol[b.cls] += v; } else clsVol.none += v;
-  });
-  const out = outsideTotals();
-  const clsVolTotal = {A: clsVol.A + out.byCls.A, B: clsVol.B + out.byCls.B, C: clsVol.C + out.byCls.C, none: clsVol.none + out.byCls.none};
-  const totalStockVol = occupiedVol + out.billableVolume;
-  const prodVol = importState.prodItems.reduce((s,i)=>s+(i.volume||0),0);
-
-  const aisleAgg = new Map();
-  usable.forEach(b=>{
-    if (!aisleAgg.has(b.aisle)) aisleAgg.set(b.aisle, {cap:0, occ:0});
-    const a = aisleAgg.get(b.aisle);
-    a.cap += b.capacity;
-    a.occ += (b.occupied||0);
-  });
-  const aisleRows = [...aisleAgg.entries()]
-    .map(([aisle, v])=>({aisle, pct: v.cap ? v.occ/v.cap*100 : 0}))
-    .filter(r=>r.pct > 0)
-    .sort((x,y)=>y.pct-x.pct);
-
-  const overRows = overBoxes
-    .map(b=>({code:b.code, pct: b.occupancy*100}))
-    .sort((x,y)=>y.pct-x.pct);
-
-  // Stock-age heat map data: driven by each occupied box's b.entryDate
-  // (the OLDEST item still sitting there), left unknown until the "data de
-  // entrada" column is parametrized on a real import.
-  const ageBucketCounts = AGE_BUCKETS.map(()=>0);
-  let ageUnknownCount = 0, ageDaysSum = 0, ageDaysCount = 0, staleCount = 0;
-  occupied.forEach(b=>{
-    const days = daysSince(b.entryDate);
-    if (days == null){ ageUnknownCount++; return; }
-    ageDaysSum += days; ageDaysCount++;
-    if (days >= 180) staleCount++;
-    const idx = AGE_BUCKETS.findIndex(bk => days < bk.max);
-    ageBucketCounts[idx === -1 ? AGE_BUCKETS.length-1 : idx]++;
-  });
-  const avgAgeDays = ageDaysCount ? ageDaysSum/ageDaysCount : null;
-  const ageRows = occupied
-    .filter(b=>b.entryDate != null)
-    .map(b=>({code:b.code, days: daysSince(b.entryDate)}))
-    .sort((x,y)=>y.days-x.days);
-
-  return {
-    usable, unregistered, occupied, overBoxes, mixedBoxes,
-    totalCapacity, occupiedVol, volPct, occPct,
-    clsCounts, clsVol, clsVolTotal, out, totalStockVol, prodVol, aisleRows, overRows,
-    ageBucketCounts, ageUnknownCount, avgAgeDays, ageRows, staleCount,
-    prodCount: importState.prodItems.length,
-  };
-}
-
-function jumpToBox(code){
-  const b = boxByCode.get(code);
-  if (!b) return;
-  setMode('plant');
-  selectBox(code);
-  focusPoint(b.x, b.z, code);
-}
-
-function renderKpiDashboard(){
-  const el = document.getElementById('kpi-dashboard');
-  if (!importState.done){
-    el.innerHTML = `
-      <div class="kd-empty-state">
-        <h3>Resumo de estoque</h3>
-        <p>Nenhum dado de estoque carregado ainda. Importe a planilha ou use o botão <b>Demo</b> para ver ocupação, curva ABC por volume, ruas mais cheias e alertas de capacidade aqui.</p>
-      </div>`;
-    return;
-  }
-  const d = computeInventoryDashboard();
-  const volTotal = Math.max(1, d.clsVolTotal.A + d.clsVolTotal.B + d.clsVolTotal.C + d.clsVolTotal.none);
-  const hasOutside = !!importState.outside;
-  const outNote = (v) => (hasOutside && v > 0) ? ` <small>(${fmt(v)} fora do 3D)</small>` : '';
-  const reasonRows = hasOutside
-    ? Object.entries(EXPORT_REASONS).sort((a,b)=>a[1].order-b[1].order)
-        .map(([code, meta]) => [meta.label, d.out.byReason[code]]).filter(([, e]) => e && e.n)
-    : [];
-
-  el.innerHTML = `
-    <div>
-      <h3>Resumo de estoque</h3>
-      <div class="kd-grid">
-        <div class="kd-card">
-          <div class="kd-label">Ocupação de posições</div>
-          <div class="kd-value">${fmt(d.occPct,0)}<small>%</small></div>
-          <div class="kd-sub">${fmt(d.occupied.length)} de ${fmt(d.usable.length)} posições cadastradas</div>
-          <div class="kd-mini-bar"><span style="width:${Math.min(100,d.occPct)}%;background:var(--accent)"></span></div>
-        </div>
-        <div class="kd-card">
-          <div class="kd-label">Estoque total (MB52)</div>
-          <div class="kd-value">${fmt(d.totalStockVol)}<small>m³</small></div>
-          <div class="kd-sub">${hasOutside ? `no 3D ${fmt(d.occupiedVol)} · fora do 3D ${fmt(d.out.billableVolume)} m³ (sem inutilizado)` : `${fmt(d.occupiedVol)} m³ no 3D — reimporte a base padrão para somar o que está fora do 3D`}</div>
-        </div>
-        <div class="kd-card">
-          <div class="kd-label">Volume ocupado no 3D</div>
-          <div class="kd-value">${fmt(d.volPct,0)}<small>%</small></div>
-          <div class="kd-sub">${fmt(d.occupiedVol)} de ${fmt(d.totalCapacity)} m³</div>
-          <div class="kd-mini-bar"><span style="width:${Math.min(100,d.volPct)}%;background:var(--accent)"></span></div>
-        </div>
-        <div class="kd-card">
-          <div class="kd-label">Acima da capacidade</div>
-          <div class="kd-value" style="${d.overBoxes.length?`color:${cssHex(COLORS.occOver)}`:''}">${fmt(d.overBoxes.length)}</div>
-          <div class="kd-sub">${fmt(d.occupied.length?d.overBoxes.length/d.occupied.length*100:0,0)}% das posições ocupadas</div>
-        </div>
-        <div class="kd-card">
-          <div class="kd-label">Múltiplos SKUs</div>
-          <div class="kd-value">${fmt(d.mixedBoxes.length)}</div>
-          <div class="kd-sub">posições dividindo espaço entre itens</div>
-        </div>
-        <div class="kd-card">
-          <div class="kd-label">Em produção</div>
-          <div class="kd-value">${fmt(d.prodCount)}</div>
-          <div class="kd-sub">itens aguardando posição${d.prodVol ? ` · ${fmt(d.prodVol)} m³` : ''}</div>
-        </div>
-        <div class="kd-card">
-          <div class="kd-label">Sem cadastro</div>
-          <div class="kd-value">${fmt(d.unregistered.length)}</div>
-          <div class="kd-sub">espaços sem capacidade definida na planta</div>
-        </div>
-        <div class="kd-card">
-          <div class="kd-label">Idade média do estoque</div>
-          <div class="kd-value">${d.avgAgeDays!=null?fmt(d.avgAgeDays,0):'—'}${d.avgAgeDays!=null?'<small>dias</small>':''}</div>
-          <div class="kd-sub">${d.ageUnknownCount?`${fmt(d.ageUnknownCount)} posição(ões) sem data de produção`:'todas as posições ocupadas com data de produção'}</div>
-        </div>
-        <div class="kd-card">
-          <div class="kd-label">Estoque &gt; 180 dias</div>
-          <div class="kd-value" style="${d.staleCount?`color:${cssHex(COLORS.age180)}`:''}">${fmt(d.staleCount)}</div>
-          <div class="kd-sub">${fmt(d.occupied.length?d.staleCount/d.occupied.length*100:0,0)}% das posições ocupadas</div>
-        </div>
-      </div>
-    </div>
-
-    <div>
-      <h3>Estoque por idade (posições ocupadas no 3D)</h3>
-      <div class="kd-section" style="padding-top:16px;padding-bottom:16px;">
-        <div class="abc-bar" style="margin-top:0;">
-          ${AGE_BUCKETS.map((bk,i)=>`<span style="width:${d.occupied.length?d.ageBucketCounts[i]/d.occupied.length*100:0}%;background:${cssHex(bucketColor(bk))}"></span>`).join('')}
-          ${d.ageUnknownCount?`<span style="width:${d.occupied.length?d.ageUnknownCount/d.occupied.length*100:0}%;background:${cssHex(COLORS.unreg)}"></span>`:''}
-        </div>
-        <div class="kd-abc-nums">
-          ${AGE_BUCKETS.map((bk,i)=>`<span><em style="color:${cssHex(bucketColor(bk))}">${fmt(d.ageBucketCounts[i])}</em> ${bk.label}</span>`).join('')}
-          ${d.ageUnknownCount?`<span><em style="color:${cssHex(COLORS.unreg)}">${fmt(d.ageUnknownCount)}</em> sem data de produção</span>`:''}
-        </div>
-      </div>
-    </div>
-
-    <div>
-      <h3>Curva ABC por volume${hasOutside ? ' (dentro + fora do 3D)' : ' ocupado'}</h3>
-      <div class="kd-section" style="padding-top:16px;padding-bottom:16px;">
-        <div class="abc-bar" style="margin-top:0;">
-          <span style="width:${d.clsVolTotal.A/volTotal*100}%;background:${cssHex(COLORS.clsA)}"></span>
-          <span style="width:${d.clsVolTotal.B/volTotal*100}%;background:${cssHex(COLORS.clsB)}"></span>
-          <span style="width:${d.clsVolTotal.C/volTotal*100}%;background:${cssHex(COLORS.clsC)}"></span>
-          <span style="width:${d.clsVolTotal.none/volTotal*100}%;background:${cssHex(COLORS.clsUnclassified)}"></span>
-        </div>
-        <div class="kd-abc-nums">
-          <span><em style="color:${cssHex(COLORS.clsA)}">${fmt(d.clsVolTotal.A)} m³</em> Classe A · ${fmt(d.clsCounts.A)} posições${outNote(d.out.byCls.A)}</span>
-          <span><em style="color:${cssHex(COLORS.clsB)}">${fmt(d.clsVolTotal.B)} m³</em> Classe B · ${fmt(d.clsCounts.B)} posições${outNote(d.out.byCls.B)}</span>
-          <span><em style="color:${cssHex(COLORS.clsC)}">${fmt(d.clsVolTotal.C)} m³</em> Classe C · ${fmt(d.clsCounts.C)} posições${outNote(d.out.byCls.C)}</span>
-          <span><em style="color:${cssHex(COLORS.clsUnclassified)}">${fmt(d.clsVolTotal.none)} m³</em> Sem curva ABC${outNote(d.out.byCls.none)}</span>
-        </div>
-      </div>
-    </div>
-    ${reasonRows.length ? `
-    <div>
-      <h3>Fora do 3D por motivo (sem inutilizado)</h3>
-      <div class="kd-section" style="padding-top:16px;padding-bottom:16px;">
-        <div class="kd-abc-nums">
-          ${reasonRows.map(([label, e]) => `<span><em>${fmt(e.billable)} m³</em> ${label} · ${fmt(e.n)} lotes</span>`).join('')}
-        </div>
-      </div>
-    </div>` : ''}
-
-    <div class="kd-cols">
-      <div>
-        <h3>Ocupação por rua</h3>
-        <div class="kd-section" id="kd-aisle-rows"></div>
-      </div>
-      <div>
-        <h3>Alertas de capacidade</h3>
-        <div class="kd-section" id="kd-over-rows"></div>
-      </div>
-      <div>
-        <h3>Posições com estoque mais antigo</h3>
-        <div class="kd-section" id="kd-age-rows"></div>
-      </div>
-    </div>
-  `;
-
-  // Built with createElement/appendChild (like the filter chips above)
-  // rather than templated into the innerHTML string, so each row's click
-  // handler is attached directly to a real element instead of relying on
-  // event delegation.
-  function buildKdRow({label, pct, color, onClick, valText}){
-    const row = document.createElement('div');
-    row.className = 'kd-row';
-    const btn = document.createElement('button');
-    btn.className = 'kd-row-label';
-    btn.textContent = label;
-    btn.addEventListener('click', onClick);
-    const barWrap = document.createElement('span');
-    barWrap.className = 'kd-row-bar';
-    const bar = document.createElement('span');
-    bar.style.width = Math.min(100,pct)+'%';
-    bar.style.background = color;
-    barWrap.appendChild(bar);
-    const val = document.createElement('span');
-    val.className = 'kd-row-val';
-    val.textContent = valText != null ? valText : fmt(pct,0)+'%';
-    row.appendChild(btn); row.appendChild(barWrap); row.appendChild(val);
-    return row;
-  }
-
-  const aisleContainer = document.getElementById('kd-aisle-rows');
-  if (!d.aisleRows.length){
-    aisleContainer.innerHTML = `<div class="kd-empty-row">Sem posições ocupadas ainda.</div>`;
-  } else {
-    d.aisleRows.slice(0,8).forEach(r=>{
-      aisleContainer.appendChild(buildKdRow({
-        label: `Rua ${r.aisle}`, pct: r.pct, color: cssHex(occupancyColor(r.pct/100)),
-        onClick: ()=>{
-          const b = boxes.find(x=>x.aisle===r.aisle && (x.status==='filled'||x.status==='over'));
-          if (b) jumpToBox(b.code);
-        },
-      }));
-    });
-  }
-
-  const overContainer = document.getElementById('kd-over-rows');
-  if (!d.overRows.length){
-    overContainer.innerHTML = `<div class="kd-empty-row">Nenhuma posição acima da capacidade.</div>`;
-  } else {
-    d.overRows.slice(0,8).forEach(r=>{
-      overContainer.appendChild(buildKdRow({
-        label: r.code, pct: r.pct, color: cssHex(COLORS.occOver),
-        onClick: ()=>jumpToBox(r.code),
-      }));
-    });
-  }
-
-  const ageContainer = document.getElementById('kd-age-rows');
-  if (!d.ageRows.length){
-    ageContainer.innerHTML = `<div class="kd-empty-row">${d.ageUnknownCount?'Nenhuma posição com data de produção informada ainda.':'Nenhuma posição ocupada ainda.'}</div>`;
-  } else {
-    d.ageRows.slice(0,8).forEach(r=>{
-      const bucket = ageBucketFor(r.days);
-      ageContainer.appendChild(buildKdRow({
-        label: r.code, pct: Math.min(100, r.days/180*100), color: cssHex(bucket?bucketColor(bucket):COLORS.unreg),
-        valText: `${fmt(r.days)}d`,
-        onClick: ()=>jumpToBox(r.code),
-      }));
-    });
-  }
-}
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => fitKpiStrip()).observe(document.getElementById('kpi-strip'));
 
 /* ================= filters / legend UI ================= */
 const FILTER_DEFS = [
@@ -1438,7 +1119,7 @@ function classLegendRows(){ return `
   <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.clsA)}"></span>Classe <b>A</b></div>
   <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.clsB)}"></span>Classe <b>B</b></div>
   <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.clsC)}"></span>Classe <b>C</b></div>
-  <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.clsUnclassified)}"></span>Sem classe <small>(fora da amostra de faturamento)</small></div>
+  <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.clsUnclassified)}"></span>Sem classe <small>(material sem curva na base)</small></div>
 `; }
 function tailLegendRows(){ return `
   <div class="legend-row"><span class="legend-swatch" style="background:transparent;border-color:${cssHex(COLORS.shell)}"></span>Vazia</div>
@@ -1474,24 +1155,11 @@ function renderLegend(){
 }
 renderLegend();
 
-/* Switching to "KPIs" swaps the 3D stage out for the dashboard entirely
-   (there's nothing to filter/orbit there); switching back restores the
-   canvas + side rail exactly as they were. */
 function setMode(mode){
   state.mode = mode;
   [...document.getElementById('mode-toggle').children].forEach(c=>c.classList.toggle('active', c.dataset.mode===mode));
-  const isKpis = mode === 'kpis';
-  document.getElementById('scene').style.display = isKpis ? 'none' : '';
-  document.getElementById('controls').style.display = isKpis ? 'none' : '';
-  document.getElementById('hint').style.display = isKpis ? 'none' : '';
-  document.getElementById('kpi-dashboard').hidden = !isKpis;
-  if (isKpis){
-    hideDetail();
-    renderKpiDashboard();
-  } else {
-    renderLegend();
-    applyVisualState();
-  }
+  renderLegend();
+  applyVisualState();
 }
 document.getElementById('mode-toggle').addEventListener('click', (e)=>{
   const btn = e.target.closest('button[data-mode]');
@@ -2063,7 +1731,6 @@ function applyTheme(name){
   // re-rendered them on a theme switch -- without this they kept showing
   // whatever was last painted (always the dark-theme hex) forever.
   renderLegend();
-  if (state.mode === 'kpis') renderKpiDashboard();
 
   const themeBtn = document.getElementById('theme-btn');
   if (themeBtn){
@@ -2368,7 +2035,7 @@ function showDetail(code){
   const prec = prodRegistry.get(code);
   if (prec) { showProdDetail(prec); return; }
   // Neither registry has this code anymore -- typically a "em produção"
-  // marker whose SKU dropped out on a re-import/demo toggle. Close the
+  // marker whose SKU dropped out on a re-import. Close the
   // panel instead of leaving it open showing data that no longer exists.
   clearSelection();
 }
@@ -2510,7 +2177,6 @@ document.getElementById('d-block').addEventListener('click', ()=>{
   rebuildBoxRecord(b.code);
   applyVisualState();
   computeAndRenderKPIs();
-  if (state.mode === 'kpis') renderKpiDashboard();
   persistActivePlant();
   showDetail(b.code);
 });
@@ -2638,7 +2304,7 @@ document.addEventListener('click', (e)=>{
    (see the production-zone branch above), and these items stay reachable
    through the KPI "em produção" count and the pendências spreadsheet export
    instead of a 3D marker. buildProdMarkers()/clearProdMarkers() are kept
-   (still called from the import/demo/reset paths) purely to guarantee any
+   (still called from the import paths) purely to guarantee any
    markers from a stale prior build get torn down; they no longer create
    new ones. */
 let prodMarkerGroup = new THREE.Group();
@@ -3185,31 +2851,23 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
 function updateInfoPop(){
   const list = document.getElementById('info-status-list');
   if (!list) return;
-  const hasCadastro = boxes.some(b=>b.capacity>0);
-  const geometryLine = hasCadastro
-    ? `Geometria real da planta ${DATA.name}, importada da planilha de layout.`
-    : (boxes.length || DATA.zones.length
-        ? `Geometria aproximada da planta ${DATA.name}, digitalizada a partir da planta baixa — capacidades ainda não cadastradas.`
-        : `Nenhuma planta cadastrada para ${DATA.name} ainda — envie a planilha de layout (ruas e boxes) para gerar a geometria 3D desta unidade.`);
+  const registered = boxes.filter(b => b.status !== 'unregistered').length;
+  const occupied = boxes.filter(b => b.status === 'filled' || b.status === 'over').length;
+  const plantLine = `Planta ${DATA.name}: ${fmt(boxes.length)} posições no layout, ${fmt(registered)} com capacidade cadastrada.`;
   if (!importState.done){
-    // Same wording as the panel's original static markup -- restored here
-    // too, so leaving Demo mode (or any state where stock was cleared)
-    // doesn't leave this list stuck describing data that's gone.
     list.innerHTML = `
-      <li>${geometryLine}</li>
-      <li>Nenhum estoque importado ainda — todas as posições cadastradas aparecem vazias.</li>
-      <li>Visão 3D com modos Planta, Curva ABC, Estoque por Idade e KPIs já prontos, à espera dos dados.</li>
-      <li>Zoom por clique direito, retorno pela área vazia, busca por código.</li>
+      <li>${plantLine}</li>
+      <li>Nenhum estoque importado ainda — todas as posições aparecem vazias.</li>
     `;
     return;
   }
+  const out = outsideTotals();
+  const inBoxes = boxes.filter(b => b.status === 'filled' || b.status === 'over').reduce((s,b)=>s+(b.billableVolume ?? b.occupied ?? 0), 0);
   list.innerHTML = `
-    <li>${geometryLine}</li>
-    <li>Estoque carregado — posições preenchidas conforme a última planilha ou demonstração carregada.</li>
-    <li>Curva ABC calculada a partir do faturamento dos últimos 12 meses.</li>
-    <li>${fmt(importState.prodItems.length)} item(ns) aguardando posição, exibidos sobre a linha de produção.</li>
-    <li>Aba <b>KPIs</b> traz o resumo de ocupação, ABC por volume, ruas mais cheias e alertas de capacidade.</li>
-    <li>Reimporte a planilha a qualquer momento para atualizar os dados.</li>
+    <li>${plantLine}</li>
+    <li>Estoque carregado: ${fmt(occupied)} posições ocupadas.</li>
+    <li>Total em estoque: ${fmt(inBoxes + out.billableVolume)} m³ (sem inutilizado)${importState.outside ? ` — ${fmt(inBoxes)} m³ nos Boxes do 3D e ${fmt(out.billableVolume)} m³ fora do 3D` : ''}.</li>
+    <li>Reimporte a base a qualquer momento para atualizar os dados.</li>
   `;
 }
 function updateImportStatusTag(){
@@ -3226,7 +2884,6 @@ function updateImportStatusTag(){
 
 const importBtn = document.getElementById('import-btn');
 const importFileInput = document.getElementById('import-file');
-const demoBtn = document.getElementById('demo-btn');
 const importReportPanel = document.getElementById('import-report');
 const importReportTitle = document.getElementById('import-report-title');
 const importReportBody = document.getElementById('import-report-body');
@@ -3334,13 +2991,11 @@ const EXPORT_REASONS = {
 function updateExportBtn(){
   const btn = document.getElementById('export-btn');
   if (!btn) return;
-  const ready = !!lotExportData && !demoActive;
+  const ready = !!lotExportData;
   btn.disabled = !ready;
   btn.title = ready
     ? `Exportar o estoque por Box, lote a lote (${lotExportData.lotRows.length.toLocaleString('pt-BR')} lotes em Box, ${lotExportData.excludedRows.length.toLocaleString('pt-BR')} fora do 3D)${lotExportPersisted ? '' : ' — atenção: não coube no armazenamento do navegador, exporte antes de recarregar a página'}`
-    : demoActive
-      ? 'Indisponível no modo Demo (os dados são fictícios) — saia da demo para exportar o estoque real'
-      : 'Exportar o estoque por Box, lote a lote (disponível depois de importar uma planilha com LX02)';
+    : 'Exportar o estoque por Box, lote a lote (disponível depois de importar uma planilha com LX02)';
 }
 function setLotExport(stock){
   lotExportData = (stock && Array.isArray(stock.lotRows)) ? {
@@ -3492,7 +3147,7 @@ function buildStockExportWorkbook(){
   return wb;
 }
 function downloadStockExport(){
-  if (!lotExportData || demoActive || typeof XLSX === 'undefined') return;
+  if (!lotExportData || typeof XLSX === 'undefined') return;
   const wb = buildStockExportWorkbook();
   const day = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, `${DATA.name}_estoque_por_box_${day}.xlsx`);
@@ -3503,32 +3158,11 @@ importFileInput.addEventListener('change', (e)=>{
   if (!file) return;
   runImport(file).finally(()=>{ importFileInput.value = ''; });
 });
-/* The Demo button is a toggle, not a one-shot loader: click it once to
-   load the sample dataset, click again to drop it and return straight to
-   productive mode (no stock loaded) without having to re-import a real
-   spreadsheet just to clear the example. Importing a real spreadsheet
-   also counts as leaving Demo, since its data no longer describes a demo. */
-let demoActive = false;
-function setDemoActive(on){
-  demoActive = on;
-  if (!demoBtn) return;
-  demoBtn.classList.toggle('active', on);
-  const label = document.getElementById('demo-btn-label');
-  if (label) label.textContent = on ? 'Sair da demo' : 'Demo';
-  demoBtn.title = on
-    ? 'Sair da demonstração e voltar ao modo produtivo (remove os dados de exemplo)'
-    : 'Carregar dados de demonstração (ocupação, curva ABC e itens em produção de exemplo, sem alterar a planta)';
-  updateExportBtn();
-}
-if (demoBtn) demoBtn.addEventListener('click', ()=>{
-  if (demoActive) clearDemoData(); else loadDemoData();
-});
-
 /* Persists the active plant's current boxes/prodItems as its new baseline,
    so the next page load (or a reload after switching plants) boots straight
    into whatever was last imported for it -- same mechanism the file already
    uses to ship real baked-in stock, just written by the browser instead of
-   offline. Only called after a real spreadsheet import, never for Demo data. */
+   offline. Only called after a real spreadsheet import. */
 function persistActivePlant(){
   DATA.prodItems = importState.prodItems;
   DATA.outside3d = importState.outside;
@@ -3622,7 +3256,6 @@ async function runImport(file){
       doneTitle: 'Importação concluída',
     });
     if (hasEst) setLotExport(stock); // only a real stock import replaces the lote-level export data
-    if (demoActive) setDemoActive(false); // real data now on the plant -- no longer a demo
     persistActivePlant();
   } catch (err){
     console.error(err);
@@ -3633,8 +3266,7 @@ async function runImport(file){
   }
 }
 
-/* Shared by a real spreadsheet import and the built-in demo generator below:
-   applies a computed {capMap, stock} onto the live box registry, rebuilds
+/* Applies a computed {capMap, stock} onto the live box registry, rebuilds
    only the meshes that actually changed, refreshes every dependent view
    (KPIs, legend, info panel, status tag, open detail panel), and renders the
    report panel. `hasCap`/`hasEst`/`hasFat` say which sources were actually
@@ -3725,7 +3357,6 @@ function applyImportedData({report, capMap, stock, clsBySku, familiaBySku, hasCa
   updateInfoPop();
   updateImportStatusTag();
   if (state.selected) showDetail(state.selected);
-  if (state.mode === 'kpis') renderKpiDashboard();
 
   const okList = report.lines.info.map(m=>`<li class="ir-ok">${m}</li>`).join('');
   const extraWarn = [];
@@ -3771,234 +3402,6 @@ function applyImportedData({report, capMap, stock, clsBySku, familiaBySku, hasCa
     ${warnList ? `<h5>Avisos</h5><ul>${warnList}</ul>` : ''}
     ${errList ? `<h5>Erros</h5><ul>${errList}</ul>` : ''}
   `;
-}
-
-/* ================= built-in demo dataset ================= */
-/* A deterministic (seeded) sample of occupancy + revenue, generated entirely
-   in the browser -- no spreadsheet needed -- so the ABC curve, occupancy
-   meters, filters, mixed-SKU badges, over-capacity flags and em-produção
-   markers can all be demonstrated on the real plant/layout as it already
-   stands. Box capacities are never touched by this. */
-function mulberry32(seed){
-  return function(){
-    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-const FIXED_DEMO_CODE = '123456';
-const FIXED_DEMO_CODE_MULTI = '222222';
-function genSkuCatalog(rng, count=54){
-  const TYPES = [
-    {code:'MDF', name:'MDF'}, {code:'MDP', name:'MDP'}, {code:'HDF', name:'HDF'},
-    {code:'CMP', name:'Compensado'}, {code:'OSB', name:'OSB'},
-  ];
-  const THICK = ['3','6','9','12','15','18','25'];
-  const FINISH = [
-    {code:'CRU', name:'Cru'}, {code:'BTX', name:'Branco TX'}, {code:'BBP', name:'Branco BP'},
-    {code:'CVL', name:'Carvalho'}, {code:'PRT', name:'Preto Supremo'}, {code:'AMD', name:'Amêndoa'},
-    {code:'CZF', name:'Cinza Fumê'}, {code:'NOC', name:'Noce'},
-  ];
-  const seen = new Set();
-  const catalog = [];
-  let guard = 0;
-  // Real stock systems key material by a numeric code, not a descriptive
-  // string -- the demo dataset mirrors that (and the search box) with
-  // 6-digit codes. Two fixed, memorable codes always exist: "123456" is an
-  // obvious single-position example to type into the search field, and
-  // FIXED_DEMO_CODE_MULTI is deliberately spread across several positions
-  // at once in genDemoRows below, since a real SKU is rarely confined to a
-  // single box -- it's the multi-result case the search dropdown handles.
-  // Both are pushed to the top of the catalog, so they land among the
-  // highest revenue / Classe A items once assignDemoRevenue ranks by array
-  // order (a plausible enough shape: a warehouse's busiest SKUs are also
-  // usually the ones spread across the most positions).
-  seen.add(FIXED_DEMO_CODE);
-  catalog.push({ sku: FIXED_DEMO_CODE, desc: `${TYPES[0].name} ${THICK[3]}mm ${FINISH[1].name}` });
-  seen.add(FIXED_DEMO_CODE_MULTI);
-  catalog.push({ sku: FIXED_DEMO_CODE_MULTI, desc: `${TYPES[1].name} ${THICK[5]}mm ${FINISH[3].name}` });
-  while (catalog.length < count && guard++ < count*20){
-    const t = TYPES[Math.floor(rng()*TYPES.length)];
-    const th = THICK[Math.floor(rng()*THICK.length)];
-    const f = FINISH[Math.floor(rng()*FINISH.length)];
-    const sku = String(100000 + Math.floor(rng()*900000));
-    if (seen.has(sku)) continue;
-    seen.add(sku);
-    catalog.push({ sku, desc: `${t.name} ${th}mm ${f.name}` });
-  }
-  return catalog;
-}
-function assignDemoRevenue(catalog, rng){
-  const ALPHA = 1.15, SCALE = 620000;
-  return catalog.map((item, i) => ({
-    ...item,
-    revenue: Math.round(SCALE / Math.pow(i+2, ALPHA) * (0.85 + rng()*0.3)),
-  }));
-}
-function genDemoRows(boxList, rng){
-  const catalog = assignDemoRevenue(genSkuCatalog(rng), rng);
-  // Both fixed codes are placed on their own boxes explicitly below (see
-  // singleBoxes/multiBoxes) rather than through the weighted random pick,
-  // so they're excluded from the pool pickSku() draws from -- otherwise the
-  // random pass could also hand either of them extra positions (or
-  // production items) by chance, and "one position" / "five positions"
-  // would stop being reliable, demonstrable facts about the dataset.
-  const singleItem = catalog.find(c => c.sku === FIXED_DEMO_CODE);
-  const multiItem = catalog.find(c => c.sku === FIXED_DEMO_CODE_MULTI);
-  const randomPool = catalog.filter(c => c.sku !== FIXED_DEMO_CODE && c.sku !== FIXED_DEMO_CODE_MULTI);
-  const totalWeight = randomPool.reduce((s,c)=>s+Math.sqrt(c.revenue), 0) || 1;
-  function pickSku(){
-    let r = rng()*totalWeight;
-    for (const c of randomPool){ r -= Math.sqrt(c.revenue); if (r<=0) return c; }
-    return randomPool[randomPool.length-1];
-  }
-  const today = new Date();
-  function randomDateWithinYear(){
-    const daysAgo = Math.floor(rng()*350);
-    const d = new Date(today); d.setDate(d.getDate()-daysAgo);
-    const dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yyyy=d.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  }
-  // Faturamento still covers the full catalog (both fixed codes included)
-  // so they get a normal ABC class like any other material.
-  const fatRows = catalog.map(c=>({ DATA: randomDateWithinYear(), SKU: c.sku, VALOR: c.revenue }));
-
-  const eligible = boxList.filter(b=>b.status!=='unregistered' && b.capacity>0);
-  const shuffled = [...eligible];
-  for (let i=shuffled.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]; }
-
-  const estRows = [];
-
-  // Place singleItem and multiItem as the sole item of their own boxes up
-  // front -- being the only SKU in each box guarantees it's also that
-  // box's dominant/primary material, so it's reliably findable there
-  // (computeEstoqueFromRows picks the box's highest-volume SKU as its
-  // "primary" one, and a lone item trivially wins that). singleItem keeps
-  // the original one-obvious-example guarantee ("123456" -> exactly one
-  // hit, a direct jump); multiItem demonstrates the opposite, realistic
-  // case where a material sits in several positions at once.
-  const SINGLE_BOX_COUNT = Math.min(1, shuffled.length);
-  const singleBoxes = shuffled.slice(0, SINGLE_BOX_COUNT);
-  singleBoxes.forEach(b=>{
-    const fillPct = 0.4 + rng()*0.45;
-    const vol = Math.max(0.1, b.capacity*fillPct);
-    estRows.push({ BOX:b.code, SKU:singleItem.sku, DESCRICAO:singleItem.desc, QUANTIDADE: Math.round(vol*8), VOLUME: Number(vol.toFixed(2)), DATA_ENTRADA: randomDateWithinYear() });
-  });
-
-  const MULTI_BOX_COUNT = Math.min(5, shuffled.length - SINGLE_BOX_COUNT);
-  const multiBoxes = shuffled.slice(SINGLE_BOX_COUNT, SINGLE_BOX_COUNT + MULTI_BOX_COUNT);
-  multiBoxes.forEach(b=>{
-    const fillPct = 0.4 + rng()*0.45;
-    const vol = Math.max(0.1, b.capacity*fillPct);
-    estRows.push({ BOX:b.code, SKU:multiItem.sku, DESCRICAO:multiItem.desc, QUANTIDADE: Math.round(vol*8), VOLUME: Number(vol.toFixed(2)), DATA_ENTRADA: randomDateWithinYear() });
-  });
-
-  const rest = shuffled.slice(SINGLE_BOX_COUNT + MULTI_BOX_COUNT);
-  const fillCount = Math.round(rest.length*0.78);
-  const toFill = rest.slice(0, fillCount);
-  const overCount = Math.round(toFill.length*0.06);
-
-  toFill.forEach((b, idx)=>{
-    const primary = pickSku();
-    const overCap = idx < overCount;
-    const fillPct = overCap ? (1.03 + rng()*0.14) : (0.35 + rng()*0.62);
-    const vol = Math.max(0.1, b.capacity*fillPct);
-    estRows.push({ BOX:b.code, SKU:primary.sku, DESCRICAO:primary.desc, QUANTIDADE: Math.round(vol*8), VOLUME: Number(vol.toFixed(2)), DATA_ENTRADA: randomDateWithinYear() });
-    if (rng() < 0.08){
-      const secondary = pickSku();
-      if (secondary.sku !== primary.sku){
-        const vol2 = Math.max(0.1, b.capacity*(0.08+rng()*0.18));
-        estRows.push({ BOX:b.code, SKU:secondary.sku, DESCRICAO:secondary.desc, QUANTIDADE: Math.round(vol2*8), VOLUME: Number(vol2.toFixed(2)), DATA_ENTRADA: randomDateWithinYear() });
-      }
-    }
-  });
-
-  const prodCount = 7;
-  for (let i=0;i<prodCount;i++){
-    const c = randomPool[Math.floor(rng()*randomPool.length)];
-    const vol = Number((1+rng()*6).toFixed(2));
-    estRows.push({ BOX:'EM-PRODUÇÃO', SKU:c.sku, DESCRICAO:c.desc, QUANTIDADE: Math.round(vol*8), VOLUME: vol });
-  }
-
-  return { fatRows, estRows };
-}
-function loadDemoData(){
-  if (demoBtn) demoBtn.classList.add('busy');
-  importReportPanel.hidden = false;
-  importReportTitle.textContent = 'Carregando demonstração…';
-  importReportBody.innerHTML = '<p class="ir-muted">Gerando dados de exemplo…</p>';
-  try {
-    const report = makeImportReport();
-    report.info('Dados de demonstração gerados no navegador para ilustrar ocupação, curva ABC e itens em produção — nenhuma planilha foi lida, e a capacidade de cada posição continua a da planta real.');
-    const rng = mulberry32(20260906);
-    const { fatRows, estRows } = genDemoRows(boxes, rng);
-    const clsBySku = computeFaturamentoClsFromRows(fatRows, report);
-    const stock = computeEstoqueFromRows(estRows, report, clsBySku);
-    applyImportedData({
-      report, capMap: {}, stock, clsBySku,
-      hasCap: false, hasEst: true, hasFat: true,
-      doneTitle: 'Demonstração carregada',
-    });
-    setDemoActive(true);
-  } catch (err){
-    console.error(err);
-    importReportTitle.textContent = 'Falha ao gerar demonstração';
-    importReportBody.innerHTML = `<p class="ir-err">${(err && err.message) || err}</p>`;
-  } finally {
-    if (demoBtn) demoBtn.classList.remove('busy');
-  }
-}
-
-/* The other half of the toggle: drops whatever the demo generator loaded
-   and puts every registered position back to its BASELINE -- the state
-   DATA shipped with when the page opened, which is real baked stock when
-   this file was generated from a real SAP export, or "empty, no stock"
-   otherwise. Never hard-wipes to empty, so previewing Demo can never
-   destroy real data (capacities are untouched either way -- those belong
-   to the real plant, not to the demo). */
-function clearDemoData(){
-  if (demoBtn) demoBtn.classList.add('busy');
-  try {
-    const changed = new Set();
-    boxes.forEach(b=>{
-      if (b.status === 'unregistered') return;
-      const base = BASELINE_STOCK.get(b.code);
-      if (b.status === 'filled' || b.status === 'over' || (base && (base.status === 'filled' || base.status === 'over'))) changed.add(b.code);
-      if (base){
-        b.occupied = base.occupied; b.occupancy = base.occupancy; b.status = base.status; b.cls = base.cls; b.familia = base.familia;
-        b.billableVolume = base.billableVolume; b.sku = base.sku; b.item = base.item; b.qty = base.qty; b.mixed = base.mixed; b.entryDate = base.entryDate;
-        b.skuBreakdown = base.skuBreakdown || [];
-      } else {
-        b.occupied = 0; b.occupancy = 0; b.status = 'empty'; b.cls = null; b.familia = null; b.billableVolume = 0; b.sku = null; b.item = null; b.qty = 0; b.mixed = false; b.entryDate = null; b.skuBreakdown = [];
-      }
-    });
-    changed.forEach(code=>rebuildBoxRecord(code));
-
-    importState.done = BASELINE_DONE;
-    importState.prodItems = BASELINE_PROD_ITEMS;
-    importState.outside = BASELINE_OUTSIDE;
-    buildProdMarkers(BASELINE_PROD_ITEMS);
-
-    renderFamiliaFilter();
-    computeAndRenderKPIs();
-    renderLegend();
-    applyVisualState();
-    updateInfoPop();
-    updateImportStatusTag();
-    if (state.selected) showDetail(state.selected);
-    if (state.mode === 'kpis') renderKpiDashboard();
-
-    importReportPanel.hidden = false;
-    importReportTitle.textContent = 'Modo produtivo restaurado';
-    importReportBody.innerHTML = BASELINE_DONE
-      ? '<p class="ir-muted">Dados de demonstração removidos — a planta voltou ao estoque real que já estava carregado nesta página.</p>'
-      : '<p class="ir-muted">Dados de demonstração removidos — a planta voltou ao estado sem estoque carregado, pronta para uma importação real.</p>';
-    setImportIssuesExport({semDimensao:new Map(), unmatchedPos:new Map(), unclassified:new Map(), capacidadeNaoEncontrada:[], multiplosSkus:[]});
-  } finally {
-    if (demoBtn) demoBtn.classList.remove('busy');
-    setDemoActive(false);
-  }
 }
 
 /* ================= baked-in real data boot ================= */
