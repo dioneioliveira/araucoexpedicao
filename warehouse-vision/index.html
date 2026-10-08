@@ -220,9 +220,10 @@
   .import-btn.busy{opacity:.6;pointer-events:none;}
   .import-btn:disabled{opacity:.45;cursor:not-allowed;}
   .import-btn:disabled:hover{color:inherit;border-color:inherit;}
-  /* The topbar already runs out of room below ~1700px wide -- below 2000px the
-     export button shrinks to its icon (full text stays in the tooltip). */
-  @media (max-width:1999px){
+  /* The topbar (KPI strip + pendências badge + buttons) runs out of room well
+     below ~2400px wide -- until then the export button shrinks to its icon
+     (full text stays in the tooltip). */
+  @media (max-width:2399px){
     #export-btn{padding:0 11px;}
     #export-btn .btn-label{display:none;}
   }
@@ -961,7 +962,7 @@ function fmt(n, d=0){ return (n||0).toLocaleString('pt-BR', {minimumFractionDigi
 document.getElementById('plant-name').textContent = `${DATA.name} · ${fmt(DATA.width,0)}×${fmt(DATA.depth,0)} m · ${SEED_BUILD}`;
 document.title = `Arauco Warehouse Vision ${DATA.name}`;
 
-const importState = { done:false, prodItems: [] };
+const importState = { done:false, prodItems: [], outside: null };
 
 /* Snapshot of whatever stock DATA shipped with (real stock computed offline
    and baked in, or none at all) -- this is "a fresh page load" as far as
@@ -971,11 +972,18 @@ const importState = { done:false, prodItems: [] };
    toggling Demo can never destroy real data that was already loaded. */
 const BASELINE_DONE = boxes.some(b => b.status === 'filled' || b.status === 'over');
 const BASELINE_PROD_ITEMS = Array.isArray(DATA.prodItems) ? DATA.prodItems : [];
+const BASELINE_OUTSIDE = DATA.outside3d || null;
 const BASELINE_STOCK = new Map(boxes.map(b => [b.code, {
   occupied: b.occupied, occupancy: b.occupancy, status: b.status, cls: b.cls, familia: b.familia || null,
   billableVolume: b.billableVolume, sku: b.sku, item: b.item, qty: b.qty, mixed: b.mixed, entryDate: b.entryDate,
   skuBreakdown: b.skuBreakdown || [],
 }]));
+
+// Valid stock that sits outside the digitized Boxes (not drawn in the 3D, but
+// part of the company-wide KPI sums) -- see computeEstoqueFromSAP's result.outside.
+function outsideTotals(){
+  return importState.outside || {lots: 0, qty: 0, volume: 0, billableVolume: 0, byCls: {A: 0, B: 0, C: 0, none: 0}, byReason: {}};
+}
 
 function computeAndRenderKPIs(){
   const usable = boxes.filter(b => b.status !== 'unregistered');
@@ -984,6 +992,8 @@ function computeAndRenderKPIs(){
   const aisleCount = new Set(boxes.map(b=>b.aisle)).size;
   const totalCapacity = usable.reduce((s,b)=>s+b.capacity,0);
   const occupiedVol = occupied.reduce((s,b)=>s+(b.billableVolume ?? b.occupied ?? 0),0); // excludes inutilizado volume -- see isInutilizadoMaterial
+  const out = outsideTotals();
+  const totalStockVol = occupiedVol + out.billableVolume; // everything valid in the stock snapshot: in a Box + outside the 3D
   const registeredPct = boxes.length ? usable.length/boxes.length*100 : 0;
   const occPct = usable.length ? occupied.length/usable.length*100 : 0;
 
@@ -1019,8 +1029,8 @@ function computeAndRenderKPIs(){
       </div>`;
     abcCard = `
       <div class="kpi kpi-abc">
-        <div class="kpi-label">Curva ABC <small>· ${fmt(importState.prodItems.length)} em produção</small></div>
-        <div class="kpi-value">${fmt(occupiedVol)}<small>m³ ocupados</small></div>
+        <div class="kpi-label">Curva ABC <small>· ${importState.outside ? `${fmt(out.billableVolume)} m³ fora do 3D` : `${fmt(importState.prodItems.length)} em produção`}</small></div>
+        <div class="kpi-value">${fmt(totalStockVol)}<small>m³ em estoque</small></div>
         <div class="abc-bar">
           <span style="width:${a/abcTotal*100}%;background:#f0932f"></span>
           <span style="width:${bC/abcTotal*100}%;background:#3fb6d8"></span>
@@ -1068,8 +1078,15 @@ function computeInventoryDashboard(){
   const occPct = usable.length ? occupied.length/usable.length*100 : 0;
 
   const clsCounts = {A:0,B:0,C:0};
-  const clsVol = {A:0,B:0,C:0};
-  occupied.forEach(b=>{ if (b.cls){ clsCounts[b.cls]++; clsVol[b.cls] += (b.billableVolume ?? b.occupied ?? 0); } }); // excludes inutilizado volume -- see isInutilizadoMaterial
+  const clsVol = {A:0,B:0,C:0,none:0};   // inside the Boxes (by each Box's dominant class)
+  occupied.forEach(b=>{
+    const v = (b.billableVolume ?? b.occupied ?? 0); // excludes inutilizado volume -- see isInutilizadoMaterial
+    if (b.cls){ clsCounts[b.cls]++; clsVol[b.cls] += v; } else clsVol.none += v;
+  });
+  const out = outsideTotals();
+  const clsVolTotal = {A: clsVol.A + out.byCls.A, B: clsVol.B + out.byCls.B, C: clsVol.C + out.byCls.C, none: clsVol.none + out.byCls.none};
+  const totalStockVol = occupiedVol + out.billableVolume;
+  const prodVol = importState.prodItems.reduce((s,i)=>s+(i.volume||0),0);
 
   const aisleAgg = new Map();
   usable.forEach(b=>{
@@ -1109,7 +1126,7 @@ function computeInventoryDashboard(){
   return {
     usable, unregistered, occupied, overBoxes, mixedBoxes,
     totalCapacity, occupiedVol, volPct, occPct,
-    clsCounts, clsVol, aisleRows, overRows,
+    clsCounts, clsVol, clsVolTotal, out, totalStockVol, prodVol, aisleRows, overRows,
     ageBucketCounts, ageUnknownCount, avgAgeDays, ageRows, staleCount,
     prodCount: importState.prodItems.length,
   };
@@ -1134,7 +1151,13 @@ function renderKpiDashboard(){
     return;
   }
   const d = computeInventoryDashboard();
-  const volTotal = Math.max(1, d.clsVol.A + d.clsVol.B + d.clsVol.C);
+  const volTotal = Math.max(1, d.clsVolTotal.A + d.clsVolTotal.B + d.clsVolTotal.C + d.clsVolTotal.none);
+  const hasOutside = !!importState.outside;
+  const outNote = (v) => (hasOutside && v > 0) ? ` <small>(${fmt(v)} fora do 3D)</small>` : '';
+  const reasonRows = hasOutside
+    ? Object.entries(EXPORT_REASONS).sort((a,b)=>a[1].order-b[1].order)
+        .map(([code, meta]) => [meta.label, d.out.byReason[code]]).filter(([, e]) => e && e.n)
+    : [];
 
   el.innerHTML = `
     <div>
@@ -1147,7 +1170,12 @@ function renderKpiDashboard(){
           <div class="kd-mini-bar"><span style="width:${Math.min(100,d.occPct)}%;background:var(--accent)"></span></div>
         </div>
         <div class="kd-card">
-          <div class="kd-label">Volume ocupado</div>
+          <div class="kd-label">Estoque total (MB52)</div>
+          <div class="kd-value">${fmt(d.totalStockVol)}<small>m³</small></div>
+          <div class="kd-sub">${hasOutside ? `no 3D ${fmt(d.occupiedVol)} · fora do 3D ${fmt(d.out.billableVolume)} m³ (sem inutilizado)` : `${fmt(d.occupiedVol)} m³ no 3D — reimporte a base padrão para somar o que está fora do 3D`}</div>
+        </div>
+        <div class="kd-card">
+          <div class="kd-label">Volume ocupado no 3D</div>
           <div class="kd-value">${fmt(d.volPct,0)}<small>%</small></div>
           <div class="kd-sub">${fmt(d.occupiedVol)} de ${fmt(d.totalCapacity)} m³</div>
           <div class="kd-mini-bar"><span style="width:${Math.min(100,d.volPct)}%;background:var(--accent)"></span></div>
@@ -1165,7 +1193,7 @@ function renderKpiDashboard(){
         <div class="kd-card">
           <div class="kd-label">Em produção</div>
           <div class="kd-value">${fmt(d.prodCount)}</div>
-          <div class="kd-sub">itens aguardando posição no estoque</div>
+          <div class="kd-sub">itens aguardando posição${d.prodVol ? ` · ${fmt(d.prodVol)} m³` : ''}</div>
         </div>
         <div class="kd-card">
           <div class="kd-label">Sem cadastro</div>
@@ -1175,7 +1203,7 @@ function renderKpiDashboard(){
         <div class="kd-card">
           <div class="kd-label">Idade média do estoque</div>
           <div class="kd-value">${d.avgAgeDays!=null?fmt(d.avgAgeDays,0):'—'}${d.avgAgeDays!=null?'<small>dias</small>':''}</div>
-          <div class="kd-sub">${d.ageUnknownCount?`${fmt(d.ageUnknownCount)} posição(ões) sem data de entrada`:'todas as posições ocupadas com data de entrada'}</div>
+          <div class="kd-sub">${d.ageUnknownCount?`${fmt(d.ageUnknownCount)} posição(ões) sem data de produção`:'todas as posições ocupadas com data de produção'}</div>
         </div>
         <div class="kd-card">
           <div class="kd-label">Estoque &gt; 180 dias</div>
@@ -1186,7 +1214,7 @@ function renderKpiDashboard(){
     </div>
 
     <div>
-      <h3>Estoque por idade (posições ocupadas)</h3>
+      <h3>Estoque por idade (posições ocupadas no 3D)</h3>
       <div class="kd-section" style="padding-top:16px;padding-bottom:16px;">
         <div class="abc-bar" style="margin-top:0;">
           ${AGE_BUCKETS.map((bk,i)=>`<span style="width:${d.occupied.length?d.ageBucketCounts[i]/d.occupied.length*100:0}%;background:${cssHex(bucketColor(bk))}"></span>`).join('')}
@@ -1194,26 +1222,37 @@ function renderKpiDashboard(){
         </div>
         <div class="kd-abc-nums">
           ${AGE_BUCKETS.map((bk,i)=>`<span><em style="color:${cssHex(bucketColor(bk))}">${fmt(d.ageBucketCounts[i])}</em> ${bk.label}</span>`).join('')}
-          ${d.ageUnknownCount?`<span><em style="color:${cssHex(COLORS.unreg)}">${fmt(d.ageUnknownCount)}</em> sem data de entrada</span>`:''}
+          ${d.ageUnknownCount?`<span><em style="color:${cssHex(COLORS.unreg)}">${fmt(d.ageUnknownCount)}</em> sem data de produção</span>`:''}
         </div>
       </div>
     </div>
 
     <div>
-      <h3>Curva ABC por volume ocupado</h3>
+      <h3>Curva ABC por volume${hasOutside ? ' (dentro + fora do 3D)' : ' ocupado'}</h3>
       <div class="kd-section" style="padding-top:16px;padding-bottom:16px;">
         <div class="abc-bar" style="margin-top:0;">
-          <span style="width:${d.clsVol.A/volTotal*100}%;background:${cssHex(COLORS.clsA)}"></span>
-          <span style="width:${d.clsVol.B/volTotal*100}%;background:${cssHex(COLORS.clsB)}"></span>
-          <span style="width:${d.clsVol.C/volTotal*100}%;background:${cssHex(COLORS.clsC)}"></span>
+          <span style="width:${d.clsVolTotal.A/volTotal*100}%;background:${cssHex(COLORS.clsA)}"></span>
+          <span style="width:${d.clsVolTotal.B/volTotal*100}%;background:${cssHex(COLORS.clsB)}"></span>
+          <span style="width:${d.clsVolTotal.C/volTotal*100}%;background:${cssHex(COLORS.clsC)}"></span>
+          <span style="width:${d.clsVolTotal.none/volTotal*100}%;background:${cssHex(COLORS.clsUnclassified)}"></span>
         </div>
         <div class="kd-abc-nums">
-          <span><em style="color:${cssHex(COLORS.clsA)}">${fmt(d.clsVol.A)} m³</em> Classe A · ${fmt(d.clsCounts.A)} posições</span>
-          <span><em style="color:${cssHex(COLORS.clsB)}">${fmt(d.clsVol.B)} m³</em> Classe B · ${fmt(d.clsCounts.B)} posições</span>
-          <span><em style="color:${cssHex(COLORS.clsC)}">${fmt(d.clsVol.C)} m³</em> Classe C · ${fmt(d.clsCounts.C)} posições</span>
+          <span><em style="color:${cssHex(COLORS.clsA)}">${fmt(d.clsVolTotal.A)} m³</em> Classe A · ${fmt(d.clsCounts.A)} posições${outNote(d.out.byCls.A)}</span>
+          <span><em style="color:${cssHex(COLORS.clsB)}">${fmt(d.clsVolTotal.B)} m³</em> Classe B · ${fmt(d.clsCounts.B)} posições${outNote(d.out.byCls.B)}</span>
+          <span><em style="color:${cssHex(COLORS.clsC)}">${fmt(d.clsVolTotal.C)} m³</em> Classe C · ${fmt(d.clsCounts.C)} posições${outNote(d.out.byCls.C)}</span>
+          <span><em style="color:${cssHex(COLORS.clsUnclassified)}">${fmt(d.clsVolTotal.none)} m³</em> Sem curva ABC${outNote(d.out.byCls.none)}</span>
         </div>
       </div>
     </div>
+    ${reasonRows.length ? `
+    <div>
+      <h3>Fora do 3D por motivo (sem inutilizado)</h3>
+      <div class="kd-section" style="padding-top:16px;padding-bottom:16px;">
+        <div class="kd-abc-nums">
+          ${reasonRows.map(([label, e]) => `<span><em>${fmt(e.billable)} m³</em> ${label} · ${fmt(e.n)} lotes</span>`).join('')}
+        </div>
+      </div>
+    </div>` : ''}
 
     <div class="kd-cols">
       <div>
@@ -1284,7 +1323,7 @@ function renderKpiDashboard(){
 
   const ageContainer = document.getElementById('kd-age-rows');
   if (!d.ageRows.length){
-    ageContainer.innerHTML = `<div class="kd-empty-row">${d.ageUnknownCount?'Nenhuma posição com data de entrada informada ainda.':'Nenhuma posição ocupada ainda.'}</div>`;
+    ageContainer.innerHTML = `<div class="kd-empty-row">${d.ageUnknownCount?'Nenhuma posição com data de produção informada ainda.':'Nenhuma posição ocupada ainda.'}</div>`;
   } else {
     d.ageRows.slice(0,8).forEach(r=>{
       const bucket = ageBucketFor(r.days);
@@ -1423,7 +1462,7 @@ function renderLegend(){
     body.innerHTML = AGE_BUCKETS.map(b =>
       `<div class="legend-row"><span class="legend-swatch" style="background:${cssHex(bucketColor(b))}"></span>${b.label}</div>`
     ).join('') + `
-      <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.unreg)}"></span>Sem data de entrada</div>
+      <div class="legend-row"><span class="legend-swatch" style="background:${cssHex(COLORS.unreg)}"></span>Sem data de produção</div>
     ` + tailLegendRows();
   } else {
     // Curva ABC mode: the "Acima da capacidade" row only applies while the
@@ -2938,7 +2977,9 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
   const result = {byBox: new Map(), prodItems: [], unclassified: new Map(), unmatchedPos: new Map(), semDimensaoList: new Map(),
     // Lote-level capture for the "Exportar" workbook (see buildStockExport): lotRows = lotes that landed in a digitized box,
     // excludedRows = lotes that didn't (with a reason code), skuInfo = per-material description/class/família.
-    lotRows: [], excludedRows: [], skuInfo: {}, ignoredZeroQty: 0, rowsRead: mb52Rows.length, source: stockFromLx02 ? 'LX02' : 'MB52 + LX02'};
+    lotRows: [], excludedRows: [], skuInfo: {}, ignoredZeroQty: 0, rowsRead: mb52Rows.length, source: stockFromLx02 ? 'LX02' : 'MB52 + LX02',
+    // Everything valid in the stock snapshot that did NOT land in a digitized Box: not drawn in the 3D, but counted in the KPI sums.
+    outside: {lots: 0, qty: 0, volume: 0, billableVolume: 0, byCls: {A: 0, B: 0, C: 0, none: 0}, byReason: {}}};
   if (!mb52Rows.length){ report.warn('Guia "MB52" está vazia.'); return result; }
   if (!lx02Rows.length){ report.warn('Guia "LX02" está vazia — nenhuma posição pôde ser localizada.'); }
 
@@ -2961,6 +3002,9 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
   const loteKeyMB52 = findKey(mb52Keys, ['lote']);
   const qtyKey = findKey(mb52Keys, stockFromLx02 ? LX02_QTY_ALIASES : ['utilizacao livre','utilização livre']);
   const txtKey = findKey(mb52Keys, ['texto breve material']);
+  // Valid stock = "Utilização livre" + "Controle qualidade" (both physically in the plant);
+  // in-transit / blocked columns are not counted.
+  const qualKey = stockFromLx02 ? null : findKey(mb52Keys, ['controle qualidade', 'controle de qualidade']);
   const srcName = stockFromLx02 ? 'LX02' : 'MB52';
   // LX02-as-stock: every row already carries its own position, so it is read
   // straight from the row instead of joining lote -> position.
@@ -2969,7 +3013,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     report.err(`Guia "${srcName}": não foi possível identificar as colunas (material: ${matKey||'não achada'}, lote: ${loteKeyMB52||'não achada'}, quantidade: ${qtyKey||'não achada'}${stockFromLx02?`, posição: ${rowPosKey||'não achada'}`:''}).`);
     return result;
   }
-  report.info(`Guia "${srcName}": material "${matKey}", lote "${loteKeyMB52}", quantidade "${qtyKey}"${rowPosKey?`, posição "${rowPosKey}"`:''}.`);
+  report.info(`Guia "${srcName}": material "${matKey}", lote "${loteKeyMB52}", quantidade "${qtyKey}"${qualKey?` + "${qualKey}"`:''}${rowPosKey?`, posição "${rowPosKey}"`:''}.`);
 
   const posByLote = new Map();
   if (lx02Rows.length){
@@ -3019,10 +3063,8 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
         if (!dateByLote.has(lote) || ts < dateByLote.get(lote)) dateByLote.set(lote, ts);
       }
     } else {
-      report.warn(`Guia "MB51": não foi possível identificar as colunas de lote/data — dias em estoque ficarão indisponíveis.`);
+      report.warn(`Guia "MB51": não foi possível identificar as colunas de lote/data.`);
     }
-  } else {
-    report.warn('Guia "MB51" não encontrada — dias em estoque ficarão indisponíveis.');
   }
   // MB51 isn't always present (a planilha can track a plant's stock without
   // it) -- when it's missing or unusable, LX02 itself sometimes carries the
@@ -3031,9 +3073,9 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
   if (!dateByLote.size && lx02Rows.length){
     const lx02Keys = Object.keys(lx02Rows[0]);
     const loteKeyLX = findKey(lx02Keys, ['lote']);
-    const dateKeyLX = findKey(lx02Keys, ['data da entrada de mercadorias', 'data de entrada', 'data em']);
+    const dateKeyLX = findKey(lx02Keys, ['data em', 'data da entrada de mercadorias', 'data de entrada']);
     if (loteKeyLX && dateKeyLX){
-      report.info(`Guia "LX02" usada como fonte de data (guia "MB51" ausente): lote "${loteKeyLX}", data "${dateKeyLX}".`);
+      report.info(`Data de produção lida da guia "LX02": lote "${loteKeyLX}", data "${dateKeyLX}".`);
       for (const row of lx02Rows){
         const lote = normLote(row[loteKeyLX]);
         if (!lote) continue;
@@ -3044,13 +3086,16 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
       }
     }
   }
+  if (!dateByLote.size) report.warn('Sem data de produção: a LX02 não traz a coluna "Data EM" (e não há guia MB51) — dias em estoque ficarão indisponíveis.');
 
   const textoBySku = new Map();
   let posMatched = 0, emPedido = 0, emProducao = 0, semLote = 0, semDimensao = 0;
   for (const row of mb52Rows){
     const material = String(row[matKey]||'').trim().toUpperCase();
     const lote = normLote(row[loteKeyMB52]);
-    const qty = Number(row[qtyKey]) || 0;
+    const livreQty = Math.max(0, Number(row[qtyKey]) || 0);
+    const qualQty = qualKey ? Math.max(0, Number(row[qualKey]) || 0) : 0;
+    const qty = livreQty + qualQty;
     if (!material || qty <= 0){ result.ignoredZeroQty++; continue; }
     const texto = txtKey ? String(row[txtKey]||'').trim() : '';
     if (texto) textoBySku.set(material, texto);
@@ -3070,7 +3115,14 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     const inutilizado = isInutilizadoMaterial(familia, texto);
     if (!result.skuInfo[material] || (texto && !result.skuInfo[material].texto)) result.skuInfo[material] = {texto: texto || cadastros.textoBySku[material] || '', cls, familia};
     const entryTs = lote ? dateByLote.get(lote) : null;
-    const exclude = (reason, where) => result.excludedRows.push([reason, where || '', material, lote, qty, volume, entryTs ?? null]);
+    const exclude = (reason, where) => {
+      result.excludedRows.push([reason, where || '', material, lote, qty, volume, entryTs ?? null, qualQty]);
+      const o = result.outside, billable = inutilizado ? 0 : volume;
+      o.lots++; o.qty += qty; o.volume += volume; o.billableVolume += billable;
+      o.byCls[cls || 'none'] += billable;
+      const r = o.byReason[reason] || (o.byReason[reason] = {n: 0, volume: 0, billable: 0});
+      r.n++; r.volume += volume; r.billable += billable;
+    };
 
     const pos = stockFromLx02 ? (normPosCode(row[rowPosKey]) || undefined) : (lote ? posByLote.get(lote) : undefined);
     if (pos === undefined){ semLote++; exclude('sem_posicao'); continue; } // lote not found in LX02 at all
@@ -3093,7 +3145,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     acc.skus.set(material, (acc.skus.get(material)||0) + volume);
     if (!acc.item && texto) acc.item = texto;
     if (entryTs != null && (acc.entryDate == null || entryTs < acc.entryDate)) acc.entryDate = entryTs;
-    result.lotRows.push([pos, material, lote, qty, m3PerChapa, volume, entryTs ?? null, inutilizado ? 1 : 0]);
+    result.lotRows.push([pos, material, lote, qty, m3PerChapa, volume, entryTs ?? null, inutilizado ? 1 : 0, qualQty]);
   }
   for (const [, acc] of result.byBox){
     let bestSku = null, bestVol = -1;
@@ -3358,8 +3410,8 @@ function buildStockExportWorkbook(){
   for (const e of d.excludedRows) outRows.push(e);
 
   const sortedBoxes = [...boxes].sort((a, b) => cmpBoxCode(a.code, b.code));
-  const H1 = ['Box','Item (material)','Descrição','Família','Classe','Lote','Volume do lote (m³)','Chapas do lote','m³ por chapa','Data de entrada','Dias em estoque','Inutilizado','Observação','Corredor','Capacidade do Box (m³)','Volume do Box (m³)'];
-  const H2 = ['Corredor','Box','Nº de itens','Nº de lotes','Chapas','Volume (m³)','Volume inutilizado (fora dos totais) (m³)','Capacidade (m³)','Ocupação (%)','Classe dominante','Item dominante','Descrição do item dominante','Família dominante','Data de entrada mais antiga','Dias (mais antigo)'];
+  const H1 = ['Box','Item (material)','Descrição','Família','Classe','Lote','Volume do lote (m³)','Chapas do lote','m³ por chapa','Data de produção','Dias em estoque','Inutilizado','Observação','Corredor','Capacidade do Box (m³)','Volume do Box (m³)'];
+  const H2 = ['Corredor','Box','Nº de itens','Nº de lotes','Chapas','Volume (m³)','Volume inutilizado (fora dos totais) (m³)','Capacidade (m³)','Ocupação (%)','Classe dominante','Item dominante','Descrição do item dominante','Família dominante','Data de produção mais antiga','Dias (mais antigo)'];
   const rows1 = [H1], rows2 = [H2];
   let totItems = 0, totLots = 0, totQty = 0, totVol = 0, totInut = 0, totCap = 0;
 
@@ -3380,9 +3432,10 @@ function buildStockExportWorkbook(){
     const boxInut = lots.reduce((s, r) => s + (r[7] ? r[5] : 0), 0);
     let oldest = null;
     for (const r of lots){
-      const [pos, sku, lote, qty, m3, vol, ts, inut] = r;
+      const [pos, sku, lote, qty, m3, vol, ts, inut, qual] = r;
       if (ts != null && (oldest == null || ts < oldest)) oldest = ts;
       const obs = [];
+      if (qual) obs.push(`Inclui ${qual.toLocaleString('pt-BR')} chapa(s) em controle de qualidade`);
       if (m3 == null) obs.push('Descrição sem dimensões (LxWxT) — m³ não calculado');
       if (inut) obs.push('Material inutilizado — não entra nos totais da empresa');
       if (blockedNote) obs.push(blockedNote);
@@ -3407,7 +3460,7 @@ function buildStockExportWorkbook(){
   rows2.push([]);
   rows2.push(['RECONCILIAÇÃO — todas as linhas lidas da planilha de estoque', '', '', 'Lotes', '', 'Volume (m³)']);
   rows2.push([`Linhas lidas (${d.source || 'estoque'})`, '', '', d.rowsRead]);
-  rows2.push(['Ignoradas: quantidade zero/negativa ou sem material', '', '', d.ignoredZeroQty]);
+  rows2.push(['Ignoradas: sem estoque livre/qualidade ou sem material', '', '', d.ignoredZeroQty]);
   rows2.push(['Lotes com estoque considerados', '', '', allLots, '', allVol]);
   rows2.push(['  → Dentro de um Box (3D)', '', '', totLots, '', totVol]);
   for (const [code, meta] of Object.entries(EXPORT_REASONS).sort((a, b) => a[1].order - b[1].order)){
@@ -3415,9 +3468,11 @@ function buildStockExportWorkbook(){
     if (e) rows2.push([`  → Fora do 3D: ${meta.label}`, '', '', e.n, '', e.vol]);
   }
   rows2.push(['Diferença (deve ser 0)', '', '', allLots - totLots - outRows.length, '', Math.round((allVol - totVol - outVol) * 1000) / 1000]);
+  const outBillable = outRows.reduce((s, r) => s + (isInutilizadoMaterial(info(r[2]).familia, info(r[2]).texto) ? 0 : r[5]), 0);
+  rows2.push(['Total para os KPIs (dentro + fora do 3D, sem inutilizado)', '', '', '', '', totVol - totInut + outBillable]);
 
   // "Fora do 3D": one row per lote, reason first.
-  const H3 = ['Motivo','Detalhe','Posição (LX02)','Item (material)','Descrição','Família','Classe','Lote','Chapas','Volume (m³)','Data de entrada','Dias em estoque'];
+  const H3 = ['Motivo','Detalhe','Posição (LX02)','Item (material)','Descrição','Família','Classe','Lote','Chapas','Volume (m³)','Data de produção','Dias em estoque'];
   const rows3 = [H3];
   outRows.sort((a, b) => (EXPORT_REASONS[a[0]].order - EXPORT_REASONS[b[0]].order) || String(a[1]).localeCompare(String(b[1])) || String(a[2]).localeCompare(String(b[2])) || String(a[3]).localeCompare(String(b[3])));
   for (const [reason, where, sku, lote, qty, vol, ts] of outRows){
@@ -3427,7 +3482,7 @@ function buildStockExportWorkbook(){
   if (!outRows.length) rows3.push(['Nada ficou de fora', 'Todos os lotes com estoque estão dentro de um Box do 3D', '', '', '', '', '', '', '', '', '', '']);
   if (d.ignoredZeroQty){
     rows3.push([]);
-    rows3.push([`Obs.: ${d.ignoredZeroQty} linha(s) com quantidade zero/negativa ou sem material foram ignoradas — não são estoque, por isso não aparecem aqui.`]);
+    rows3.push([`Obs.: ${d.ignoredZeroQty} linha(s) sem estoque livre/qualidade (ex.: só trânsito) ou sem material foram ignoradas — não contam como estoque válido, por isso não aparecem aqui.`]);
   }
 
   const wb = XLSX.utils.book_new();
@@ -3476,6 +3531,7 @@ if (demoBtn) demoBtn.addEventListener('click', ()=>{
    offline. Only called after a real spreadsheet import, never for Demo data. */
 function persistActivePlant(){
   DATA.prodItems = importState.prodItems;
+  DATA.outside3d = importState.outside;
   DATA.seedBuild = SEED_BUILD;
   try { localStorage.setItem(PLANT_STORAGE_PREFIX + ACTIVE_PLANT, JSON.stringify(DATA)); }
   catch (e){ console.warn('Falha ao salvar dados da planta', ACTIVE_PLANT, e); }
@@ -3500,12 +3556,10 @@ async function runImport(file){
     const wb = XLSX.read(buf, {type:'array', cellDates:true});
     const report = makeImportReport();
 
-    const layoutName = findSheetName(wb, ['layout']);
-    if (!layoutName){
-      report.warn('Guia "layout" não encontrada — a geometria das posições foi mantida como está.');
-    } else {
-      report.info('Guia "layout" encontrada. A geometria das posições já está travada conforme validado e não é recalculada por este botão; para incluir ou remover posições fisicamente, essa planilha precisa ser reprocessada.');
-    }
+    // Layouts are frozen: the import never touches geometry. They only change
+    // when explicitly requested, together with a sample of the new layout.
+    const layoutName = findSheetName(wb, ['layout', 'layout expedicao']);
+    if (layoutName) report.info(`Guia "${layoutName}" ignorada — layouts congelados: a geometria só muda sob solicitação, com uma amostra do layout.`);
 
     const capName = findSheetName(wb, ['capacidade', 'capacidade por box']);
     const capMap = capName ? computeCapacidadeFromRows(sheetRows(wb, capName), report) : (report.warn('Guia "capacidade" não encontrada — capacidades atuais mantidas.'), {});
@@ -3533,6 +3587,8 @@ async function runImport(file){
     const mb52Name = findSheetName(wb, ['mb52']);
     const lx02Name = findSheetName(wb, ['lx02']);
     const mb51Name = findSheetName(wb, ['mb51']);
+    const chk = (ok) => ok ? '✓' : '✗';
+    report.info(`Base padrão: capacidade ${chk(capName)} · curva ABC (ABC/Classe/Cadastro) ${chk(cadastrosName)} · MB52 ${chk(mb52Name)} · LX02 ${chk(lx02Name)}.`);
     let stock, hasEst;
     const lx02Rows = lx02Name ? sheetRows(wb, lx02Name) : [];
     // Some plants export only LX02 (no MB52): when it carries its own
@@ -3644,6 +3700,7 @@ function applyImportedData({report, capMap, stock, clsBySku, familiaBySku, hasCa
       if (acc.mixed) mixedWarn.push(code);
     }
     importState.prodItems = stock.prodItems;
+    importState.outside = stock.outside || null;
     buildProdMarkers(stock.prodItems);
   } else if (hasFat && clsBySku && Object.keys(clsBySku).length){
     // faturamento/cadastros came in without a fresh estoque tab: re-classify
@@ -3920,6 +3977,7 @@ function clearDemoData(){
 
     importState.done = BASELINE_DONE;
     importState.prodItems = BASELINE_PROD_ITEMS;
+    importState.outside = BASELINE_OUTSIDE;
     buildProdMarkers(BASELINE_PROD_ITEMS);
 
     renderFamiliaFilter();
@@ -3953,6 +4011,7 @@ function clearDemoData(){
    stock: boxes all stay 'empty'/'unregistered' and DATA.prodItems is absent. */
 importState.done = BASELINE_DONE;
 importState.prodItems = BASELINE_PROD_ITEMS;
+importState.outside = BASELINE_OUTSIDE;
 buildProdMarkers(importState.prodItems);
 computeAndRenderKPIs();
 renderLegend();
