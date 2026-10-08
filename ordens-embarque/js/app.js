@@ -161,6 +161,9 @@
   }
   const getTransport = t => { const items = Object.values(state.items).filter(i => i.transporte === t); return items.length ? withAlt(makeTransport(t, items)) : null; };
 
+  // quantidade ÷ peças por lote dá número quebrado (moldura ou qualquer material), em algum item ou no total
+  const quebrado = x => x != null && Math.abs(x - Math.round(x)) > 1e-6;
+  const isFracionada = T => T.items.some(i => quebrado(i.pallets)) || quebrado(T.pallets);
   // dados que vão para as células dos check-lists (mesmas fórmulas de CKL / Check Vc)
   function printData(T) {
     const e = T.eff, truck = isTruck(e), cont = T.janela === 'CONTAINER';
@@ -177,7 +180,7 @@
       naContainer: cont || isCabotagem(T) ? 'N/A' : '', // cabotagem também é container
       pallets: palTxt,
       // ao lado da quantidade de lotes (C23): carga fracionada e/ou aviso de amostra
-      fracionada: [pal != null && Math.abs(pal - Math.round(pal)) > 1e-9 ? 'carga fracionada' : '', isAmostra(T) ? 'Amostra-conferir cliente' : ''].filter(Boolean).join(' · '),
+      fracionada: [isFracionada(T) ? 'carga fracionada' : '', isAmostra(T) ? 'Amostra-conferir cliente' : ''].filter(Boolean).join(' · '),
       fscClaim: T.fsc ? T.fsc.claim : '',
       otQr: T.otList[0] || '',
       ot: T.otList.join('\n'), // várias OTs: uma por linha no campo OT
@@ -190,9 +193,9 @@
   }
 
   // Texto grande em "Disposição dos pallets" (célula A41 da carga):
-  // ARAUCO MADERAS => EXPORTAÇÃO TERRESTRE (25% transparente); material "EB/" => BREAKBULK;
+  // ARAUCO MADERAS / MADERAS ARAUCO => EXPORTAÇÃO TERRESTRE; todos 30% transparentes (ficam sobre o desenho da carreta); material "EB/" => BREAKBULK;
   // container na janela de mercado interno => CABOTAGEM; janela de containers => CONTAINER.
-  const isAraucoMaderas = T => /ARAUCO\s+MADERAS/.test(P.norm(T.eff.cliente));
+  const isAraucoMaderas = T => /ARAUCO\s+MADERAS|MADERAS\s+ARAUCO/.test(P.norm(T.eff.cliente)); // inclui "MADERAS ARAUCO S.A."
   // "amostra" na carga: descrição / texto comercial do material ou observação
   const isAmostra = T => /\bAMOSTRAS?\b/.test(P.norm([T.eff.obs, ...T.items.map(i => [i.descricao, i.textoComercial, i.obs].join(' '))].join(' ')));
   const isBreakbulk = T => T.items.some(i => /EB\//i.test(i.descricao || ''));
@@ -277,9 +280,13 @@
         const s = el.querySelector('svg'); if (s) { s.removeAttribute('width'); s.removeAttribute('height'); }
       } else {
         if (f.wrap) el.classList.add('wrap');
-        if (f.key === 'janelaContainer' && val === 'EXPORTAÇÃO TERRESTRE') el.style.opacity = '0.75';
+        if (f.key === 'janelaContainer') el.style.opacity = '0.7'; // texto sobre o desenho da carreta: 30% transparente
         if (String(val).includes('\n')) { el.classList.add('wrap', 'clip'); el.style.whiteSpace = 'pre-line'; el.style.lineHeight = '1.05'; }
-        const sp = document.createElement('span'); sp.textContent = val; el.appendChild(sp);
+        const sp = document.createElement('span');
+        if (f.key === 'fracionada') // "carga fracionada" em tarja preta com letras brancas
+          String(val).split(' · ').forEach((t, i) => { if (i) sp.append(' · '); const x = document.createElement('span'); x.textContent = t; if (t === 'carga fracionada') x.className = 'tarja'; sp.appendChild(x); });
+        else sp.textContent = val;
+        el.appendChild(sp);
       }
       el.dataset.size = f.size;
       page.appendChild(el);
@@ -301,14 +308,15 @@
   }
   // exportação terrestre (Arauco Maderas) e breakbulk não levam romaneio de separação
   const comSeparacao = T => !(isAraucoMaderas(T) || isBreakbulk(T));
+  const comIdentificador = T => T.janela === 'CONTAINER';
   function pagesFor(T, opts) {
     const d = printData(T);
     // mesma ordem da macro impress2026ordens: Check do veículo, depois Check da carga
     const pages = [buildPage('veiculo', d), buildPage('carga', d)];
     // exportação: formulário de separação (exceto exportação terrestre/breakbulk) e identificador da carga
-    if ((!opts || opts.extras !== false) && isExport(T)) {
-      if (comSeparacao(T)) pages.push(buildSeparacao(T));
-      pages.push(buildIdentificador(T));
+    if (!opts || opts.extras !== false) {
+      if (isExport(T) && comSeparacao(T)) pages.push(buildSeparacao(T));
+      if (comIdentificador(T)) pages.push(buildIdentificador(T)); // identificador só para container
     }
     return pages;
   }
@@ -335,11 +343,16 @@
       <div class="sp-head">
         <img src="${logoSrc()}" alt="Arauco">
         <div class="sp-title"><div>SEPARAÇÃO DE CARGA</div><small>EXPORTAÇÃO · ${esc(tipo)}</small></div>
-        <div class="sp-tr"><span>TRANSPORTE</span><b>${esc(T.transporte)}</b><small>${esc(P.fmtDateBR(e.data))} · ${esc(e.hora || '--:--')}</small></div>
+        <div class="sp-tr"><span>DATA</span><b>${esc(P.fmtDateBR(e.data))}</b><small>${esc(e.hora || '--:--')}</small></div>
+      </div>
+      <div class="sp-key">
+        <div class="sp-ot"><span>OT${T.otList.length > 1 ? 's' : ''}</span>${T.otList.length ? T.otList.slice(0, 3).map(o => `<div class="sp-otq"><i>${qrSvg(o)}</i><b>${esc(o)}</b></div>`).join('') + (T.otList.length > 3 ? `<small>+ ${esc(T.otList.slice(3).join(' / '))}</small>` : '') : '<b>—</b>'}</div>
+        <div class="sp-big"><span>TRANSPORTE</span><b data-fit="30">${esc(T.transporte)}</b></div>
+        <div class="sp-big"><span>CONTAINER</span><b data-fit="30">${esc(fmtContainer(T.ot.container) || '—')}</b></div>
       </div>
       <div class="sp-grid">
-        ${cel('Cliente', e.cliente)}${cel('Destino', sol.cidade ? `${sol.cidade}/${sol.uf}` : '')}${cel('Entrega(s)', T.entregas.join(' / '))}${cel('OT(s)', T.otList.join(' / '))}
-        ${cel('Container', fmtContainer(T.ot.container), 1)}${cel('Lacre', T.ot.lacre, 1)}${cel('Tara', T.ot.tara)}${cel('Peso máx. (MWG)', T.ot.mwg)}
+        ${cel('Cliente', e.cliente)}${cel('Destino', sol.cidade ? `${sol.cidade}/${sol.uf}` : '')}${cel('Entrega(s)', T.entregas.join(' / '))}${cel('Horário', e.hora)}
+        ${cel('Lacre', T.ot.lacre, 1)}${cel('Tara', T.ot.tara)}${cel('Peso máx. (MWG)', T.ot.mwg)}${cel('Tipo de carga', tipo)}
         ${cel('Placa carreta', isTruck(e) ? e.placaL + ' (truck)' : e.placaL)}${cel('Placa cavalo', isTruck(e) ? '' : e.placaM)}${cel('Motorista', e.motorista)}${cel('Transportadora', e.transportadora)}
         ${cel('Pallets / lotes', d.pallets)}${cel('Peso da carga', sol.peso ? fmtNum(sol.peso, 0) + ' kg' : '')}${cel('Incoterm', e.incoterm)}${cel('FSC', T.fsc ? (T.fsc.fsc || 'FSC') : 'Não')}
       </div>
@@ -347,7 +360,7 @@
       <table class="sp-tab"><thead><tr><th>OT</th><th>Material</th><th>Descrição</th><th>Tp.</th><th>Posição</th><th class="n">Qtd</th><th class="ck">Separado</th><th class="ck">Conferido</th></tr></thead>
       <tbody>${linhas.map(l => `<tr><td>${esc(l.ot)}</td><td>${esc(l.material)}</td><td class="tx">${esc(l.texto)}</td><td>${esc(l.tp)}</td><td><b>${esc(l.pos)}</b></td><td class="n">${fmtNum(l.qtd, 0)}</td><td class="ck">☐</td><td class="ck">☐</td></tr>`).join('')}
         ${Array.from({ length: Math.max(0, 6 - linhas.length) }, () => '<tr class="vazia"><td></td><td></td><td></td><td></td><td></td><td></td><td class="ck">☐</td><td class="ck">☐</td></tr>').join('')}</tbody>
-      <tfoot><tr><td colspan="5">Total${d.fracionada ? ' · ' + esc(d.fracionada) : ''}</td><td class="n">${fmtNum(totQtd, 0)}</td><td colspan="2"></td></tr></tfoot></table>
+      <tfoot><tr><td colspan="5">Total${isFracionada(T) ? ' <span class="tarja">carga fracionada</span>' : ''}${isAmostra(T) ? ' · Amostra-conferir cliente' : ''}</td><td class="n">${fmtNum(totQtd, 0)}</td><td colspan="2"></td></tr></tfoot></table>
       <div class="sp-sign">
         <div><span>Separador</span><i></i><em>Início ___:___ &nbsp; Fim ___:___</em></div>
         <div><span>Operador de empilhadeira</span><i></i><em>Início ___:___ &nbsp; Fim ___:___</em></div>
@@ -408,8 +421,9 @@
     list.forEach(T => { state.printed[T.transporte] = now; state.snap[T.transporte] = { at: now, d: snapshotOf(T) }; });
     save(true);
     renderAll();
-    const nExp = list.filter(isExport).length, nSep = list.filter(T => isExport(T) && comSeparacao(T)).length;
-    toast(`${list.length} ordem(ns) enviada(s) para impressão — ${root.children.length} página(s)${nExp ? ` (inclui identificador de ${nExp} exportação(ões)${nSep ? `, separação de ${nSep}` : ''})` : ''}.`, 'ok');
+    const nSep = list.filter(T => isExport(T) && comSeparacao(T)).length, nId = list.filter(comIdentificador).length;
+    const ext = [nSep && `separação de ${nSep}`, nId && `identificador de ${nId} container(s)`].filter(Boolean).join(', ');
+    toast(`${list.length} ordem(ns) enviada(s) para impressão — ${root.children.length} página(s)${ext ? ` (inclui ${ext})` : ''}.`, 'ok');
   }
   // imprime só a separação ou só o identificador (não marca a ordem como impressa)
   async function imprimirAvulso(pages) {
@@ -971,7 +985,8 @@
     const t = ui.open; const T = t && getTransport(t);
     if (!T) { closeDetail(); return; }
     $('#d-title').textContent = T.transporte;
-    $('#d-print-sub').textContent = !isExport(T) ? '2 check-lists' : comSeparacao(T) ? '4 páginas: check-lists + separação + identificador' : '3 páginas: check-lists + identificador';
+    { const ex = [isExport(T) && comSeparacao(T) && 'separação', comIdentificador(T) && 'identificador'].filter(Boolean);
+      $('#d-print-sub').textContent = ex.length ? `${2 + ex.length} páginas: check-lists + ${ex.join(' + ')}` : '2 check-lists'; }
     $('#d-fat-txt').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
     $('#d-fat').classList.toggle('on', !!T.faturado);
     $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
@@ -1043,7 +1058,7 @@
         <h3>Documentos da ordem <span class="h-note">clique para ampliar</span></h3>
         <div class="pv-thumbs" id="pv-thumbs"></div>
         <div class="doc-extra">
-          ${isExport(T) ? '<span class="chip ct">Exportação</span> <span class="muted small">' + (comSeparacao(T) ? 'a impressão da ordem inclui também a <b>separação</b> e o <b>identificador</b> da carga' : 'a impressão da ordem inclui também o <b>identificador</b> da carga (exportação terrestre/breakbulk: sem romaneio de separação)') + '</span>' : '<span class="muted small">Separação e identificador saem automaticamente nas exportações; para imprimir à parte, use os botões da lateral.</span>'}
+          ${isExport(T) ? '<span class="chip ct">Exportação</span> <span class="muted small">' + (comSeparacao(T) ? `a impressão da ordem inclui também a <b>separação</b>${comIdentificador(T) ? ' e o <b>identificador</b> da carga' : ''}` : 'exportação terrestre/breakbulk: a impressão sai só com os check-lists (sem separação e sem identificador)') + '</span>' : '<span class="muted small">Separação e identificador saem automaticamente nas exportações; para imprimir à parte, use os botões da lateral.</span>'}
         </div>
       </div>`;
     renderThumbs(T);

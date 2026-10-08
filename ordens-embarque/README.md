@@ -80,8 +80,8 @@ Se faltar algum, o app avisa antes de imprimir.
 
 ### Exportação: separação + identificador da carga
 
-Quando a ordem é de **exportação** (janela PIÊN CONTAINERS, ARAUCO MADERAS/exportação terrestre,
-breakbulk ou material de exportação `P/E…`), **Imprimir ordem** imprime 4 páginas:
+Quando a ordem é de **container** (janela PIÊN CONTAINERS), **Imprimir ordem** imprime 4 páginas
+(material de exportação `P/E…` fora da janela de containers leva só a separação):
 
 1. Check list visual do veículo (oficial)
 2. Check List de Expedição (oficial)
@@ -96,9 +96,16 @@ breakbulk ou material de exportação `P/E…`), **Imprimir ordem** imprime 4 p�
 No painel da ordem há botões para imprimir só a separação ou só o identificador (qualquer
 ordem, também mercado interno), sem marcar a ordem como impressa.
 
-**Exportação terrestre (ARAUCO MADERAS) e breakbulk (`EB/`) não levam o romaneio de separação**:
-a impressão da ordem sai com 3 páginas (os dois check-lists + identificador). Se precisar da
-separação nesses casos, use o botão da lateral do painel.
+**O identificador sai só para container.** **Exportação terrestre (ARAUCO MADERAS ou MADERAS
+ARAUCO S.A.) e breakbulk (`EB/`) saem só com os dois check-lists** (sem separação e sem
+identificador). Se precisar de algum deles nesses casos, use os botões da lateral do painel.
+
+No topo da separação ficam em destaque as **OTs com QR code**, o **transporte** e o **container**.
+
+**Carga fracionada:** quando a quantidade ÷ peças por lote dá número quebrado em qualquer item
+(moldura ou outro material), o check-list traz "carga fracionada" em tarja preta com letras
+brancas ao lado da quantidade de lotes. Os textos grandes sobre o desenho da carreta (CONTAINER,
+CABOTAGEM, BREAKBULK, EXPORTAÇÃO TERRESTRE) saem 30% transparentes.
 
 ### Guia Pesos — análise mensal de variação de peso por item
 

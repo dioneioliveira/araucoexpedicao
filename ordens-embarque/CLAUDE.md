@@ -34,13 +34,15 @@
   número de 6–12 dígitos que não é material). Várias OTs => `T.otList`, impressas uma por linha.
 - Relatório do dia (`relatorio()`): Excel (SheetJS; CSV sem internet), PDF (página nomeada
   `relatorio`, A4 paisagem) e e-mail (copia HTML com estilos inline + abre mailto).
-- Texto grande da célula A41 (carga), em `destaque()`: cliente ARAUCO MADERAS => "EXPORTAÇÃO TERRESTRE"
-  (opacidade 0.75); material com "EB/" => "BREAKBULK"; container na janela de mercado interno => "CABOTAGEM"
+- Texto grande da célula A41 (carga), em `destaque()`: cliente ARAUCO MADERAS ou MADERAS ARAUCO => "EXPORTAÇÃO TERRESTRE";
+  todos os textos de A41 ficam sobre o desenho da carreta com opacidade 0.7 (30% transparentes); material com "EB/" => "BREAKBULK"; container na janela de mercado interno => "CABOTAGEM"
   (`isCabotagem`, também marca os N/A); janela container => "CONTAINER". Nessa ordem de prioridade.
 - Cópia "Placa p/ nota": `0001` + quebra de linha + placa da carreta com UF (Controle OT T3:T4).
 - Tela inicial: 4 botões `data-colar` (ordem | MI | CONTAINER | ots) → `colarPorBotao` lê a área de
   transferência (ou abre `#paste-dialog`) → `processarColagem(text, html, tipo)`; Ctrl+V solto usa tipo null
   (detecção). Solicitação de Embarque sempre vira "ordem".
+- "carga fracionada" (`isFracionada`): qtd ÷ peças por lote quebrado em qualquer item (moldura ou outro) ou no total;
+  sai na C23 em tarja preta com letras brancas (`.tarja`), também no total da separação.
 - "amostra" na carga (`isAmostra`: descrição, texto comercial ou observação) => "Amostra-conferir cliente"
   na célula C23 (ao lado dos lotes), junto de "carga fracionada" se houver.
 - Compartilhamento entre usuários (`js/sync.js`, `OESync`): arquivo .json na pasta de rede via File System
@@ -55,7 +57,8 @@
   dígitos após "qtd UMA tpDest", zeros à esquerda removidos; Tp./posição de origem guardados).
 - Exportação (`isExport`): container | Arauco Maderas | breakbulk | material P/E → `pagesFor` acrescenta
   `buildSeparacao` (A4 em pé, linhas da LT22; só se `comSeparacao`: exportação terrestre/Arauco Maderas e breakbulk
-  NÃO levam romaneio de separação) e `buildIdentificador` (A4 deitado, `@page ident`, textos
+  NÃO levam romaneio de separação; no topo, faixa `.sp-key` com OT(s) + QR code, transporte e container) e
+  `buildIdentificador` (só container: `comIdentificador` = janela CONTAINER) (A4 deitado, `@page ident`, textos
   `data-fit` ajustados por `fitBig`). Botões no painel imprimem só um deles (`imprimirAvulso`).
 - Painel da ordem: meia tela (`.drawer` max(50vw, 860px)); ações na coluna `#d-actions` (imprimir, separação,
   identificador, cópias "Dados de texto (VL02N/texto)", "Placa p/ nota (VL02N/placa)", "Dados do motorista (VT02N)",
