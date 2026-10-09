@@ -212,10 +212,9 @@
   .import-btn.busy{opacity:.6;pointer-events:none;}
   .import-btn:disabled{opacity:.45;cursor:not-allowed;}
   .import-btn:disabled:hover{color:inherit;border-color:inherit;}
-  /* The topbar (KPI strip + pendências badge + buttons) runs out of room well
-     below ~2400px wide -- until then the export button shrinks to its icon
-     (full text stays in the tooltip). */
-  @media (max-width:2399px){
+
+  /* Narrow screens: the topbar has no room for the label -- keep the icon (text stays in the tooltip). */
+  @media (max-width:1499px){
     #export-btn{padding:0 11px;}
     #export-btn .btn-label{display:none;}
   }
@@ -446,7 +445,7 @@
         Importar
       </button>
       <input type="file" id="import-file" accept=".xlsx,.xls" hidden>
-      <button class="import-btn" id="export-btn" disabled title="Exportar o estoque por Box, lote a lote (disponível depois de importar uma planilha com LX02)">
+      <button class="import-btn" id="export-btn" title="Exportar a tabela do estoque por Box (Excel)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M4 20h16"/></svg>
         <span class="btn-label">Exportar</span>
       </button>
@@ -570,7 +569,7 @@
       <ul>
         <li>Só o volume que está em Box do 3D (com capacidade) é desenhado; o restante não aparece na planta, mas conta no total em estoque do topo.</li>
         <li>Material inutilizado fica fora dos totais; lote sem dimensões na descrição vira pendência (botão vermelho de pendências).</li>
-        <li><b>Exportar</b> gera um Excel com o estoque por Box lote a lote, o resumo por Box e o que ficou fora do 3D, com o motivo.</li>
+        <li><b>Exportar</b> baixa um Excel do estoque por Box: itens, família, classe, volume e data de produção, mais o resumo por Box e o que ficou fora do 3D. Com a base MB52+LX02 importada vem lote a lote; sem ela, por Box (nível do que está na tela).</li>
       </ul>
       <h4>Como navegar</h4>
       <ul>
@@ -2991,11 +2990,9 @@ const EXPORT_REASONS = {
 function updateExportBtn(){
   const btn = document.getElementById('export-btn');
   if (!btn) return;
-  const ready = !!lotExportData;
-  btn.disabled = !ready;
-  btn.title = ready
+  btn.title = lotExportData
     ? `Exportar o estoque por Box, lote a lote (${lotExportData.lotRows.length.toLocaleString('pt-BR')} lotes em Box, ${lotExportData.excludedRows.length.toLocaleString('pt-BR')} fora do 3D)${lotExportPersisted ? '' : ' — atenção: não coube no armazenamento do navegador, exporte antes de recarregar a página'}`
-    : 'Exportar o estoque por Box, lote a lote (disponível depois de importar uma planilha com LX02)';
+    : 'Exportar a tabela do estoque por Box como está na tela (o detalhe por lote vem da base MB52+LX02 importada)';
 }
 function setLotExport(stock){
   lotExportData = (stock && Array.isArray(stock.lotRows)) ? {
@@ -3048,8 +3045,8 @@ function exportSheet(aoa, widths, fmts, filterLastRow){
   return ws;
 }
 
-function buildStockExportWorkbook(){
-  const d = lotExportData;
+function buildStockExportWorkbook(d){
+  const derived = !!d.derived; // built from the live Boxes (no lote-level import in this browser)
   const info = sku => d.skuInfo[sku] || {texto:'', cls:null, familia:null};
   const classeOf = sku => info(sku).cls || 'Sem curva ABC';
   const familiaOf = sku => info(sku).familia || 'Sem família cadastrada';
@@ -3083,7 +3080,7 @@ function buildStockExportWorkbook(){
     lots.forEach(r => skuVol.set(r[1], (skuVol.get(r[1]) || 0) + r[5]));
     lots.sort((a, c) => (skuVol.get(c[1]) - skuVol.get(a[1])) || String(a[1]).localeCompare(String(c[1])) || ((a[6] ?? Infinity) - (c[6] ?? Infinity)) || String(a[2]).localeCompare(String(c[2])));
     const boxVol = lots.reduce((s, r) => s + r[5], 0);
-    const boxQty = lots.reduce((s, r) => s + r[3], 0);
+    const boxQty = lots.reduce((s, r) => s + (r[3] || 0), 0);
     const boxInut = lots.reduce((s, r) => s + (r[7] ? r[5] : 0), 0);
     let oldest = null;
     for (const r of lots){
@@ -3091,64 +3088,111 @@ function buildStockExportWorkbook(){
       if (ts != null && (oldest == null || ts < oldest)) oldest = ts;
       const obs = [];
       if (qual) obs.push(`Inclui ${qual.toLocaleString('pt-BR')} chapa(s) em controle de qualidade`);
-      if (m3 == null) obs.push('Descrição sem dimensões (LxWxT) — m³ não calculado');
+      if (derived){
+        obs.push('Nível de Box: sem detalhe de lote (importe a base MB52+LX02 para listar lote a lote)');
+        if (lots.length > 1) obs.push('Data = a mais antiga do Box');
+      }
+      else if (m3 == null) obs.push('Descrição sem dimensões (LxWxT) — m³ não calculado');
       if (inut) obs.push('Material inutilizado — não entra nos totais da empresa');
       if (blockedNote) obs.push(blockedNote);
-      rows1.push([b.code, sku, info(sku).texto, familiaOf(sku), classeOf(sku), lote, vol, qty, m3 == null ? '' : m3, xlDate(ts), ts == null ? '' : daysSince(ts), inut ? 'Sim' : 'Não', obs.join(' · '), b.aisle, b.capacity || '', boxVol]);
+      rows1.push([b.code, sku, info(sku).texto, familiaOf(sku), classeOf(sku), lote == null ? '— (sem detalhe de lote)' : lote, vol, qty == null ? '' : qty, m3 == null ? '' : m3, xlDate(ts), ts == null ? '' : daysSince(ts), inut ? 'Sim' : 'Não', obs.filter(Boolean).join(' · '), b.aisle, b.capacity || '', boxVol]);
     }
     const domSku = [...skuVol.entries()].sort((x, y) => y[1] - x[1])[0][0];
-    rows2.push([b.aisle, b.code, skuVol.size, lots.length, boxQty, boxVol, boxInut, b.capacity || '', b.capacity > 0 ? boxVol / b.capacity * 100 : '', classeOf(domSku), domSku, info(domSku).texto, familiaOf(domSku), xlDate(oldest), oldest == null ? '' : daysSince(oldest)]);
-    totItems += skuVol.size; totLots += lots.length; totQty += boxQty; totVol += boxVol; totInut += boxInut; totCap += b.capacity || 0;
+    rows2.push([b.aisle, b.code, skuVol.size, derived ? '' : lots.length, boxQty || (derived ? '' : 0), boxVol, boxInut, b.capacity || '', b.capacity > 0 ? boxVol / b.capacity * 100 : '', classeOf(domSku), domSku, info(domSku).texto, familiaOf(domSku), xlDate(oldest), oldest == null ? '' : daysSince(oldest)]);
+    totItems += skuVol.size; totLots += derived ? 0 : lots.length; totQty += boxQty; totVol += boxVol; totInut += boxInut; totCap += b.capacity || 0;
   }
   const boxRows2 = rows2.length - 1;
   rows2.push(['TOTAL', '', totItems, totLots, totQty, totVol, totInut, totCap || '', totCap > 0 ? totVol / totCap * 100 : '', '', '', '', '', '', '']);
 
-  // Reconciliation: every lote with stock is either in a Box or listed in "Fora do 3D".
-  const outVol = outRows.reduce((s, r) => s + r[5], 0);
-  const byReason = new Map();
-  for (const r of outRows){
-    const e = byReason.get(r[0]) || {n:0, vol:0};
-    e.n++; e.vol += r[5]; byReason.set(r[0], e);
-  }
-  const allLots = d.lotRows.length + d.excludedRows.length;
-  const allVol = d.lotRows.reduce((s, r) => s + r[5], 0) + d.excludedRows.reduce((s, r) => s + r[5], 0);
-  rows2.push([]);
-  rows2.push(['RECONCILIAÇÃO — todas as linhas lidas da planilha de estoque', '', '', 'Lotes', '', 'Volume (m³)']);
-  rows2.push([`Linhas lidas (${d.source || 'estoque'})`, '', '', d.rowsRead]);
-  rows2.push(['Ignoradas: sem estoque livre/qualidade ou sem material', '', '', d.ignoredZeroQty]);
-  rows2.push(['Lotes com estoque considerados', '', '', allLots, '', allVol]);
-  rows2.push(['  → Dentro de um Box (3D)', '', '', totLots, '', totVol]);
-  for (const [code, meta] of Object.entries(EXPORT_REASONS).sort((a, b) => a[1].order - b[1].order)){
-    const e = byReason.get(code);
-    if (e) rows2.push([`  → Fora do 3D: ${meta.label}`, '', '', e.n, '', e.vol]);
-  }
-  rows2.push(['Diferença (deve ser 0)', '', '', allLots - totLots - outRows.length, '', Math.round((allVol - totVol - outVol) * 1000) / 1000]);
-  const outBillable = outRows.reduce((s, r) => s + (isInutilizadoMaterial(info(r[2]).familia, info(r[2]).texto) ? 0 : r[5]), 0);
-  rows2.push(['Total para os KPIs (dentro + fora do 3D, sem inutilizado)', '', '', '', '', totVol - totInut + outBillable]);
-
-  // "Fora do 3D": one row per lote, reason first.
-  const H3 = ['Motivo','Detalhe','Posição (LX02)','Item (material)','Descrição','Família','Classe','Lote','Chapas','Volume (m³)','Data de produção','Dias em estoque'];
-  const rows3 = [H3];
-  outRows.sort((a, b) => (EXPORT_REASONS[a[0]].order - EXPORT_REASONS[b[0]].order) || String(a[1]).localeCompare(String(b[1])) || String(a[2]).localeCompare(String(b[2])) || String(a[3]).localeCompare(String(b[3])));
-  for (const [reason, where, sku, lote, qty, vol, ts] of outRows){
-    const meta = EXPORT_REASONS[reason];
-    rows3.push([meta.label, meta.detail(where), where, sku, info(sku).texto, familiaOf(sku), classeOf(sku), lote, qty, vol, xlDate(ts), ts == null ? '' : daysSince(ts)]);
-  }
-  if (!outRows.length) rows3.push(['Nada ficou de fora', 'Todos os lotes com estoque estão dentro de um Box do 3D', '', '', '', '', '', '', '', '', '', '']);
-  if (d.ignoredZeroQty){
-    rows3.push([]);
-    rows3.push([`Obs.: ${d.ignoredZeroQty} linha(s) sem estoque livre/qualidade (ex.: só trânsito) ou sem material foram ignoradas — não contam como estoque válido, por isso não aparecem aqui.`]);
-  }
-
   const wb = XLSX.utils.book_new();
+  let rows3, outCount, widths3, fmts3;
+  if (derived){
+    // No lote-level import in this browser: reconcile against the live Boxes and the
+    // aggregate "outside the 3D" figures saved with the last stock import.
+    const out = outsideTotals();
+    const kpiBoxVol = boxes.reduce((s, b) => s + (b.billableVolume ?? b.occupied ?? 0), 0);
+    rows2.push([]);
+    rows2.push(['RECONCILIAÇÃO — estado atual dos Boxes (sem detalhe de lote)', '', '', 'Lotes', '', 'Volume (m³)']);
+    rows2.push(['  → Dentro de um Box (3D), com inutilizado', '', '', '', '', totVol]);
+    rows2.push(['  → Dentro de um Box (3D), sem inutilizado', '', '', '', '', kpiBoxVol]);
+    rows2.push(['  → Fora do 3D (última importação), sem inutilizado', '', '', out.lots || '', '', out.billableVolume || 0]);
+    rows2.push(['Total para os KPIs (dentro + fora do 3D, sem inutilizado)', '', '', '', '', kpiBoxVol + (out.billableVolume || 0)]);
+    rows2.push(['Obs.: o estoque que já vem gravado na planta não separa material inutilizado nos totais; importe a base MB52+LX02 para aplicar essa exclusão.']);
+    const H3d = ['Motivo','Detalhe','Lotes','Volume (m³)'];
+    rows3 = [H3d];
+    for (const [code, meta] of Object.entries(EXPORT_REASONS).sort((a, b) => a[1].order - b[1].order)){
+      const e = out.byReason && out.byReason[code];
+      if (e) rows3.push([meta.label, 'Total agregado da última importação — a lista lote a lote precisa da base MB52+LX02 importada neste navegador', e.n, e.volume]);
+    }
+    if (rows3.length === 1) rows3.push(['Sem dados de lote', 'Importe a base padrão (capacidade, curva ABC, MB52, LX02) para listar o que ficou fora do 3D, lote a lote, com o motivo.', '', '']);
+    outCount = rows3.length - 1; widths3 = [34,110,10,14]; fmts3 = {2:'#,##0',3:'#,##0.000'};
+  } else {
+    // Reconciliation: every lote with stock is either in a Box or listed in "Fora do 3D".
+    const outVol = outRows.reduce((s, r) => s + r[5], 0);
+    const byReason = new Map();
+    for (const r of outRows){
+      const e = byReason.get(r[0]) || {n:0, vol:0};
+      e.n++; e.vol += r[5]; byReason.set(r[0], e);
+    }
+    const allLots = d.lotRows.length + d.excludedRows.length;
+    const allVol = d.lotRows.reduce((s, r) => s + r[5], 0) + d.excludedRows.reduce((s, r) => s + r[5], 0);
+    rows2.push([]);
+    rows2.push(['RECONCILIAÇÃO — todas as linhas lidas da planilha de estoque', '', '', 'Lotes', '', 'Volume (m³)']);
+    rows2.push([`Linhas lidas (${d.source || 'estoque'})`, '', '', d.rowsRead]);
+    rows2.push(['Ignoradas: sem estoque livre/qualidade ou sem material', '', '', d.ignoredZeroQty]);
+    rows2.push(['Lotes com estoque considerados', '', '', allLots, '', allVol]);
+    rows2.push(['  → Dentro de um Box (3D)', '', '', totLots, '', totVol]);
+    for (const [code, meta] of Object.entries(EXPORT_REASONS).sort((a, b) => a[1].order - b[1].order)){
+      const e = byReason.get(code);
+      if (e) rows2.push([`  → Fora do 3D: ${meta.label}`, '', '', e.n, '', e.vol]);
+    }
+    rows2.push(['Diferença (deve ser 0)', '', '', allLots - totLots - outRows.length, '', Math.round((allVol - totVol - outVol) * 1000) / 1000]);
+    const outBillable = outRows.reduce((s, r) => s + (isInutilizadoMaterial(info(r[2]).familia, info(r[2]).texto) ? 0 : r[5]), 0);
+    rows2.push(['Total para os KPIs (dentro + fora do 3D, sem inutilizado)', '', '', '', '', totVol - totInut + outBillable]);
+
+    // "Fora do 3D": one row per lote, reason first.
+    const H3 = ['Motivo','Detalhe','Posição (LX02)','Item (material)','Descrição','Família','Classe','Lote','Chapas','Volume (m³)','Data de produção','Dias em estoque'];
+    rows3 = [H3];
+    outRows.sort((a, b) => (EXPORT_REASONS[a[0]].order - EXPORT_REASONS[b[0]].order) || String(a[1]).localeCompare(String(b[1])) || String(a[2]).localeCompare(String(b[2])) || String(a[3]).localeCompare(String(b[3])));
+    for (const [reason, where, sku, lote, qty, vol, ts] of outRows){
+      const meta = EXPORT_REASONS[reason];
+      rows3.push([meta.label, meta.detail(where), where, sku, info(sku).texto, familiaOf(sku), classeOf(sku), lote, qty, vol, xlDate(ts), ts == null ? '' : daysSince(ts)]);
+    }
+    if (!outRows.length) rows3.push(['Nada ficou de fora', 'Todos os lotes com estoque estão dentro de um Box do 3D', '', '', '', '', '', '', '', '', '', '']);
+    if (d.ignoredZeroQty){
+      rows3.push([]);
+      rows3.push([`Obs.: ${d.ignoredZeroQty} linha(s) sem estoque livre/qualidade (ex.: só trânsito) ou sem material foram ignoradas — não contam como estoque válido, por isso não aparecem aqui.`]);
+    }
+
+    outCount = outRows.length; widths3 = [32,70,16,16,46,22,16,13,12,14,14,12]; fmts3 = {8:'#,##0',9:'#,##0.000',10:'dd/mm/yyyy',11:'0'};
+  }
   XLSX.utils.book_append_sheet(wb, exportSheet(rows1, [9,16,46,22,16,13,16,12,12,14,12,11,48,10,18,16], {6:'#,##0.000',7:'#,##0',8:'0.0000',9:'dd/mm/yyyy',10:'0',14:'#,##0.0',15:'#,##0.000'}, rows1.length - 1), 'Estoque por Box');
   XLSX.utils.book_append_sheet(wb, exportSheet(rows2, [10,10,11,11,12,14,20,14,12,16,14,46,22,16,14], {2:'0',3:'0',4:'#,##0',5:'#,##0.000',6:'#,##0.000',7:'#,##0.0',8:'0.0',13:'dd/mm/yyyy',14:'0'}, boxRows2), 'Resumo por Box');
-  XLSX.utils.book_append_sheet(wb, exportSheet(rows3, [32,70,16,16,46,22,16,13,12,14,14,12], {8:'#,##0',9:'#,##0.000',10:'dd/mm/yyyy',11:'0'}, outRows.length ? outRows.length : null), 'Fora do 3D');
+  XLSX.utils.book_append_sheet(wb, exportSheet(rows3, widths3, fmts3, outCount ? outCount : null), 'Fora do 3D');
   return wb;
 }
+/* No lote-level import in this browser (e.g. the seed stock baked into PB25/PB26,
+   or a plant that was never imported here): build the same table from the live
+   Boxes -- one row per material in each Box, at Box level instead of lote level. */
+function deriveExportFromBoxes(){
+  const lotRows = [], skuInfo = {};
+  for (const b of boxes){
+    if (!(b.occupied > 0) || !b.sku) continue;
+    const items = (b.skuBreakdown && b.skuBreakdown.length)
+      ? b.skuBreakdown
+      : [{sku: b.sku, vol: b.occupied, texto: b.item || '', cls: b.cls, familia: b.familia}];
+    for (const it of items){
+      if (!skuInfo[it.sku]) skuInfo[it.sku] = {texto: it.texto || (it.sku === b.sku ? b.item : '') || '', cls: it.cls || null, familia: it.familia || null};
+      const single = items.length === 1;
+      lotRows.push([b.code, it.sku, null, single ? (b.qty || null) : null, null, it.vol, b.entryDate ?? null,
+        isInutilizadoMaterial(skuInfo[it.sku].familia, skuInfo[it.sku].texto)]);
+    }
+  }
+  return {derived: true, plant: ACTIVE_PLANT, lotRows, excludedRows: [], skuInfo, ignoredZeroQty: 0, rowsRead: 0};
+}
 function downloadStockExport(){
-  if (!lotExportData || typeof XLSX === 'undefined') return;
-  const wb = buildStockExportWorkbook();
+  if (typeof XLSX === 'undefined') return;
+  const wb = buildStockExportWorkbook(lotExportData || deriveExportFromBoxes());
   const day = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, `${DATA.name}_estoque_por_box_${day}.xlsx`);
 }
