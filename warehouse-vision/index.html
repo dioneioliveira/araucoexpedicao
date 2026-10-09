@@ -424,7 +424,7 @@
       <select class="plant-select" id="plant-select" title="Selecionar planta" aria-label="Selecionar planta"></select>
     </div>
     <span class="example-tag" id="import-status-tag">Estoque não carregado</span>
-    <button class="example-tag" id="unclassified-badge" hidden title="Baixar planilha de SKUs sem Curva ABC cadastrada"></button>
+    <button class="example-tag" id="unclassified-badge" hidden title="Baixar o relatório de divergências (o que precisa ser corrigido na base)"></button>
 
     <div class="kpi-strip" id="kpi-strip"></div>
 
@@ -570,6 +570,7 @@
         <li><b>Só material da guia Cadastro é estoque válido</b>: o que não consta nela não entra em nenhum total nem no 3D (aparece no Excel exportado para você cadastrar).</li>
         <li>Posições <b>0072_BP…</b> (depósito 0072) são desconsideradas em todos os dados; o dep. 0072 só vale quando está em posição de Box do 3D.</li>
         <li>Material inutilizado fica fora dos totais; lote sem dimensões na descrição vira pendência (botão vermelho de pendências).</li>
+        <li>O botão vermelho <b>N correções</b> baixa o <b>Relatório de divergências</b>: tudo que não fecha na base (material fora do Cadastro, sem classe/família, posição sem Box, sem capacidade, lote sem data, LX02 × MB52…), com onde e como corrigir, mais o <b>Fechamento</b> que prova que os números batem com o topo.</li>
         <li><b>Exportar</b> baixa um Excel: estoque por Box (itens, família, classe, volume, data de produção e uma coluna de <b>conferência</b> por lote), resumo por Box, <b>Conferência da base</b> (o que corrigir e onde), <b>Cadastro para completar</b> (classe e família que faltam, no formato da guia) e o que ficou fora do 3D. Com a base MB52+LX02 importada vem lote a lote; sem ela, por Box.</li>
       </ul>
       <h4>Como navegar</h4>
@@ -2451,11 +2452,13 @@ function computeCapacidadeFromRows(rows, report){
   }
   report.info(`Guia "capacidade": coluna de posição "${codeKey}", coluna de volume "${capKey}".`);
   const map = {};
+  report.capCodes = []; report.capBlank = []; // every code listed in the guide / the ones with no m³ (for the divergence report)
   for (const row of rows){
     const code = normPosCode(row[codeKey]);
     if (!code) continue;
+    report.capCodes.push(code);
     const raw = row[capKey];
-    if (raw == null || String(raw).trim() === '') continue; // blank cell = capacity not informed (never 0)
+    if (raw == null || String(raw).trim() === ''){ report.capBlank.push(code); continue; } // blank cell = capacity not informed (never 0)
     const cap = Number(raw);
     if (!Number.isFinite(cap)) continue;
     map[code] = cap;
@@ -2574,7 +2577,7 @@ function computeEstoqueFromRows(rows, report, clsBySku){
    value that isn't A/B/C -- is reported back by the caller as pending
    cadastro (see runImport's "pendentes" export). */
 function computeCadastrosFromRows(rows, report){
-  const result = {clsBySku:{}, familiaBySku:{}, textoBySku:{}, skus:new Set()};
+  const result = {clsBySku:{}, familiaBySku:{}, textoBySku:{}, skus:new Set(), dups:[], badClass:[]};
   if (!rows.length){ report.warn('Guia "cadastros" está vazia.'); return result; }
   const keys = Object.keys(rows[0]);
   const skuKey = findKey(keys, ['item','material','sku','codigo']);
@@ -2590,10 +2593,16 @@ function computeCadastrosFromRows(rows, report){
   for (const row of rows){
     const sku = String(row[skuKey]||'').trim().toUpperCase();
     if (!sku) continue;
-    result.skus.add(sku);
     const clsRaw = clsKey ? String(row[clsKey]||'').trim().toUpperCase() : '';
-    if (['A','B','C'].includes(clsRaw)) result.clsBySku[sku] = clsRaw;
     const familia = famKey ? String(row[famKey]||'').trim() : '';
+    if (result.skus.has(sku)){
+      // repeated material: report it when the two lines disagree (the last one wins, as before)
+      const a = `${result.clsBySku[sku] || '—'} / ${result.familiaBySku[sku] || '—'}`, b = `${['A','B','C'].includes(clsRaw) ? clsRaw : '—'} / ${familia || '—'}`;
+      if (a !== b && (clsRaw || familia)) result.dups.push({sku, a, b});
+    }
+    result.skus.add(sku);
+    if (clsRaw && !['A','B','C'].includes(clsRaw)) result.badClass.push({sku, valor: clsRaw});
+    if (['A','B','C'].includes(clsRaw)) result.clsBySku[sku] = clsRaw;
     if (familia) result.familiaBySku[sku] = familia;
     const texto = txtKey ? String(row[txtKey]||'').trim() : '';
     if (texto) result.textoBySku[sku] = texto;
@@ -2658,7 +2667,10 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     // Base cross-checks for the "Conferência da base" sheet: LX02 vs MB52 quantity per lote (lxDetail only holds the lotes that disagree).
     checks: {lxQty: false, lxDetail: {}, lxOnlyLots: 0},
     // Lotes that do NOT count anywhere (no KPI, no 3D): dep. 0072 positions and materials missing from the Cadastro guide.
-    nonKpi: {}};
+    nonKpi: {},
+    // Everything that is read but does not become stock (or stock that is questionable): feeds the divergence report.
+    divx: {linesRead: mb52Rows.length, linesNoMaterial: 0, linesBadQty: 0, linelessLines: 0, zeroLots: [], multiBox: [],
+      capCodes: report.capCodes || [], capBlank: report.capBlank || [], capNotInLayout: [], cadDup: cadastros.dups || [], cadBadClass: cadastros.badClass || []}};
   if (!mb52Rows.length){ report.warn('Guia "MB52" está vazia.'); return result; }
   if (!lx02Rows.length){ report.warn('Guia "LX02" está vazia — nenhuma posição pôde ser localizada.'); }
 
@@ -2708,14 +2720,14 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     let negLines = 0, ignoredLots = 0;
     for (const row of mb52Rows){
       const material = String(row[matKey]||'').trim().toUpperCase();
-      if (!material) continue;
+      if (!material){ result.divx.linesNoMaterial++; continue; }
       const q = Number(row[qtyKey]);
-      if (!Number.isFinite(q)) continue;
+      if (!Number.isFinite(q)){ result.divx.linesBadQty++; continue; }
       if (q < 0) negLines++;
       const lote = normLote(row[loteKeyMB52]);
       const pos = normPosCode(row[rowPosKey]);
       const texto = txtKey ? String(row[txtKey]||'').trim() : '';
-      if (!lote){ if (q > 0) loteless.push({material, pos, q, texto}); continue; } // a line without lote is its own stock item
+      if (!lote){ result.divx.linelessLines++; if (q > 0) loteless.push({material, pos, q, texto}); continue; } // a line without lote is its own stock item
       const key = material + '|' + lote;
       let g = groups.get(key);
       if (!g){ g = {material, lote, texto:'', pos:new Map()}; groups.set(key, g); }
@@ -2726,9 +2738,22 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     const push = (material, lote, pos, q, texto) => stockRows.push(Object.assign({[matKey]: material, [loteKeyMB52]: lote, [qtyKey]: q, [rowPosKey]: pos}, txtKey ? {[txtKey]: texto} : {}));
     for (const g of groups.values()){
       const net = [...g.pos.values()].reduce((a, q) => a + q, 0);
-      if (net <= 0.0001){ ignoredLots++; continue; } // moved away / zeroed lote
+      if (net <= 0.0001){
+        ignoredLots++; // moved away / zeroed lote
+        // keep the ones that still show a positive line in a Box: the stock list says "it is there" while another line says it left
+        const posLines = [...g.pos.entries()].filter(([, q]) => q > 0);
+        if (posLines.some(([p]) => hasBox(p)) && result.divx.zeroLots.length < 5000){
+          const v = parseSheetVolumeM3(g.texto) ?? parseSheetVolumeM3(cadastros.textoBySku[g.material]);
+          const boxQ = posLines.filter(([p]) => hasBox(p)).reduce((a, [, q]) => a + q, 0);
+          result.divx.zeroLots.push({mat: g.material, lote: g.lote, box: posLines.filter(([p]) => hasBox(p)).map(([p]) => p).join(', '), qty: boxQ, vol: v != null ? boxQ * v : null,
+            lines: [...g.pos.entries()].filter(([, q]) => Math.abs(q) > 1e-9).slice(0, 8).map(([p, q]) => `${p}: ${q}`).join(' · ')});
+        }
+        continue;
+      }
       let left = net;
       const slices = [...g.pos.entries()].filter(([, q]) => q > 0).sort((a, b) => (tier(a[0]) - tier(b[0])) || (b[1] - a[1]));
+      const boxSlices = slices.filter(([p]) => hasBox(p));
+      if (boxSlices.length > 1 && result.divx.multiBox.length < 2000) result.divx.multiBox.push({mat: g.material, lote: g.lote, pos: boxSlices.map(([p, q]) => `${p}: ${q}`).join(' · ')});
       for (const [p, q] of slices){
         const a = Math.min(q, left); left -= a;
         if (a > 0) push(g.material, g.lote, p, a, g.texto);
@@ -2851,7 +2876,8 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     const livreQty = Math.max(0, Number(row[qtyKey]) || 0);
     const qualQty = qualKey ? Math.max(0, Number(row[qualKey]) || 0) : 0;
     const qty = livreQty + qualQty;
-    if (!material || qty <= 0){ result.ignoredZeroQty++; continue; }
+    if (!material){ result.divx.linesNoMaterial++; result.ignoredZeroQty++; continue; }
+    if (qty <= 0){ result.ignoredZeroQty++; continue; }
     const texto = txtKey ? String(row[txtKey]||'').trim() : '';
     if (texto) textoBySku.set(material, texto);
     // Dimensions come from the stock description; when it has none, the Cadastro description is the fallback.
@@ -2942,6 +2968,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
   report.info(`Cruzamento MB52 × LX02 × MB51: ${posMatched} lote(s) posicionados, ${emProducao} em produção, ${emPedido} em pedido (ainda não recebidos), ${semLote} sem posição encontrada em LX02.`);
   const dep72 = result.nonKpi.dep_0072;
   if (dep72) report.info(`${dep72.n.toLocaleString('pt-BR')} lote(s) em posições 0072_… (${fmt(dep72.volume)} m³) desconsiderados em todos os dados — o dep. 0072 só vale em posição de Box do 3D.`);
+  result.divx.capNotInLayout = Object.keys(capMap || {}).filter(c => !boxByCode.has(c));
   const nc = result.nonKpi.nao_cadastrado;
   if (nc) report.warn(`${naoCad.size.toLocaleString('pt-BR')} material(is) fora da guia Cadastro (${nc.n.toLocaleString('pt-BR')} lote(s), ${fmt(nc.volume)} m³) foram desconsiderados: o Cadastro define o que é estoque válido. Complete o Cadastro (aba "Cadastro para completar" do Excel exportado) e reimporte.`);
   const lxDiffN = Object.keys(result.checks.lxDetail).length;
@@ -3012,68 +3039,6 @@ document.getElementById('import-report-close').addEventListener('click', ()=>{ i
    survives closing the toast, switching plants and reloading the page --
    the underlying gaps don't go away just because the toast was dismissed,
    so neither should the way to fix them. */
-let pendingImportIssues = null;
-function setImportIssuesExport(issues){
-  const btn = document.getElementById('import-report-export-btn');
-  const badge = document.getElementById('unclassified-badge');
-  const total = (issues.semDimensao?.size||0) + (issues.unmatchedPos?.size||0) + (issues.unclassified?.size||0)
-    + (issues.capacidadeNaoEncontrada?.length||0) + (issues.multiplosSkus?.length||0);
-  pendingImportIssues = total ? issues : null;
-  const label = pendingImportIssues ? `${total} pendência${total===1?'':'s'}` : '';
-  if (btn){
-    btn.hidden = !pendingImportIssues;
-    if (pendingImportIssues) btn.textContent = `Baixar planilha de pendências (${label})`;
-  }
-  if (badge){
-    badge.hidden = !pendingImportIssues;
-    if (pendingImportIssues) badge.textContent = `⬇ ${label}`;
-  }
-  DATA.importIssues = pendingImportIssues ? {
-    semDimensao: [...pendingImportIssues.semDimensao.entries()],
-    unmatchedPos: [...pendingImportIssues.unmatchedPos.entries()],
-    unclassified: [...pendingImportIssues.unclassified.entries()],
-    capacidadeNaoEncontrada: pendingImportIssues.capacidadeNaoEncontrada,
-    multiplosSkus: pendingImportIssues.multiplosSkus,
-  } : null;
-}
-function downloadImportIssuesSheet(){
-  if (!pendingImportIssues || typeof XLSX === 'undefined') return;
-  const outWb = XLSX.utils.book_new();
-  const { semDimensao, unmatchedPos, unclassified, capacidadeNaoEncontrada, multiplosSkus } = pendingImportIssues;
-
-  if (semDimensao.size){
-    const aoa = [['SKU', 'Descrição']];
-    for (const [sku, texto] of semDimensao) aoa.push([sku, texto || '']);
-    XLSX.utils.book_append_sheet(outWb, XLSX.utils.aoa_to_sheet(aoa), 'sem_dimensao');
-  }
-  if (unmatchedPos.size){
-    const aoa = [['Posição (LX02)', 'Lotes']];
-    for (const [pos, count] of unmatchedPos) aoa.push([pos, count]);
-    XLSX.utils.book_append_sheet(outWb, XLSX.utils.aoa_to_sheet(aoa), 'posicoes_fora_planta');
-  }
-  if (unclassified.size){
-    const aoa = [['SKU', 'Descrição']];
-    for (const [sku, texto] of unclassified) aoa.push([sku, texto || '']);
-    XLSX.utils.book_append_sheet(outWb, XLSX.utils.aoa_to_sheet(aoa), 'sem_curva_abc');
-  }
-  if (capacidadeNaoEncontrada.length){
-    const aoa = [['Código (guia capacidade)']];
-    for (const code of capacidadeNaoEncontrada) aoa.push([code]);
-    XLSX.utils.book_append_sheet(outWb, XLSX.utils.aoa_to_sheet(aoa), 'capacidade_nao_encontrada');
-  }
-  if (multiplosSkus.length){
-    const aoa = [['Posição', 'SKU', 'Descrição', 'Classe', 'Volume m³', '% da posição']];
-    for (const {code, skus} of multiplosSkus){
-      const totalVol = skus.reduce((s,x)=>s+x.vol, 0) || 1;
-      for (const x of skus) aoa.push([code, x.sku, x.texto || '', x.cls || '', x.vol, Math.round(x.vol/totalVol*100)]);
-    }
-    XLSX.utils.book_append_sheet(outWb, XLSX.utils.aoa_to_sheet(aoa), 'multiplos_skus');
-  }
-  XLSX.writeFile(outWb, `${DATA.name}_pendencias_importacao.xlsx`);
-}
-document.getElementById('import-report-export-btn').addEventListener('click', downloadImportIssuesSheet);
-document.getElementById('unclassified-badge').addEventListener('click', downloadImportIssuesSheet);
-
 /* ================= "Exportar": estoque por Box, lote a lote ================= */
 /* One workbook with what the app is showing, rebuilt from the lote-level rows
    captured during the last stock import (computeEstoqueFromSAP -> lotRows /
@@ -3115,7 +3080,7 @@ function setLotExport(stock){
   lotExportData = (stock && Array.isArray(stock.lotRows)) ? {
     plant: ACTIVE_PLANT, builtAt: Date.now(), source: stock.source || '',
     lotRows: stock.lotRows, excludedRows: stock.excludedRows || [], skuInfo: stock.skuInfo || {},
-    ignoredZeroQty: stock.ignoredZeroQty || 0, rowsRead: stock.rowsRead || 0, checks: stock.checks || null,
+    ignoredZeroQty: stock.ignoredZeroQty || 0, rowsRead: stock.rowsRead || 0, checks: stock.checks || null, divx: stock.divx || null,
   } : null;
   lotExportPersisted = true;
   try {
@@ -3425,6 +3390,255 @@ function downloadStockExport(){
   XLSX.writeFile(wb, `${DATA.name}_estoque_por_box_${day}.xlsx`);
 }
 document.getElementById('export-btn').addEventListener('click', downloadStockExport);
+
+/* ================= Relatório de divergências ================= */
+/* Everything that does not close between the stock list, the Cadastro, the capacity guide
+   and the 3D layout becomes one line of a correction report: what is wrong, where to fix it
+   (guide / column), what to do, and how much it weighs (lotes and m³). A "Fechamento" sheet
+   proves that every line read went somewhere and that the numbers match the top bar.
+   Built from the lote-level rows captured by the last stock import (lotExportData) plus the
+   live Boxes; without an import it falls back to the Box level (see deriveExportFromBoxes). */
+const DIV_SEV_ORDER = {Corrigir: 0, Conferir: 1, 'Informativo': 2};
+const DIV_TYPES = {
+  nao_cadastrado: {label:'Material fora do Cadastro (desconsiderado)', sev:'Corrigir', onde:'Guia Cadastro · nova linha', como:'Incluir o material na guia Cadastro (Material, Descrição, Classe, Família) e reimportar — sem isso ele não conta em nenhum total nem no 3D'},
+  sem_classe:     {label:'Material sem classe (curva ABC)', sev:'Corrigir', onde:'Guia Cadastro · coluna Classe/ABC/Curva', como:'Preencher a classe A, B ou C do material'},
+  classe_invalida:{label:'Classe fora de A/B/C no Cadastro', sev:'Corrigir', onde:'Guia Cadastro · coluna Classe/ABC/Curva', como:'Trocar o valor por A, B ou C'},
+  sem_familia:    {label:'Material sem família', sev:'Corrigir', onde:'Guia Cadastro · coluna Família', como:'Preencher a família do material'},
+  cadastro_repetido:{label:'Material repetido no Cadastro com dados diferentes', sev:'Conferir', onde:'Guia Cadastro · linhas repetidas', como:'Deixar uma só linha por material (vale a última lida)'},
+  sem_dimensao:   {label:'Material sem dimensões na descrição (m³ não calculado)', sev:'Corrigir', onde:'Descrição do material (Texto breve / Cadastro)', como:'Escrever comprimento x largura x espessura na descrição (ex.: 2750x1850x15MM); enquanto isso o volume do lote não entra nos m³'},
+  sem_data:       {label:'Lote sem data de produção', sev:'Conferir', onde:'LX02 · coluna Data EM / Data da entrada de mercadorias', como:'Informar a data do lote (os dias em estoque ficam indisponíveis)'},
+  pos_fora_layout:{label:'Posição sem Box no layout (falta posição real)', sev:'Conferir', onde:'LX02 · Posição no depósito', como:'Informar em qual Box do layout o material está de fato (corrigir a posição no SAP/LX02) ou, se for uma área nova, enviar a amostra do layout para desenharmos'},
+  box_sem_capacidade:{label:'Box do layout sem capacidade', sev:'Corrigir', onde:'Guia Capacidade · coluna m³', como:'Preencher a capacidade (m³) do Box — sem ela a ocupação % e o alerta de acima da capacidade ficam indisponíveis'},
+  sem_capacidade: {label:'Estoque em Box sem capacidade (fora do 3D)', sev:'Corrigir', onde:'Guia Capacidade · coluna m³', como:'Preencher a capacidade do Box para o estoque entrar no 3D'},
+  cap_sem_box:    {label:'Código da guia Capacidade sem Box no layout', sev:'Informativo', onde:'Guia Capacidade × layout', como:'Conferir o nome do Box; layouts só mudam sob solicitação, com amostra'},
+  sem_posicao:    {label:'Lote sem posição na LX02', sev:'Corrigir', onde:'LX02 · lote ausente', como:'O lote tem saldo mas não aparece na LX02: sem posição não há como localizá-lo'},
+  em_producao:    {label:'Em produção (sem posição física)', sev:'Informativo', onde:'LX02 · posição EM-PRODUC', como:'Sem ação: soma nos totais, não vai ao 3D'},
+  em_pedido:      {label:'Em pedido — ainda não recebido', sev:'Informativo', onde:'LX02 · posição EM-PEDIDO', como:'Sem ação: soma nos totais, não vai ao 3D'},
+  dep_0072:       {label:'Depósito 0072 (0072_BP…) — desconsiderado', sev:'Informativo', onde:'LX02 · posições 0072_…', como:'Sem ação: por regra o dep. 0072 só vale em posição de Box do 3D; aqui não entra em nenhum total'},
+  box_acima:      {label:'Box acima da capacidade', sev:'Conferir', onde:'Guia Capacidade / estoque do Box', como:'Conferir a capacidade do Box ou se há estoque duplicado/em excesso'},
+  box_bloqueado:  {label:'Box bloqueado com estoque', sev:'Informativo', onde:'Box bloqueado no app', como:'Conferir se o bloqueio ainda vale'},
+  lx_dif:         {label:'Quantidade da LX02 diferente da MB52', sev:'Conferir', onde:'LX02 × MB52', como:'A soma das posições da LX02 não fecha com o saldo da MB52 (linha duplicada, bin de transferência ou saldo sem posição); o app usa o saldo da MB52 na posição de Box'},
+  saldo_zerado:   {label:'Lote com saldo zerado (linha positiva no Box anulada)', sev:'Conferir', onde:'LX02 · linhas do lote', como:'A LX02 mostra o lote no Box, mas outra linha negativa o anula (saiu do Box): conferir se o saldo existe; o app não conta'},
+  lote_varios_box:{label:'Lote em 2 ou mais Boxes', sev:'Informativo', onde:'LX02 · linhas do lote', como:'O saldo foi repartido entre os Boxes (Box com a maior quantidade primeiro)'},
+  linha_sem_material:{label:'Linhas da LX02 sem material', sev:'Conferir', onde:'LX02 · coluna Material', como:'Linhas ignoradas: preencher o material'},
+  qtd_invalida:   {label:'Linhas da LX02 com quantidade inválida', sev:'Conferir', onde:'LX02 · coluna de quantidade', como:'Linhas ignoradas: a quantidade não é um número'},
+  linha_sem_lote: {label:'Linhas da LX02 sem lote', sev:'Informativo', onde:'LX02 · coluna Lote', como:'Cada linha positiva sem lote conta como um item de estoque; linhas negativas só abatem na mesma posição'},
+  lx_sem_mb52:    {label:'Lotes na LX02 sem saldo na MB52', sev:'Informativo', onde:'LX02 × MB52', como:'Não contam como estoque (saldo zerado na MB52) — normalmente já movimentados'},
+  box_varios_materiais:{label:'Box com mais de um material', sev:'Informativo', onde:'Estoque do Box', como:'O 3D mostra a cor do material de maior volume; o Excel exportado lista todos'},
+  sem_detalhe_lote:{label:'Relatório por Box (sem detalhe de lote)', sev:'Informativo', onde:'Importar a base (Cadastro + LX02)', como:'Importe a base para listar as divergências lote a lote, com a posição real e o Fechamento completo'},
+};
+
+function computeDivergences(){
+  const d = lotExportData || deriveExportFromBoxes();
+  const derived = !!d.derived;
+  const dv = d.divx || {};
+  const info = sku => d.skuInfo[sku] || {texto:'', cls:null, familia:null};
+  const items = [];
+  const add = (tipo, o) => {
+    const t = DIV_TYPES[tipo];
+    items.push(Object.assign({tipo, sev:t.sev, unid:'', box:'', mat:'', desc:'', lote:'', chapas:'', vol:'', nlotes:'', cls:'', fam:'', erro:'', como:t.como, onde:t.onde}, o));
+  };
+
+  // one flat record per lote: in a Box, or outside with its reason
+  const recs = [];
+  for (const r of d.lotRows){
+    if (boxByCode.has(r[0])) recs.push({where:r[0], sku:r[1], lote:r[2], qty:r[3], m3:r[4], vol:r[5], ts:r[6], inut:r[7], flags:r[9] || null, inBox:true, reason:'box', kpi:true});
+    else recs.push({where:r[0], sku:r[1], lote:r[2], qty:r[3], m3:r[4], vol:r[5], ts:r[6], inut:r[7], flags:r[9] || null, inBox:false, reason:isDepConsumo(r[0]) ? 'dep_0072' : 'fora_layout', kpi:!isDepConsumo(r[0])});
+  }
+  for (const e of d.excludedRows){
+    const meta = EXPORT_REASONS[e[0]]; if (!meta) continue;
+    recs.push({where:e[1], sku:e[2], lote:e[3], qty:e[4], m3:(e[5] === 0 && e[4] > 0) ? null : 1, vol:e[5], ts:e[6], inut:isInutilizadoMaterial(info(e[2]).familia, info(e[2]).texto) ? 1 : 0, flags:e[8] || null, inBox:false, reason:e[0], kpi:meta.kpi !== false});
+  }
+  const sumVol = a => a.reduce((s, r) => s + (r.vol || 0), 0);
+  const groupBy = (arr, keyFn) => { const m = new Map(); for (const r of arr){ const k = keyFn(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); } return m; };
+  const mat = sku => ({desc: info(sku).texto || '', cls: info(sku).cls || '', fam: info(sku).familia || ''});
+
+  // ---- Cadastro
+  for (const [sku, rs] of groupBy(recs.filter(r => r.reason === 'nao_cadastrado'), r => r.sku))
+    add('nao_cadastrado', Object.assign({unid:'Material', mat:sku, nlotes:rs.length, chapas:rs.reduce((s, r) => s + (r.qty || 0), 0), vol:sumVol(rs), erro:'Material em estoque que não consta na guia Cadastro'}, mat(sku)));
+  const valid = recs.filter(r => r.kpi);
+  for (const [sku, rs] of groupBy(valid.filter(r => !info(r.sku).cls), r => r.sku))
+    add('sem_classe', Object.assign({unid:'Material', mat:sku, nlotes:rs.length, chapas:rs.reduce((s, r) => s + (r.qty || 0), 0), vol:sumVol(rs), erro:'Material cadastrado sem classe A/B/C'}, mat(sku)));
+  for (const x of (dv.cadBadClass || [])) add('classe_invalida', Object.assign({unid:'Material', mat:x.sku, erro:`Classe "${x.valor}" não é A, B ou C`}, mat(x.sku)));
+  for (const [sku, rs] of groupBy(valid.filter(r => !info(r.sku).familia), r => r.sku))
+    add('sem_familia', Object.assign({unid:'Material', mat:sku, nlotes:rs.length, chapas:rs.reduce((s, r) => s + (r.qty || 0), 0), vol:sumVol(rs), erro:'Material cadastrado sem família'}, mat(sku)));
+  for (const x of (dv.cadDup || [])) add('cadastro_repetido', Object.assign({unid:'Material', mat:x.sku, erro:`Classe/Família diferentes nas linhas repetidas: ${x.a} × ${x.b}`}, mat(x.sku)));
+
+  if (!derived){
+    // ---- volume / data
+    for (const [sku, rs] of groupBy(valid.filter(r => r.m3 == null), r => r.sku))
+      add('sem_dimensao', Object.assign({unid:'Material', mat:sku, nlotes:rs.length, chapas:rs.reduce((s, r) => s + (r.qty || 0), 0), erro:'Descrição sem comprimento x largura x espessura'}, mat(sku)));
+    for (const r of valid.filter(r => r.ts == null && r.lote))
+      add('sem_data', Object.assign({unid:'Lote', box:r.where, mat:r.sku, lote:r.lote, chapas:r.qty, vol:r.vol, nlotes:1, erro:'Lote sem data de produção'}, mat(r.sku)));
+
+    // ---- real position
+    for (const [pos, rs] of groupBy(recs.filter(r => r.reason === 'fora_layout'), r => r.where)){
+      const inCap = (dv.capNotInLayout || []).includes(pos);
+      const top = [...groupBy(rs, r => r.sku)].sort((a, b) => sumVol(b[1]) - sumVol(a[1]))[0];
+      add('pos_fora_layout', {unid:'Posição', box:pos, mat:top ? top[0] : '', desc:top ? info(top[0]).texto : '', nlotes:rs.length, chapas:rs.reduce((s, r) => s + (r.qty || 0), 0), vol:sumVol(rs),
+        erro:`Posição "${pos}" não é um Box do layout — ${new Set(rs.map(r => r.sku)).size} material(is)${inCap ? '; o código consta na guia Capacidade, mas não há Box desenhado' : ''}`});
+    }
+    for (const [pos, rs] of groupBy(recs.filter(r => r.reason === 'sem_capacidade'), r => r.where))
+      add('sem_capacidade', {unid:'Box', box:pos, nlotes:rs.length, chapas:rs.reduce((s, r) => s + (r.qty || 0), 0), vol:sumVol(rs), erro:`O Box ${pos} existe no layout mas não tem capacidade (m³)`});
+    for (const r of recs.filter(r => r.reason === 'sem_posicao').slice(0, 3000))
+      add('sem_posicao', Object.assign({unid:'Lote', mat:r.sku, lote:r.lote, chapas:r.qty, vol:r.vol, nlotes:1, erro:'Lote com saldo que não aparece na LX02'}, mat(r.sku)));
+    for (const code of ['em_producao', 'em_pedido']){
+      const rs = recs.filter(r => r.reason === code);
+      if (rs.length) add(code, {unid:'Lotes', nlotes:rs.length, chapas:rs.reduce((s, r) => s + (r.qty || 0), 0), vol:sumVol(rs), erro:`${rs.length} lote(s) — ${new Set(rs.map(r => r.sku)).size} material(is)`});
+    }
+    for (const [pos, rs] of groupBy(recs.filter(r => r.reason === 'dep_0072'), r => r.where))
+      add('dep_0072', {unid:'Posição', box:pos, nlotes:rs.length, chapas:rs.reduce((s, r) => s + (r.qty || 0), 0), vol:sumVol(rs), erro:`Posição ${pos} (dep. 0072): ${new Set(rs.map(r => r.sku)).size} material(is) desconsiderado(s)`});
+
+    // ---- quantity
+    const lxd = (d.checks && d.checks.lxDetail) || {};
+    for (const [lote, x] of Object.entries(lxd)){
+      const r = recs.find(q => q.lote === lote); const sku = r ? r.sku : '';
+      const posSum = x.pos.reduce((s, [, q]) => s + Math.max(q, 0), 0);
+      const pt = [...x.pos].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 8).map(([p, q]) => `${p}: ${q}`).join(' · ');
+      add('lx_dif', Object.assign({unid:'Lote', box:x.used || '', mat:sku, lote, chapas:x.mb, vol:r ? r.vol : '', nlotes:1, erro:`MB52 = ${x.mb} chapas × LX02 (positivas) = ${posSum} — ${pt}`}, sku ? mat(sku) : {}));
+    }
+    for (const z of (dv.zeroLots || []))
+      add('saldo_zerado', Object.assign({unid:'Lote', box:z.box, mat:z.mat, lote:z.lote, chapas:z.qty, vol:z.vol ?? '', nlotes:1, erro:`Linhas do lote na LX02: ${z.lines}`}, mat(z.mat)));
+    for (const z of (dv.multiBox || []))
+      add('lote_varios_box', Object.assign({unid:'Lote', mat:z.mat, lote:z.lote, nlotes:1, erro:`Saldo em mais de um Box: ${z.pos}`}, mat(z.mat)));
+    if (dv.linesNoMaterial) add('linha_sem_material', {unid:'Linhas', nlotes:dv.linesNoMaterial, erro:`${dv.linesNoMaterial} linha(s) ignorada(s)`});
+    if (dv.linesBadQty) add('qtd_invalida', {unid:'Linhas', nlotes:dv.linesBadQty, erro:`${dv.linesBadQty} linha(s) ignorada(s)`});
+    if (dv.linelessLines) add('linha_sem_lote', {unid:'Linhas', nlotes:dv.linelessLines, erro:`${dv.linelessLines} linha(s) sem lote`});
+    if (d.checks && d.checks.lxQty && d.checks.lxOnlyLots) add('lx_sem_mb52', {unid:'Lotes', nlotes:d.checks.lxOnlyLots, erro:`${d.checks.lxOnlyLots} lote(s) só na LX02`});
+  } else {
+    add('sem_detalhe_lote', {unid:'Planta', erro:'Este relatório foi gerado a partir do estoque gravado na planta (nível de Box), sem importar a base nesta sessão'});
+  }
+
+  // ---- capacity / Boxes (live state)
+  const noCap = boxes.filter(b => !(b.capacity > 0));
+  const boxRow = (b, extra) => Object.assign({unid:'Box', box:b.code, erro:'Capacidade (m³) não informada'}, extra || {});
+  if (noCap.length > 60){
+    add('box_sem_capacidade', {unid:'Boxes', nlotes:noCap.length, erro:`${noCap.length} de ${boxes.length} Boxes sem capacidade: ${noCap.map(b => b.code).join(', ').slice(0, 2500)}`});
+  } else for (const b of noCap) add('box_sem_capacidade', boxRow(b));
+  const capNot = dv.capNotInLayout || [];
+  if (capNot.length > 60) add('cap_sem_box', {unid:'Códigos', nlotes:capNot.length, erro:`${capNot.length} código(s): ${capNot.join(', ').slice(0, 2500)}`});
+  else for (const c of capNot) add('cap_sem_box', {unid:'Código', box:c, erro:`O código ${c} está na guia Capacidade, mas não existe Box com esse nome no layout`});
+  for (const b of boxes.filter(b => b.capacity > 0 && b.occupancy > 1))
+    add('box_acima', {unid:'Box', box:b.code, vol:b.occupied, nlotes:'', cls:b.cls || '', fam:b.familia || '', mat:b.sku || '', desc:b.item || '', erro:`Ocupação ${Math.round(b.occupancy * 100)}% — ${fmt(b.occupied, 1)} m³ para capacidade de ${fmt(b.capacity, 1)} m³`});
+  for (const b of boxes.filter(b => b.blocked && b.occupied > 0))
+    add('box_bloqueado', {unid:'Box', box:b.code, vol:b.occupied, erro:`Box bloqueado${b.blockReason ? ': ' + b.blockReason : ''} com ${fmt(b.occupied, 1)} m³`});
+  const mixed = boxes.filter(b => b.mixed);
+  if (mixed.length) add('box_varios_materiais', {unid:'Boxes', nlotes:mixed.length, erro:`${mixed.length} Box(es): ${mixed.slice(0, 40).map(b => b.code).join(', ')}${mixed.length > 40 ? '…' : ''}`});
+
+  items.sort((a, b) => (DIV_SEV_ORDER[a.sev] - DIV_SEV_ORDER[b.sev]) || ((Number(b.vol) || 0) - (Number(a.vol) || 0)) || String(a.tipo).localeCompare(String(b.tipo)));
+  return {items, d, derived, recs, info, mat, sumVol, dv};
+}
+
+function buildDivergenceWorkbook(){
+  const {items, d, derived, recs, info, sumVol, dv} = computeDivergences();
+  const wb = XLSX.utils.book_new();
+
+  // Resumo: one line per type
+  const byTipo = new Map();
+  for (const it of items){
+    const e = byTipo.get(it.tipo) || {n:0, lotes:0, vol:0};
+    e.n++; e.lotes += Number(it.nlotes) || 0; e.vol += Number(it.vol) || 0; byTipo.set(it.tipo, e);
+  }
+  const rowsR = [['Gravidade','Tipo de divergência','Itens','Lotes / linhas','Volume (m³)','Onde corrigir','O que fazer']];
+  [...byTipo.entries()].sort((a, b) => (DIV_SEV_ORDER[DIV_TYPES[a[0]].sev] - DIV_SEV_ORDER[DIV_TYPES[b[0]].sev]) || (b[1].vol - a[1].vol))
+    .forEach(([t, e]) => rowsR.push([DIV_TYPES[t].sev, DIV_TYPES[t].label, e.n, e.lotes || '', e.vol || '', DIV_TYPES[t].onde, DIV_TYPES[t].como]));
+  const nFix = items.filter(i => i.sev === 'Corrigir').length, nCheck = items.filter(i => i.sev === 'Conferir').length;
+  rowsR.push([]);
+  rowsR.push([`${DATA.name} — ${nFix} item(ns) a CORRIGIR · ${nCheck} a CONFERIR · ${items.length - nFix - nCheck} informativo(s). "Corrigir" = a base está incompleta/errada; "Conferir" = precisa de um olhar; "Informativo" = só explica um número.`]);
+  if (!items.length) rowsR.splice(1, 0, ['OK', 'Nenhuma divergência encontrada', 0, '', '', '', '']);
+  XLSX.utils.book_append_sheet(wb, exportSheet(rowsR, [12,58,8,14,14,44,100], {2:'#,##0',3:'#,##0',4:'#,##0.000'}, null), 'Resumo');
+
+  // Divergências: one line per thing to fix
+  const rowsD = [['Gravidade','Tipo','Unidade','Box / Posição','Material','Descrição','Lote','Chapas','Volume (m³)','Lotes / linhas','Classe','Família','O que está errado','Como corrigir','Onde corrigir','Status (preencher)']];
+  for (const it of items) rowsD.push([it.sev, DIV_TYPES[it.tipo].label, it.unid, it.box, it.mat, it.desc, it.lote, it.chapas, it.vol, it.nlotes, it.cls, it.fam, it.erro, it.como, it.onde, '']);
+  XLSX.utils.book_append_sheet(wb, exportSheet(rowsD, [12,46,10,16,14,44,14,10,13,10,8,22,90,70,38,16], {7:'#,##0',8:'#,##0.000',9:'#,##0'}, rowsD.length - 1), 'Divergências');
+
+  // Fechamento: every line read goes somewhere; the totals match the top bar
+  const rowsF = [['Etapa','Itens','Volume (m³)','Observação']];
+  const kpiBoxes = boxes.reduce((s, b) => s + (b.billableVolume ?? b.occupied ?? 0), 0);
+  const out = outsideTotals();
+  const kpiTotal = kpiBoxes + (out.billableVolume || 0);
+  if (!derived){
+    const boxRecs = recs.filter(r => r.inBox), outKpi = recs.filter(r => !r.inBox && r.kpi), outNo = recs.filter(r => r.kpi === false);
+    const billable = a => a.reduce((s, r) => s + (r.inut ? 0 : (r.vol || 0)) + 0, 0);
+    const inutBox = boxRecs.reduce((s, r) => s + (r.inut ? r.vol : 0), 0);
+    rowsF.push(['Linhas lidas da base (' + (d.source || 'estoque') + ')', dv.linesRead ?? d.rowsRead ?? '', '', '']);
+    if (dv.linesNoMaterial) rowsF.push(['  − sem material (ignoradas)', dv.linesNoMaterial, '', 'Divergência "Linhas da LX02 sem material"']);
+    if (dv.linesBadQty) rowsF.push(['  − quantidade inválida (ignoradas)', dv.linesBadQty, '', 'Divergência "quantidade inválida"']);
+    rowsF.push(['  − lotes com saldo ≤ 0 / linhas zeradas (ignorados)', d.ignoredZeroQty || 0, '', 'Transferências abatidas: o saldo líquido é zero ou negativo' + ((dv.zeroLots || []).length ? ` — ${(dv.zeroLots || []).length} deles ainda têm linha positiva no Box (divergência "saldo zerado")` : '')]);
+    rowsF.push(['Lotes/itens com saldo considerados', d.lotRows.length + d.excludedRows.length, sumVol(recs), 'Soma de todos os destinos abaixo']);
+    rowsF.push(['  → Dentro de um Box (3D)', boxRecs.length, sumVol(boxRecs), inutBox ? `inclui ${fmt(inutBox, 1)} m³ de material inutilizado (ocupa o Box, mas fica fora dos totais)` : '']);
+    for (const [code, meta] of Object.entries(EXPORT_REASONS).sort((a, b) => a[1].order - b[1].order)){
+      const rs = recs.filter(r => !r.inBox && r.reason === code);
+      if (rs.length) rowsF.push([`  → ${meta.kpi === false ? 'DESCONSIDERADO' : 'Fora do 3D'}: ${meta.label}`, rs.length, sumVol(rs), meta.kpi === false ? 'não entra em nenhum total' : 'soma nos totais, não vai ao 3D']);
+    }
+    rowsF.push([]);
+    const rep = billable(boxRecs) + billable(outKpi);
+    const inutOut = outKpi.reduce((s, r) => s + (r.inut ? (r.vol || 0) : 0), 0);
+    if (inutOut) rowsF.push(['  (−) material inutilizado fora do 3D (não conta nos totais)', outKpi.filter(r => r.inut).length, -inutOut, '']);
+    rowsF.push(['Total que conta (Box + fora do 3D, sem inutilizado)', boxRecs.length + outKpi.length, rep, 'calculado a partir da lista de lotes']);
+    rowsF.push(['Total mostrado no app (topo: estoque total)', '', kpiTotal, 'Boxes do 3D + fora do 3D da última importação']);
+    rowsF.push(['Diferença não explicada (deve ser 0)', '', Math.round((rep - kpiTotal) * 1000) / 1000, Math.abs(rep - kpiTotal) < 0.05 ? 'OK — tudo fechou' : 'DIVERGE: reimporte a base; se persistir, avise']);
+    const boxLotsVol = sumVol(boxRecs), boxLive = boxes.reduce((s, b) => s + (b.occupied || 0), 0);
+    rowsF.push(['Volume nos Boxes do 3D (soma dos lotes × soma dos Boxes na tela)', '', boxLotsVol, `Boxes na tela: ${fmt(boxLive, 3)} m³`]);
+    rowsF.push(['Diferença Box × lotes (deve ser 0)', '', Math.round((boxLotsVol - boxLive) * 1000) / 1000, Math.abs(boxLotsVol - boxLive) < 0.05 ? 'OK' : 'DIVERGE']);
+  } else {
+    rowsF.push(['Estoque nos Boxes do 3D (estado gravado)', boxes.filter(b => b.occupied > 0).length, boxes.reduce((s, b) => s + (b.occupied || 0), 0), 'sem detalhe de lote']);
+    rowsF.push(['Fora do 3D (última importação)', out.lots || '', out.billableVolume || 0, '']);
+    rowsF.push(['Total mostrado no app', '', kpiTotal, '']);
+    rowsF.push(['Importe a base (Cadastro + LX02) para o fechamento completo, linha a linha.']);
+  }
+  XLSX.utils.book_append_sheet(wb, exportSheet(rowsF, [70,12,16,100], {1:'#,##0',2:'#,##0.000'}, null), 'Fechamento');
+
+  // Cadastro para completar (same shape as the guide)
+  const skuAgg = new Map();
+  for (const r of recs){
+    if (r.reason === 'dep_0072') continue;
+    const a = skuAgg.get(r.sku) || {vol:0, lots:0, excluded:false};
+    a.vol += r.vol || 0; a.lots++; if (r.kpi === false) a.excluded = true; skuAgg.set(r.sku, a);
+  }
+  const rowsC = [['Material','Descrição','Classe','Familia','Volume em estoque (m³)','Lotes','O que falta']];
+  [...skuAgg.entries()].sort((a, b) => (b[1].vol - a[1].vol) || String(a[0]).localeCompare(String(b[0]))).forEach(([sku, a]) => {
+    const i = info(sku), falta = [];
+    if (a.excluded) falta.push('cadastrar o material (hoje fora de todos os totais)');
+    else { if (!i.cls) falta.push('Classe (curva ABC)'); if (!i.familia) falta.push('Família'); }
+    rowsC.push([sku, i.texto, i.cls || '', i.familia || '', a.vol, a.lots, falta.length ? 'Falta: ' + falta.join(' e ') : 'Completo']);
+  });
+  XLSX.utils.book_append_sheet(wb, exportSheet(rowsC, [14,50,9,24,20,9,26], {4:'#,##0.000',5:'#,##0'}, rowsC.length - 1), 'Cadastro para completar');
+
+  // Capacidade para completar
+  const rowsK = [['Box','Corredor','Capacidade atual (m³)','Situação','Capacidade (m³) — preencher']];
+  for (const b of [...boxes].sort((a, c) => cmpBoxCode(a.code, c.code))) if (!(b.capacity > 0)) rowsK.push([b.code, b.aisle, '', 'Box do layout sem capacidade', '']);
+  for (const c of (dv.capNotInLayout || [])) rowsK.push([c, '', '', 'Código da guia Capacidade sem Box no layout', '']);
+  if (rowsK.length === 1) rowsK.push(['Todos os Boxes do layout têm capacidade', '', '', '', '']);
+  XLSX.utils.book_append_sheet(wb, exportSheet(rowsK, [16,10,20,44,26], {2:'#,##0.0'}, rowsK.length > 2 ? rowsK.length - 1 : null), 'Capacidade para completar');
+  return wb;
+}
+
+let divergenceCount = 0;
+function refreshDivergenceBadge(){
+  const btn = document.getElementById('import-report-export-btn');
+  const badge = document.getElementById('unclassified-badge');
+  let n = 0;
+  // nothing imported (and no stock baked into the plant) = nothing to reconcile yet
+  if (lotExportData || importState.done){
+    try { n = computeDivergences().items.filter(i => i.sev === 'Corrigir').length; } catch (e){ console.warn('Falha ao calcular divergências', e); }
+  }
+  divergenceCount = n;
+  const label = n ? `${n} correç${n === 1 ? 'ão' : 'ões'}` : '';
+  if (btn){ btn.hidden = !n; if (n) btn.textContent = `Baixar relatório de divergências (${label})`; }
+  if (badge){ badge.hidden = !n; if (n) badge.textContent = `⬇ ${label}`; }
+  DATA.importIssues = null; // the old per-list pendências blob is replaced by the divergence report
+}
+function setImportIssuesExport(){ refreshDivergenceBadge(); }
+function downloadDivergenceReport(){
+  if (typeof XLSX === 'undefined') return;
+  const wb = buildDivergenceWorkbook();
+  XLSX.writeFile(wb, `${DATA.name}_divergencias_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+document.getElementById('import-report-export-btn').addEventListener('click', downloadDivergenceReport);
+document.getElementById('unclassified-badge').addEventListener('click', downloadDivergenceReport);
+
 importFileInput.addEventListener('change', (e)=>{
   const file = e.target.files && e.target.files[0];
   if (!file) return;
@@ -3527,6 +3741,7 @@ async function runImport(file){
       doneTitle: 'Importação concluída',
     });
     if (hasEst) setLotExport(stock); // only a real stock import replaces the lote-level export data
+    refreshDivergenceBadge();
     persistActivePlant();
   } catch (err){
     console.error(err);
@@ -3648,13 +3863,7 @@ function applyImportedData({report, capMap, stock, clsBySku, familiaBySku, hasCa
     const b = boxByCode.get(code);
     return { code, skus: (b && b.skuBreakdown) || [] };
   });
-  setImportIssuesExport({
-    semDimensao: semDimensaoList,
-    unmatchedPos,
-    unclassified,
-    capacidadeNaoEncontrada: capUnmatched,
-    multiplosSkus,
-  });
+  setImportIssuesExport(); // refreshed again after the lote-level export data is stored (see runImport)
 
   const summaryLines = [];
   if (hasCap) summaryLines.push(`<li class="ir-ok">${capUpdated} posições com capacidade atualizada.</li>`);
@@ -3695,14 +3904,8 @@ renderFamiliaFilter();
 // Restore the "pendências da importação" badge across reloads/plant
 // switches -- DATA.importIssues rides along in the same localStorage blob
 // as everything else (see persistActivePlant / setImportIssuesExport).
-if (DATA.importIssues) setImportIssuesExport({
-  semDimensao: new Map(DATA.importIssues.semDimensao),
-  unmatchedPos: new Map(DATA.importIssues.unmatchedPos),
-  unclassified: new Map(DATA.importIssues.unclassified),
-  capacidadeNaoEncontrada: DATA.importIssues.capacidadeNaoEncontrada || [],
-  multiplosSkus: DATA.importIssues.multiplosSkus || [],
-});
 loadLotExport();
+refreshDivergenceBadge();
 
 /* ================= resize ================= */
 function resize(){
