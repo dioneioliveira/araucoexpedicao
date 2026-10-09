@@ -569,7 +569,8 @@
       <ul>
         <li>Só o volume que está em Box do 3D (com capacidade) é desenhado; o restante não aparece na planta, mas conta no total em estoque do topo.</li>
         <li>Material inutilizado fica fora dos totais; lote sem dimensões na descrição vira pendência (botão vermelho de pendências).</li>
-        <li><b>Exportar</b> baixa um Excel do estoque por Box: itens, família, classe, volume e data de produção, mais o resumo por Box e o que ficou fora do 3D. Com a base MB52+LX02 importada vem lote a lote; sem ela, por Box (nível do que está na tela).</li>
+        <li>Posições <b>0072_…</b> são o depósito de consumo: somam nos totais, mas não vão ao 3D.</li>
+        <li><b>Exportar</b> baixa um Excel: estoque por Box (itens, família, classe, volume, data de produção e uma coluna de <b>conferência</b> por lote), resumo por Box, <b>Conferência da base</b> (o que corrigir e onde), <b>Cadastro para completar</b> (classe e família que faltam, no formato da guia) e o que ficou fora do 3D. Com a base MB52+LX02 importada vem lote a lote; sem ela, por Box.</li>
       </ul>
       <h4>Como navegar</h4>
       <ul>
@@ -2415,6 +2416,10 @@ const DEFAULT_CAPACIDADE_M3 = 100;
 // Header aliases for the per-lote quantity when LX02 itself is the stock
 // snapshot (no MB52 in the workbook): "Estoque disponível" = chapas do lote.
 const LX02_QTY_ALIASES = ['estoque disponivel','estoque disp'];
+// Same column, but only used to cross-check LX02 against MB52 (SAP exports it as "Est.disp." too).
+const LX02_QTY_CHECK_ALIASES = ['estoque disponivel','est.disp','est disp'];
+// Positions "0072_BP1/2/3": not floor Boxes -- the consumables warehouse (dep. 0072). Counted in every KPI sum, never drawn in the 3D.
+const isDepConsumo = (pos) => /^0072_/i.test(String(pos || ''));
 
 // Position codes are sometimes typed with a stray space (e.g. "A 01" in a
 // "capacidade" sheet while LX02's own PosDepósit for the same spot reads
@@ -2644,7 +2649,9 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     // excludedRows = lotes that didn't (with a reason code), skuInfo = per-material description/class/família.
     lotRows: [], excludedRows: [], skuInfo: {}, ignoredZeroQty: 0, rowsRead: mb52Rows.length, source: stockFromLx02 ? 'LX02' : 'MB52 + LX02',
     // Everything valid in the stock snapshot that did NOT land in a digitized Box: not drawn in the 3D, but counted in the KPI sums.
-    outside: {lots: 0, qty: 0, volume: 0, billableVolume: 0, byCls: {A: 0, B: 0, C: 0, none: 0}, byReason: {}}};
+    outside: {lots: 0, qty: 0, volume: 0, billableVolume: 0, byCls: {A: 0, B: 0, C: 0, none: 0}, byReason: {}},
+    // Base cross-checks for the "Conferência da base" sheet: LX02 vs MB52 quantity per lote (lxDetail only holds the lotes that disagree).
+    checks: {lxQty: false, lxDetail: {}, lxOnlyLots: 0}};
   if (!mb52Rows.length){ report.warn('Guia "MB52" está vazia.'); return result; }
   if (!lx02Rows.length){ report.warn('Guia "LX02" está vazia — nenhuma posição pôde ser localizada.'); }
 
@@ -2681,6 +2688,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
   report.info(`Guia "${srcName}": material "${matKey}", lote "${loteKeyMB52}", quantidade "${qtyKey}"${qualKey?` + "${qualKey}"`:''}${rowPosKey?`, posição "${rowPosKey}"`:''}.`);
 
   const posByLote = new Map();
+  const lxNetByLote = new Map(); // lote -> Map(position -> net LX02 quantity), for the base cross-check
   if (lx02Rows.length){
     const lx02Keys = Object.keys(lx02Rows[0]);
     const loteKeyLX = findKey(lx02Keys, ['lote']);
@@ -2690,10 +2698,20 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     } else {
       report.info(`Guia "LX02": lote "${loteKeyLX}", posição "${posKey}".`);
       const posByLoteTier = new Map(); // lote -> priority tier currently locked in (0=unmapped fallback, 1=status, 2=registered position)
+      const lxQtyKey = stockFromLx02 ? null : findKey(lx02Keys, LX02_QTY_CHECK_ALIASES);
+      result.checks.lxQty = !!lxQtyKey;
       for (const row of lx02Rows){
         const lote = normLote(row[loteKeyLX]);
         if (!lote) continue;
         const pos = normPosCode(row[posKey]);
+        if (lxQtyKey){
+          const q = Number(row[lxQtyKey]);
+          if (Number.isFinite(q)){
+            if (!lxNetByLote.has(lote)) lxNetByLote.set(lote, new Map());
+            const m = lxNetByLote.get(lote);
+            m.set(pos, (m.get(pos) || 0) + q);
+          }
+        }
         const tier = isRegisteredBoxPos(pos) ? 2 : (pos === 'EM-PEDIDO' || isEmProducao(pos)) ? 1 : 0;
         // Same lote/position pairs repeat across movement rows, and a lote
         // can genuinely show more than one distinct position over time --
@@ -2753,6 +2771,25 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
   }
   if (!dateByLote.size) report.warn('Sem data de produção: a LX02 não traz a coluna "Data EM" (e não há guia MB51) — dias em estoque ficarão indisponíveis.');
 
+  // Total valid MB52 quantity per lote -- what each lote's LX02 positions should add up to.
+  const mbQtyByLote = new Map();
+  for (const row of mb52Rows){
+    const lt = normLote(row[loteKeyMB52]);
+    if (!lt || !String(row[matKey]||'').trim()) continue;
+    const q = Math.max(0, Number(row[qtyKey]) || 0) + (qualKey ? Math.max(0, Number(row[qualKey]) || 0) : 0);
+    if (q > 0) mbQtyByLote.set(lt, (mbQtyByLote.get(lt) || 0) + q);
+  }
+  // LX02 vs MB52 for one lote: returns true (and records the detail once) when the positive LX02 quantities don't add up to the MB52 balance.
+  const lxCheckLote = (lote, used) => {
+    if (!result.checks.lxQty || !lote || !lxNetByLote.has(lote)) return false;
+    const net = [...lxNetByLote.get(lote).entries()].filter(([, q]) => Math.abs(q) > 1e-9);
+    const posSum = net.reduce((a, [, q]) => a + (q > 0 ? q : 0), 0);
+    const mb = mbQtyByLote.get(lote) || 0;
+    if (Math.abs(posSum - mb) <= 0.5) return false;
+    if (!result.checks.lxDetail[lote]) result.checks.lxDetail[lote] = {mb, pos: net, used: used || ''};
+    return true;
+  };
+
   const textoBySku = new Map();
   let posMatched = 0, emPedido = 0, emProducao = 0, semLote = 0, semDimensao = 0;
   for (const row of mb52Rows){
@@ -2781,7 +2818,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     if (!result.skuInfo[material] || (texto && !result.skuInfo[material].texto)) result.skuInfo[material] = {texto: texto || cadastros.textoBySku[material] || '', cls, familia};
     const entryTs = lote ? dateByLote.get(lote) : null;
     const exclude = (reason, where) => {
-      result.excludedRows.push([reason, where || '', material, lote, qty, volume, entryTs ?? null, qualQty]);
+      result.excludedRows.push([reason, where || '', material, lote, qty, volume, entryTs ?? null, qualQty, lxCheckLote(lote, where) ? ['lx_dif'] : null]);
       const o = result.outside, billable = inutilizado ? 0 : volume;
       o.lots++; o.qty += qty; o.volume += volume; o.billableVolume += billable;
       o.byCls[cls || 'none'] += billable;
@@ -2796,6 +2833,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
       result.prodItems.push({sku:material, item:texto, qty, volume});
       emProducao++; exclude('em_producao', pos); continue;
     }
+    if (isDepConsumo(pos)){ exclude('dep_consumo', pos); continue; } // consumables warehouse (dep. 0072): counts in the KPIs, never in the 3D
     if (!boxByCode.has(pos) || (hasCapMap && !isRegisteredBoxPos(pos))){
       result.unmatchedPos.set(pos, (result.unmatchedPos.get(pos)||0) + 1);
       exclude(boxByCode.has(pos) ? 'sem_capacidade' : 'fora_layout', pos);
@@ -2810,7 +2848,7 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
     acc.skus.set(material, (acc.skus.get(material)||0) + volume);
     if (!acc.item && texto) acc.item = texto;
     if (entryTs != null && (acc.entryDate == null || entryTs < acc.entryDate)) acc.entryDate = entryTs;
-    result.lotRows.push([pos, material, lote, qty, m3PerChapa, volume, entryTs ?? null, inutilizado ? 1 : 0, qualQty]);
+    result.lotRows.push([pos, material, lote, qty, m3PerChapa, volume, entryTs ?? null, inutilizado ? 1 : 0, qualQty, lxCheckLote(lote, pos) ? ['lx_dif'] : null]);
   }
   for (const [, acc] of result.byBox){
     let bestSku = null, bestVol = -1;
@@ -2833,7 +2871,16 @@ function computeEstoqueFromSAP({mb52Rows, lx02Rows, mb51Rows, cadastros, capMap,
       .sort((a,b) => b.vol - a.vol);
   }
 
+  if (result.checks.lxQty){
+    for (const [lt, m] of lxNetByLote){
+      if (!mbQtyByLote.has(lt) && [...m.values()].some(q => q > 0)) result.checks.lxOnlyLots++;
+    }
+  }
   report.info(`Cruzamento MB52 × LX02 × MB51: ${posMatched} lote(s) posicionados, ${emProducao} em produção, ${emPedido} em pedido (ainda não recebidos), ${semLote} sem posição encontrada em LX02.`);
+  const depC = result.outside.byReason.dep_consumo;
+  if (depC) report.info(`${depC.n} lote(s) no depósito de consumo (posições 0072_…): contam nos totais em estoque, mas não vão ao 3D.`);
+  const lxDiffN = Object.keys(result.checks.lxDetail).length;
+  if (lxDiffN) report.warn(`${lxDiffN} lote(s) com quantidade da LX02 diferente da MB52 — confira na aba "Conferência da base" do Excel (botão Exportar).`);
   if (semDimensao){
     report.warn(`${semDimensao} lote(s) com descrição sem dimensões reconhecíveis (LxWxT) — as chapas foram contadas, mas não entraram no total de m³.`);
   }
@@ -2977,13 +3024,15 @@ let lotExportPersisted = true;
 const EXPORT_REASONS = {
   fora_layout:    {order:1, label:'Posição fora do layout 3D',
     detail: p => `Código "${p}" da LX02 não corresponde a nenhum Box desenhado no layout (área não mapeada, zona de apoio ou Box ainda não desenhado)`},
-  sem_capacidade: {order:2, label:'Box sem capacidade cadastrada',
+  dep_consumo:    {order:2, label:'Depósito de consumo (0072) — conta nos KPIs, não vai ao 3D',
+    detail: p => `A posição "${p}" é do depósito de consumo (dep. 0072), não é um Box: o volume soma nos KPIs, mas não é desenhado`},
+  sem_capacidade: {order:3, label:'Box sem capacidade cadastrada',
     detail: p => `O Box ${p} existe no layout, mas não tem capacidade (m³) na guia de capacidade`},
-  em_producao:    {order:3, label:'Em produção (sem posição física)',
+  em_producao:    {order:4, label:'Em produção (sem posição física)',
     detail: p => `A posição "${p}" indica material ainda em produção`},
-  em_pedido:      {order:4, label:'Em pedido — ainda não recebido',
+  em_pedido:      {order:5, label:'Em pedido — ainda não recebido',
     detail: () => 'Lote ordenado, ainda não recebido fisicamente'},
-  sem_posicao:    {order:5, label:'Lote sem posição na LX02',
+  sem_posicao:    {order:6, label:'Lote sem posição na LX02',
     detail: () => 'O lote do estoque não aparece na LX02, então não há posição para ele'},
 };
 
@@ -2998,7 +3047,7 @@ function setLotExport(stock){
   lotExportData = (stock && Array.isArray(stock.lotRows)) ? {
     plant: ACTIVE_PLANT, builtAt: Date.now(), source: stock.source || '',
     lotRows: stock.lotRows, excludedRows: stock.excludedRows || [], skuInfo: stock.skuInfo || {},
-    ignoredZeroQty: stock.ignoredZeroQty || 0, rowsRead: stock.rowsRead || 0,
+    ignoredZeroQty: stock.ignoredZeroQty || 0, rowsRead: stock.rowsRead || 0, checks: stock.checks || null,
   } : null;
   lotExportPersisted = true;
   try {
@@ -3045,34 +3094,61 @@ function exportSheet(aoa, widths, fmts, filterLastRow){
   return ws;
 }
 
+const CHECK_LABELS = {
+  sem_curva:   'Sem curva ABC',
+  sem_familia: 'Sem família',
+  sem_dim:     'Descrição sem LxWxT (m³ não calculado)',
+  sem_data:    'Sem data de produção',
+  lx_dif:      'LX02 ≠ MB52',
+};
+
 function buildStockExportWorkbook(d){
   const derived = !!d.derived; // built from the live Boxes (no lote-level import in this browser)
   const info = sku => d.skuInfo[sku] || {texto:'', cls:null, familia:null};
   const classeOf = sku => info(sku).cls || 'Sem curva ABC';
   const familiaOf = sku => info(sku).familia || 'Sem família cadastrada';
+  // Problems of one lote row (the lote-level checks only exist when the base was imported).
+  const issuesOf = (sku, m3Known, ts, flags) => {
+    const out = [];
+    if (!info(sku).cls) out.push(CHECK_LABELS.sem_curva);
+    if (!info(sku).familia) out.push(CHECK_LABELS.sem_familia);
+    if (!derived){
+      if (!m3Known) out.push(CHECK_LABELS.sem_dim);
+      if (ts == null) out.push(CHECK_LABELS.sem_data);
+      if (flags && flags.includes('lx_dif')) out.push(CHECK_LABELS.lx_dif);
+    }
+    return out;
+  };
 
-  // lotRow = [pos, sku, lote, qty, m3PerChapa, volume, entryTs, inutilizado]
-  // outRow = [reasonCode, position, sku, lote, qty, volume, entryTs]
+  // lotRow = [pos, sku, lote, qty, m3PerChapa, volume, entryTs, inutilizado, qualQty, flags]
+  // outRow = [reasonCode, position, sku, lote, qty, volume, entryTs, qualQty, flags]
   const placed = new Map();
   const outRows = [];
   for (const r of d.lotRows){
     if (boxByCode.has(r[0])){ if (!placed.has(r[0])) placed.set(r[0], []); placed.get(r[0]).push(r); }
-    else outRows.push(['fora_layout', r[0], r[1], r[2], r[3], r[5], r[6]]);
+    else outRows.push([isDepConsumo(r[0]) ? 'dep_consumo' : 'fora_layout', r[0], r[1], r[2], r[3], r[5], r[6], r[8] || 0, r[9] || null]);
   }
   for (const e of d.excludedRows) outRows.push(e);
 
+  // One flat record per lote (in a Box or outside) for the conference counts.
+  const recs = [];
+  for (const [, lots] of placed) for (const r of lots) recs.push({sku:r[1], lote:r[2], vol:r[5], inBox:true, issues:issuesOf(r[1], r[4] != null, r[6], r[9])});
+  for (const e of outRows) recs.push({sku:e[2], lote:e[3], vol:e[5], inBox:false, reason:e[0], issues:issuesOf(e[2], !(e[5] === 0 && e[4] > 0), e[6], e[8])});
+
   const sortedBoxes = [...boxes].sort((a, b) => cmpBoxCode(a.code, b.code));
-  const H1 = ['Box','Item (material)','Descrição','Família','Classe','Lote','Volume do lote (m³)','Chapas do lote','m³ por chapa','Data de produção','Dias em estoque','Inutilizado','Observação','Corredor','Capacidade do Box (m³)','Volume do Box (m³)'];
-  const H2 = ['Corredor','Box','Nº de itens','Nº de lotes','Chapas','Volume (m³)','Volume inutilizado (fora dos totais) (m³)','Capacidade (m³)','Ocupação (%)','Classe dominante','Item dominante','Descrição do item dominante','Família dominante','Data de produção mais antiga','Dias (mais antigo)'];
+  const H1 = ['Box','Item (material)','Descrição','Família','Classe','Lote','Volume do lote (m³)','Chapas do lote','m³ por chapa','Data de produção','Dias em estoque','Inutilizado','Conferência','Observação','Corredor','Capacidade do Box (m³)','Volume do Box (m³)'];
+  const H2 = ['Corredor','Box','Nº de itens','Nº de lotes','Chapas','Volume (m³)','Volume inutilizado (fora dos totais) (m³)','Capacidade (m³)','Ocupação (%)','Classe dominante','Item dominante','Descrição do item dominante','Família dominante','Data de produção mais antiga','Dias (mais antigo)','Lotes a conferir'];
   const rows1 = [H1], rows2 = [H2];
-  let totItems = 0, totLots = 0, totQty = 0, totVol = 0, totInut = 0, totCap = 0;
+  let totItems = 0, totLots = 0, totQty = 0, totVol = 0, totInut = 0, totCap = 0, totToCheck = 0;
+  const overBoxes = [];
+  let blockedWithStock = 0;
 
   for (const b of sortedBoxes){
     const lots = placed.get(b.code) || [];
     const blockedNote = b.blocked ? `Box bloqueado${b.blockReason ? ': ' + b.blockReason : ''}` : '';
     if (!lots.length){
-      rows1.push([b.code, '— sem estoque —', '', '', '', '', '', '', '', '', '', '', ['Box vazio', blockedNote].filter(Boolean).join(' · '), b.aisle, b.capacity || '', 0]);
-      rows2.push([b.aisle, b.code, 0, 0, 0, 0, 0, b.capacity || '', '', '—', '—', '', '', '', '']);
+      rows1.push([b.code, '— sem estoque —', '', '', '', '', '', '', '', '', '', '', '', ['Box vazio', blockedNote].filter(Boolean).join(' · '), b.aisle, b.capacity || '', 0]);
+      rows2.push([b.aisle, b.code, 0, 0, 0, 0, 0, b.capacity || '', '', '—', '—', '', '', '', '', '']);
       totCap += b.capacity || 0;
       continue;
     }
@@ -3082,27 +3158,30 @@ function buildStockExportWorkbook(d){
     const boxVol = lots.reduce((s, r) => s + r[5], 0);
     const boxQty = lots.reduce((s, r) => s + (r[3] || 0), 0);
     const boxInut = lots.reduce((s, r) => s + (r[7] ? r[5] : 0), 0);
-    let oldest = null;
+    let oldest = null, toCheck = 0;
     for (const r of lots){
-      const [pos, sku, lote, qty, m3, vol, ts, inut, qual] = r;
+      const [pos, sku, lote, qty, m3, vol, ts, inut, qual, flags] = r;
       if (ts != null && (oldest == null || ts < oldest)) oldest = ts;
+      const issues = issuesOf(sku, m3 != null, ts, flags);
+      if (issues.length) toCheck++;
       const obs = [];
       if (qual) obs.push(`Inclui ${qual.toLocaleString('pt-BR')} chapa(s) em controle de qualidade`);
       if (derived){
         obs.push('Nível de Box: sem detalhe de lote (importe a base MB52+LX02 para listar lote a lote)');
         if (lots.length > 1) obs.push('Data = a mais antiga do Box');
       }
-      else if (m3 == null) obs.push('Descrição sem dimensões (LxWxT) — m³ não calculado');
       if (inut) obs.push('Material inutilizado — não entra nos totais da empresa');
       if (blockedNote) obs.push(blockedNote);
-      rows1.push([b.code, sku, info(sku).texto, familiaOf(sku), classeOf(sku), lote == null ? '— (sem detalhe de lote)' : lote, vol, qty == null ? '' : qty, m3 == null ? '' : m3, xlDate(ts), ts == null ? '' : daysSince(ts), inut ? 'Sim' : 'Não', obs.filter(Boolean).join(' · '), b.aisle, b.capacity || '', boxVol]);
+      rows1.push([b.code, sku, info(sku).texto, familiaOf(sku), classeOf(sku), lote == null ? '— (sem detalhe de lote)' : lote, vol, qty == null ? '' : qty, m3 == null ? '' : m3, xlDate(ts), ts == null ? '' : daysSince(ts), inut ? 'Sim' : 'Não', issues.length ? issues.join(' · ') : 'OK', obs.join(' · '), b.aisle, b.capacity || '', boxVol]);
     }
+    if (b.capacity > 0 && boxVol > b.capacity) overBoxes.push([b.code, boxVol, b.capacity, boxVol / b.capacity * 100, skuVol.size]);
+    if (b.blocked) blockedWithStock++;
     const domSku = [...skuVol.entries()].sort((x, y) => y[1] - x[1])[0][0];
-    rows2.push([b.aisle, b.code, skuVol.size, derived ? '' : lots.length, boxQty || (derived ? '' : 0), boxVol, boxInut, b.capacity || '', b.capacity > 0 ? boxVol / b.capacity * 100 : '', classeOf(domSku), domSku, info(domSku).texto, familiaOf(domSku), xlDate(oldest), oldest == null ? '' : daysSince(oldest)]);
-    totItems += skuVol.size; totLots += derived ? 0 : lots.length; totQty += boxQty; totVol += boxVol; totInut += boxInut; totCap += b.capacity || 0;
+    rows2.push([b.aisle, b.code, skuVol.size, derived ? '' : lots.length, boxQty || (derived ? '' : 0), boxVol, boxInut, b.capacity || '', b.capacity > 0 ? boxVol / b.capacity * 100 : '', classeOf(domSku), domSku, info(domSku).texto, familiaOf(domSku), xlDate(oldest), oldest == null ? '' : daysSince(oldest), toCheck]);
+    totItems += skuVol.size; totLots += derived ? 0 : lots.length; totQty += boxQty; totVol += boxVol; totInut += boxInut; totCap += b.capacity || 0; totToCheck += toCheck;
   }
   const boxRows2 = rows2.length - 1;
-  rows2.push(['TOTAL', '', totItems, totLots, totQty, totVol, totInut, totCap || '', totCap > 0 ? totVol / totCap * 100 : '', '', '', '', '', '', '']);
+  rows2.push(['TOTAL', '', totItems, totLots, totQty, totVol, totInut, totCap || '', totCap > 0 ? totVol / totCap * 100 : '', '', '', '', '', '', '', totToCheck]);
 
   const wb = XLSX.utils.book_new();
   let rows3, outCount, widths3, fmts3;
@@ -3163,11 +3242,86 @@ function buildStockExportWorkbook(d){
       rows3.push([]);
       rows3.push([`Obs.: ${d.ignoredZeroQty} linha(s) sem estoque livre/qualidade (ex.: só trânsito) ou sem material foram ignoradas — não contam como estoque válido, por isso não aparecem aqui.`]);
     }
-
     outCount = outRows.length; widths3 = [32,70,16,16,46,22,16,13,12,14,14,12]; fmts3 = {8:'#,##0',9:'#,##0.000',10:'dd/mm/yyyy',11:'0'};
   }
-  XLSX.utils.book_append_sheet(wb, exportSheet(rows1, [9,16,46,22,16,13,16,12,12,14,12,11,48,10,18,16], {6:'#,##0.000',7:'#,##0',8:'0.0000',9:'dd/mm/yyyy',10:'0',14:'#,##0.0',15:'#,##0.000'}, rows1.length - 1), 'Estoque por Box');
-  XLSX.utils.book_append_sheet(wb, exportSheet(rows2, [10,10,11,11,12,14,20,14,12,16,14,46,22,16,14], {2:'0',3:'0',4:'#,##0',5:'#,##0.000',6:'#,##0.000',7:'#,##0.0',8:'0.0',13:'dd/mm/yyyy',14:'0'}, boxRows2), 'Resumo por Box');
+
+  // ---- Material list (also the "Cadastro para completar" sheet): every material seen in stock.
+  const skuAgg = new Map();
+  for (const r of recs){
+    const a = skuAgg.get(r.sku) || {vol:0, lots:0, outVol:0};
+    a.vol += r.vol; a.lots++; skuAgg.set(r.sku, a);
+  }
+  const skuList = [...skuAgg.entries()].sort((a, b) => (b[1].vol - a[1].vol) || String(a[0]).localeCompare(String(b[0])));
+  const rowsCad = [['Material','Descrição','Classe','Familia','Volume em estoque (m³)','Lotes','O que falta']];
+  for (const [sku, a] of skuList){
+    const i = info(sku), falta = [];
+    if (!i.cls) falta.push('Classe (curva ABC)');
+    if (!i.familia) falta.push('Família');
+    rowsCad.push([sku, i.texto, i.cls || '', i.familia || '', a.vol, a.lots, falta.length ? 'Falta: ' + falta.join(' e ') : 'Completo']);
+  }
+  const nSemCurva = skuList.filter(([s]) => !info(s).cls).length, nSemFam = skuList.filter(([s]) => !info(s).familia).length;
+
+  // ---- "Conferência da base": what to check / where to fix it.
+  const lotCount = pred => recs.filter(pred).length;
+  const lotVol = pred => recs.filter(pred).reduce((s, r) => s + r.vol, 0);
+  const skuCount = pred => new Set(recs.filter(pred).map(r => r.sku)).size;
+  const rowsC = [['Verificação','Materiais','Lotes','Volume (m³)','Status','Onde corrigir / o que fazer']];
+  const addCheck = (label, pred, kind, where, noVol) => {
+    const n = lotCount(pred);
+    rowsC.push([label, n ? skuCount(pred) : 0, n, noVol ? '' : (n ? lotVol(pred) : 0), n ? kind : 'OK', n ? where : '']);
+  };
+  addCheck('Materiais sem curva ABC', r => r.issues.includes(CHECK_LABELS.sem_curva), 'Corrigir', 'Guia ABC/Classe/Cadastro: preencher a coluna Curva/Classe — veja a aba "Cadastro para completar"');
+  addCheck('Materiais sem família', r => r.issues.includes(CHECK_LABELS.sem_familia), 'Corrigir', 'Guia ABC/Classe/Cadastro: preencher a coluna Familia — veja a aba "Cadastro para completar"');
+  if (!derived){
+    addCheck('Lotes com descrição sem dimensões LxWxT (m³ não calculado)', r => r.issues.includes(CHECK_LABELS.sem_dim), 'Corrigir', 'Texto breve do material (MB52) sem comprimento x largura x espessura — o volume desse lote não entra nos m³', true);
+    addCheck('Lotes sem data de produção', r => r.issues.includes(CHECK_LABELS.sem_data), 'Corrigir', 'LX02: coluna "Data EM" vazia para o lote (dias em estoque ficam indisponíveis)');
+    if (d.checks && d.checks.lxQty) addCheck('Lotes com quantidade da LX02 diferente da MB52', r => r.issues.includes(CHECK_LABELS.lx_dif), 'Corrigir', 'A soma das posições da LX02 não fecha com o saldo da MB52 (linha duplicada, bin de transferência ou saldo sem posição) — veja a lista abaixo; o app usa o saldo da MB52 na posição de Box');
+    else rowsC.push(['Quantidade LX02 × MB52', '', '', '', 'Informativo', 'Não verificado: a LX02 desta planilha não traz coluna de quantidade, ou o estoque foi lido só da LX02']);
+    if (d.checks && d.checks.lxQty) rowsC.push(['Lotes na LX02 sem saldo na MB52', '', d.checks.lxOnlyLots, '', d.checks.lxOnlyLots ? 'Informativo' : 'OK', d.checks.lxOnlyLots ? 'Não contam como estoque (saldo zerado na MB52) — normalmente já movimentados' : '']);
+    const reasonKind = {fora_layout:['Informativo','Posição não desenhada no layout (layouts fechados: só mudam sob solicitação, com amostra)'], dep_consumo:['Informativo','Depósito de consumo (0072_…): soma nos KPIs, não vai ao 3D'], sem_capacidade:['Corrigir','Box desenhado mas sem capacidade na guia "capacidade"'], em_producao:['Informativo','Material em produção: soma nos KPIs, sem posição física'], em_pedido:['Informativo','Lote ordenado e ainda não recebido'], sem_posicao:['Corrigir','Lote do estoque que não aparece na LX02: sem posição não há como localizá-lo']};
+    for (const [code, meta] of Object.entries(EXPORT_REASONS).sort((a, b) => a[1].order - b[1].order)){
+      addCheck(`Fora do 3D — ${meta.label}`, r => !r.inBox && r.reason === code, reasonKind[code][0], reasonKind[code][1]);
+    }
+  } else {
+    rowsC.push(['Conferência por lote', '', '', '', 'Informativo', 'Disponível depois de importar a base (MB52 + LX02): este arquivo foi gerado no nível de Box, a partir do estoque gravado na planta']);
+  }
+  rowsC.push(['Boxes acima da capacidade', '', overBoxes.length, overBoxes.reduce((s, r) => s + r[1], 0), overBoxes.length ? 'Corrigir' : 'OK', overBoxes.length ? 'Conferir a capacidade do Box na guia "capacidade" ou se há estoque duplicado/em excesso — veja a lista abaixo' + (overBoxes.length > (placed.size || 1) / 2 ? ' · Mais da metade dos Boxes com estoque passou da capacidade: confira se a guia "capacidade" está com os valores reais' : '') : '']);
+  const boxesNoCap = boxes.filter(b => !(b.capacity > 0)).length;
+  rowsC.push(['Boxes do layout sem capacidade cadastrada', '', boxesNoCap, '', boxesNoCap ? 'Corrigir' : 'OK', boxesNoCap ? `Guia "capacidade": ${boxesNoCap} de ${boxes.length} Boxes sem m³ — a ocupação % e o alerta de acima da capacidade ficam indisponíveis para eles` : '']);
+  rowsC.push(['Boxes bloqueados com estoque', '', blockedWithStock, '', blockedWithStock ? 'Informativo' : 'OK', blockedWithStock ? 'Box marcado como bloqueado que ainda tem estoque' : '']);
+  const nSumRows = rowsC.length - 1;
+  rowsC.push([]);
+  rowsC.push(['Materiais em estoque', skuList.length, recs.length, recs.reduce((s, r) => s + r.vol, 0), '', `${nSemCurva} sem curva ABC · ${nSemFam} sem família (lista completa na aba "Cadastro para completar")`]);
+
+  if (!derived && d.checks && d.checks.lxQty){
+    const detail = Object.entries(d.checks.lxDetail || {});
+    rowsC.push([]);
+    rowsC.push(['LOTES COM QUANTIDADE DIFERENTE ENTRE LX02 E MB52', '', '', '', '', '']);
+    rowsC.push(['Lote','Material','Qtd MB52 (chapas)','Qtd LX02 (posições positivas)','Posição usada no app','LX02 por posição · Descrição']);
+    const skuOfLote = new Map(recs.map(r => [r.lote, r.sku]));
+    // A few lotes carry hundreds of LX02 lines -- show the biggest positions only.
+    const posText = (pos) => {
+      const sorted = [...pos].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+      return sorted.slice(0, 8).map(([p, q]) => `${p}: ${q}`).join(' · ') + (sorted.length > 8 ? ` · … +${sorted.length - 8} posições` : '');
+    };
+    detail.sort((a, b) => Math.abs(b[1].mb - b[1].pos.reduce((s, [, q]) => s + Math.max(q, 0), 0)) - Math.abs(a[1].mb - a[1].pos.reduce((s, [, q]) => s + Math.max(q, 0), 0)));
+    for (const [lote, x] of detail){
+      const sku = skuOfLote.get(lote) || '';
+      rowsC.push([lote, sku, x.mb, x.pos.reduce((s, [, q]) => s + Math.max(q, 0), 0), x.used || '', posText(x.pos) + (sku ? ' — ' + info(sku).texto : '')]);
+    }
+    if (!detail.length) rowsC.push(['Nenhum lote com diferença', '', '', '', '', '']);
+  }
+  if (overBoxes.length){
+    rowsC.push([]);
+    rowsC.push(['BOXES ACIMA DA CAPACIDADE', '', '', '', '', '']);
+    rowsC.push(['Box','Volume (m³)','Capacidade (m³)','Ocupação (%)','Nº de itens','']);
+    overBoxes.sort((a, b) => b[3] - a[3]).forEach(o => rowsC.push([o[0], o[1], o[2], o[3], o[4], '']));
+  }
+
+  XLSX.utils.book_append_sheet(wb, exportSheet(rows1, [9,16,46,22,16,13,16,12,12,14,12,11,34,48,10,18,16], {6:'#,##0.000',7:'#,##0',8:'0.0000',9:'dd/mm/yyyy',10:'0',15:'#,##0.0',16:'#,##0.000'}, rows1.length - 1), 'Estoque por Box');
+  XLSX.utils.book_append_sheet(wb, exportSheet(rows2, [10,10,11,11,12,14,20,14,12,16,14,46,22,16,14,12], {2:'0',3:'0',4:'#,##0',5:'#,##0.000',6:'#,##0.000',7:'#,##0.0',8:'0.0',13:'dd/mm/yyyy',14:'0',15:'0'}, boxRows2), 'Resumo por Box');
+  XLSX.utils.book_append_sheet(wb, exportSheet(rowsC, [58,16,16,22,14,100], {1:'#,##0',2:'#,##0',3:'#,##0.000'}, null), 'Conferência da base');
+  XLSX.utils.book_append_sheet(wb, exportSheet(rowsCad, [14,50,9,24,20,9,26], {4:'#,##0.000',5:'#,##0'}, rowsCad.length - 1), 'Cadastro para completar');
   XLSX.utils.book_append_sheet(wb, exportSheet(rows3, widths3, fmts3, outCount ? outCount : null), 'Fora do 3D');
   return wb;
 }
