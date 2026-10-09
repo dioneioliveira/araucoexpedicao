@@ -546,6 +546,27 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .ps-pend details{background:#fff;border:1px solid var(--line-soft);border-radius:var(--r-s);padding:8px 12px}
 .ps-pend summary{cursor:pointer}
 
+/* balança: peso por lote (ticket) */
+.bl-card{padding:16px 18px;margin-bottom:16px;display:flex;flex-direction:column;gap:12px}
+.bl-head{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.bl-head h2{margin:0 0 4px;font-size:17px}
+.bl-head p{margin:0;max-width:640px;font-size:12.5px}
+.bl-head select{max-width:340px}
+.bl-chart{position:relative;border:1px solid var(--line-soft);border-radius:var(--r-s);background:#fff;padding:6px 4px}
+.bl-chart svg{display:block;width:100%;height:auto;max-height:none;stroke:none;fill:none}
+.bl-chart .g{stroke:#ececec;stroke-width:1}
+.bl-chart .ax{font-size:11px;fill:#7A7A7A}
+.bl-chart .band{fill:rgba(183,217,216,.30)}
+.bl-chart .mean{stroke:#4A4A4A;stroke-width:1.5;stroke-dasharray:5 4}
+.bl-chart .ln{fill:none;stroke:#9cc6c4;stroke-width:2}
+.bl-chart .pt{fill:#3d7f7c;stroke:#fff;stroke-width:2}
+.bl-chart .pt.fora{fill:var(--err)}
+.bl-chart .hit{fill:transparent;cursor:pointer}
+.bl-chart .lbl{font-size:11px;fill:#4A4A4A}
+.bl-chart .lbl.out{font-weight:700;fill:var(--err)}
+.bl-tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line-soft);box-shadow:0 6px 18px rgba(0,0,0,.12);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.45;color:#4A4A4A;min-width:220px;z-index:3}
+.ps-sub{margin:4px 0 10px;font-size:14px;color:#4A4A4A}
+
 </style>
 </head>
 <body>
@@ -664,6 +685,26 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
           </div>
         </div>
       </div>
+      <div class="card bl-card" id="bl">
+        <div class="bl-head">
+          <div>
+            <h2>Peso por lote — balança (ticket)</h2>
+            <p class="muted">Cole todo dia a tabela da balança (<b>Ticket</b> · peso de entrada/saída ou líquido · data · placa). O ticket liga a pesagem à ordem (campo <b>Ticket balança</b> do Controle OT) e de lá vêm os itens e a quantidade de lotes. Carga com mais de um item: o peso é rateado pela base de pesos. Cada carga de um item é um ponto no gráfico; as pesagens ficam guardadas no app.</p>
+          </div>
+          <div class="ps-ctrl">
+            <label class="field-inline">Item <select id="bl-item"></select></label>
+            <label class="field-inline">Período <select id="bl-per"><option value="30">30 dias</option><option value="90">90 dias</option><option value="180">6 meses</option><option value="365">12 meses</option><option value="todos">Tudo</option></select></label>
+            <div class="seg seg-sm" id="bl-met"><button type="button" data-v="lote" class="active">kg/lote</button><button type="button" data-v="pc">kg/peça</button></div>
+            <button class="btn btn-primary btn-sm" id="bl-colar">Colar tickets</button>
+            <button class="btn btn-ghost btn-sm" id="bl-xlsx">Exportar</button>
+          </div>
+        </div>
+        <section class="kpis" id="bl-kpis"></section>
+        <div class="bl-chart" id="bl-chart"></div>
+        <div class="table-wrap" style="max-height:none" id="bl-tab"></div>
+        <div class="ps-pend" id="bl-pend"></div>
+      </div>
+      <h3 class="ps-sub">Base de pesos por NF (análise mensal)</h3>
       <section class="kpis" id="ps-resumo" style="margin-bottom:12px"></section>
       <div class="card list-card"><div class="table-wrap" style="max-height:none" id="ps-tabela"></div></div>
       <div class="ps-pend" id="ps-pend"></div>
@@ -4307,8 +4348,53 @@ window.ORDEM_TEMPLATES = {
     return { rows, map, header: grid[hr] };
   }
 
+  // ---------- tabela diária da balança (tickets de pesagem) ----------
+  // O ticket é o "Ticket balança" do Controle OT da ordem. Colunas reconhecidas pelos títulos.
+  const TK_SYN = {
+    ticket: [/^(N[O]?\.? ?)?(DO )?TICKET|TICKET|BOLETIM|^(N[O]? )?SEQ(UENCIAL|UENCIA)?\.?$|^(N[O]? )?(DA )?PESAGEM$|^PESAGEM N/],
+    data: [/^DATA( (DA )?(PESAGEM|SAIDA|ENTRADA|EMISSAO))?$|^DT\.?( |$)|^DATA/],
+    placa: [/PLACA/],
+    pe: [/PESO ?(DE )?ENTRADA|PESO INICIAL|^1A?\.? ?PESAGEM|PRIMEIRA PESAGEM|^ENTRADA( KG)?$|^P\.? ?ENTRADA|^TARA( KG)?$|PESO TARA|PESO VAZIO/],
+    ps: [/PESO ?(DE )?SAIDA|PESO FINAL|^2A?\.? ?PESAGEM|SEGUNDA PESAGEM|^SAIDA( KG)?$|^P\.? ?SAIDA|PESO CHEIO/],
+    liq: [/PESO ?LIQ|LIQUIDO|^LIQ|PESO TOTAL|PESO (DA )?CARGA|PESO NETO|^NETO$|^PESO$/],
+    bruto: [/PESO ?BRUTO|^BRUTO/],
+    transporte: [/^TRANSPORTE$|^N[O]? ?TRANSPORTE$|^DOC(UMENTO)? TRANSPORTE$/],
+    nf: [/^(N[O]?\.?\s*)?(DA\s+)?(NF|NFE|NF-E|NOTA|NOTA FISCAL)$|NOTA FISCAL/],
+    material: [/^(COD(IGO)?\.? ?)?MATERIAL$|^COD\.? ?MAT|^PRODUTO$|^COD(IGO)? (DO )?PRODUTO$|^ITEM$/],
+    descricao: [/DESCRI|TEXTO|DENOMINA/],
+    qtd: [/^(QTD|QTDE|QUANTIDADE)( PECAS| PC)?$|^PECAS$|^PCS$/],
+    cliente: [/^(CLIENTE|NOME (DO )?CLIENTE|DESTINATARIO)$/],
+  };
+  const TK_LABEL = { ticket: 'Ticket', data: 'Data', placa: 'Placa', pe: 'Peso entrada', ps: 'Peso saída', liq: 'Peso líquido', bruto: 'Peso bruto', transporte: 'Transporte', nf: 'NF-e', material: 'Material', descricao: 'Descrição', qtd: 'Quantidade', cliente: 'Cliente' };
+  const ticketNorm = v => intStr(v).replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+  function parseTickets(grid) {
+    const H = r => r.map(c => norm(c).replace(/[º°]/g, 'O').replace(/[^A-Z0-9 .\-]/g, ' ').replace(/\s+/g, ' ').trim());
+    const pesoCols = ['pe', 'ps', 'liq', 'bruto'];
+    const hr = grid.findIndex(r => { const h = H(r); return h.some(x => TK_SYN.ticket.some(re => re.test(x))) && h.some(x => pesoCols.some(k => TK_SYN[k].some(re => re.test(x)))); });
+    if (hr < 0) return { rows: [], map: {}, erro: 'Não encontrei a linha de títulos com o Ticket e algum peso (entrada, saída ou líquido).' };
+    const h = H(grid[hr]); const map = {};
+    // ordem: colunas mais específicas primeiro (peso de entrada/saída antes do "peso" genérico)
+    ['ticket', 'pe', 'ps', 'bruto', 'liq', 'transporte', 'nf', 'material', 'qtd', 'descricao', 'cliente', 'placa', 'data'].forEach(k => {
+      for (const re of TK_SYN[k]) { const i = h.findIndex((x, j) => re.test(x) && !Object.values(map).includes(j)); if (i >= 0) { map[k] = i; break; } }
+    });
+    const kgOf = v => { const n = toNum(v); if (!isFinite(n) || n === 0) return null; return Math.abs(n) < 100 ? n * 1000 : n; }; // em toneladas => kg
+    const rows = [];
+    grid.slice(hr + 1).forEach(r => {
+      const get = k => (map[k] != null ? r[map[k]] : '');
+      const ticket = ticketNorm(get('ticket')); if (!ticket || ticket.length < 2) return;
+      const row = { ticket, data: toISODate(get('data')), placa: normPlate(get('placa')), pe: kgOf(get('pe')), ps: kgOf(get('ps')), liq: kgOf(get('liq')), bruto: kgOf(get('bruto')),
+        transporte: intStr(get('transporte')).replace(/\D/g, ''), nf: nfNorm(get('nf')), material: intStr(get('material')).replace(/^0+(?=\d)/, ''), descricao: clean(get('descricao')),
+        qtd: toNum(get('qtd')), cliente: clean(get('cliente')) };
+      if (!isFinite(row.qtd)) row.qtd = null;
+      if (row.liq == null && row.pe != null && row.ps != null) row.liq = Math.abs(row.ps - row.pe);
+      if (row.liq == null && row.bruto == null) return;
+      rows.push(row);
+    });
+    return { rows, map, header: grid[hr] };
+  }
+
   global.OEP = {
-    parsePesos, nfNorm, PESO_LABEL,
+    parsePesos, nfNorm, PESO_LABEL, parseTickets, ticketNorm, TK_LABEL,
     isOTScreen, parseOTs, parseLT22Lista,
     fixMojibake, isSolicitacao, parseSolicitacoes,
     clean, norm, pad, toISODate, toTime, fmtDateBR, todayISO, toNum, intStr, cpfDigits, fmtCPF, isCPFLike,
@@ -4361,6 +4447,7 @@ window.ORDEM_TEMPLATES = {
     Object.entries(state.ots || {}).forEach(([k, v]) => put('ot:' + k, v));
     (state.sew || []).forEach(e => put('sew:' + cfg.sewKey(e), e));
     Object.entries(state.pesos || {}).forEach(([k, v]) => put('peso:' + k, v));
+    Object.entries(state.tickets || {}).forEach(([k, v]) => put('tk:' + k, v));
     if (state.fsc && Object.keys(state.fsc).length) put('fsc', state.fsc);
     if (state.fscInfo) put('fscinfo', state.fscInfo);
     return out;
@@ -4381,6 +4468,7 @@ window.ORDEM_TEMPLATES = {
         case 'ot': s.ots[id] = v; break;
         case 'sew': s.sew.push(v); break;
         case 'peso': (s.pesos = s.pesos || {})[id] = v; break;
+        case 'tk': (s.tickets = s.tickets || {})[id] = v; break;
         case 'fsc': s.fsc = v; break;
         case 'fscinfo': s.fscInfo = v; break;
         default: break;
@@ -4556,7 +4644,7 @@ window.ORDEM_TEMPLATES = {
 
   // ------------------------------------------------------------------ estado
   const STORE_KEY = 'arauco.ordensEmbarque.v1';
-  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {} });
+  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {} });
   let state = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.v === 1) return Object.assign(emptyState(), s); } catch (e) { /* sem storage */ }
@@ -5397,6 +5485,226 @@ window.ORDEM_TEMPLATES = {
     return true;
   }
 
+  // ------------------------------------------------------------------ balança: peso por lote pelo ticket de pesagem
+  // Tabela diária da balança (colada) → ticket → ordem (Controle OT "Ticket balança") → itens da carga.
+  // O peso líquido da balança é rateado entre os itens pelo peso de referência (base de pesos: NF da carga,
+  // senão média do material; sem base, pelo volume das chapas; por último pela quantidade).
+  // Cada carga de um item é um ponto: kg por lote = peso do item na carga ÷ lotes (qtd ÷ peças por lote).
+  const blUI = { item: '', per: '180', met: 'lote' };
+  function mergeTickets(rows) {
+    const g = new Map();
+    rows.forEach(r => { if (!g.has(r.ticket)) g.set(r.ticket, []); g.get(r.ticket).push(r); });
+    let novos = 0;
+    g.forEach((rs, tk) => {
+      const f = rs[0];
+      if (!state.tickets[tk]) novos++;
+      const pick = k => (rs.find(r => r[k] != null && r[k] !== '') || {})[k];
+      state.tickets[tk] = { ticket: tk, data: pick('data') || '', placa: pick('placa') || '', pe: pick('pe') ?? null, ps: pick('ps') ?? null,
+        liq: pick('liq') ?? null, bruto: pick('bruto') ?? null, transporte: pick('transporte') || '', nf: pick('nf') || '', cliente: pick('cliente') || '',
+        itens: rs.filter(r => r.material).map(r => ({ material: r.material, descricao: r.descricao, qtd: r.qtd })), em: new Date().toISOString() };
+      if (f.liq == null && state.tickets[tk].liq == null && state.tickets[tk].bruto == null) delete state.tickets[tk];
+    });
+    return { tickets: g.size, novos };
+  }
+  function ticketParaTransporte() {
+    const m = new Map();
+    Object.entries(state.manual).forEach(([t, man]) => String(man.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(Boolean).forEach(k => m.set(k, t)));
+    return m;
+  }
+  function transporteDoTicket(tk, idx) {
+    const t = idx.tk.get(tk.ticket); if (t) return { t, via: 'ticket' };
+    if (tk.transporte && idx.ts.has(tk.transporte)) return { t: tk.transporte, via: 'transporte' };
+    if (tk.nf && idx.nf.has(tk.nf)) return { t: idx.nf.get(tk.nf), via: 'NF' };
+    const p7 = P.plate7(tk.placa);
+    if (p7 && tk.data) { const T = idx.all.find(T => T.eff.data === tk.data && P.plate7(T.eff.placaL) === p7); if (T) return { t: T.transporte, via: 'placa + data' }; }
+    return null;
+  }
+  // kg/peça de referência do material: NF da carga (peso bruto ÷ qtd) → média da base → volume da chapa
+  function refPesos() {
+    const porNfMat = new Map(), porMat = new Map();
+    Object.values(state.pesos).forEach(r => {
+      const p = r.pb != null ? r.pb : r.pl; if (p == null || !r.qtd || !r.material) return;
+      const k = r.nf + '|' + r.material; const a = porNfMat.get(k) || { p: 0, q: 0 }; a.p += p; a.q += r.qtd; porNfMat.set(k, a);
+      const b = porMat.get(r.material) || { p: 0, q: 0 }; b.p += p; b.q += r.qtd; porMat.set(r.material, b);
+    });
+    return { porNfMat, porMat };
+  }
+  function registrosBalanca() {
+    const all = allTransports();
+    const idx = { tk: ticketParaTransporte(), ts: new Set(all.map(T => T.transporte)), nf: nfParaTransporte(), all };
+    const ref = refPesos(); const recs = [], semOrdem = [], semLote = [];
+    Object.values(state.tickets).forEach(tk => {
+      const peso = tk.liq != null ? tk.liq : null; if (peso == null) return;
+      const lig = transporteDoTicket(tk, idx); const T = lig ? all.find(x => x.transporte === lig.t) : null;
+      // itens da carga: da própria tabela da balança (se tiver material) ou da ordem
+      const fonte = tk.itens.length ? tk.itens.map(i => ({ material: i.material, descricao: i.descricao || ((T && T.items.find(x => x.material === i.material)) || {}).descricao || '', qtd: i.qtd }))
+        : (T ? T.items.map(i => ({ material: i.material, descricao: i.descricao, qtd: i.qtd })) : []);
+      if (!fonte.length) { semOrdem.push(tk); return; }
+      const g = new Map();
+      fonte.forEach(i => { const k = i.material || i.descricao; const a = g.get(k) || { material: i.material || '(sem material)', descricao: i.descricao, qtd: 0, lotes: 0, lotesOk: true }; a.qtd += i.qtd || 0;
+        const mi = P.matInfo(i.descricao); if (i.qtd && mi.pecasPallet) a.lotes += i.qtd / mi.pecasPallet; else a.lotesOk = false; a.mi = mi; g.set(k, a); });
+      const mats = Array.from(g.values()).filter(m => m.qtd > 0);
+      if (!mats.length) { semLote.push(tk); return; }
+      const nfs = T ? String(T.ot.nf || '').split(/[\/,;\s]+/).map(P.nfNorm).filter(Boolean) : [];
+      if (tk.nf) nfs.push(tk.nf);
+      const refNF = m => { for (const nf of nfs) { const a = ref.porNfMat.get(nf + '|' + m.material); if (a && a.q) return a.p / a.q; } return null; };
+      const refBase = m => { const a = ref.porMat.get(m.material); return a && a.q ? a.p / a.q : null; };
+      const refVol = m => m.mi && m.mi.comp && m.mi.larg && m.mi.esp ? m.mi.comp * m.mi.larg * m.mi.esp / 1e9 : null;
+      // um único critério de rateio para todos os itens da carga
+      let metodo, w;
+      if (mats.length === 1) { metodo = 'item único'; w = () => 1; }
+      else if (mats.every(m => refNF(m) != null)) { metodo = 'NF da carga'; w = m => refNF(m) * m.qtd; }
+      else if (mats.every(m => (refNF(m) ?? refBase(m)) != null)) { metodo = 'base de pesos'; w = m => (refNF(m) ?? refBase(m)) * m.qtd; }
+      else if (mats.every(m => refVol(m) != null)) { metodo = 'volume'; w = m => refVol(m) * m.qtd; }
+      else { metodo = 'quantidade'; w = m => m.qtd; }
+      const soma = mats.reduce((a, m) => a + w(m), 0);
+      mats.forEach(m => {
+        const pesoItem = soma ? peso * w(m) / soma : null;
+        const nfRef = refNF(m);
+        recs.push({ ticket: tk.ticket, data: tk.data || (T ? T.eff.data : ''), transporte: T ? T.transporte : (tk.transporte || ''), via: lig ? lig.via : 'tabela',
+          cliente: (T && T.eff.cliente) || tk.cliente || '', placa: tk.placa || (T ? T.eff.placaL : ''), material: m.material, descricao: m.descricao,
+          qtd: m.qtd, lotes: m.lotesOk ? m.lotes : null, pesoCarga: peso, pesoItem, metodo, itensCarga: mats.length,
+          kgLote: pesoItem != null && m.lotesOk && m.lotes ? pesoItem / m.lotes : null, kgPc: pesoItem != null ? pesoItem / m.qtd : null,
+          nfItem: nfRef != null ? nfRef * m.qtd : null });
+      });
+    });
+    return { recs, semOrdem, semLote };
+  }
+  function analiseBalanca() {
+    const B = registrosBalanca();
+    const desde = blUI.per === 'todos' ? '' : (() => { const d = new Date(); d.setDate(d.getDate() - (+blUI.per)); return d.toISOString().slice(0, 10); })();
+    const recs = B.recs.filter(r => !desde || !r.data || r.data >= desde);
+    const k = blUI.met === 'pc' ? 'kgPc' : 'kgLote';
+    const g = new Map();
+    recs.forEach(r => { if (!g.has(r.material)) g.set(r.material, []); g.get(r.material).push(r); });
+    const itens = Array.from(g, ([material, rs]) => {
+      const v = rs.map(r => r[k]).filter(x => x != null);
+      const media = v.length ? v.reduce((a, x) => a + x, 0) / v.length : null;
+      const sd = v.length ? Math.sqrt(v.reduce((a, x) => a + (x - media) ** 2, 0) / v.length) : 0;
+      rs.forEach(r => {
+        r.desvio = r[k] != null && media ? r[k] - media : null;
+        r.desvioPct = r.desvio != null ? r.desvio / media : null;
+        // diferença na carga inteira: desvio por lote × lotes (ou por peça × peças)
+        r.difCarga = r.desvio != null ? r.desvio * (k === 'kgPc' ? r.qtd : r.lotes) : null;
+        r.fora = r.desvioPct != null && Math.abs(r.desvioPct) > pesoUI.tol / 100;
+      });
+      const difs = rs.map(r => r.difCarga).filter(x => x != null);
+      return { material, desc: (rs.find(r => r.descricao) || {}).descricao || '', rs, n: v.length, cargas: new Set(rs.map(r => r.ticket)).size, media, cv: media ? sd / media : null,
+        min: v.length ? Math.min(...v) : null, max: v.length ? Math.max(...v) : null, maiorDif: difs.length ? Math.max(...difs.map(Math.abs)) : null, fora: rs.filter(r => r.fora).length };
+    }).sort((a, b) => (b.n >= 2) - (a.n >= 2) || (b.maiorDif || 0) - (a.maiorDif || 0));
+    return Object.assign(B, { recsPer: recs, itens, k });
+  }
+  function svgBalanca(it, k, unidade) {
+    const host = $('#bl-chart'); const W = Math.max(520, Math.min(1400, host.clientWidth || 900)), H = 300;
+    const m = { l: 64, r: 18, t: 18, b: 34 };
+    const pts = it.rs.filter(r => r[k] != null && r.data).sort((a, b) => a.data.localeCompare(b.data));
+    if (!pts.length) return '<div class="empty" style="padding:30px"><p>Sem cargas com data e peso para este item.</p></div>';
+    const tx = d => new Date(d + 'T12:00:00').getTime();
+    let x0 = tx(pts[0].data), x1 = tx(pts[pts.length - 1].data); if (x1 - x0 < 864e5 * 2) { x0 -= 864e5 * 2; x1 += 864e5 * 2; }
+    const tol = pesoUI.tol / 100, med = it.media;
+    let y0 = Math.min(...pts.map(r => r[k]), med * (1 - tol)), y1 = Math.max(...pts.map(r => r[k]), med * (1 + tol));
+    const pad = (y1 - y0) * 0.12 || med * 0.05; y0 -= pad; y1 += pad;
+    const X = v => m.l + (v - x0) / (x1 - x0) * (W - m.l - m.r), Y = v => m.t + (1 - (v - y0) / (y1 - y0)) * (H - m.t - m.b);
+    const dec = unidade === 'kg/peça' ? 2 : 0;
+    // grade e eixos (recessivos)
+    const step = (() => { const raw = (y1 - y0) / 5, p = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 2.5, 5, 10].map(s => s * p).find(s => s >= raw); })();
+    let grid = '';
+    for (let v = Math.ceil(y0 / step) * step; v <= y1; v += step) grid += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" class="g"/><text x="${m.l - 8}" y="${Y(v) + 4}" class="ax" text-anchor="end">${fmtNum(v, step < 1 ? 2 : 0)}</text>`;
+    const nT = Math.min(7, Math.max(2, Math.round((x1 - x0) / 864e5) + 1));
+    for (let i = 0; i < nT; i++) { const v = x0 + (x1 - x0) * i / (nT - 1); const d = new Date(v); grid += `<text x="${X(v)}" y="${H - 10}" class="ax" text-anchor="middle">${P.pad(d.getDate())}/${P.pad(d.getMonth() + 1)}${(x1 - x0) > 300 * 864e5 ? '/' + String(d.getFullYear()).slice(2) : ''}</text>`; }
+    const band = `<rect x="${m.l}" y="${Y(med * (1 + tol))}" width="${W - m.l - m.r}" height="${Y(med * (1 - tol)) - Y(med * (1 + tol))}" class="band"/>`;
+    const mean = `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(med)}" y2="${Y(med)}" class="mean"/><text x="${W - m.r - 4}" y="${Y(med) - 6}" class="lbl" text-anchor="end">média ${fmtNum(med, dec)} ${unidade} · faixa ±${fmtNum(pesoUI.tol, 1)}%</text>`;
+    const line = pts.length > 1 ? `<polyline class="ln" points="${pts.map(r => `${X(tx(r.data))},${Y(r[k])}`).join(' ')}"/>` : '';
+    // rótulos só nos pontos fora da faixa (no máx. 8, os maiores desvios)
+    const rot = new Set(pts.filter(r => r.fora).sort((a, b) => Math.abs(b.difCarga || 0) - Math.abs(a.difCarga || 0)).slice(0, 8));
+    const dots = pts.map((r, i) => {
+      const cx = X(tx(r.data)), cy = Y(r[k]);
+      const lab = rot.has(r) && r.difCarga != null ? `<text x="${cx}" y="${cy + (r.desvio < 0 ? 18 : -10)}" class="lbl out" text-anchor="middle">${r.difCarga > 0 ? '+' : '−'}${fmtNum(Math.abs(r.difCarga), 0)} kg</text>` : '';
+      return `<circle cx="${cx}" cy="${cy}" r="5" class="pt${r.fora ? ' fora' : ''}"/>${lab}<circle cx="${cx}" cy="${cy}" r="12" class="hit" data-i="${i}"/>`;
+    }).join('');
+    host._pts = pts; host._k = k; host._un = unidade; host._dec = dec;
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Variação de ${esc(unidade)} do material ${esc(it.material)} por carga">${band}${grid}${mean}${line}${dots}</svg><div class="bl-tip" hidden></div>`;
+  }
+  function renderBalanca() {
+    if (!$('#bl')) return;
+    const A = analiseBalanca();
+    const unidade = A.k === 'kgPc' ? 'kg/peça' : 'kg/lote', dec = A.k === 'kgPc' ? 3 : 0;
+    $('#bl-per').value = blUI.per;
+    $$('#bl-met button').forEach(b => b.classList.toggle('active', b.dataset.v === blUI.met));
+    const sel = $('#bl-item');
+    if (blUI.item && !A.itens.some(i => i.material === blUI.item)) blUI.item = '';
+    sel.innerHTML = `<option value="">Todos os itens (resumo)</option>` + A.itens.map(i => `<option value="${esc(i.material)}">${esc(i.material)} · ${esc(i.desc.slice(0, 44))} (${i.cargas} carga${i.cargas > 1 ? 's' : ''})</option>`).join('');
+    sel.value = blUI.item;
+    const it = A.itens.find(i => i.material === blUI.item);
+    const nT = Object.keys(state.tickets).length;
+    $('#bl-kpis').innerHTML = (it ? [
+      ['Cargas', it.cargas], [`Média ${unidade}`, kg(it.media, dec)], ['Mínimo', kg(it.min, dec)], ['Máximo', kg(it.max, dec)],
+      ['Amplitude', kg(it.max - it.min, dec)], ['Maior diferença numa carga', it.maiorDif != null ? fmtNum(it.maiorDif, 0) + ' kg' : '—', it.maiorDif >= 1000 ? 'red' : ''],
+      ['Fora da faixa', it.fora, it.fora ? 'red' : 'grey'],
+    ] : [
+      ['Tickets na memória', nT, 'grey'], ['Cargas no período', new Set(A.recsPer.map(r => r.ticket)).size], ['Itens', A.itens.length],
+      ['Itens com carga fora da faixa', A.itens.filter(i => i.fora).length, A.itens.some(i => i.fora) ? 'red' : 'grey'],
+      ['Tickets sem ordem', A.semOrdem.length, A.semOrdem.length ? 'lime' : 'grey'],
+    ]).map(([l, v, c]) => `<div class="card kpi ${c || ''}"><div class="k-label">${l}</div><div class="k-val">${v}</div></div>`).join('');
+    const ch = $('#bl-chart');
+    if (it) ch.innerHTML = svgBalanca(it, A.k, unidade);
+    else ch.innerHTML = nT ? '<div class="empty" style="padding:22px"><p>Escolha um <b>item</b> acima (ou clique numa linha do resumo) para ver o gráfico da variação de peso por carga.</p></div>'
+      : '<div class="empty" style="padding:30px"><p>Nenhuma pesagem na memória. Copie a tabela diária da balança (com a linha de títulos: <b>Ticket</b>, peso de entrada/saída ou líquido, data, placa…) e use <b>Colar tickets</b> (ou Ctrl+V nesta guia).</p></div>';
+    const ord = r => (r.data || '') + r.ticket;
+    $('#bl-tab').innerHTML = it
+      ? `<table class="grid ps-grid"><thead><tr><th>Data</th><th>Ticket</th><th>Transporte</th><th>Cliente</th><th class="num">Qtd (pç)</th><th class="num">Lotes</th><th class="num">Peso balança carga (kg)</th><th class="num">Peso do item (kg)</th><th>Rateio</th><th class="num">kg/lote</th><th class="num">kg/peça</th><th class="num">Desvio ${esc(unidade)}</th><th class="num">Diferença na carga (kg)</th><th class="num">Peso bruto NF (kg)</th></tr></thead>
+        <tbody>${it.rs.slice().sort((a, b) => ord(b).localeCompare(ord(a))).map(r => `<tr class="${r.fora ? 'ps-fora' : ''}"><td>${esc(P.fmtDateBR(r.data))}</td><td class="mono">${esc(r.ticket)}</td><td class="mono">${r.transporte ? `<a href="#" data-pt="${esc(r.transporte)}">${esc(r.transporte)}</a>` : '—'}</td><td>${esc(r.cliente)}</td>
+          <td class="num">${kg(r.qtd, 0)}</td><td class="num">${kg(r.lotes, 2)}</td><td class="num">${kg(r.pesoCarga, 0)}</td><td class="num">${kg(r.pesoItem, 0)}</td><td class="small muted">${esc(r.metodo)}</td>
+          <td class="num"><b>${kg(r.kgLote, 0)}</b></td><td class="num">${kg(r.kgPc, 3)}</td><td class="num">${r.desvio == null ? '—' : (r.desvio > 0 ? '+' : '') + fmtNum(r.desvio, dec)} <span class="muted small">${pct(r.desvioPct)}</span></td>
+          <td class="num"><b>${r.difCarga == null ? '—' : (r.difCarga > 0 ? '+' : '') + fmtNum(r.difCarga, 0)}</b></td><td class="num">${kg(r.nfItem, 0)}</td></tr>`).join('')}</tbody></table>`
+      : (A.itens.length ? `<table class="grid ps-grid"><thead><tr><th>Material</th><th>Descrição</th><th class="num">Cargas</th><th class="num">Média ${esc(unidade)}</th><th class="num">Mín.</th><th class="num">Máx.</th><th class="num">Amplitude</th><th class="num">Dispersão</th><th class="num">Maior diferença numa carga (kg)</th><th class="num">Fora da faixa</th></tr></thead>
+        <tbody>${A.itens.map(i => `<tr class="ps-item" data-blmat="${esc(i.material)}"><td class="mono"><b>${esc(i.material)}</b></td><td class="wrap">${esc(i.desc)}</td><td class="num">${i.cargas}</td><td class="num"><b>${kg(i.media, dec)}</b></td><td class="num">${kg(i.min, dec)}</td><td class="num">${kg(i.max, dec)}</td><td class="num">${i.min == null ? '—' : kg(i.max - i.min, dec)}</td><td class="num">${i.cv == null ? '—' : fmtNum(i.cv * 100, 1) + '%'}</td><td class="num ${i.maiorDif >= 1000 ? 'ps-alerta' : ''}">${i.maiorDif == null ? '—' : fmtNum(i.maiorDif, 0)}</td><td class="num">${i.fora ? `<span class="chip alt">${i.fora}</span>` : '<span class="muted">0</span>'}</td></tr>`).join('')}</tbody></table>` : '');
+    const tkOrdem = ticketParaTransporte(), semPesagem = Array.from(tkOrdem).filter(([tk]) => !state.tickets[tk]);
+    $('#bl-pend').innerHTML = (A.semOrdem.length ? `<details><summary><b>${A.semOrdem.length}</b> ticket(s) da balança sem ordem no app</summary><p class="mono small">${A.semOrdem.map(t => esc(t.ticket + (t.placa ? ' (' + t.placa + ')' : ''))).join(' · ')}</p><p class="muted small">Informe o ticket no campo "Ticket balança" do Controle OT da ordem para ligar.</p></details>` : '')
+      + (semPesagem.length ? `<details><summary><b>${semPesagem.length}</b> ordem(ns) com ticket informado, mas ainda sem pesagem colada</summary><p class="small">${semPesagem.map(([tk, t]) => `<a href="#" data-pt="${esc(t)}">${esc(t)}</a> (ticket ${esc(tk)})`).join(' · ')}</p></details>` : '')
+      + (A.recs.some(r => r.lotes == null) ? `<details><summary>Cargas sem o nº de peças por lote no texto do material</summary><p class="muted small">Nelas só o kg/peça é calculado (o texto do material precisa terminar com as peças por lote, ex.: P/EF/208).</p></details>` : '');
+  }
+  function bindBalanca() {
+    $('#bl-item').addEventListener('change', e => { blUI.item = e.target.value; renderBalanca(); });
+    $('#bl-per').addEventListener('change', e => { blUI.per = e.target.value; renderBalanca(); });
+    $$('#bl-met button').forEach(b => b.addEventListener('click', () => { blUI.met = b.dataset.v; renderBalanca(); }));
+    $('#bl-colar').addEventListener('click', () => colarPorBotao('tickets'));
+    $('#bl-xlsx').addEventListener('click', () => { const t = exportarBalanca(); toast(t === 'xlsx' ? 'Pesagens exportadas (.xlsx).' : 'Exportado em .csv (sem internet, o .xlsx não está disponível).', 'ok'); });
+    $('#bl').addEventListener('click', e => { const tr = e.target.closest('tr[data-blmat]'); if (tr) { blUI.item = tr.dataset.blmat; renderBalanca(); $('#bl').scrollIntoView({ block: 'start', behavior: 'smooth' }); } });
+    const ch = $('#bl-chart');
+    ch.addEventListener('mousemove', e => {
+      const tip = $('.bl-tip', ch); if (!tip) return;
+      const h = e.target.closest('circle.hit'); if (!h) { tip.hidden = true; return; }
+      const r = ch._pts[+h.dataset.i], dec = ch._dec;
+      tip.innerHTML = `<b>${esc(P.fmtDateBR(r.data))}</b> · ticket ${esc(r.ticket)}<br>Transporte ${esc(r.transporte || '—')} · ${esc(r.cliente)}<br><b>${fmtNum(r[ch._k], dec)} ${esc(ch._un)}</b> (${pct(r.desvioPct)} da média)<br>${kg(r.lotes, 2)} lote(s) · ${kg(r.qtd, 0)} pç · item ${kg(r.pesoItem, 0)} kg<br>Diferença na carga: <b>${r.difCarga == null ? '—' : (r.difCarga > 0 ? '+' : '') + fmtNum(r.difCarga, 0) + ' kg'}</b>${r.itensCarga > 1 ? `<br><span class="muted">carga mista: rateio por ${esc(r.metodo)}</span>` : ''}`;
+      const b = ch.getBoundingClientRect(); tip.hidden = false;
+      const x = e.clientX - b.left, y = e.clientY - b.top;
+      tip.style.left = Math.min(x + 14, b.width - tip.offsetWidth - 4) + 'px'; tip.style.top = Math.max(4, y - tip.offsetHeight - 10) + 'px';
+    });
+    ch.addEventListener('mouseleave', () => { const tip = $('.bl-tip', ch); if (tip) tip.hidden = true; });
+    ch.addEventListener('click', e => { const h = e.target.closest('circle.hit'); if (h) { const r = ch._pts[+h.dataset.i]; if (r.transporte && getTransport(r.transporte)) openDetail(r.transporte); } });
+  }
+  function exportarBalanca() {
+    const B = registrosBalanca();
+    const cab = ['Material', 'Descrição', 'Data', 'Ticket', 'Transporte', 'Ligação', 'Cliente', 'Placa', 'Qtd (pç)', 'Lotes', 'Peso balança carga (kg)', 'Itens na carga', 'Rateio', 'Peso do item (kg)', 'kg/lote', 'kg/peça', 'Peso bruto NF (kg)'];
+    const rows = [cab].concat(B.recs.sort((a, b) => a.material.localeCompare(b.material) || (a.data || '').localeCompare(b.data || '')).map(r => [r.material, r.descricao, P.fmtDateBR(r.data), r.ticket, r.transporte, r.via, r.cliente, r.placa, r.qtd, round(r.lotes, 3), r.pesoCarga, r.itensCarga, r.metodo, round(r.pesoItem, 1), round(r.kgLote, 1), round(r.kgPc, 4), round(r.nfItem, 1)]));
+    const nome = `pesagens-balanca-${P.todayISO()}`;
+    if (window.XLSX) { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Cargas por item'); XLSX.writeFile(wb, nome + '.xlsx'); return 'xlsx'; }
+    const csv = rows.map(r => r.map(v => typeof v === 'number' ? String(v).replace('.', ',') : `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+    baixar(nome + '.csv', new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })); return 'csv';
+  }
+  function importarTicketsGrid(grid, origem) {
+    const r = P.parseTickets(grid);
+    if (!r.rows.length) return false;
+    const res = mergeTickets(r.rows); save(true);
+    if (ui.view !== 'pesos') setView('pesos'); else renderAll();
+    const idx = ticketParaTransporte(); const lig = Object.values(state.tickets).filter(t => r.rows.some(x => x.ticket === t.ticket) && idx.has(t.ticket)).length;
+    const cols = Object.keys(r.map).map(k => P.TK_LABEL[k]).join(', ');
+    toast(`Balança (${origem}): ${res.tickets} ticket(s), ${res.novos} novo(s) · ${lig} ligado(s) a ordem pelo ticket. Colunas reconhecidas: ${cols}.`, 'ok');
+    setTimeout(() => $('#bl') && $('#bl').scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
+    return true;
+  }
+
   // ------------------------------------------------------------------ guia Agendamentos
   function setView(v) {
     ui.view = v;
@@ -5536,6 +5844,8 @@ window.ORDEM_TEMPLATES = {
     const e = T.eff;
     const alerts = [];
     if (isAmostra(T)) alerts.push(`<div class="alert warn"><b>Amostra — conferir cliente.</b> A carga contém amostra; o aviso sai no check-list ao lado da quantidade de lotes.</div>`);
+    { const tks = String(T.ot.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(k => k && state.tickets[k]);
+      if (tks.length) alerts.push(`<div class="alert info"><b>Balança</b>: ${tks.map(k => `ticket ${esc(k)} · <b>${kg(state.tickets[k].liq, 0)} kg</b> líquidos`).join(' · ')}. Variação por item na guia Pesos.</div>`); }
     if (T.faturado) alerts.push(`<div class="alert ok">Ordem <b>faturada</b> em ${esc(new Date(T.faturado).toLocaleString('pt-BR'))}.</div>`);
     if (T.printed && T.alteracoes.length) alerts.push(`<div class="alert err"><b>Com alterações</b>: a ordem foi impressa em ${esc(new Date(T.printed).toLocaleString('pt-BR'))} e o agendamento mudou depois disso. Imprima novamente.<ul>${T.alteracoes.map(a => `<li>${esc(a.campo)}: <s>${esc(a.de || '—')}</s> → <b>${esc(a.para || '—')}</b></li>`).join('')}</ul></div>`);
     if (T.missing.length) alerts.push(`<div class="alert err">Faltam dados obrigatórios para imprimir: <b>${esc(T.missing.join(', '))}</b>.</div>`);
@@ -5663,7 +5973,7 @@ window.ORDEM_TEMPLATES = {
     renderList();
     if (ui.view === 'agenda') renderAgenda();
     if (ui.view === 'ots') renderOTs();
-    if (ui.view === 'pesos') renderPesos();
+    if (ui.view === 'pesos') { renderPesos(); renderBalanca(); }
     renderViewCounts();
     if (ui.open) renderDetail();
   }
@@ -5696,6 +6006,7 @@ window.ORDEM_TEMPLATES = {
     $('#ps-mes').addEventListener('change', e => { pesoUI.mes = e.target.value || pesoUI.mes; pesoUI.aberto = null; renderPesos(); });
     $('#ps-tol').addEventListener('change', e => { pesoUI.tol = Math.max(0.1, P.toNum(e.target.value) || 3); renderPesos(); });
     $('#ps-colar').addEventListener('click', () => colarPorBotao('pesos'));
+    bindBalanca();
     $('#ps-xlsx').addEventListener('click', () => { const t = exportarPesos(); toast(t === 'xlsx' ? 'Análise de pesos exportada (.xlsx).' : 'Exportada em .csv (sem internet, o .xlsx não está disponível).', 'ok'); });
     $('#ps-file').addEventListener('change', async e => {
       const f = e.target.files[0]; if (!f) return; e.target.value = '';
@@ -5850,6 +6161,7 @@ window.ORDEM_TEMPLATES = {
     MI: { titulo: 'Agendamento — Mercado interno', dica: 'No SEW, Agendamento de Cargas · PIÊN PAINÉIS, Ctrl+A e Ctrl+C.' },
     CONTAINER: { titulo: 'Agendamento — Exportação (containers)', dica: 'No SEW, Agendamento de Cargas · PIÊN CONTAINERS, Ctrl+A e Ctrl+C.' },
     ots: { titulo: 'LT22 — OTs', dica: 'No SAP, tela de OTs (LT22), Ctrl+A e Ctrl+C.' },
+    tickets: { titulo: 'Balança — tickets de pesagem', dica: 'Copie a tabela diária da balança com a linha de títulos (Ticket, peso entrada/saída ou líquido, data, placa…), Ctrl+C.' },
     pesos: { titulo: 'Base de pesos', dica: 'Copie a base com a linha de títulos (NF, peso líquido, peso bruto…), Ctrl+C.' },
   };
   async function colarPorBotao(tipo) {
@@ -5892,6 +6204,11 @@ window.ORDEM_TEMPLATES = {
       const T = getTransport(t);
       toast(`Transporte ${t} importado da Solicitação de Embarque (${T.janela === 'CONTAINER' ? 'container' : 'mercado interno'}).${T.missing.length ? ' Falta: ' + T.missing.join(', ') : ' Pronto para imprimir.'}`, T.missing.length ? 'warn' : 'ok');
       return;
+    }
+    // tabela diária da balança (ticket + pesos) — antes da base de pesos, que também tem "peso"
+    if (tipo === 'tickets' || (auto && /ticket/i.test(text) && /peso|entrada|sa[ií]da|l[ií]quido/i.test(text))) {
+      for (const g of [htmlGrid, P.trimGrid(P.parseTSV(text))]) { if (g && g.length && importarTicketsGrid(g, 'colada')) return; }
+      if (tipo === 'tickets') { toast('Não reconheci a tabela da balança. Copie com a linha de títulos (Ticket, Peso entrada/saída ou Peso líquido…).', 'err'); return; }
     }
     // base de pesos (NF + peso líquido/bruto)
     if (tipo === 'pesos' || (auto && (ui.view === 'pesos' || (/peso\s*(l[ií]q|bru)/i.test(text) && /\b(NF|NF-?e|nota)/i.test(text))))) {

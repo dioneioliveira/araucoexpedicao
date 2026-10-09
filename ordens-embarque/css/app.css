@@ -532,3 +532,24 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .ps-pend{display:flex;flex-direction:column;gap:8px;margin-top:12px;font-size:12.5px}
 .ps-pend details{background:#fff;border:1px solid var(--line-soft);border-radius:var(--r-s);padding:8px 12px}
 .ps-pend summary{cursor:pointer}
+
+/* balança: peso por lote (ticket) */
+.bl-card{padding:16px 18px;margin-bottom:16px;display:flex;flex-direction:column;gap:12px}
+.bl-head{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+.bl-head h2{margin:0 0 4px;font-size:17px}
+.bl-head p{margin:0;max-width:640px;font-size:12.5px}
+.bl-head select{max-width:340px}
+.bl-chart{position:relative;border:1px solid var(--line-soft);border-radius:var(--r-s);background:#fff;padding:6px 4px}
+.bl-chart svg{display:block;width:100%;height:auto;max-height:none;stroke:none;fill:none}
+.bl-chart .g{stroke:#ececec;stroke-width:1}
+.bl-chart .ax{font-size:11px;fill:#7A7A7A}
+.bl-chart .band{fill:rgba(183,217,216,.30)}
+.bl-chart .mean{stroke:#4A4A4A;stroke-width:1.5;stroke-dasharray:5 4}
+.bl-chart .ln{fill:none;stroke:#9cc6c4;stroke-width:2}
+.bl-chart .pt{fill:#3d7f7c;stroke:#fff;stroke-width:2}
+.bl-chart .pt.fora{fill:var(--err)}
+.bl-chart .hit{fill:transparent;cursor:pointer}
+.bl-chart .lbl{font-size:11px;fill:#4A4A4A}
+.bl-chart .lbl.out{font-weight:700;fill:var(--err)}
+.bl-tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line-soft);box-shadow:0 6px 18px rgba(0,0,0,.12);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.45;color:#4A4A4A;min-width:220px;z-index:3}
+.ps-sub{margin:4px 0 10px;font-size:14px;color:#4A4A4A}

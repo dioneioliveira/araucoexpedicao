@@ -127,6 +127,26 @@
           </div>
         </div>
       </div>
+      <div class="card bl-card" id="bl">
+        <div class="bl-head">
+          <div>
+            <h2>Peso por lote — balança (ticket)</h2>
+            <p class="muted">Cole todo dia a tabela da balança (<b>Ticket</b> · peso de entrada/saída ou líquido · data · placa). O ticket liga a pesagem à ordem (campo <b>Ticket balança</b> do Controle OT) e de lá vêm os itens e a quantidade de lotes. Carga com mais de um item: o peso é rateado pela base de pesos. Cada carga de um item é um ponto no gráfico; as pesagens ficam guardadas no app.</p>
+          </div>
+          <div class="ps-ctrl">
+            <label class="field-inline">Item <select id="bl-item"></select></label>
+            <label class="field-inline">Período <select id="bl-per"><option value="30">30 dias</option><option value="90">90 dias</option><option value="180">6 meses</option><option value="365">12 meses</option><option value="todos">Tudo</option></select></label>
+            <div class="seg seg-sm" id="bl-met"><button type="button" data-v="lote" class="active">kg/lote</button><button type="button" data-v="pc">kg/peça</button></div>
+            <button class="btn btn-primary btn-sm" id="bl-colar">Colar tickets</button>
+            <button class="btn btn-ghost btn-sm" id="bl-xlsx">Exportar</button>
+          </div>
+        </div>
+        <section class="kpis" id="bl-kpis"></section>
+        <div class="bl-chart" id="bl-chart"></div>
+        <div class="table-wrap" style="max-height:none" id="bl-tab"></div>
+        <div class="ps-pend" id="bl-pend"></div>
+      </div>
+      <h3 class="ps-sub">Base de pesos por NF (análise mensal)</h3>
       <section class="kpis" id="ps-resumo" style="margin-bottom:12px"></section>
       <div class="card list-card"><div class="table-wrap" style="max-height:none" id="ps-tabela"></div></div>
       <div class="ps-pend" id="ps-pend"></div>

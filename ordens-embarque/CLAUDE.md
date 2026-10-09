@@ -72,3 +72,10 @@
 - Guia Pesos (`renderPesos`/`analisePesos`): base importada (`parsePesos`, títulos flexíveis; chave NF) em
   `state.pesos` (sync `peso:`); NF liga à carga via `manual.nf` (`nfParaTransporte`). kg/pç = peso / qtd
   (média ponderada por material e mês), comparação com o mês anterior e tolerância ±% (`pesoUI.tol`).
+- Balança (guia Pesos, card `#bl`): tabela diária colada com **Ticket** + peso entrada/saída/líquido (`parseTickets`,
+  títulos flexíveis, toneladas → kg) → `state.tickets` (sync `tk:`; colar de novo o mesmo ticket substitui). Ligação
+  ticket → ordem por `manual.ticket` (Controle OT), senão transporte/NF/placa+data da tabela (`transporteDoTicket`).
+  Itens e lotes (qtd ÷ peças por lote do texto do material) vêm da ordem (ou da tabela, se tiver material). Carga mista:
+  rateio do peso por NF da carga → média da base de pesos → volume da chapa → quantidade (`registrosBalanca`).
+  Cada carga de um item é um ponto do gráfico SVG (`svgBalanca`): kg/lote (ou kg/peça) no tempo, média, faixa ±tol,
+  pontos fora em vermelho com a diferença na carga inteira em kg (desvio × lotes).

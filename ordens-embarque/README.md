@@ -391,3 +391,22 @@ python3 -m http.server 8080
 ```
 
 Bibliotecas: `qrcode-generator` (QR da OT, em `vendor/`) e `SheetJS` (leitura do `.xlsm`, via CDN).
+
+### Peso por lote pela balança (ticket de pesagem)
+
+Na guia **Pesos**, card **Peso por lote — balança (ticket)**:
+
+1. Todo dia, copie a tabela da balança com a linha de títulos (**Ticket**, peso de entrada, peso de
+   saída e/ou peso líquido, data, placa…) e clique **Colar tickets** (ou Ctrl+V na guia). As pesagens
+   ficam **guardadas** no app (e no arquivo compartilhado, se conectado). Colar o mesmo ticket de novo
+   atualiza o registro.
+2. O ticket liga a pesagem à ordem pelo campo **Ticket balança** do Controle OT. Sem ticket na ordem,
+   o app tenta pelo transporte, pela NF ou pela placa + data, se a tabela tiver essas colunas.
+3. Os itens e a quantidade de **lotes** (quantidade ÷ peças por lote do texto do material) vêm da ordem.
+   Carga com mais de um item: o peso líquido é rateado pelo peso de referência de cada item (NF da
+   carga na base de pesos → média do material na base → volume da chapa → quantidade).
+4. Escolha o **item** para ver o gráfico: cada carga é um ponto (kg por lote ou kg por peça), com a
+   média, a faixa de tolerância (±%, o mesmo campo da análise por NF) e os pontos fora da faixa em
+   vermelho com a **diferença na carga inteira em kg** (ex.: −1.000 kg). Passe o mouse para ver ticket,
+   transporte e cliente; clique para abrir a ordem. Filtro de período (30 dias a tudo) e exportação Excel.
+5. Pendências: tickets sem ordem no app e ordens com ticket informado ainda sem pesagem colada.
