@@ -19,51 +19,72 @@ select,button{font:inherit;color:var(--txt);background:var(--panel2);border:1px 
 button{cursor:pointer}
 button:hover{border-color:var(--acc)}
 button.sc{font-size:12.5px;padding:5px 9px}
-main{display:grid;gap:12px;padding:12px;max-width:1700px;margin:0 auto;
-  grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);
-  grid-template-areas:"side top" "side front" "ctl coach" "ctl table"}
-@media (max-width:1050px){main{grid-template-columns:minmax(0,1fr);grid-template-areas:"side" "top" "front" "ctl" "coach" "table"}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
-.card h2{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--acc);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.card h2 .sub{font-size:11.5px;text-transform:none;letter-spacing:0;color:var(--mut);font-weight:500}
-#cSide{grid-area:side}#cTop{grid-area:top}#cFront{grid-area:front}#cCtl{grid-area:ctl}#cCoach{grid-area:coach}#cTable{grid-area:table}
-canvas{display:block;width:100%;border-radius:8px;background:#0a0e13;touch-action:pan-y}
-#cvSide{aspect-ratio:1.28/1}#cvTop{aspect-ratio:16/10;touch-action:none;cursor:grab}#cvFront{aspect-ratio:16/10}#cvCap{aspect-ratio:2.6/1}
-.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid currentColor;margin-left:auto}
-.chip i{width:9px;height:9px;border-radius:50%;background:currentColor;display:inline-block}
-.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:12px;color:var(--mut)}
-.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;background:var(--c);vertical-align:-1px}
-.ctl-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-fieldset{border:1px solid var(--line);border-radius:10px;margin:0;padding:8px 10px 10px}
-legend{padding:0 6px;color:var(--yellow);font-weight:700;font-size:12.5px}
-.row{margin:6px 0}
-.row label{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:#b8c5d4}
-.row output{color:#fff;font-variant-numeric:tabular-nums;font-weight:600}
-input[type=range]{width:100%;accent-color:var(--acc);margin:2px 0}
-.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:#b8c5d4}
+html,body{height:100%;overflow:hidden}
+body{display:flex;flex-direction:column}
+header{padding:6px 12px;gap:6px 16px;position:static;flex:0 0 auto}
+header h1{font-size:15px}
+header h1 small{font-size:11px}
+main{flex:1 1 0;min-height:0;display:grid;gap:8px;padding:8px;grid-template-columns:270px minmax(0,1fr) 390px}
+.col{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 9px;min-width:0;min-height:0;display:flex;flex-direction:column}
+.card h2{margin:0 0 5px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--acc);display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;overflow:hidden}
+.card h2 .sub{font-size:11px;text-transform:none;letter-spacing:0;color:var(--mut);font-weight:500;overflow:hidden;text-overflow:ellipsis}
+canvas{display:block;width:100%;flex:1 1 0;min-height:0;border-radius:8px;background:#0a0e13}
+#cvTop{touch-action:none;cursor:grab}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:700;border:1px solid currentColor;margin-left:auto;flex:0 0 auto}
+.chip i{width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block}
+.legend{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:5px;font-size:11px;color:var(--mut);flex:0 0 auto}
+.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;background:var(--c);vertical-align:-1px}
+#cCtl{overflow:hidden}
+.ctl-grid{display:flex;flex-direction:column;gap:6px;overflow:auto;min-height:0;flex:1}
+fieldset{border:1px solid var(--line);border-radius:8px;margin:0;padding:3px 8px 5px}
+legend{padding:0 5px;color:var(--yellow);font-weight:700;font-size:11.5px}
+.row{margin:2px 0}
+.row label{display:flex;justify-content:space-between;gap:6px;font-size:11.5px;color:#b8c5d4;line-height:1.2}
+.row output{color:#fff;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+input[type=range]{width:100%;accent-color:var(--acc);margin:0;height:14px}
+select,button{font-size:12px;padding:4px 8px}
+.row select{width:100%;padding:2px 6px}
+.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:#b8c5d4;margin-top:6px;flex:0 0 auto}
 .inline input[type=checkbox]{accent-color:var(--acc)}
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:10px}
-.m{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
-.m b{display:block;font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-.m span{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
-.m small{color:var(--mut);font-size:11px}
-.bar{height:10px;background:#0a0e13;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:3px 0 7px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;flex:0 0 auto}
+.m{min-width:0;overflow:hidden;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:3px 6px;line-height:1.2}
+.m b{display:block;font-size:9.5px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.m span{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.m small{color:var(--mut);font-size:9.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:7px;background:#0a0e13;border:1px solid var(--line);border-radius:5px;overflow:hidden;margin:2px 0 5px}
 .bar>div{height:100%;width:0;background:var(--acc);transition:width .1s}
-.barlab{display:flex;justify-content:space-between;font-size:12px;color:#b8c5d4}
-#msgs{display:grid;gap:6px;margin:10px 0}
-.msg{border-left:4px solid var(--c);background:var(--panel2);border-radius:6px;padding:6px 9px;font-size:13px}
-.msg b{color:var(--c);display:block;font-size:12.5px}
+.barlab{display:flex;justify-content:space-between;font-size:11px;color:#b8c5d4}
+#msgs{display:grid;gap:4px;margin:4px 0 0;overflow:auto;min-height:0;flex:1 1 0;align-content:start}
+.msg{border-left:3px solid var(--c);background:var(--panel2);border-radius:5px;padding:3px 7px;font-size:11.5px;line-height:1.3}
+.msg b{color:var(--c);display:block;font-size:11.5px}
 .msg span{color:#c3cfdc}
-details{margin-top:6px;font-size:13px;color:#b8c5d4}
+details{font-size:11.5px;color:#b8c5d4;flex:0 0 auto;margin-top:4px}
 details summary{cursor:pointer;color:var(--acc);font-weight:600}
-details ul{margin:6px 0 0;padding-left:18px}
-table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
-th,td{border:1px solid var(--line);padding:4px 6px;text-align:center}
+details ul{margin:4px 0 0;padding-left:16px}
+table{border-collapse:collapse;width:100%;font-size:11px;font-variant-numeric:tabular-nums}
+th,td{border:1px solid var(--line);padding:1px 3px;text-align:center}
 th{background:var(--panel2);color:#b8c5d4;font-weight:600}
-td.okc{background:rgba(57,217,138,.14)}td.badc{background:rgba(255,77,79,.18);color:#ffb3b3}
+td.okc{background:rgba(57,217,138,.16)}td.badc{background:rgba(255,77,79,.2);color:#ffb3b3}
 td.now{outline:2px solid var(--yellow);outline-offset:-2px;font-weight:700}
-.note{font-size:11.5px;color:var(--mut);margin-top:6px}
-.tablewrap{overflow-x:auto}
+.note{font-size:10.5px;color:var(--mut);margin-top:4px;flex:0 0 auto}
+.tablewrap{flex:0 0 auto}
+#center{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
+#cSide{flex:1.55 1 0}
+#bottom{flex:1 1 0;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#right{display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
+#cCoach{flex:1.1 1 0}
+#cTable{flex:1 1 0}
+#cvCap{flex:1 1 60px;margin-top:5px}
+@media (max-height:860px){header h1 small{display:none}header{padding:4px 10px}#cvCap,#cTable .note{display:none}.m small{display:none}.legend{display:none}.row label{font-size:11px}fieldset{padding:1px 7px 3px}.row{margin:0}input[type=range]{height:12px}.ctl-grid{gap:4px}}
+@media (max-width:1100px){
+  html,body{height:auto;overflow:auto}
+  main{display:flex;flex-direction:column}
+  #cSide{min-height:420px}#bottom{min-height:260px}
+  #cCtl .ctl-grid{overflow:visible}
+  #cvSide,#cvTop,#cvFront{flex:none;height:300px}#cvCap{flex:none;height:150px}
+  #msgs{flex:none;overflow:visible}
+}
 </style>
 </head>
 <body>
@@ -76,60 +97,63 @@ td.now{outline:2px solid var(--yellow);outline-offset:-2px;font-weight:700}
 </header>
 
 <main>
-  <section class="card" id="cSide">
-    <h2>Vista lateral <span class="sub">base de apoio = distância entre eixos · ponto = CG combinado (empilhadeira + carga)</span><span class="chip" id="chip"><i></i><span id="chipTxt">—</span></span></h2>
-    <canvas id="cvSide"></canvas>
-    <div class="legend">
-      <span style="--c:#4da3ff">CG da empilhadeira</span><span style="--c:#ff9d3a">CG da carga</span>
-      <span style="--c:#39d98a">CG combinado (projeção no solo)</span><span style="--c:#5fd4e8">Base de apoio</span>
-    </div>
-  </section>
-
-  <section class="card" id="cTop">
-    <h2>Vista superior <span class="sub">triângulo de estabilidade · arraste a carga</span></h2>
-    <canvas id="cvTop"></canvas>
-    <div class="note">Ponta dos garfos → direita. O ponto precisa ficar dentro do triângulo; a faixa vermelha é a zona de risco. O rastro mostra por onde o CG andou.</div>
-  </section>
-
-  <section class="card" id="cFront">
-    <h2>Vista traseira <span class="sub">estabilidade lateral</span></h2>
-    <canvas id="cvFront"></canvas>
-  </section>
-
-  <section class="card" id="cCtl">
+  <div class="col">
+  <section class="card" id="cCtl" style="flex:1 1 0">
     <h2>Controles</h2>
     <div class="ctl-grid" id="ctlGrid"></div>
-    <div class="inline" style="margin-top:10px">
-      <label><input type="checkbox" id="optDims" checked> cotas e vetores</label>
-      <label><input type="checkbox" id="optZoom" checked> zoom automático</label>
+    <div class="inline">
+      <label><input type="checkbox" id="optDims" checked> cotas</label>
+      <label><input type="checkbox" id="optZoom" checked> zoom auto</label>
       <button id="btnReset">Reiniciar</button>
     </div>
   </section>
+  </div>
 
-  <section class="card" id="cCoach">
-    <h2>Instrutor <span class="sub">avaliação em tempo real</span></h2>
-    <div class="metrics" id="metrics"></div>
-    <div class="barlab"><span>Carga ÷ capacidade residual</span><span id="capPct">—</span></div>
-    <div class="bar"><div id="capBar"></div></div>
-    <div class="barlab"><span>Momento de tombamento ÷ estabilizante (eixo dianteiro)</span><span id="momPct">—</span></div>
-    <div class="bar"><div id="momBar"></div></div>
-    <div id="msgs"></div>
-    <details><summary>Conceitos rápidos (NR-11 / ISO 22915)</summary>
-      <ul>
-        <li><b>Triângulo de estabilidade:</b> as rodas dianteiras e o pivô do eixo traseiro formam a base de apoio. O CG combinado (empilhadeira + carga) precisa ficar dentro dela.</li>
-        <li><b>Centro de carga (C):</b> distância do encosto/talão dos garfos até o CG da carga. A placa de capacidade vale para C nominal (normalmente 500 mm).</li>
-        <li><b>Capacidade residual:</b> quanto maior C e quanto mais alto o garfo, menor a carga permitida. A NR-11 exige respeitar a capacidade nominal da placa.</li>
-        <li><b>Boas práticas:</b> carga encostada no talão, garfos sob ≥ 2/3 do comprimento, mastro inclinado para trás, garfos a ~15–20 cm do piso ao deslocar, rampa com a carga do lado de cima, curva com velocidade reduzida.</li>
-      </ul>
-    </details>
-  </section>
+  <div id="center">
+    <section class="card" id="cSide">
+      <h2>Vista lateral <span class="sub">base de apoio = entre eixos · ponto = CG combinado</span><span class="chip" id="chip"><i></i><span id="chipTxt">—</span></span></h2>
+      <canvas id="cvSide"></canvas>
+      <div class="legend">
+        <span style="--c:#4da3ff">CG da empilhadeira</span><span style="--c:#ff9d3a">CG da carga</span>
+        <span style="--c:#39d98a">CG combinado (projeção no solo)</span><span style="--c:#5fd4e8">Base de apoio</span>
+      </div>
+    </section>
+    <div id="bottom">
+      <section class="card" id="cTop">
+        <h2>Vista superior <span class="sub">triângulo de estabilidade · arraste a carga</span></h2>
+        <canvas id="cvTop"></canvas>
+      </section>
+      <section class="card" id="cFront">
+        <h2>Vista traseira <span class="sub">estabilidade lateral</span></h2>
+        <canvas id="cvFront"></canvas>
+      </section>
+    </div>
+  </div>
 
-  <section class="card" id="cTable">
-    <h2>Tabela de elevação <span class="sub">capacidade (kg) por altura do garfo × centro de carga</span></h2>
-    <div class="tablewrap"><table id="capTable"></table></div>
-    <canvas id="cvCap" style="margin-top:10px"></canvas>
-    <div class="note">Valores calculados pelo modelo deste simulador (momento no eixo dianteiro + estabilidade lateral com 1,25 de coeficiente). Em campo vale sempre a <b>placa de capacidade do fabricante</b>. Verde = a carga atual cabe; vermelho = excede.</div>
-  </section>
+  <div id="right">
+    <section class="card" id="cCoach">
+      <h2>Instrutor <span class="sub">avaliação em tempo real</span></h2>
+      <div class="metrics" id="metrics"></div>
+      <div class="barlab"><span>Carga ÷ capacidade residual</span><span id="capPct">—</span></div>
+      <div class="bar"><div id="capBar"></div></div>
+      <div class="barlab"><span>Momento tombamento ÷ estabilizante</span><span id="momPct">—</span></div>
+      <div class="bar"><div id="momBar"></div></div>
+      <div id="msgs"></div>
+      <details><summary>Conceitos rápidos (NR-11 / ISO 22915)</summary>
+        <ul>
+          <li><b>Triângulo de estabilidade:</b> rodas dianteiras + pivô traseiro. O CG combinado precisa ficar dentro.</li>
+          <li><b>Centro de carga (C):</b> do talão dos garfos ao CG da carga; a placa vale para C nominal (500 mm).</li>
+          <li><b>Boas práticas:</b> carga encostada no talão, garfos sob ≥ 2/3, mastro para trás, garfos a ~15–20 cm do piso, rampa com a carga do lado de cima, curva devagar.</li>
+        </ul>
+      </details>
+    </section>
+    <section class="card" id="cTable">
+      <h2>Tabela de elevação <span class="sub">capacidade (kg) · altura do garfo × centro de carga</span></h2>
+      <div class="tablewrap"><table id="capTable"></table></div>
+      <canvas id="cvCap"></canvas>
+      <div class="note">Modelo didático. Em campo vale a placa do fabricante. Verde = carga atual cabe; vermelho = excede.</div>
+    </section>
+  </div>
 </main>
 
 <script>
@@ -140,7 +164,7 @@ const G = 9.81, D0 = 0.5, FS_REQ = 1.25, AY_REF = 0.19; // AY_REF: aceleração 
 
 /* ---------------- modelos de empilhadeira (m, kg) ----------------
    x: para frente a partir do eixo dianteiro · y: para a esquerda · z: altura do piso
-   W: massa em ordem de marcha (c/ operador) · xT: CG atrás do eixo dianteiro · zT: altura do CG
+   W: massa em ordem de marcha  · xT: CG atrás do eixo dianteiro · zT: altura do CG
    L: entre-eixos · T: bitola dianteira · a: eixo dianteiro → face do garfo (talão) */
 const TRUCKS = {
   '1.5': {name:'Empilhadeira 1,5 t',Q:1500,W:2600,xT:0.70,zT:0.68,L:1.38,T:0.88,a:0.40,fork:1.07,maxLift:4.5,Rf:0.30,Rr:0.24,bodyW:0.95,mastH:2.00,guard:2.05},
@@ -234,23 +258,23 @@ function capNow(){ return capacity(T,cur.lift,Math.max(0.2,A_.c)); }
 const CTRL = [
  {g:'Carga',items:[
   {id:'mass',lab:'Peso da carga',unit:'kg',min:0,max:()=>Math.round(T.Q*1.5/50)*50,step:10},
-  {id:'Lc',lab:'Comprimento (no sentido dos garfos)',unit:'m',min:0.4,max:1.8,step:0.05,dec:2},
+  {id:'Lc',lab:'Comprimento (ao longo dos garfos)',unit:'m',min:0.4,max:1.8,step:0.05,dec:2},
   {id:'Wc',lab:'Largura da carga',unit:'m',min:0.4,max:2.0,step:0.05,dec:2},
-  {id:'Hc',lab:'Altura da carga (c/ pallet)',unit:'m',min:0.3,max:2.5,step:0.05,dec:2}]},
+  {id:'Hc',lab:'Altura da carga',unit:'m',min:0.3,max:2.5,step:0.05,dec:2}]},
  {g:'Posição da carga nos garfos',items:[
-  {id:'s',lab:'Afastamento do talão (rumo à ponta)',unit:'mm',min:0,max:800,step:10,mm:true},
+  {id:'s',lab:'Afastamento do talão',unit:'mm',min:0,max:800,step:10,mm:true},
   {id:'yl',lab:'Deslocamento lateral',unit:'mm',min:-500,max:500,step:10,mm:true},
-  {id:'cgx',lab:'CG da carga deslocado (ao longo do garfo)',unit:'mm',min:-300,max:300,step:10,mm:true},
-  {id:'cgy',lab:'CG da carga deslocado (lateral)',unit:'mm',min:-300,max:300,step:10,mm:true}]},
+  {id:'cgx',lab:'CG deslocado (ao longo)',unit:'mm',min:-300,max:300,step:10,mm:true},
+  {id:'cgy',lab:'CG deslocado (lateral)',unit:'mm',min:-300,max:300,step:10,mm:true}]},
  {g:'Elevação',items:[
   {id:'lift',lab:'Altura do garfo',unit:'m',min:0,max:()=>T.maxLift,step:0.05,dec:2},
-  {id:'tilt',lab:'Inclinação do mastro (+ para trás)',unit:'°',min:-5,max:12,step:0.5,dec:1}]},
+  {id:'tilt',lab:'Mastro (+ para trás)',unit:'°',min:-5,max:12,step:0.5,dec:1}]},
  {g:'Operação',items:[
   {id:'speed',lab:'Velocidade',unit:'km/h',min:0,max:20,step:0.5,dec:1},
   {id:'turn',lab:'Trajetória',sel:[[0,'Reta'],[1,'Curva à esquerda'],[-1,'Curva à direita']]},
   {id:'radius',lab:'Raio da curva',unit:'m',min:2,max:15,step:0.5,dec:1},
-  {id:'brake',lab:'Frenagem (desaceleração)',unit:'m/s²',min:0,max:5,step:0.1,dec:1},
-  {id:'slope',lab:'Rampa (+ subindo de frente · − descendo de frente)',unit:'%',min:-20,max:20,step:1}]}
+  {id:'brake',lab:'Frenagem',unit:'m/s²',min:0,max:5,step:0.1,dec:1},
+  {id:'slope',lab:'Rampa (+ sobe · − desce)',unit:'%',min:-20,max:20,step:1}]}
 ];
 const inputs = {};
 function fmtVal(it,v){ return it.mm ? Math.round(v*1000)+' '+it.unit : (it.dec!=null?v.toFixed(it.dec).replace('.',','):Math.round(v))+' '+it.unit; }
@@ -408,12 +432,6 @@ function drawSide(A,dt){
   // assento
   rect(-0.98,0.90,0.40,0.08,'#17191d','#000',1,0.02);
   poly([[-0.98,0.98],[-0.88,0.98],[-0.80,1.48],[-0.92,1.50]],'#1c1f24','#000',1);
-  // operador
-  line(-0.86,1.04,-0.55,1.16,'#2a5d9f',9); line(-0.55,1.16,-0.40,0.80,'#2a5d9f',8); rect(-0.46,0.74,0.16,0.07,'#111',null,0,0.02);
-  line(-0.88,1.06,-0.90,1.52,'#e0a800',14);
-  line(-0.88,1.45,-0.62,1.34,'#e0a800',7); line(-0.62,1.34,-0.34,1.30,'#e0a800',6);
-  circ(-0.90,1.68,0.105,'#e2b48c','#a87c58',1);
-  ctx.beginPath(); ctx.arc(-0.90,1.69,0.12,Math.PI*0.95,Math.PI*2.05); ctx.closePath(); ctx.fillStyle='#fff'; ctx.fill(); lw(1); ctx.strokeStyle='#999'; ctx.stroke();
   // volante
   line(-0.14,0.98,-0.40,1.32,'#25282d',6);
   ctx.save(); ctx.translate(-0.42,1.34); ctx.rotate(-0.55); ctx.scale(1,0.3); circ(0,0,0.18,null,'#111',4); ctx.restore();
@@ -538,7 +556,6 @@ function drawTop(A,dt){
   rect(-L-0.62,-bw/2,L+0.7,bw,'rgba(242,180,0,.92)','#7a5a00',1.5,0.08);
   rect(-L-0.64,-bw/2+0.05,0.12,bw-0.1,'#1c1f24',null,0,0.03);
   rect(-0.95,-0.22,0.36,0.44,'#1c1f24','#000',1,0.05);
-  circ(-0.92,0,0.1,'#e0a800','#7a5a00',1); // operador/capacete
   circ(-0.22,0,0.14,null,'#111',2.5); // volante
   nodash(); dash(5,4); rect(-1.28,-bw/2+0.04,1.34,bw-0.08,null,'rgba(20,20,20,.7)',1.2); nodash();
   // mastro, carro e garfos
@@ -648,8 +665,6 @@ function drawFront(A,dt){
   // protetor de cabeça e operador
   line(-0.46,1.1,-0.46,T.guard,'#1b1e23',5); line(0.46,1.1,0.46,T.guard,'#1b1e23',5);
   rect(-0.52,T.guard-0.03,1.04,0.05,'#2a2e35','#000',1);
-  line(0,1.12,0,1.5,'#e0a800',16); circ(0,1.68,0.105,'#e2b48c','#a87c58',1);
-  ctx.beginPath(); ctx.arc(0,1.69,0.12,Math.PI*0.95,Math.PI*2.05); ctx.closePath(); ctx.fillStyle='#fff'; ctx.fill();
   // base de apoio na altura do CG (largura do triângulo na posição x do CG)
   const cg=A.cg;
   const wAt=clamp(hw*(1+cg.px/T.L),0,hw);
@@ -710,7 +725,7 @@ function coach(A,capN,pct){
   if(dyn.brake>1.5&&st.mass>0) add('warn','Frenagem brusca com carga',`Desaceleração de ${dyn.brake.toFixed(1).replace('.',',')} m/s² transfere o CG ${Math.round(Math.abs(A.cg.px-A.cg.x)*1000)} mm para a frente. Freie suavemente.`);
   if(st.slope<-3&&st.mass>0) add('bad','Descendo rampa de frente com carga','Na descida o CG desloca-se para a ponta dos garfos. Com carga, suba de frente e desça de ré (carga sempre do lado de cima).');
   else if(st.slope>3&&st.mass>0) add('ok','Rampa: carga do lado de cima','Subindo de frente com a carga o CG recua para dentro da base. Prática correta — nunca faça curva ou manobra lateral em rampa.');
-  if(st.mass>0&&A.forkZ+st.Hc>1.55&&cur.lift<1.2&&st.speed>0) add('info','Carga bloqueia a visão','O topo da carga passa da linha dos olhos do operador. Reduza a velocidade, use ajudante ou desloque de ré.');
+  if(st.mass>0&&A.forkZ+st.Hc>1.55&&cur.lift<1.2&&st.speed>0) add('info','Carga bloqueia a visão','O topo da carga passa da linha de visão. Reduza a velocidade, use ajudante ou desloque de ré.');
   if(!out.some(m=>m.lvl==='bad'||m.lvl==='warn')) add('ok','Operação dentro da margem',`Fator de segurança ${isFinite(A.fs)?A.fs.toFixed(2).replace('.',','):'—'} (mínimo adotado: 1,25 na tabela). Continue a respeitar a placa de capacidade.`);
   const order={bad:0,warn:1,info:2,ok:3};
   out.sort((a,b)=>order[a.lvl]-order[b.lvl]);
