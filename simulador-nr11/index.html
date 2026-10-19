@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador NR-11 · Estabilidade de Empilhadeira</title>
+<style>
+:root{
+  --bg:#0b0f14; --panel:#121923; --panel2:#18212e; --line:#263243; --txt:#d7e0ea; --mut:#8294a8;
+  --acc:#5fd4e8; --ok:#39d98a; --warn:#ffb020; --bad:#ff7a45; --tip:#ff4d4f; --yellow:#f2b400;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);background:#0e141c;position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px}
+header h1 small{display:block;font-size:11.5px;font-weight:500;color:var(--mut);letter-spacing:0}
+.hdr-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+select,button{font:inherit;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.sc{font-size:12.5px;padding:5px 9px}
+main{display:grid;gap:12px;padding:12px;max-width:1700px;margin:0 auto;
+  grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);
+  grid-template-areas:"side top" "side front" "ctl coach" "ctl table"}
+@media (max-width:1050px){main{grid-template-columns:minmax(0,1fr);grid-template-areas:"side" "top" "front" "ctl" "coach" "table"}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.card h2{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--acc);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 .sub{font-size:11.5px;text-transform:none;letter-spacing:0;color:var(--mut);font-weight:500}
+#cSide{grid-area:side}#cTop{grid-area:top}#cFront{grid-area:front}#cCtl{grid-area:ctl}#cCoach{grid-area:coach}#cTable{grid-area:table}
+canvas{display:block;width:100%;border-radius:8px;background:#0a0e13;touch-action:pan-y}
+#cvSide{aspect-ratio:1.28/1}#cvTop{aspect-ratio:16/10;touch-action:none;cursor:grab}#cvFront{aspect-ratio:16/10}#cvCap{aspect-ratio:2.6/1}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid currentColor;margin-left:auto}
+.chip i{width:9px;height:9px;border-radius:50%;background:currentColor;display:inline-block}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-size:12px;color:var(--mut)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;background:var(--c);vertical-align:-1px}
+.ctl-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+fieldset{border:1px solid var(--line);border-radius:10px;margin:0;padding:8px 10px 10px}
+legend{padding:0 6px;color:var(--yellow);font-weight:700;font-size:12.5px}
+.row{margin:6px 0}
+.row label{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:#b8c5d4}
+.row output{color:#fff;font-variant-numeric:tabular-nums;font-weight:600}
+input[type=range]{width:100%;accent-color:var(--acc);margin:2px 0}
+.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:#b8c5d4}
+.inline input[type=checkbox]{accent-color:var(--acc)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:10px}
+.m{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.m b{display:block;font-size:11px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.m span{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.m small{color:var(--mut);font-size:11px}
+.bar{height:10px;background:#0a0e13;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:3px 0 7px}
+.bar>div{height:100%;width:0;background:var(--acc);transition:width .1s}
+.barlab{display:flex;justify-content:space-between;font-size:12px;color:#b8c5d4}
+#msgs{display:grid;gap:6px;margin:10px 0}
+.msg{border-left:4px solid var(--c);background:var(--panel2);border-radius:6px;padding:6px 9px;font-size:13px}
+.msg b{color:var(--c);display:block;font-size:12.5px}
+.msg span{color:#c3cfdc}
+details{margin-top:6px;font-size:13px;color:#b8c5d4}
+details summary{cursor:pointer;color:var(--acc);font-weight:600}
+details ul{margin:6px 0 0;padding-left:18px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+th,td{border:1px solid var(--line);padding:4px 6px;text-align:center}
+th{background:var(--panel2);color:#b8c5d4;font-weight:600}
+td.okc{background:rgba(57,217,138,.14)}td.badc{background:rgba(255,77,79,.18);color:#ffb3b3}
+td.now{outline:2px solid var(--yellow);outline-offset:-2px;font-weight:700}
+.note{font-size:11.5px;color:var(--mut);margin-top:6px}
+.tablewrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>Simulador NR-11 · Estabilidade de empilhadeira<small>Centro de carga, capacidade residual e triângulo de estabilidade — uso didático</small></h1>
+  <div class="hdr-ctl">
+    <label>Modelo <select id="selTruck"></select></label>
+    <span id="scBtns" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+  </div>
+</header>
+
+<main>
+  <section class="card" id="cSide">
+    <h2>Vista lateral <span class="sub">base de apoio = distância entre eixos · ponto = CG combinado (empilhadeira + carga)</span><span class="chip" id="chip"><i></i><span id="chipTxt">—</span></span></h2>
+    <canvas id="cvSide"></canvas>
+    <div class="legend">
+      <span style="--c:#4da3ff">CG da empilhadeira</span><span style="--c:#ff9d3a">CG da carga</span>
+      <span style="--c:#39d98a">CG combinado (projeção no solo)</span><span style="--c:#5fd4e8">Base de apoio</span>
+    </div>
+  </section>
+
+  <section class="card" id="cTop">
+    <h2>Vista superior <span class="sub">triângulo de estabilidade · arraste a carga</span></h2>
+    <canvas id="cvTop"></canvas>
+    <div class="note">Ponta dos garfos → direita. O ponto precisa ficar dentro do triângulo; a faixa vermelha é a zona de risco. O rastro mostra por onde o CG andou.</div>
+  </section>
+
+  <section class="card" id="cFront">
+    <h2>Vista traseira <span class="sub">estabilidade lateral</span></h2>
+    <canvas id="cvFront"></canvas>
+  </section>
+
+  <section class="card" id="cCtl">
+    <h2>Controles</h2>
+    <div class="ctl-grid" id="ctlGrid"></div>
+    <div class="inline" style="margin-top:10px">
+      <label><input type="checkbox" id="optDims" checked> cotas e vetores</label>
+      <label><input type="checkbox" id="optZoom" checked> zoom automático</label>
+      <button id="btnReset">Reiniciar</button>
+    </div>
+  </section>
+
+  <section class="card" id="cCoach">
+    <h2>Instrutor <span class="sub">avaliação em tempo real</span></h2>
+    <div class="metrics" id="metrics"></div>
+    <div class="barlab"><span>Carga ÷ capacidade residual</span><span id="capPct">—</span></div>
+    <div class="bar"><div id="capBar"></div></div>
+    <div class="barlab"><span>Momento de tombamento ÷ estabilizante (eixo dianteiro)</span><span id="momPct">—</span></div>
+    <div class="bar"><div id="momBar"></div></div>
+    <div id="msgs"></div>
+    <details><summary>Conceitos rápidos (NR-11 / ISO 22915)</summary>
+      <ul>
+        <li><b>Triângulo de estabilidade:</b> as rodas dianteiras e o pivô do eixo traseiro formam a base de apoio. O CG combinado (empilhadeira + carga) precisa ficar dentro dela.</li>
+        <li><b>Centro de carga (C):</b> distância do encosto/talão dos garfos até o CG da carga. A placa de capacidade vale para C nominal (normalmente 500 mm).</li>
+        <li><b>Capacidade residual:</b> quanto maior C e quanto mais alto o garfo, menor a carga permitida. A NR-11 exige respeitar a capacidade nominal da placa.</li>
+        <li><b>Boas práticas:</b> carga encostada no talão, garfos sob ≥ 2/3 do comprimento, mastro inclinado para trás, garfos a ~15–20 cm do piso ao deslocar, rampa com a carga do lado de cima, curva com velocidade reduzida.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="card" id="cTable">
+    <h2>Tabela de elevação <span class="sub">capacidade (kg) por altura do garfo × centro de carga</span></h2>
+    <div class="tablewrap"><table id="capTable"></table></div>
+    <canvas id="cvCap" style="margin-top:10px"></canvas>
+    <div class="note">Valores calculados pelo modelo deste simulador (momento no eixo dianteiro + estabilidade lateral com 1,25 de coeficiente). Em campo vale sempre a <b>placa de capacidade do fabricante</b>. Verde = a carga atual cabe; vermelho = excede.</div>
+  </section>
+</main>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => Math.min(b,Math.max(a,v));
+const G = 9.81, D0 = 0.5, FS_REQ = 1.25, AY_REF = 0.19; // AY_REF: aceleração lateral de referência (fração de g) da tabela
+
+/* ---------------- modelos de empilhadeira (m, kg) ----------------
+   x: para frente a partir do eixo dianteiro · y: para a esquerda · z: altura do piso
+   W: massa em ordem de marcha (c/ operador) · xT: CG atrás do eixo dianteiro · zT: altura do CG
+   L: entre-eixos · T: bitola dianteira · a: eixo dianteiro → face do garfo (talão) */
+const TRUCKS = {
+  '1.5': {name:'Empilhadeira 1,5 t',Q:1500,W:2600,xT:0.70,zT:0.68,L:1.38,T:0.88,a:0.40,fork:1.07,maxLift:4.5,Rf:0.30,Rr:0.24,bodyW:0.95,mastH:2.00,guard:2.05},
+  '2.5': {name:'Empilhadeira 2,5 t',Q:2500,W:3900,xT:0.80,zT:0.78,L:1.65,T:1.00,a:0.45,fork:1.07,maxLift:5.5,Rf:0.34,Rr:0.27,bodyW:1.05,mastH:2.15,guard:2.15},
+  '3.5': {name:'Empilhadeira 3,5 t',Q:3500,W:5200,xT:0.90,zT:0.85,L:1.95,T:1.17,a:0.50,fork:1.22,maxLift:6.0,Rf:0.40,Rr:0.31,bodyW:1.20,mastH:2.25,guard:2.20}
+};
+let T = TRUCKS['2.5'];
+
+/* ---------------- estado ---------------- */
+const DEF = {mass:1500,Lc:1.0,Wc:1.2,Hc:1.0,s:0,yl:0,cgx:0,cgy:0,lift:0.2,tilt:6,speed:0,turn:0,radius:6,brake:0,slope:0};
+const st = {...DEF};
+const cur = {lift:DEF.lift,tilt:DEF.tilt,odo:0,tipLong:0,tipRoll:0,sc:60,trail:[],blink:0};
+
+/* ---------------- física ---------------- */
+function geom(lift,tilt){
+  const th = tilt*Math.PI/180, c = Math.cos(th), s = Math.sin(th), Pz = T.Rf;
+  return {th,c,s,Pz,vf:lift-Pz,map:(u,v)=>[u*c-v*s, Pz+u*s+v*c]};
+}
+function minLift(tilt){ // ponta do garfo não penetra o piso
+  const th = tilt*Math.PI/180, tip = T.a+T.fork;
+  return Math.max(0, (-T.Rf - tip*Math.sin(th))/Math.cos(th) + T.Rf);
+}
+function triEdges(Tr){
+  const h = Tr.T/2, FL=[0,h], FR=[0,-h], R=[-Tr.L,0], cen=[-Tr.L/3,0];
+  return [['front',FL,FR],['left',FL,R],['right',FR,R]].map(([n,a,b])=>{
+    const dx=b[0]-a[0], dy=b[1]-a[1], len=Math.hypot(dx,dy); let nx=-dy/len, ny=dx/len;
+    if((cen[0]-a[0])*nx+(cen[1]-a[1])*ny<0){nx=-nx;ny=-ny;}
+    return {n,a,b,nx,ny};
+  });
+}
+let EDGES = triEdges(T);
+const edist = (e,x,y) => (x-e.a[0])*e.nx+(y-e.a[1])*e.ny;
+
+function analyseBodies(Tr,mass,lx,ly,lz,dyn){
+  const phi=dyn.phi, fz=G*Math.cos(phi), fx=-G*Math.sin(phi)+dyn.brake, fy=-dyn.ay;
+  const mk = (m,x,y,z) => ({m,x,y,z,px:x+z*fx/fz,py:y+z*fy/fz});
+  const bodies = [mk(Tr.W,-Tr.xT,0,Tr.zT)];
+  if(mass>0) bodies.push(mk(mass,lx,ly,lz));
+  const M = bodies.reduce((s,b)=>s+b.m,0);
+  const cg = {x:0,y:0,z:0,px:0,py:0};
+  for(const b of bodies){cg.x+=b.m*b.x/M;cg.y+=b.m*b.y/M;cg.z+=b.m*b.z/M;cg.px+=b.m*b.px/M;cg.py+=b.m*b.py/M;}
+  const res = EDGES.map(e=>{
+    let r=0,o=0; for(const b of bodies){const d=edist(e,b.px,b.py); if(d>=0) r+=b.m*d; else o-=b.m*d;}
+    return {n:e.n,d:edist(e,cg.px,cg.py),r,o,fs:o<1e-9?Infinity:r/o};
+  });
+  const crit = res.reduce((a,b)=>b.fs<a.fs||(b.fs===a.fs&&b.d<a.d)?b:a);
+  return {bodies,M,cg,edges:res,crit,fs:crit.fs,front:res[0],lat:res[1].d<res[2].d?res[1]:res[2]};
+}
+function dynamics(){
+  const v = st.speed/3.6, ay = st.turn*(v*v)/Math.max(1,st.radius);
+  return {phi:Math.atan(st.slope/100), brake:st.brake, ay};
+}
+function analyse(){
+  const g = geom(cur.lift,cur.tilt);
+  const u = T.a+st.s+st.Lc/2+st.cgx, v = g.vf+st.Hc/2;
+  const [lx,lz] = g.map(u,v);
+  const A = analyseBodies(T,st.mass,lx,st.yl+st.cgy,lz,dynamics());
+  A.g=g; A.load={x:lx,y:st.yl+st.cgy,z:lz};
+  A.c = st.s+st.Lc/2+st.cgx;
+  A.forkZ = g.map(T.a,g.vf)[1];
+  return A;
+}
+/* capacidade nominal(h = altura do topo do garfo, c = centro de carga) */
+function capacity(Tr,h,c){
+  const saved = T, savedE = EDGES; T=Tr; EDGES=triEdges(Tr);
+  const dyn = {phi:0,brake:0,ay:AY_REF*G};
+  // longitudinal: estático, FS >= 1,25 no eixo dianteiro, no centro de carga C
+  // lateral: aceleração de referência, FS >= 1,0, com a carga no centro de carga nominal (placa vale para C nominal)
+  const ok = m => analyseBodies(Tr,m,Tr.a+c,0,h+0.5,dyn).edges[0].fs>=FS_REQ &&
+                  analyseBodies(Tr,m,Tr.a+D0,0,h+0.5,dyn).edges.slice(1).every(e=>e.fs>=1);
+  let q; const hi0=Tr.Q*1.6;
+  if(ok(hi0)) q=hi0; else { let lo=0,hi=hi0; for(let i=0;i<36;i++){const mid=(lo+hi)/2; if(ok(mid)) lo=mid; else hi=mid;} q=lo; }
+  T=saved; EDGES=savedE;
+  const byMoment = Tr.Q*(Tr.a+D0)/(Tr.a+c);
+  return Math.floor(Math.min(Tr.Q,byMoment,q)/10)*10;
+}
+const colsC = [400,500,600,700,800,900,1000];
+let rowsH = [];
+let capGrid = [];
+function buildCapTable(){
+  rowsH = [0,1,2,3,3.5,4,4.5,5,5.5,6].filter(h=>h<=T.maxLift+1e-9);
+  if(rowsH[rowsH.length-1]<T.maxLift) rowsH.push(T.maxLift);
+  capGrid = rowsH.map(h=>colsC.map(c=>capacity(T,h,c/1000)));
+  const tb = $('#capTable');
+  tb.innerHTML = '<tr><th>Altura do garfo ↓ / C →</th>'+colsC.map(c=>`<th>${c} mm</th>`).join('')+'</tr>'+
+    rowsH.map((h,i)=>`<tr><th>${h.toFixed(h%1?1:0).replace('.',',')} m</th>`+colsC.map((c,j)=>`<td data-i="${i}" data-j="${j}">${capGrid[i][j]}</td>`).join('')+'</tr>').join('');
+}
+function capNow(){ return capacity(T,cur.lift,Math.max(0.2,A_.c)); }
+
+/* ---------------- UI de controles ---------------- */
+const CTRL = [
+ {g:'Carga',items:[
+  {id:'mass',lab:'Peso da carga',unit:'kg',min:0,max:()=>Math.round(T.Q*1.5/50)*50,step:10},
+  {id:'Lc',lab:'Comprimento (no sentido dos garfos)',unit:'m',min:0.4,max:1.8,step:0.05,dec:2},
+  {id:'Wc',lab:'Largura da carga',unit:'m',min:0.4,max:2.0,step:0.05,dec:2},
+  {id:'Hc',lab:'Altura da carga (c/ pallet)',unit:'m',min:0.3,max:2.5,step:0.05,dec:2}]},
+ {g:'Posição da carga nos garfos',items:[
+  {id:'s',lab:'Afastamento do talão (rumo à ponta)',unit:'mm',min:0,max:800,step:10,mm:true},
+  {id:'yl',lab:'Deslocamento lateral',unit:'mm',min:-500,max:500,step:10,mm:true},
+  {id:'cgx',lab:'CG da carga deslocado (ao longo do garfo)',unit:'mm',min:-300,max:300,step:10,mm:true},
+  {id:'cgy',lab:'CG da carga deslocado (lateral)',unit:'mm',min:-300,max:300,step:10,mm:true}]},
+ {g:'Elevação',items:[
+  {id:'lift',lab:'Altura do garfo',unit:'m',min:0,max:()=>T.maxLift,step:0.05,dec:2},
+  {id:'tilt',lab:'Inclinação do mastro (+ para trás)',unit:'°',min:-5,max:12,step:0.5,dec:1}]},
+ {g:'Operação',items:[
+  {id:'speed',lab:'Velocidade',unit:'km/h',min:0,max:20,step:0.5,dec:1},
+  {id:'turn',lab:'Trajetória',sel:[[0,'Reta'],[1,'Curva à esquerda'],[-1,'Curva à direita']]},
+  {id:'radius',lab:'Raio da curva',unit:'m',min:2,max:15,step:0.5,dec:1},
+  {id:'brake',lab:'Frenagem (desaceleração)',unit:'m/s²',min:0,max:5,step:0.1,dec:1},
+  {id:'slope',lab:'Rampa (+ subindo de frente · − descendo de frente)',unit:'%',min:-20,max:20,step:1}]}
+];
+const inputs = {};
+function fmtVal(it,v){ return it.mm ? Math.round(v*1000)+' '+it.unit : (it.dec!=null?v.toFixed(it.dec).replace('.',','):Math.round(v))+' '+it.unit; }
+function buildControls(){
+  const grid = $('#ctlGrid'); grid.innerHTML='';
+  for(const grp of CTRL){
+    const fs = document.createElement('fieldset'); fs.innerHTML=`<legend>${grp.g}</legend>`;
+    for(const it of grp.items){
+      const row = document.createElement('div'); row.className='row';
+      if(it.sel){
+        row.innerHTML=`<label>${it.lab}</label><select>${it.sel.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>`;
+        const el=row.querySelector('select'); el.value=st[it.id];
+        el.oninput=()=>{st[it.id]=+el.value;};
+        inputs[it.id]={el,it};
+      } else {
+        const max = typeof it.max==='function'?it.max():it.max;
+        row.innerHTML=`<label><span>${it.lab}</span><output></output></label><input type="range" min="${it.mm?it.min:it.min}" max="${max}" step="${it.step}">`;
+        const el=row.querySelector('input'), out=row.querySelector('output');
+        el.value = it.mm?st[it.id]*1000:st[it.id];
+        const upd=()=>{out.textContent=fmtVal(it,st[it.id]);};
+        el.oninput=()=>{st[it.id]=it.mm?+el.value/1000:+el.value; upd();};
+        inputs[it.id]={el,out,it,upd}; upd();
+      }
+      fs.appendChild(row);
+    }
+    grid.appendChild(fs);
+  }
+}
+function syncUI(){
+  for(const id in inputs){const x=inputs[id]; if(x.out){x.el.value=x.it.mm?st[id]*1000:st[id]; x.upd();} else x.el.value=st[id];}
+}
+
+/* ---------------- cenários ---------------- */
+const SCEN = [
+ ['Carga ideal',()=>({mass:Math.round(T.Q*0.6/10)*10,Lc:1.0,Wc:1.2,Hc:1.0,s:0,yl:0,cgx:0,cgy:0,lift:0.2,tilt:6,speed:0,turn:0,brake:0,slope:0})],
+ ['Carga na ponta dos garfos',()=>({mass:Math.round(T.Q*0.85/10)*10,Lc:0.8,Wc:1.2,Hc:1.0,s:0.35,yl:0,cgx:0,cgy:0,lift:0.3,tilt:0,speed:0,turn:0,brake:0,slope:0})],
+ ['Carga elevada',()=>({mass:Math.round(T.Q*0.8/10)*10,Lc:1.0,Wc:1.2,Hc:1.0,s:0,yl:0,cgx:0,cgy:0,lift:Math.min(T.maxLift,4.5),tilt:0,speed:0,turn:0,brake:0,slope:0})],
+ ['Curva com carga elevada',()=>({mass:Math.round(T.Q*0.6/10)*10,Lc:1.0,Wc:1.2,Hc:1.0,s:0,yl:0,cgx:0,cgy:0,lift:3.0,tilt:3,speed:9,turn:1,radius:4,brake:0,slope:0})],
+ ['Descer rampa de frente',()=>({mass:Math.round(T.Q*0.8/10)*10,Lc:1.0,Wc:1.2,Hc:1.0,s:0,yl:0,cgx:0,cgy:0,lift:0.2,tilt:6,speed:5,turn:0,brake:2.5,slope:-14})],
+ ['Carga descentralizada',()=>({mass:Math.round(T.Q*0.8/10)*10,Lc:1.0,Wc:1.2,Hc:1.2,s:0.05,yl:0.25,cgx:0,cgy:0.2,lift:2.5,tilt:0,speed:0,turn:0,brake:0,slope:0})]
+];
+function applyState(o){ Object.assign(st,o); st.lift=clamp(st.lift,0,T.maxLift); syncUI(); cur.trail.length=0; }
+function resetAll(){ applyState({...DEF,mass:Math.round(T.Q*0.6/10)*10}); cur.lift=st.lift; cur.tilt=st.tilt; }
+
+/* ---------------- helpers de desenho (mundo em metros, y para cima) ---------------- */
+const V = {ctx:null,sc:1,k:1};
+const lw = px => {V.ctx.lineWidth=px*V.k/V.sc;};
+const dash = (a,b) => V.ctx.setLineDash([a*V.k/V.sc,b*V.k/V.sc]);
+const nodash = () => V.ctx.setLineDash([]);
+function txt(s,x,z,o={}){
+  const c=V.ctx; c.save(); c.translate(x,z); c.scale(V.k/V.sc,-V.k/V.sc);
+  const sz=o.size||12; c.font=`${o.w||600} ${sz}px system-ui,sans-serif`; c.textAlign=o.align||'left'; c.textBaseline=o.base||'middle';
+  if(o.bg){const w=c.measureText(s).width, x0=o.align==='center'?-w/2:o.align==='right'?-w:0; c.fillStyle=o.bg; c.fillRect(x0-4,-sz/2-3,w+8,sz+6);}
+  c.fillStyle=o.color||'#e6edf5'; c.fillText(s,0,0); c.restore();
+}
+function poly(pts,fill,stroke,w=1){
+  const c=V.ctx; c.beginPath(); pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1])); c.closePath();
+  if(fill){c.fillStyle=fill;c.fill();} if(stroke){c.strokeStyle=stroke;lw(w);c.stroke();}
+}
+function rect(x,z,w,h,fill,stroke,sw=1,r=0){
+  const c=V.ctx; c.beginPath(); if(r&&c.roundRect) c.roundRect(x,z,w,h,r); else c.rect(x,z,w,h);
+  if(fill){c.fillStyle=fill;c.fill();} if(stroke){c.strokeStyle=stroke;lw(sw);c.stroke();}
+}
+function circ(x,z,r,fill,stroke,sw=1){
+  const c=V.ctx; c.beginPath(); c.arc(x,z,r,0,Math.PI*2);
+  if(fill){c.fillStyle=fill;c.fill();} if(stroke){c.strokeStyle=stroke;lw(sw);c.stroke();}
+}
+function dot(x,z,rpx,fill,stroke){ circ(x,z,rpx*V.k/V.sc,fill,stroke||'#0a0e13',1.5); }
+function line(x1,z1,x2,z2,col,w=1){const c=V.ctx;c.strokeStyle=col;lw(w);c.beginPath();c.moveTo(x1,z1);c.lineTo(x2,z2);c.stroke();}
+function arrow(x1,z1,x2,z2,col,w=2,head=8){
+  const c=V.ctx,a=Math.atan2(z2-z1,x2-x1),h=head*V.k/V.sc;
+  line(x1,z1,x2,z2,col,w); c.fillStyle=col; c.beginPath(); c.moveTo(x2,z2);
+  c.lineTo(x2-h*Math.cos(a-0.4),z2-h*Math.sin(a-0.4)); c.lineTo(x2-h*Math.cos(a+0.4),z2-h*Math.sin(a+0.4)); c.closePath(); c.fill();
+}
+function dimH(x1,x2,z,label,col){ // cota horizontal
+  const t=4*V.k/V.sc; line(x1,z,x2,z,col,1.5); line(x1,z-t,x1,z+t,col,1.5); line(x2,z-t,x2,z+t,col,1.5);
+  txt(label,(x1+x2)/2,z+14*V.k/V.sc,{align:'center',color:col,size:11.5});
+}
+const statusOf = (fs) => fs<1?{k:'tip',t:'RISCO DE TOMBAMENTO',c:'#ff4d4f'}:fs<1.05?{k:'bad',t:'PERIGO',c:'#ff7a45'}:fs<1.2?{k:'warn',t:'ATENÇÃO',c:'#ffb020'}:{k:'ok',t:'ESTÁVEL',c:'#39d98a'};
+
+function setupCanvas(cv){
+  const k = Math.min(2,window.devicePixelRatio||1), r=cv.getBoundingClientRect();
+  const w=Math.max(10,Math.round(r.width*k)), h=Math.max(10,Math.round(r.height*k));
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+  V.ctx=cv.getContext('2d'); V.k=k; V.ctx.setTransform(1,0,0,1,0,0); V.ctx.clearRect(0,0,w,h);
+  return {W:w,H:h};
+}
+function worldTransform(ox,oy,sc){ V.sc=sc; V.ctx.setTransform(sc,0,0,-sc,ox,oy); }
+
+/* ---------------- peças ---------------- */
+function drawWheel(x,z,R,rot){
+  const c=V.ctx; c.save(); c.translate(x,z);
+  circ(0,0,R,'#15181c','#000',1);
+  c.save(); c.rotate(rot);
+  c.strokeStyle='#23282e'; lw(1.2); for(let i=0;i<28;i++){c.rotate(Math.PI*2/28); c.beginPath(); c.moveTo(R*0.82,0); c.lineTo(R*0.98,0); c.stroke();}
+  circ(0,0,R*0.62,'#b9c0c8','#5b636c',1.2);
+  circ(0,0,R*0.38,'#8b939c','#4c545c',1);
+  for(let i=0;i<5;i++){const a=i*Math.PI*2/5; circ(Math.cos(a)*R*0.22,Math.sin(a)*R*0.22,R*0.045,'#30363d');}
+  c.restore(); circ(0,0,R*0.08,'#2c3238'); c.restore();
+}
+function drawGoods(u0,vf,L,H,mass){
+  const ph=0.15;
+  rect(u0,vf,L,0.025,'#a8793f','#6d4b22',0.8);
+  for(let i=0;i<3;i++){const bw=0.1; rect(u0+(L-bw)*i/2,vf+0.025,bw,0.09,'#b88a52','#6d4b22',0.8);}
+  rect(u0,vf+0.115,L,0.035,'#c19659','#6d4b22',0.8);
+  const gh=H-ph; if(gh<=0.02) return;
+  const cols=Math.max(1,Math.round(L/0.3)), rows=Math.max(1,Math.round(gh/0.22)), cw=L/cols, rh=gh/rows;
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    rect(u0+c*cw,vf+ph+r*rh,cw,rh,((r+c)%2)?'#cfa86d':'#c59d62','#7a5a2e',0.9);
+    line(u0+c*cw+cw*0.5-0.01,vf+ph+r*rh+rh,u0+c*cw+cw*0.5-0.01,vf+ph+r*rh+rh*0.7,'#8a6a3a',0.8);
+  }
+  rect(u0,vf+ph,L,gh,'rgba(220,235,255,.10)','rgba(220,235,255,.35)',1);
+  line(u0,vf+ph+gh*0.33,u0+L,vf+ph+gh*0.40,'rgba(255,255,255,.28)',1);
+  line(u0,vf+ph+gh*0.70,u0+L,vf+ph+gh*0.77,'rgba(255,255,255,.28)',1);
+}
+
+/* ---------------- VISTA LATERAL ---------------- */
+function drawSide(A,dt){
+  const cv=$('#cvSide'), {W,H}=setupCanvas(cv), ctx=V.ctx;
+  const g=A.g, st_=statusOf(A.fs);
+  const gr=ctx.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#101a26'); gr.addColorStop(1,'#0a0e13'); ctx.fillStyle=gr; ctx.fillRect(0,0,W,H);
+  // câmera
+  const xmin=-T.L-0.85, xmax=T.a+T.fork+1.0;
+  const forkTop=A.forkZ+Math.max(0,st.mass>0?st.Hc:0.2);
+  const zTop=Math.max(T.guard+0.25, forkTop+0.55);
+  const fit=Math.min(W*0.95/(xmax-xmin),(H-84*V.k)/(zTop+0.3));
+  const target=$('#optZoom').checked?fit:Math.min(W*0.95/(xmax-xmin),(H-84*V.k)/(T.maxLift+2.0));
+  cur.sc+= (target-cur.sc)*Math.min(1,dt*4); if(!isFinite(cur.sc)||cur.sc<=0) cur.sc=target;
+  const sc=cur.sc, ox=W/2-sc*(xmin+xmax)/2, oy=H-64*V.k;
+  const phi=dynamics().phi;
+  // horizonte verdadeiro
+  worldTransform(ox,oy,sc);
+  if(Math.abs(phi)>0.001){ nodash(); dash(6,6); line(-20,0,20,0,'rgba(255,255,255,.25)',1); nodash(); txt('horizontal',xmax-0.1,0.12,{align:'right',size:11,color:'rgba(255,255,255,.4)',w:500}); }
+  ctx.save();
+  ctx.rotate(phi-cur.tipLong*Math.PI/180);
+  const dims=$('#optDims').checked;
+  // ---- solo ----
+  ctx.save(); ctx.beginPath(); ctx.rect(-30,-3,60,3); ctx.fillStyle='#161d26'; ctx.fill();
+  rect(-30,-3,60,0.04,'#566273'); ctx.restore();
+  const off=cur.odo%1;
+  for(let k=-14;k<=14;k++){const x=k-off; line(x,0,x-0.18,-0.18,'#2c3745',1);}
+  // ---- rodas ----
+  const rotF=-cur.odo/T.Rf, rotR=-cur.odo/T.Rr;
+  drawWheel(0,T.Rf,T.Rf,rotF); drawWheel(-T.L,T.Rr,T.Rr,rotR);
+  // ---- chassi / contrapeso ----
+  const L=T.L;
+  poly([[-L-0.55,0.30],[-L-0.63,0.65],[-L-0.56,1.02],[-L-0.30,1.10],[-L+0.45,1.10],[-L+0.55,0.90],[-0.55,0.90],[-0.55,0.72],[-0.30,0.72],[-0.30,0.98],[-0.06,1.02],[0.02,0.80],[0.14,0.62],[0.14,0.44],[-0.30,0.33],[-L+0.3,0.32]],'#f2b400','#7a5a00',1.6);
+  rect(-L-0.64,0.34,0.06,0.5,'#1c1f24',null,0,0.02); // para-choque traseiro
+  rect(-L-0.2,0.4,1.0,0.07,'#c28f00'); // faixa
+  poly([[0.14,0.62],[0.14,0.44],[-0.1,0.40],[-0.1,0.62]],'#2b2f36'); // frente baixa
+  // faixa de segurança
+  ctx.save(); ctx.beginPath(); ctx.rect(-L-0.64,0.5,0.1,0.28); ctx.clip();
+  for(let i=-3;i<8;i++) line(-L-0.64+i*0.06,0.5,-L-0.64+i*0.06+0.28,0.78,'#111',3);
+  ctx.restore();
+  // assento
+  rect(-0.98,0.90,0.40,0.08,'#17191d','#000',1,0.02);
+  poly([[-0.98,0.98],[-0.88,0.98],[-0.80,1.48],[-0.92,1.50]],'#1c1f24','#000',1);
+  // operador
+  line(-0.86,1.04,-0.55,1.16,'#2a5d9f',9); line(-0.55,1.16,-0.40,0.80,'#2a5d9f',8); rect(-0.46,0.74,0.16,0.07,'#111',null,0,0.02);
+  line(-0.88,1.06,-0.90,1.52,'#e0a800',14);
+  line(-0.88,1.45,-0.62,1.34,'#e0a800',7); line(-0.62,1.34,-0.34,1.30,'#e0a800',6);
+  circ(-0.90,1.68,0.105,'#e2b48c','#a87c58',1);
+  ctx.beginPath(); ctx.arc(-0.90,1.69,0.12,Math.PI*0.95,Math.PI*2.05); ctx.closePath(); ctx.fillStyle='#fff'; ctx.fill(); lw(1); ctx.strokeStyle='#999'; ctx.stroke();
+  // volante
+  line(-0.14,0.98,-0.40,1.32,'#25282d',6);
+  ctx.save(); ctx.translate(-0.42,1.34); ctx.rotate(-0.55); ctx.scale(1,0.3); circ(0,0,0.18,null,'#111',4); ctx.restore();
+  // protetor de cabeça
+  line(-1.15,1.10,-1.13,T.guard,'#1b1e23',5); line(-0.06,1.02,-0.02,T.guard,'#1b1e23',5);
+  rect(-1.28,T.guard-0.03,1.34,0.05,'#2a2e35','#000',1);
+  for(let i=0;i<9;i++) line(-1.25+i*0.15,T.guard-0.03,-1.25+i*0.15,T.guard+0.02,'#0c0e11',2);
+  // luz rotativa
+  rect(-0.65,T.guard+0.02,0.08,0.07,'#ff9500','#7a4300',1,0.02);
+  // ---- mastro (rotaciona com a inclinação) ----
+  ctx.save(); ctx.translate(0,g.Pz); ctx.rotate(g.th);
+  const mastTop=T.mastH-g.Pz, ext=Math.max(0,cur.lift-1.0), bot=0.12-g.Pz;
+  // cilindros de inclinação (referência)
+  rect(0.02,bot,0.12,mastTop-bot,'#3c444f','#15191e',1);
+  rect(0.14,bot+0.15,0.075,mastTop-bot+ext/2-0.15,'#505a67','#15191e',1);
+  rect(0.215,bot+0.3,0.075,mastTop-bot+ext-0.3,'#677382','#15191e',1);
+  rect(0.0,bot+0.45,0.32,0.05,'#2d333b');
+  // correntes
+  line(0.18,mastTop+ext/2-0.02,0.30,g.vf+0.2,'#9aa4b0',1.2);
+  // carro porta-garfos
+  rect(0.26,g.vf-0.30,T.a-0.26-0.04,0.58,'#4a535f','#1b1f24',1.2);
+  for(let i=0;i<4;i++) rect(0.28,g.vf-0.26+i*0.13,T.a-0.34,0.03,'#2d333b');
+  // espaldar (encosto da carga)
+  rect(T.a-0.08,g.vf,0.06,1.08,'#2b3038','#0e1115',1);
+  for(let i=1;i<7;i++) line(T.a-0.08,g.vf+i*0.15,T.a-0.02,g.vf+i*0.15,'#0e1115',1.5);
+  // garfo
+  poly([[T.a-0.07,g.vf+0.30],[T.a,g.vf+0.30],[T.a,g.vf],[T.a+T.fork,g.vf],[T.a+T.fork+0.01,g.vf-0.025],[T.a+T.fork-0.25,g.vf-0.043],[T.a,g.vf-0.05],[T.a-0.07,g.vf-0.05]],'#b4bcc6','#2d333b',1.3);
+  // carga
+  if(st.mass>0){
+    drawGoods(T.a+st.s,g.vf,st.Lc,st.Hc,st.mass);
+    if(dims){
+      const zc=g.vf+st.Hc+0.16, uc=T.a+A.c;
+      dimH(T.a,uc,zc,`C = ${Math.round(A.c*1000)} mm`,A.c>D0+0.001?'#ffb020':'#7de3a3');
+      dash(5,4); line(T.a+D0,g.vf,T.a+D0,zc+0.05,'rgba(125,227,163,.7)',1.2); nodash();
+      txt('C nominal 500',T.a+D0,zc+0.30,{align:'center',size:10.5,color:'rgba(125,227,163,.85)',w:500});
+    }
+  }
+  ctx.restore();
+  // ---- pivô de tombamento e base de apoio ----
+  line(-L,0.015,0,0.015,'#5fd4e8',5);
+  poly([[0,0.0],[-0.07,-0.16],[0.07,-0.16]],'#ff4d4f','#fff',1);
+  poly([[-L,0.0],[-L-0.06,-0.14],[-L+0.06,-0.14]],'#5fd4e8','#fff',1);
+  txt('pivô (eixo dianteiro)',0.1,-0.14,{size:10.5,color:'#ff8a8c',w:500});
+  txt('base de apoio',-L/2,-0.14,{size:10.5,color:'#7fdcee',align:'center',w:500});
+  // ---- CGs e vetores ----
+  const body0=A.bodies[0], body1=A.bodies[1];
+  const fz=G*Math.cos(phi), fx=-G*Math.sin(phi)+st.brake;
+  const dir=[fx/Math.hypot(fx,fz),-fz/Math.hypot(fx,fz)];
+  const cgp=A.cg;
+  if(dims){
+    // pesos
+    const kL=0.00014; // m por kg
+    arrow(body0.x,body0.z,body0.x+dir[0]*body0.m*kL,body0.z+dir[1]*body0.m*kL,'rgba(77,163,255,.9)',2.5);
+    if(body1) arrow(body1.x,body1.z,body1.x+dir[0]*body1.m*kL,body1.z+dir[1]*body1.m*kL,'rgba(255,157,58,.95)',2.5);
+    // braços
+    if(body1&&Math.abs(phi)<0.02){ dimH(0,body1.x,-0.52,`braço da carga ${body1.x.toFixed(2).replace('.',',')} m`,'#ff9d3a'); }
+    if(Math.abs(phi)<0.02) dimH(-T.xT,0,-0.85,`braço do contrapeso ${T.xT.toFixed(2).replace('.',',')} m`,'#4da3ff');
+    // altura
+    const hx=T.a+T.fork+0.28;
+    line(hx,0,hx,A.forkZ,'#cfd8e3',1.5); line(hx-0.05,0,hx+0.05,0,'#cfd8e3',1.5); line(hx-0.05,A.forkZ,hx+0.05,A.forkZ,'#cfd8e3',1.5);
+    txt(`h = ${cur.lift.toFixed(2).replace('.',',')} m`,hx+0.08,A.forkZ/2,{size:11.5,color:'#cfd8e3'});
+  }
+  // linha de ação do peso (CG combinado → solo)
+  const gx=cgp.x+cgp.z*fx/fz;
+  dash(5,4); line(cgp.x,cgp.z,gx,0,st_.c,1.8); nodash();
+  dot(body0.x,body0.z,6,'#4da3ff'); if(body1) dot(body1.x,body1.z,6,'#ff9d3a');
+  dot(cgp.x,cgp.z,8,st_.c,'#fff');
+  dot(gx,0.02,8,st_.c,'#fff');
+  if(dims){
+    txt('CG empilhadeira',body0.x-0.06,body0.z-0.16,{size:11,color:'#9cc9ff',align:'center',bg:'rgba(10,14,19,.8)'});
+    if(body1) txt('CG carga',body1.x,body1.z+0.16,{size:11,color:'#ffb86b',align:'center',bg:'rgba(10,14,19,.8)'});
+    txt('CG combinado',cgp.x-0.1,cgp.z+0.2,{size:11,color:st_.c,align:'center',bg:'rgba(10,14,19,.8)'});
+  }
+  ctx.restore(); // rotação da cena
+  // ---- HUD ----
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.font=`600 ${12*V.k}px system-ui,sans-serif`; ctx.fillStyle='rgba(215,224,234,.85)'; ctx.textBaseline='top';
+  const info=[`Massa total ${Math.round(A.M)} kg`,`CG combinado: ${(Math.abs(cgp.x)*1000).toFixed(0)} mm ${cgp.x<0?'atrás':'à frente'} do eixo · altura ${cgp.z.toFixed(2).replace('.',',')} m`,`Inclinação do piso ${(st.slope).toFixed(0)} %`];
+  info.forEach((s,i)=>ctx.fillText(s,12*V.k,(10+i*16)*V.k));
+  if(st_.k==='tip'){
+    cur.blink+=dt; if(Math.floor(cur.blink*3)%2===0){
+      ctx.fillStyle='rgba(255,77,79,.92)'; ctx.font=`800 ${26*V.k}px system-ui,sans-serif`; ctx.textAlign='center';
+      ctx.fillText('⚠ TOMBAMENTO — alivie a carga / baixe o garfo',W/2,H*0.12); ctx.textAlign='left';
+    }
+  }
+}
+
+/* ---------------- VISTA SUPERIOR ---------------- */
+function incenter(){
+  const [FL,FR,R]=[[0,T.T/2],[0,-T.T/2],[-T.L,0]];
+  const a=Math.hypot(FR[0]-R[0],FR[1]-R[1]), b=Math.hypot(FL[0]-R[0],FL[1]-R[1]), c=T.T, p=a+b+c;
+  const ix=(a*FL[0]+b*FR[0]+c*R[0])/p, iy=(a*FL[1]+b*FR[1]+c*R[1])/p;
+  const area=Math.abs((FR[0]-FL[0])*(R[1]-FL[1])-(R[0]-FL[0])*(FR[1]-FL[1]))/2;
+  return {ix,iy,r:2*area/p,tri:[FL,FR,R]};
+}
+let topLayout = {}; // para arrastar a carga
+function drawTop(A,dt){
+  const cv=$('#cvTop'), {W,H}=setupCanvas(cv), ctx=V.ctx, g=A.g, st_=statusOf(A.fs);
+  const xmin=-T.L-0.9, xmax=T.a+T.fork+0.7;
+  const ymax=Math.max(T.T/2+0.55, st.Wc/2+Math.abs(st.yl)+0.25);
+  const sc=Math.min(W*0.97/(xmax-xmin), H*0.96/(2*ymax));
+  const ox=W/2-sc*(xmin+xmax)/2, oy=H/2;
+  worldTransform(ox,oy,sc);
+  topLayout={ox,oy,sc,k:V.k};
+  // grade
+  for(let x=Math.ceil(xmin*2)/2;x<=xmax;x+=0.5) line(x,-ymax,x,ymax,Math.abs(x%1)<1e-6?'rgba(255,255,255,.07)':'rgba(255,255,255,.03)',1);
+  for(let y=Math.ceil(-ymax*2)/2;y<=ymax;y+=0.5) line(xmin,y,xmax,y,Math.abs(y%1)<1e-6?'rgba(255,255,255,.07)':'rgba(255,255,255,.03)',1);
+  // triângulo + faixa de risco
+  const inc=incenter(), [FL,FR,R]=inc.tri, band=0.07, k=(inc.r-band)/inc.r;
+  const ip=[FL,FR,R].map(p=>[inc.ix+(p[0]-inc.ix)*k, inc.iy+(p[1]-inc.iy)*k]);
+  ctx.beginPath(); [FL,FR,R].forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath();
+  ip.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath();
+  ctx.fillStyle='rgba(255,77,79,.22)'; ctx.fill('evenodd');
+  ctx.beginPath(); ip.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath(); ctx.fillStyle='rgba(95,212,232,.09)'; ctx.fill();
+  // silhueta da empilhadeira (vista superior)
+  const L=T.L, bw=T.bodyW;
+  for(const sy of [1,-1]){
+    rect(-T.Rf,sy*T.T/2-0.11,2*T.Rf,0.22,'#14171b','#000',1,0.03);
+    rect(-L-T.Rr,sy*0.38-0.09,2*T.Rr,0.18,'#14171b','#000',1,0.03);
+  }
+  line(0,-T.T/2,0,T.T/2,'#444c57',5); line(-L,-0.38,-L,0.38,'#444c57',4);
+  rect(-L-0.62,-bw/2,L+0.7,bw,'rgba(242,180,0,.92)','#7a5a00',1.5,0.08);
+  rect(-L-0.64,-bw/2+0.05,0.12,bw-0.1,'#1c1f24',null,0,0.03);
+  rect(-0.95,-0.22,0.36,0.44,'#1c1f24','#000',1,0.05);
+  circ(-0.92,0,0.1,'#e0a800','#7a5a00',1); // operador/capacete
+  circ(-0.22,0,0.14,null,'#111',2.5); // volante
+  nodash(); dash(5,4); rect(-1.28,-bw/2+0.04,1.34,bw-0.08,null,'rgba(20,20,20,.7)',1.2); nodash();
+  // mastro, carro e garfos
+  const xf=g.map(T.a,g.vf)[0];
+  rect(0.0,-0.46,0.06,0.92,'#3c444f','#15191e',1); rect(0.02,-0.45,0.08,0.09,'#505a67'); rect(0.02,0.36,0.08,0.09,'#505a67');
+  rect(xf-0.12,-0.46,0.12,0.92,'#4a535f','#15191e',1);
+  const xe=g.map(T.a+T.fork,g.vf)[0];
+  for(const sy of [1,-1]) rect(xf,sy*0.30-0.055,xe-xf,0.11,'#b4bcc6','#2d333b',1.2);
+  // carga
+  const x0=g.map(T.a+st.s,g.vf)[0], x1=g.map(T.a+st.s+st.Lc,g.vf)[0];
+  topLayout.load = st.mass>0?{x0,x1,y0:st.yl-st.Wc/2,y1:st.yl+st.Wc/2,xf}:null;
+  if(st.mass>0){
+    rect(x0,st.yl-st.Wc/2,x1-x0,st.Wc,'rgba(201,160,102,.88)','#7a5a2e',2);
+    for(let i=1;i<4;i++) line(x0,st.yl-st.Wc/2+st.Wc*i/4,x1,st.yl-st.Wc/2+st.Wc*i/4,'rgba(122,90,46,.5)',1);
+    for(let i=1;i<3;i++) line(x0+(x1-x0)*i/3,st.yl-st.Wc/2,x0+(x1-x0)*i/3,st.yl+st.Wc/2,'rgba(122,90,46,.5)',1);
+    // cotas de posição
+    if($('#optDims').checked){
+      dimH(xf,A.load.x,st.yl+st.Wc/2+0.12,`C = ${Math.round(A.c*1000)} mm`,A.c>D0+0.001?'#ffb020':'#7de3a3');
+      if(st.s>0.005) dimH(xf,x0,st.yl-st.Wc/2-0.22,`afastada ${Math.round(st.s*1000)} mm`,'#ffb020');
+    }
+    // apoio dos garfos
+    const supp=clamp((Math.min(T.fork,st.s+st.Lc)-st.s)/st.Lc,0,1);
+    txt(`garfos sob ${Math.round(supp*100)}% da carga`,(x0+x1)/2,st.yl+st.Wc/2-0.1,{align:'center',size:10.5,color:supp<2/3?'#ffb3b3':'#fff',bg:'rgba(10,14,19,.7)'});
+  }
+  // arestas do triângulo
+  dash(8,5); ctx.beginPath(); [FL,FR,R].forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath();
+  ctx.strokeStyle='#5fd4e8'; lw(2.2); ctx.stroke(); nodash();
+  [FL,FR,R].forEach(p=>dot(p[0],p[1],4.5,'#5fd4e8'));
+  txt('tombamento frontal',0.06,-T.T/2-0.18,{size:10.5,color:'#7fdcee',w:500});
+  txt('tombamento lateral',-L*0.5,bw/2+0.14,{size:10.5,color:'#7fdcee',w:500,align:'center'});
+  // rastro e pontos
+  const cg=A.cg;
+  cur.trail.push([cg.px,cg.py]); if(cur.trail.length>160) cur.trail.shift();
+  ctx.lineJoin='round'; ctx.beginPath(); cur.trail.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
+  ctx.strokeStyle='rgba(255,255,255,.55)'; lw(1.5); ctx.stroke();
+  const b0=A.bodies[0], b1=A.bodies[1];
+  // CG estático (sem dinâmica) para mostrar o deslocamento
+  const stx=cg.x, sty=cg.y;
+  if(Math.hypot(cg.px-stx,cg.py-sty)>0.01){ dash(3,3); line(stx,sty,cg.px,cg.py,'rgba(255,255,255,.7)',1.2); nodash(); dot(stx,sty,4,'rgba(255,255,255,.55)'); }
+  dot(b0.px,b0.py,5,'#4da3ff'); if(b1) dot(b1.px,b1.py,5,'#ff9d3a');
+  ctx.save(); ctx.shadowColor=st_.c; ctx.shadowBlur=14*V.k; dot(cg.px,cg.py,9,st_.c,'#fff'); ctx.restore();
+  txt(`CG: ${st_.t}`,cg.px+0.14,cg.py-0.25,{size:11.5,color:st_.c,bg:'rgba(10,14,19,.75)'});
+  // margens
+  const mf=A.front.d*1000, ml=A.lat.d*1000;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.font=`600 ${11.5*V.k}px system-ui,sans-serif`; ctx.textBaseline='top'; ctx.fillStyle='rgba(215,224,234,.85)';
+  ctx.fillText(`Margem frontal: ${mf.toFixed(0)} mm`,10*V.k,8*V.k);
+  ctx.fillText(`Margem lateral: ${ml.toFixed(0)} mm`,10*V.k,24*V.k);
+}
+// arrastar a carga na vista superior
+(function(){
+  const cv=$('#cvTop'); let drag=null;
+  const toWorld=e=>{const r=cv.getBoundingClientRect(); const px=(e.clientX-r.left)*(cv.width/r.width), py=(e.clientY-r.top)*(cv.height/r.height); return [(px-topLayout.ox)/topLayout.sc,-(py-topLayout.oy)/topLayout.sc];};
+  cv.addEventListener('pointerdown',e=>{
+    const L_=topLayout.load; if(!L_) return; const [x,y]=toWorld(e);
+    if(x>=L_.x0-0.05&&x<=L_.x1+0.05&&y>=L_.y0-0.05&&y<=L_.y1+0.05){drag={dx:x-L_.x0,dy:y-st.yl}; cv.setPointerCapture(e.pointerId); cv.style.cursor='grabbing';}
+  });
+  cv.addEventListener('pointermove',e=>{
+    if(!drag) return; const [x,y]=toWorld(e);
+    const L_=topLayout.load; if(!L_) return;
+    st.s=clamp(st.s+((x-drag.dx)-L_.x0),0,0.8); st.yl=clamp(y-drag.dy,-0.5,0.5); syncUI();
+  });
+  const end=()=>{drag=null;cv.style.cursor='grab';};
+  cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
+})();
+
+/* ---------------- VISTA TRASEIRA ---------------- */
+function drawFront(A,dt){
+  const cv=$('#cvFront'), {W,H}=setupCanvas(cv), ctx=V.ctx, g=A.g, st_=statusOf(A.fs);
+  const halfW=Math.max(T.T/2+0.55, st.Wc/2+Math.abs(st.yl)+0.25);
+  const zTop=Math.max(T.guard+0.3, A.forkZ+(st.mass>0?st.Hc:0.2)+0.4);
+  const sc=Math.min(W*0.96/(2*halfW),(H-30*V.k)/(zTop+0.2));
+  worldTransform(W/2,H-24*V.k,sc);
+  const sx=y=>-y; // vista de trás: esquerda da empilhadeira aparece à direita
+  const hw=T.T/2;
+  // rolagem em tombamento lateral
+  ctx.save();
+  const roll=cur.tipRoll*Math.PI/180;
+  if(Math.abs(roll)>0.001){ const px=roll>0?-hw:hw; ctx.translate(px,0); ctx.rotate(roll); ctx.translate(-px,0); }
+  rect(-30,-3,60,3,'#161d26'); rect(-30,-3,60,0.04,'#566273');
+  // rodas dianteiras (atrás)
+  for(const s of [1,-1]) rect(sx(s*hw)-0.11,0,0.22,2*T.Rf,'#14171b','#000',1,0.03);
+  // mastro e carga (atrás do corpo)
+  const mastX=0.5, vf=A.forkZ, ext=Math.max(0,cur.lift-1.0);
+  const topO=T.mastH, topI=T.mastH+ext;
+  for(const s of [1,-1]){ rect(s*0.46-0.045,0.2,0.09,topO-0.2,'#3c444f','#15191e',1); rect(s*0.40-0.04,0.35,0.08,topI-0.35+0.0,'#677382','#15191e',1); }
+  rect(-0.5,topI-0.02,1.0,0.06,'#505a67','#15191e',1);
+  rect(-0.5,vf-0.28,1.0,0.5,'#4a535f','#1b1f24',1.2);
+  for(const s of [1,-1]) rect(s*0.28-0.055,vf-0.05,0.11,0.05,'#b4bcc6','#2d333b',1);
+  if(st.mass>0){
+    const y0=-(st.yl+st.Wc/2), y1=-(st.yl-st.Wc/2), x0=Math.min(y0,y1), w=Math.abs(y1-y0);
+    const ph=0.15;
+    rect(x0,vf,w,0.035,'#a8793f','#6d4b22',0.8);
+    for(let i=0;i<3;i++) rect(x0+(w-0.12)*i/2,vf+0.035,0.12,0.08,'#b88a52','#6d4b22',0.8);
+    rect(x0,vf+0.115,w,0.035,'#c19659','#6d4b22',0.8);
+    const gh=st.Hc-ph;
+    if(gh>0.02){const cols=Math.max(1,Math.round(w/0.4)),rows=Math.max(1,Math.round(gh/0.22)),cw=w/cols,rh=gh/rows;
+      for(let r=0;r<rows;r++)for(let c=0;c<cols;c++) rect(x0+c*cw,vf+ph+r*rh,cw,rh,((r+c)%2)?'#cfa86d':'#c59d62','#7a5a2e',0.9);
+      rect(x0,vf+ph,w,gh,'rgba(220,235,255,.10)','rgba(220,235,255,.35)',1);}
+  }
+  // corpo traseiro (contrapeso)
+  const bw=T.bodyW;
+  rect(-bw/2,0.28,bw,0.85,'#f2b400','#7a5a00',1.6,0.1);
+  rect(-bw/2+0.05,0.36,bw-0.1,0.12,'#1c1f24',null,0,0.03);
+  rect(-bw/2+0.1,0.62,bw-0.2,0.1,'#c28f00');
+  for(const s of [1,-1]) rect(s*0.38-0.1,0,0.2,2*T.Rr,'#14171b','#000',1,0.03);
+  // protetor de cabeça e operador
+  line(-0.46,1.1,-0.46,T.guard,'#1b1e23',5); line(0.46,1.1,0.46,T.guard,'#1b1e23',5);
+  rect(-0.52,T.guard-0.03,1.04,0.05,'#2a2e35','#000',1);
+  line(0,1.12,0,1.5,'#e0a800',16); circ(0,1.68,0.105,'#e2b48c','#a87c58',1);
+  ctx.beginPath(); ctx.arc(0,1.69,0.12,Math.PI*0.95,Math.PI*2.05); ctx.closePath(); ctx.fillStyle='#fff'; ctx.fill();
+  // base de apoio na altura do CG (largura do triângulo na posição x do CG)
+  const cg=A.cg;
+  const wAt=clamp(hw*(1+cg.px/T.L),0,hw);
+  line(-hw,0.01,hw,0.01,'rgba(95,212,232,.35)',3);
+  line(-wAt,0.02,wAt,0.02,'#5fd4e8',6);
+  poly([[sx(hw),0],[sx(hw)-0.06,-0.14],[sx(hw)+0.06,-0.14]],'#ff4d4f','#fff',1);
+  poly([[sx(-hw),0],[sx(-hw)-0.06,-0.14],[sx(-hw)+0.06,-0.14]],'#ff4d4f','#fff',1);
+  // CG e linha de ação
+  const phi=dynamics().phi, fz=G*Math.cos(phi), fy=-dynamics().ay;
+  const gy=cg.y+cg.z*fy/fz;
+  dash(5,4); line(sx(cg.y),cg.z,sx(gy),0,st_.c,1.8); nodash();
+  const b0=A.bodies[0], b1=A.bodies[1];
+  dot(sx(b0.y),b0.z,5.5,'#4da3ff'); if(b1) dot(sx(b1.y),b1.z,5.5,'#ff9d3a');
+  dot(sx(cg.y),cg.z,8,st_.c,'#fff'); dot(sx(gy),0.02,8,st_.c,'#fff');
+  ctx.restore();
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.font=`600 ${11.5*V.k}px system-ui,sans-serif`; ctx.textBaseline='top'; ctx.fillStyle='rgba(215,224,234,.85)';
+  ctx.fillText(`Largura de apoio na posição do CG: ${(2*wAt*1000).toFixed(0)} mm`,10*V.k,8*V.k);
+  ctx.fillText(`Altura do CG combinado: ${cg.z.toFixed(2).replace('.',',')} m`,10*V.k,24*V.k);
+  if(Math.abs(dynamics().ay)>0.05){ ctx.fillText(`Aceleração lateral: ${(dynamics().ay/G).toFixed(2).replace('.',',')} g`,10*V.k,40*V.k); }
+}
+
+/* ---------------- gráfico de capacidade ---------------- */
+function drawCap(A,capN){
+  const cv=$('#cvCap'), {W,H}=setupCanvas(cv), ctx=V.ctx, k=V.k;
+  const pl=44*k, pr=10*k, pt=10*k, pb=26*k, cmin=300, cmax=1000, qmax=T.Q*1.25;
+  const X=c=>pl+(c-cmin)/(cmax-cmin)*(W-pl-pr), Y=q=>H-pb-(q/qmax)*(H-pb-pt);
+  ctx.font=`${10.5*k}px system-ui,sans-serif`; ctx.fillStyle='#8294a8'; ctx.strokeStyle='rgba(255,255,255,.08)'; ctx.lineWidth=k;
+  for(let c=cmin;c<=cmax;c+=100){ctx.beginPath();ctx.moveTo(X(c),pt);ctx.lineTo(X(c),H-pb);ctx.stroke(); ctx.textAlign='center'; ctx.fillText(c,X(c),H-pb+13*k);}
+  for(let q=0;q<=qmax;q+=500){ctx.beginPath();ctx.moveTo(pl,Y(q));ctx.lineTo(W-pr,Y(q));ctx.stroke(); ctx.textAlign='right'; ctx.fillText(q,pl-5*k,Y(q)+3*k);}
+  ctx.textAlign='left'; ctx.fillText('centro de carga (mm)',pl+4*k,pt+8*k);
+  const curve=(h,col,dsh)=>{ctx.beginPath(); for(let c=cmin;c<=cmax;c+=20){const q=capacity(T,h,c/1000); c===cmin?ctx.moveTo(X(c),Y(q)):ctx.lineTo(X(c),Y(q));} ctx.strokeStyle=col; ctx.lineWidth=2*k; ctx.setLineDash(dsh?[5*k,4*k]:[]); ctx.stroke(); ctx.setLineDash([]);};
+  curve(0,'rgba(180,190,200,.6)',true); curve(Math.max(0.01,cur.lift),'#5fd4e8',false);
+  ctx.strokeStyle='rgba(125,227,163,.7)'; ctx.setLineDash([4*k,4*k]); ctx.beginPath(); ctx.moveTo(X(500),pt); ctx.lineTo(X(500),H-pb); ctx.stroke(); ctx.setLineDash([]);
+  const cc=clamp(A.c*1000,cmin,cmax), over=st.mass>capN;
+  ctx.beginPath(); ctx.arc(X(cc),Y(Math.min(st.mass,qmax)),6*k,0,7); ctx.fillStyle=over?'#ff4d4f':'#39d98a'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=1.5*k; ctx.stroke();
+  ctx.fillStyle='#5fd4e8'; ctx.textAlign='right'; ctx.fillText(`curva na altura atual (${cur.lift.toFixed(1).replace('.',',')} m)`,W-pr-4*k,pt+8*k);
+  ctx.fillStyle='rgba(180,190,200,.8)'; ctx.fillText('piso (tracejada)',W-pr-4*k,pt+21*k);
+}
+
+/* ---------------- instrutor ---------------- */
+function coach(A,capN,pct){
+  const out=[]; const add=(lvl,t,d)=>out.push({lvl,t,d});
+  const c=Math.round(A.c*1000), stt=statusOf(A.fs), dyn=dynamics(), ayg=Math.abs(dyn.ay)/G;
+  const supp=st.mass>0?clamp((Math.min(T.fork,st.s+st.Lc)-st.s)/st.Lc,0,1):1;
+  if(stt.k==='tip') add('bad','Tombamento iminente','O CG combinado saiu do triângulo de estabilidade. Pare, baixe a carga e reposicione antes de continuar.');
+  if(st.mass>capN) add('bad','Carga acima da capacidade residual',`Para C = ${c} mm e garfo a ${cur.lift.toFixed(2).replace('.',',')} m a placa permite ${capN} kg; a carga é de ${st.mass} kg. Reduza o peso, encoste a carga no talão ou baixe-a.`);
+  else if(pct>0.9&&st.mass>0) add('warn','Perto do limite de capacidade',`A carga usa ${Math.round(pct*100)}% da capacidade residual. Qualquer elevação ou afastamento adicional pode excedê-la.`);
+  if(c>D0*1000+10&&st.mass>0) add('warn','Centro de carga maior que o nominal',`C = ${c} mm (nominal 500 mm). Cada 100 mm a mais aumenta o braço de momento e reduz a capacidade. ${st.s>0.01?'Encoste a carga no talão dos garfos.':'Use carga mais curta ou reduza o peso.'}`);
+  if(st.mass>0&&supp<2/3) add('bad','Garfos sustentam pouco da carga',`Os garfos apoiam apenas ${Math.round(supp*100)}% do comprimento (mínimo recomendado: 2/3). A carga pode escorregar e desloca o CG.`);
+  if(st.mass>0&&st.s+st.Lc>T.fork+0.01) add('info','Carga ultrapassa a ponta dos garfos',`Sobram ${Math.round((st.s+st.Lc-T.fork)*1000)} mm além da ponta. Use garfos mais longos ou posicione de modo que fiquem sob a carga.`);
+  if(st.mass>0&&Math.abs(st.yl+st.cgy)>0.06) add(Math.abs(st.yl+st.cgy)>0.2?'bad':'warn','Carga fora do centro',`O CG da carga está ${Math.round(Math.abs(st.yl+st.cgy)*1000)} mm ${st.yl+st.cgy>0?'à esquerda':'à direita'} do eixo. A margem lateral cai para ${Math.round(A.lat.d*1000)} mm. Centralize ou fixe/redistribua o carregamento.`);
+  if(st.mass>0&&Math.abs(st.cgx)>0.06) add('info','CG real deslocado na carga',`O CG da carga está ${Math.round(st.cgx*1000)} mm da posição geométrica ao longo do garfo, alterando o centro de carga. Confira a distribuição do peso antes de içar.`);
+  if(st.speed>0&&cur.lift>0.3&&st.mass>0) add(cur.lift>1.5?'bad':'warn','Deslocamento com a carga elevada',`Em movimento, mantenha os garfos a ~15–20 cm do piso. Com ${cur.lift.toFixed(2).replace('.',',')} m o CG está alto e qualquer curva ou freada empurra a projeção para a borda.`);
+  if(cur.tilt<-0.5&&cur.lift>0.5&&st.mass>0) add('bad','Mastro inclinado à frente com carga elevada','A inclinação para frente leva o CG da carga na direção do eixo dianteiro e pode derrubar a carga. Incline para trás ao transportar.');
+  else if(st.mass>0&&st.speed>0&&cur.tilt<3) add('info','Incline o mastro para trás ao transportar','Alguns graus para trás encostam a carga no espaldar e puxam o CG para dentro do triângulo.');
+  if(ayg>0.08) add(ayg>0.2||(cur.lift>1&&ayg>0.12)?'bad':'warn','Aceleração lateral na curva',`v² / R gera ${ayg.toFixed(2).replace('.',',')} g. Isso empurra a linha de ação do peso ${Math.round(Math.abs(A.cg.py-A.cg.y)*1000)} mm para fora. Reduza a velocidade antes da curva, principalmente com carga elevada.`);
+  if(dyn.brake>1.5&&st.mass>0) add('warn','Frenagem brusca com carga',`Desaceleração de ${dyn.brake.toFixed(1).replace('.',',')} m/s² transfere o CG ${Math.round(Math.abs(A.cg.px-A.cg.x)*1000)} mm para a frente. Freie suavemente.`);
+  if(st.slope<-3&&st.mass>0) add('bad','Descendo rampa de frente com carga','Na descida o CG desloca-se para a ponta dos garfos. Com carga, suba de frente e desça de ré (carga sempre do lado de cima).');
+  else if(st.slope>3&&st.mass>0) add('ok','Rampa: carga do lado de cima','Subindo de frente com a carga o CG recua para dentro da base. Prática correta — nunca faça curva ou manobra lateral em rampa.');
+  if(st.mass>0&&A.forkZ+st.Hc>1.55&&cur.lift<1.2&&st.speed>0) add('info','Carga bloqueia a visão','O topo da carga passa da linha dos olhos do operador. Reduza a velocidade, use ajudante ou desloque de ré.');
+  if(!out.some(m=>m.lvl==='bad'||m.lvl==='warn')) add('ok','Operação dentro da margem',`Fator de segurança ${isFinite(A.fs)?A.fs.toFixed(2).replace('.',','):'—'} (mínimo adotado: 1,25 na tabela). Continue a respeitar a placa de capacidade.`);
+  const order={bad:0,warn:1,info:2,ok:3};
+  out.sort((a,b)=>order[a.lvl]-order[b.lvl]);
+  const col={bad:'#ff5d5f',warn:'#ffb020',info:'#5fd4e8',ok:'#39d98a'};
+  $('#msgs').innerHTML=out.slice(0,7).map(m=>`<div class="msg" style="--c:${col[m.lvl]}"><b>${m.t}</b><span>${m.d}</span></div>`).join('');
+}
+
+/* ---------------- métricas ---------------- */
+function updateMetrics(A,capN){
+  const stt=statusOf(A.fs), pct=capN>0?st.mass/capN:(st.mass>0?9:0);
+  const f=(v,d=0)=>v.toFixed(d).replace('.',',');
+  const m=[
+    ['Peso da carga',`${st.mass} kg`,`capacidade nominal ${T.Q} kg`],
+    ['Centro de carga',`${Math.round(A.c*1000)} mm`,`nominal ${D0*1000} mm`],
+    ['Capacidade residual',`${capN} kg`,`h = ${f(cur.lift,2)} m · C = ${Math.round(A.c*1000)} mm`],
+    ['Fator de segurança',isFinite(A.fs)?f(A.fs,2):'—',`crítico: ${{front:'frontal',left:'lateral esq.',right:'lateral dir.'}[A.crit.n]}`],
+    ['Margem frontal',`${Math.round(A.front.d*1000)} mm`,'CG até o eixo dianteiro'],
+    ['Margem lateral',`${Math.round(A.lat.d*1000)} mm`,'CG até a aresta lateral']
+  ];
+  $('#metrics').innerHTML=m.map(x=>`<div class="m"><b>${x[0]}</b><span>${x[1]}</span><br><small>${x[2]}</small></div>`).join('');
+  $('#capPct').textContent=`${Math.round(pct*100)}%`;
+  $('#capBar').style.width=clamp(pct*100,0,100)+'%'; $('#capBar').style.background=pct>1?'#ff4d4f':pct>0.9?'#ffb020':'#39d98a';
+  const fr=A.edges[0], mom=fr.r>0?fr.o/fr.r:(fr.o>0?9:0);
+  $('#momPct').textContent=`${Math.round(mom*100)}%`;
+  $('#momBar').style.width=clamp(mom*100,0,100)+'%'; $('#momBar').style.background=mom>=1?'#ff4d4f':mom>0.85?'#ffb020':'#5fd4e8';
+  const chip=$('#chip'); chip.style.color=stt.c; $('#chipTxt').textContent=stt.t+(isFinite(A.fs)?` · FS ${f(A.fs,2)}`:'');
+  coach(A,capN,pct);
+  // tabela: células
+  document.querySelectorAll('#capTable td').forEach(td=>{
+    const v=+td.textContent; td.className=st.mass>0?(v>=st.mass?'okc':'badc'):'';
+  });
+  // destaque da célula mais próxima
+  document.querySelectorAll('#capTable td.now').forEach(td=>td.classList.remove('now'));
+  let bi=0; rowsH.forEach((h,i)=>{if(Math.abs(h-cur.lift)<Math.abs(rowsH[bi]-cur.lift)) bi=i;});
+  let bj=0; colsC.forEach((c,j)=>{if(Math.abs(c-A.c*1000)<Math.abs(colsC[bj]-A.c*1000)) bj=j;});
+  const cell=document.querySelector(`#capTable td[data-i="${bi}"][data-j="${bj}"]`); if(cell) cell.classList.add('now');
+}
+
+/* ---------------- loop ---------------- */
+let A_ = null, last = performance.now(), acc = 0;
+function frame(now){
+  const dt = Math.min(0.05,(now-last)/1000); last=now;
+  // elevação e inclinação animadas
+  const lt=clamp(st.lift,minLift(st.tilt),T.maxLift);
+  cur.lift += clamp(lt-cur.lift,-0.7*dt,0.7*dt);
+  cur.tilt += clamp(st.tilt-cur.tilt,-8*dt,8*dt);
+  cur.lift = Math.max(cur.lift,minLift(cur.tilt));
+  cur.odo += st.speed/3.6*dt;
+  A_ = analyse();
+  const tip = A_.fs<1;
+  const tl = tip&&A_.crit.n==='front'?14:0, tr = tip&&A_.crit.n!=='front'?(A_.crit.n==='left'?14:-14):0;
+  cur.tipLong += (tl-cur.tipLong)*Math.min(1,dt*3); cur.tipRoll += (tr-cur.tipRoll)*Math.min(1,dt*3);
+  drawSide(A_,dt); drawTop(A_,dt); drawFront(A_,dt);
+  acc += dt;
+  if(acc>0.12){ acc=0; const capN=capNow(); updateMetrics(A_,capN); drawCap(A_,capN); }
+  requestAnimationFrame(frame);
+}
+
+/* ---------------- inicialização ---------------- */
+function setTruck(key){
+  T=TRUCKS[key]; EDGES=triEdges(T);
+  st.lift=clamp(st.lift,0,T.maxLift); st.mass=Math.min(st.mass,Math.round(T.Q*1.5/50)*50);
+  buildControls(); buildCapTable(); cur.trail.length=0;
+}
+(function init(){
+  const sel=$('#selTruck'); sel.innerHTML=Object.entries(TRUCKS).map(([k,t])=>`<option value="${k}">${t.name}</option>`).join(''); sel.value='2.5';
+  sel.onchange=()=>{ setTruck(sel.value); resetAll(); };
+  $('#scBtns').innerHTML=SCEN.map((s,i)=>`<button class="sc" data-i="${i}">${s[0]}</button>`).join('');
+  $('#scBtns').onclick=e=>{const b=e.target.closest('button'); if(b) applyState(SCEN[+b.dataset.i][1]());};
+  $('#btnReset').onclick=resetAll;
+  st.mass=Math.round(T.Q*0.6/10)*10;
+  buildControls(); buildCapTable();
+  window.__sim={st,cur,analyse,capacity,get T(){return T;},TRUCKS,setTruck,applyState,SCEN};
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
