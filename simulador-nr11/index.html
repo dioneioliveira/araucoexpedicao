@@ -142,7 +142,7 @@ td.now{outline:2px solid var(--yellow);outline-offset:-2px;font-weight:700}
       <details><summary>Conceitos rápidos (NR-11 / ISO 22915)</summary>
         <ul>
           <li><b>Triângulo de estabilidade:</b> rodas dianteiras + pivô traseiro. O CG combinado precisa ficar dentro.</li>
-          <li><b>Centro de carga (C):</b> do talão dos garfos ao CG da carga; a placa vale para C nominal (500 mm).</li>
+          <li><b>Centro de carga (C):</b> do talão dos garfos ao CG da carga; a placa vale para C nominal (500 mm; 600 mm na 7 t).</li>
           <li><b>Boas práticas:</b> carga encostada no talão, garfos sob ≥ 2/3, mastro para trás, garfos a ~15–20 cm do piso, rampa com a carga do lado de cima, curva devagar.</li>
         </ul>
       </details>
@@ -160,16 +160,17 @@ td.now{outline:2px solid var(--yellow);outline-offset:-2px;font-weight:700}
 'use strict';
 const $ = s => document.querySelector(s);
 const clamp = (v,a,b) => Math.min(b,Math.max(a,v));
-const G = 9.81, D0 = 0.5, FS_REQ = 1.25, AY_REF = 0.19; // AY_REF: aceleração lateral de referência (fração de g) da tabela
+const G = 9.81, FS_REQ = 1.25; // T.ay: aceleração lateral de referência (fração de g) usada na tabela
 
 /* ---------------- modelos de empilhadeira (m, kg) ----------------
    x: para frente a partir do eixo dianteiro · y: para a esquerda · z: altura do piso
    W: massa em ordem de marcha  · xT: CG atrás do eixo dianteiro · zT: altura do CG
    L: entre-eixos · T: bitola dianteira · a: eixo dianteiro → face do garfo (talão) */
 const TRUCKS = {
-  '1.5': {name:'Empilhadeira 1,5 t',Q:1500,W:2600,xT:0.70,zT:0.68,L:1.38,T:0.88,a:0.40,fork:1.07,maxLift:4.5,Rf:0.30,Rr:0.24,bodyW:0.95,mastH:2.00,guard:2.05},
-  '2.5': {name:'Empilhadeira 2,5 t',Q:2500,W:3900,xT:0.80,zT:0.78,L:1.65,T:1.00,a:0.45,fork:1.07,maxLift:5.5,Rf:0.34,Rr:0.27,bodyW:1.05,mastH:2.15,guard:2.15},
-  '3.5': {name:'Empilhadeira 3,5 t',Q:3500,W:5200,xT:0.90,zT:0.85,L:1.95,T:1.17,a:0.50,fork:1.22,maxLift:6.0,Rf:0.40,Rr:0.31,bodyW:1.20,mastH:2.25,guard:2.20}
+  '1.5': {name:'Empilhadeira 1,5 t',Q:1500,W:2600,xT:0.70,zT:0.68,L:1.38,T:0.88,a:0.40,fork:1.07,maxLift:4.5,Rf:0.30,Rr:0.24,bodyW:0.95,mastH:2.00,guard:2.05,D:0.5,dz:0,ay:0.19},
+  '2.5': {name:'Empilhadeira 2,5 t',Q:2500,W:3900,xT:0.80,zT:0.78,L:1.65,T:1.00,a:0.45,fork:1.07,maxLift:5.5,Rf:0.34,Rr:0.27,bodyW:1.05,mastH:2.15,guard:2.15,D:0.5,dz:0,ay:0.19},
+  '3.5': {name:'Empilhadeira 3,5 t',Q:3500,W:5200,xT:0.90,zT:0.85,L:1.95,T:1.17,a:0.50,fork:1.22,maxLift:6.0,Rf:0.40,Rr:0.31,bodyW:1.20,mastH:2.25,guard:2.20,D:0.5,dz:0.05,ay:0.19},
+  '7': {name:'Empilhadeira 7,0 t',Q:7000,W:10500,xT:1.10,zT:1.00,L:2.40,T:1.75,a:0.62,fork:1.80,maxLift:6.0,Rf:0.52,Rr:0.42,bodyW:1.60,mastH:2.75,guard:2.60,D:0.6,dz:0.22,ay:0.28}
 };
 let T = TRUCKS['2.5'];
 
@@ -230,18 +231,18 @@ function analyse(){
 /* capacidade nominal(h = altura do topo do garfo, c = centro de carga) */
 function capacity(Tr,h,c){
   const saved = T, savedE = EDGES; T=Tr; EDGES=triEdges(Tr);
-  const dyn = {phi:0,brake:0,ay:AY_REF*G};
+  const dyn = {phi:0,brake:0,ay:Tr.ay*G};
   // longitudinal: estático, FS >= 1,25 no eixo dianteiro, no centro de carga C
   // lateral: aceleração de referência, FS >= 1,0, com a carga no centro de carga nominal (placa vale para C nominal)
   const ok = m => analyseBodies(Tr,m,Tr.a+c,0,h+0.5,dyn).edges[0].fs>=FS_REQ &&
-                  analyseBodies(Tr,m,Tr.a+D0,0,h+0.5,dyn).edges.slice(1).every(e=>e.fs>=1);
+                  analyseBodies(Tr,m,Tr.a+Tr.D,0,h+0.5,dyn).edges.slice(1).every(e=>e.fs>=1);
   let q; const hi0=Tr.Q*1.6;
   if(ok(hi0)) q=hi0; else { let lo=0,hi=hi0; for(let i=0;i<36;i++){const mid=(lo+hi)/2; if(ok(mid)) lo=mid; else hi=mid;} q=lo; }
   T=saved; EDGES=savedE;
-  const byMoment = Tr.Q*(Tr.a+D0)/(Tr.a+c);
+  const byMoment = Tr.Q*(Tr.a+Tr.D)/(Tr.a+c);
   return Math.floor(Math.min(Tr.Q,byMoment,q)/10)*10;
 }
-const colsC = [400,500,600,700,800,900,1000];
+const colsC = [400,500,600,700,800,900,1000,1200];
 let rowsH = [];
 let capGrid = [];
 function buildCapTable(){
@@ -258,12 +259,12 @@ function capNow(){ return capacity(T,cur.lift,Math.max(0.2,A_.c)); }
 const CTRL = [
  {g:'Carga',items:[
   {id:'mass',lab:'Peso da carga',unit:'kg',min:0,max:()=>Math.round(T.Q*1.5/50)*50,step:10},
-  {id:'Lc',lab:'Comprimento (ao longo dos garfos)',unit:'m',min:0.4,max:1.8,step:0.05,dec:2},
-  {id:'Wc',lab:'Largura da carga',unit:'m',min:0.4,max:2.0,step:0.05,dec:2},
-  {id:'Hc',lab:'Altura da carga',unit:'m',min:0.3,max:2.5,step:0.05,dec:2}]},
+  {id:'Lc',lab:'Comprimento (máx. 2200 mm)',unit:'mm',min:400,max:2200,step:50,mm:true},
+  {id:'Wc',lab:'Largura (máx. 5000 mm)',unit:'mm',min:400,max:5000,step:50,mm:true},
+  {id:'Hc',lab:'Altura da carga',unit:'mm',min:300,max:2500,step:50,mm:true}]},
  {g:'Posição da carga nos garfos',items:[
-  {id:'s',lab:'Afastamento do talão',unit:'mm',min:0,max:800,step:10,mm:true},
-  {id:'yl',lab:'Deslocamento lateral',unit:'mm',min:-500,max:500,step:10,mm:true},
+  {id:'s',lab:'Afastamento do talão',unit:'mm',min:0,max:1000,step:10,mm:true},
+  {id:'yl',lab:'Deslocamento lateral',unit:'mm',min:-1000,max:1000,step:10,mm:true},
   {id:'cgx',lab:'CG deslocado (ao longo)',unit:'mm',min:-300,max:300,step:10,mm:true},
   {id:'cgy',lab:'CG deslocado (lateral)',unit:'mm',min:-300,max:300,step:10,mm:true}]},
  {g:'Elevação',items:[
@@ -397,13 +398,13 @@ function drawSide(A,dt){
   const g=A.g, st_=statusOf(A.fs);
   const gr=ctx.createLinearGradient(0,0,0,H); gr.addColorStop(0,'#101a26'); gr.addColorStop(1,'#0a0e13'); ctx.fillStyle=gr; ctx.fillRect(0,0,W,H);
   // câmera
-  const xmin=-T.L-0.85, xmax=T.a+T.fork+1.0;
+  const xmin=-T.L-0.85, xmax=Math.max(T.a+T.fork+1.0,T.a+st.s+st.Lc+0.4);
   const forkTop=A.forkZ+Math.max(0,st.mass>0?st.Hc:0.2);
   const zTop=Math.max(T.guard+0.25, forkTop+0.55);
-  const fit=Math.min(W*0.95/(xmax-xmin),(H-84*V.k)/(zTop+0.3));
-  const target=$('#optZoom').checked?fit:Math.min(W*0.95/(xmax-xmin),(H-84*V.k)/(T.maxLift+2.0));
+  const fit=Math.min(W*0.95/(xmax-xmin),H*0.97/(zTop+1.4));
+  const target=$('#optZoom').checked?fit:Math.min(W*0.95/(xmax-xmin),H*0.97/(T.maxLift+3.0));
   cur.sc+= (target-cur.sc)*Math.min(1,dt*4); if(!isFinite(cur.sc)||cur.sc<=0) cur.sc=target;
-  const sc=cur.sc, ox=W/2-sc*(xmin+xmax)/2, oy=H-64*V.k;
+  const sc=cur.sc, ox=W/2-sc*(xmin+xmax)/2, oy=H-1.15*sc-6*V.k;
   const phi=dynamics().phi;
   // horizonte verdadeiro
   worldTransform(ox,oy,sc);
@@ -420,7 +421,8 @@ function drawSide(A,dt){
   const rotF=-cur.odo/T.Rf, rotR=-cur.odo/T.Rr;
   drawWheel(0,T.Rf,T.Rf,rotF); drawWheel(-T.L,T.Rr,T.Rr,rotR);
   // ---- chassi / contrapeso ----
-  const L=T.L;
+  const L=T.L, dz=T.dz;
+  ctx.save(); ctx.translate(0,dz);
   poly([[-L-0.55,0.30],[-L-0.63,0.65],[-L-0.56,1.02],[-L-0.30,1.10],[-L+0.45,1.10],[-L+0.55,0.90],[-0.55,0.90],[-0.55,0.72],[-0.30,0.72],[-0.30,0.98],[-0.06,1.02],[0.02,0.80],[0.14,0.62],[0.14,0.44],[-0.30,0.33],[-L+0.3,0.32]],'#f2b400','#7a5a00',1.6);
   rect(-L-0.64,0.34,0.06,0.5,'#1c1f24',null,0,0.02); // para-choque traseiro
   rect(-L-0.2,0.4,1.0,0.07,'#c28f00'); // faixa
@@ -436,11 +438,12 @@ function drawSide(A,dt){
   line(-0.14,0.98,-0.40,1.32,'#25282d',6);
   ctx.save(); ctx.translate(-0.42,1.34); ctx.rotate(-0.55); ctx.scale(1,0.3); circ(0,0,0.18,null,'#111',4); ctx.restore();
   // protetor de cabeça
-  line(-1.15,1.10,-1.13,T.guard,'#1b1e23',5); line(-0.06,1.02,-0.02,T.guard,'#1b1e23',5);
-  rect(-1.28,T.guard-0.03,1.34,0.05,'#2a2e35','#000',1);
-  for(let i=0;i<9;i++) line(-1.25+i*0.15,T.guard-0.03,-1.25+i*0.15,T.guard+0.02,'#0c0e11',2);
+  line(-1.15,1.10,-1.13,(T.guard-dz),'#1b1e23',5); line(-0.06,1.02,-0.02,(T.guard-dz),'#1b1e23',5);
+  rect(-1.28,(T.guard-dz)-0.03,1.34,0.05,'#2a2e35','#000',1);
+  for(let i=0;i<9;i++) line(-1.25+i*0.15,(T.guard-dz)-0.03,-1.25+i*0.15,(T.guard-dz)+0.02,'#0c0e11',2);
   // luz rotativa
-  rect(-0.65,T.guard+0.02,0.08,0.07,'#ff9500','#7a4300',1,0.02);
+  rect(-0.65,(T.guard-dz)+0.02,0.08,0.07,'#ff9500','#7a4300',1,0.02);
+  ctx.restore();
   // ---- mastro (rotaciona com a inclinação) ----
   ctx.save(); ctx.translate(0,g.Pz); ctx.rotate(g.th);
   const mastTop=T.mastH-g.Pz, ext=Math.max(0,cur.lift-1.0), bot=0.12-g.Pz;
@@ -464,9 +467,9 @@ function drawSide(A,dt){
     drawGoods(T.a+st.s,g.vf,st.Lc,st.Hc,st.mass);
     if(dims){
       const zc=g.vf+st.Hc+0.16, uc=T.a+A.c;
-      dimH(T.a,uc,zc,`C = ${Math.round(A.c*1000)} mm`,A.c>D0+0.001?'#ffb020':'#7de3a3');
-      dash(5,4); line(T.a+D0,g.vf,T.a+D0,zc+0.05,'rgba(125,227,163,.7)',1.2); nodash();
-      txt('C nominal 500',T.a+D0,zc+0.30,{align:'center',size:10.5,color:'rgba(125,227,163,.85)',w:500});
+      dimH(T.a,uc,zc,`C = ${Math.round(A.c*1000)} mm`,A.c>T.D+0.001?'#ffb020':'#7de3a3');
+      dash(5,4); line(T.a+T.D,g.vf,T.a+T.D,zc+0.05,'rgba(125,227,163,.7)',1.2); nodash();
+      txt(`C nominal ${Math.round(T.D*1000)}`,T.a+T.D,zc+0.30,{align:'center',size:10.5,color:'rgba(125,227,163,.85)',w:500});
     }
   }
   ctx.restore();
@@ -530,8 +533,8 @@ function incenter(){
 let topLayout = {}; // para arrastar a carga
 function drawTop(A,dt){
   const cv=$('#cvTop'), {W,H}=setupCanvas(cv), ctx=V.ctx, g=A.g, st_=statusOf(A.fs);
-  const xmin=-T.L-0.9, xmax=T.a+T.fork+0.7;
-  const ymax=Math.max(T.T/2+0.55, st.Wc/2+Math.abs(st.yl)+0.25);
+  const xmin=-T.L-0.9, xmax=Math.max(T.a+T.fork+0.7,T.a+st.s+st.Lc+0.4);
+  const ymax=Math.max(T.T/2+0.55, st.Wc/2+Math.abs(st.yl)+0.5);
   const sc=Math.min(W*0.97/(xmax-xmin), H*0.96/(2*ymax));
   const ox=W/2-sc*(xmin+xmax)/2, oy=H/2;
   worldTransform(ox,oy,sc);
@@ -550,9 +553,9 @@ function drawTop(A,dt){
   const L=T.L, bw=T.bodyW;
   for(const sy of [1,-1]){
     rect(-T.Rf,sy*T.T/2-0.11,2*T.Rf,0.22,'#14171b','#000',1,0.03);
-    rect(-L-T.Rr,sy*0.38-0.09,2*T.Rr,0.18,'#14171b','#000',1,0.03);
+    rect(-L-T.Rr,sy*T.T*0.38-0.09,2*T.Rr,0.18,'#14171b','#000',1,0.03);
   }
-  line(0,-T.T/2,0,T.T/2,'#444c57',5); line(-L,-0.38,-L,0.38,'#444c57',4);
+  line(0,-T.T/2,0,T.T/2,'#444c57',5); line(-L,-T.T*0.38,-L,T.T*0.38,'#444c57',4);
   rect(-L-0.62,-bw/2,L+0.7,bw,'rgba(242,180,0,.92)','#7a5a00',1.5,0.08);
   rect(-L-0.64,-bw/2+0.05,0.12,bw-0.1,'#1c1f24',null,0,0.03);
   rect(-0.95,-0.22,0.36,0.44,'#1c1f24','#000',1,0.05);
@@ -560,10 +563,10 @@ function drawTop(A,dt){
   nodash(); dash(5,4); rect(-1.28,-bw/2+0.04,1.34,bw-0.08,null,'rgba(20,20,20,.7)',1.2); nodash();
   // mastro, carro e garfos
   const xf=g.map(T.a,g.vf)[0];
-  rect(0.0,-0.46,0.06,0.92,'#3c444f','#15191e',1); rect(0.02,-0.45,0.08,0.09,'#505a67'); rect(0.02,0.36,0.08,0.09,'#505a67');
-  rect(xf-0.12,-0.46,0.12,0.92,'#4a535f','#15191e',1);
+  rect(0.0,-T.T*0.46,0.06,T.T*0.92,'#3c444f','#15191e',1);
+  rect(xf-0.12,-T.T*0.46,0.12,T.T*0.92,'#4a535f','#15191e',1);
   const xe=g.map(T.a+T.fork,g.vf)[0];
-  for(const sy of [1,-1]) rect(xf,sy*0.30-0.055,xe-xf,0.11,'#b4bcc6','#2d333b',1.2);
+  for(const sy of [1,-1]) rect(xf,sy*T.T*0.30-0.055,xe-xf,0.11,'#b4bcc6','#2d333b',1.2);
   // carga
   const x0=g.map(T.a+st.s,g.vf)[0], x1=g.map(T.a+st.s+st.Lc,g.vf)[0];
   topLayout.load = st.mass>0?{x0,x1,y0:st.yl-st.Wc/2,y1:st.yl+st.Wc/2,xf}:null;
@@ -573,7 +576,7 @@ function drawTop(A,dt){
     for(let i=1;i<3;i++) line(x0+(x1-x0)*i/3,st.yl-st.Wc/2,x0+(x1-x0)*i/3,st.yl+st.Wc/2,'rgba(122,90,46,.5)',1);
     // cotas de posição
     if($('#optDims').checked){
-      dimH(xf,A.load.x,st.yl+st.Wc/2+0.12,`C = ${Math.round(A.c*1000)} mm`,A.c>D0+0.001?'#ffb020':'#7de3a3');
+      dimH(xf,A.load.x,st.yl+st.Wc/2+0.12,`C = ${Math.round(A.c*1000)} mm`,A.c>T.D+0.001?'#ffb020':'#7de3a3');
       if(st.s>0.005) dimH(xf,x0,st.yl-st.Wc/2-0.22,`afastada ${Math.round(st.s*1000)} mm`,'#ffb020');
     }
     // apoio dos garfos
@@ -616,7 +619,7 @@ function drawTop(A,dt){
   cv.addEventListener('pointermove',e=>{
     if(!drag) return; const [x,y]=toWorld(e);
     const L_=topLayout.load; if(!L_) return;
-    st.s=clamp(st.s+((x-drag.dx)-L_.x0),0,0.8); st.yl=clamp(y-drag.dy,-0.5,0.5); syncUI();
+    st.s=clamp(st.s+((x-drag.dx)-L_.x0),0,1.0); st.yl=clamp(y-drag.dy,-1.0,1.0); syncUI();
   });
   const end=()=>{drag=null;cv.style.cursor='grab';};
   cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
@@ -641,10 +644,10 @@ function drawFront(A,dt){
   // mastro e carga (atrás do corpo)
   const mastX=0.5, vf=A.forkZ, ext=Math.max(0,cur.lift-1.0);
   const topO=T.mastH, topI=T.mastH+ext;
-  for(const s of [1,-1]){ rect(s*0.46-0.045,0.2,0.09,topO-0.2,'#3c444f','#15191e',1); rect(s*0.40-0.04,0.35,0.08,topI-0.35+0.0,'#677382','#15191e',1); }
-  rect(-0.5,topI-0.02,1.0,0.06,'#505a67','#15191e',1);
-  rect(-0.5,vf-0.28,1.0,0.5,'#4a535f','#1b1f24',1.2);
-  for(const s of [1,-1]) rect(s*0.28-0.055,vf-0.05,0.11,0.05,'#b4bcc6','#2d333b',1);
+  for(const s of [1,-1]){ rect(s*T.T*0.46-0.045,0.2,0.09,topO-0.2,'#3c444f','#15191e',1); rect(s*T.T*0.40-0.04,0.35,0.08,topI-0.35+0.0,'#677382','#15191e',1); }
+  rect(-T.T*0.5,topI-0.02,T.T,0.06,'#505a67','#15191e',1);
+  rect(-T.T*0.5,vf-0.28,T.T,0.5,'#4a535f','#1b1f24',1.2);
+  for(const s of [1,-1]) rect(s*T.T*0.30-0.055,vf-0.05,0.11,0.05,'#b4bcc6','#2d333b',1);
   if(st.mass>0){
     const y0=-(st.yl+st.Wc/2), y1=-(st.yl-st.Wc/2), x0=Math.min(y0,y1), w=Math.abs(y1-y0);
     const ph=0.15;
@@ -658,13 +661,15 @@ function drawFront(A,dt){
   }
   // corpo traseiro (contrapeso)
   const bw=T.bodyW;
+  ctx.save(); ctx.translate(0,T.dz);
   rect(-bw/2,0.28,bw,0.85,'#f2b400','#7a5a00',1.6,0.1);
   rect(-bw/2+0.05,0.36,bw-0.1,0.12,'#1c1f24',null,0,0.03);
   rect(-bw/2+0.1,0.62,bw-0.2,0.1,'#c28f00');
-  for(const s of [1,-1]) rect(s*0.38-0.1,0,0.2,2*T.Rr,'#14171b','#000',1,0.03);
-  // protetor de cabeça e operador
-  line(-0.46,1.1,-0.46,T.guard,'#1b1e23',5); line(0.46,1.1,0.46,T.guard,'#1b1e23',5);
-  rect(-0.52,T.guard-0.03,1.04,0.05,'#2a2e35','#000',1);
+  ctx.restore();
+  for(const s of [1,-1]) rect(s*Math.min(0.38,T.bodyW*0.3)-0.1,0,0.2,2*T.Rr,'#14171b','#000',1,0.03);
+  // protetor de cabeça
+  line(-bw*0.42,1.1+T.dz,-bw*0.42,T.guard,'#1b1e23',5); line(bw*0.42,1.1+T.dz,bw*0.42,T.guard,'#1b1e23',5);
+  rect(-bw*0.5,T.guard-0.03,bw,0.05,'#2a2e35','#000',1);
   // base de apoio na altura do CG (largura do triângulo na posição x do CG)
   const cg=A.cg;
   const wAt=clamp(hw*(1+cg.px/T.L),0,hw);
@@ -690,15 +695,15 @@ function drawFront(A,dt){
 /* ---------------- gráfico de capacidade ---------------- */
 function drawCap(A,capN){
   const cv=$('#cvCap'), {W,H}=setupCanvas(cv), ctx=V.ctx, k=V.k;
-  const pl=44*k, pr=10*k, pt=10*k, pb=26*k, cmin=300, cmax=1000, qmax=T.Q*1.25;
+  const pl=44*k, pr=10*k, pt=10*k, pb=26*k, cmin=300, cmax=1200, qmax=T.Q*1.25;
   const X=c=>pl+(c-cmin)/(cmax-cmin)*(W-pl-pr), Y=q=>H-pb-(q/qmax)*(H-pb-pt);
   ctx.font=`${10.5*k}px system-ui,sans-serif`; ctx.fillStyle='#8294a8'; ctx.strokeStyle='rgba(255,255,255,.08)'; ctx.lineWidth=k;
   for(let c=cmin;c<=cmax;c+=100){ctx.beginPath();ctx.moveTo(X(c),pt);ctx.lineTo(X(c),H-pb);ctx.stroke(); ctx.textAlign='center'; ctx.fillText(c,X(c),H-pb+13*k);}
-  for(let q=0;q<=qmax;q+=500){ctx.beginPath();ctx.moveTo(pl,Y(q));ctx.lineTo(W-pr,Y(q));ctx.stroke(); ctx.textAlign='right'; ctx.fillText(q,pl-5*k,Y(q)+3*k);}
+  const qs=T.Q>4000?1000:500; for(let q=0;q<=qmax;q+=qs){ctx.beginPath();ctx.moveTo(pl,Y(q));ctx.lineTo(W-pr,Y(q));ctx.stroke(); ctx.textAlign='right'; ctx.fillText(q,pl-5*k,Y(q)+3*k);}
   ctx.textAlign='left'; ctx.fillText('centro de carga (mm)',pl+4*k,pt+8*k);
   const curve=(h,col,dsh)=>{ctx.beginPath(); for(let c=cmin;c<=cmax;c+=20){const q=capacity(T,h,c/1000); c===cmin?ctx.moveTo(X(c),Y(q)):ctx.lineTo(X(c),Y(q));} ctx.strokeStyle=col; ctx.lineWidth=2*k; ctx.setLineDash(dsh?[5*k,4*k]:[]); ctx.stroke(); ctx.setLineDash([]);};
   curve(0,'rgba(180,190,200,.6)',true); curve(Math.max(0.01,cur.lift),'#5fd4e8',false);
-  ctx.strokeStyle='rgba(125,227,163,.7)'; ctx.setLineDash([4*k,4*k]); ctx.beginPath(); ctx.moveTo(X(500),pt); ctx.lineTo(X(500),H-pb); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(125,227,163,.7)'; ctx.setLineDash([4*k,4*k]); ctx.beginPath(); ctx.moveTo(X(T.D*1000),pt); ctx.lineTo(X(T.D*1000),H-pb); ctx.stroke(); ctx.setLineDash([]);
   const cc=clamp(A.c*1000,cmin,cmax), over=st.mass>capN;
   ctx.beginPath(); ctx.arc(X(cc),Y(Math.min(st.mass,qmax)),6*k,0,7); ctx.fillStyle=over?'#ff4d4f':'#39d98a'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=1.5*k; ctx.stroke();
   ctx.fillStyle='#5fd4e8'; ctx.textAlign='right'; ctx.fillText(`curva na altura atual (${cur.lift.toFixed(1).replace('.',',')} m)`,W-pr-4*k,pt+8*k);
@@ -713,7 +718,7 @@ function coach(A,capN,pct){
   if(stt.k==='tip') add('bad','Tombamento iminente','O CG combinado saiu do triângulo de estabilidade. Pare, baixe a carga e reposicione antes de continuar.');
   if(st.mass>capN) add('bad','Carga acima da capacidade residual',`Para C = ${c} mm e garfo a ${cur.lift.toFixed(2).replace('.',',')} m a placa permite ${capN} kg; a carga é de ${st.mass} kg. Reduza o peso, encoste a carga no talão ou baixe-a.`);
   else if(pct>0.9&&st.mass>0) add('warn','Perto do limite de capacidade',`A carga usa ${Math.round(pct*100)}% da capacidade residual. Qualquer elevação ou afastamento adicional pode excedê-la.`);
-  if(c>D0*1000+10&&st.mass>0) add('warn','Centro de carga maior que o nominal',`C = ${c} mm (nominal 500 mm). Cada 100 mm a mais aumenta o braço de momento e reduz a capacidade. ${st.s>0.01?'Encoste a carga no talão dos garfos.':'Use carga mais curta ou reduza o peso.'}`);
+  if(c>T.D*1000+10&&st.mass>0) add('warn','Centro de carga maior que o nominal',`C = ${c} mm (nominal ${Math.round(T.D*1000)} mm). Cada 100 mm a mais aumenta o braço de momento e reduz a capacidade. ${st.s>0.01?'Encoste a carga no talão dos garfos.':'Use carga mais curta ou reduza o peso.'}`);
   if(st.mass>0&&supp<2/3) add('bad','Garfos sustentam pouco da carga',`Os garfos apoiam apenas ${Math.round(supp*100)}% do comprimento (mínimo recomendado: 2/3). A carga pode escorregar e desloca o CG.`);
   if(st.mass>0&&st.s+st.Lc>T.fork+0.01) add('info','Carga ultrapassa a ponta dos garfos',`Sobram ${Math.round((st.s+st.Lc-T.fork)*1000)} mm além da ponta. Use garfos mais longos ou posicione de modo que fiquem sob a carga.`);
   if(st.mass>0&&Math.abs(st.yl+st.cgy)>0.06) add(Math.abs(st.yl+st.cgy)>0.2?'bad':'warn','Carga fora do centro',`O CG da carga está ${Math.round(Math.abs(st.yl+st.cgy)*1000)} mm ${st.yl+st.cgy>0?'à esquerda':'à direita'} do eixo. A margem lateral cai para ${Math.round(A.lat.d*1000)} mm. Centralize ou fixe/redistribua o carregamento.`);
@@ -739,7 +744,7 @@ function updateMetrics(A,capN){
   const f=(v,d=0)=>v.toFixed(d).replace('.',',');
   const m=[
     ['Peso da carga',`${st.mass} kg`,`capacidade nominal ${T.Q} kg`],
-    ['Centro de carga',`${Math.round(A.c*1000)} mm`,`nominal ${D0*1000} mm`],
+    ['Centro de carga',`${Math.round(A.c*1000)} mm`,`nominal ${Math.round(T.D*1000)} mm`],
     ['Capacidade residual',`${capN} kg`,`h = ${f(cur.lift,2)} m · C = ${Math.round(A.c*1000)} mm`],
     ['Fator de segurança',isFinite(A.fs)?f(A.fs,2):'—',`crítico: ${{front:'frontal',left:'lateral esq.',right:'lateral dir.'}[A.crit.n]}`],
     ['Margem frontal',`${Math.round(A.front.d*1000)} mm`,'CG até o eixo dianteiro'],
