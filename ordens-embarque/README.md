@@ -449,3 +449,18 @@ na resolução original.
 5. **E-mail do container** (no painel ou na lateral): EXP, nº do container e lacre em destaque, tara, carga
    máx. e resultado da conferência, com as fotos logo abaixo. **E-mail pronto (Outlook)** baixa um arquivo
    .eml que o Outlook abre como mensagem nova, já com as fotos; **Copiar e-mail** copia tudo para colar.
+
+### Uso simultâneo (equipe na pasta do servidor)
+
+Para 2 ou 3 pessoas usarem o app ao mesmo tempo (Google Chrome):
+
+1. Crie uma vez uma pasta no servidor (ex.: `\\servidor\expedicao\ordens-embarque`) com leitura e gravação para a equipe.
+2. Em cada computador: clique no aviso do topo (**Dados só neste computador**), digite **seu nome**, clique em
+   **Escolher pasta compartilhada** e escolha essa pasta. O Chrome pede permissão: clique em **Editar arquivos**.
+3. Pronto: os dados, as **fotos dos containers** e quem está usando ficam na pasta. As alterações de um aparecem para os
+   outros em cerca de 4 segundos, com o aviso "Fulano atualizou o transporte X".
+   - O nome de quem está com uma ordem aberta aparece em amarelo na lista e no painel da ordem; o topo mostra quantos
+     estão online.
+   - Quem está digitando não perde o cursor nem o que digitou quando chegam dados dos colegas.
+   - Se duas pessoas alterarem o **mesmo campo**, vale a última gravação; campos diferentes nunca se perdem.
+4. Ao abrir o app outro dia, o Chrome pode pedir para liberar a pasta de novo: clique em **Reconectar dados compartilhados** no topo.

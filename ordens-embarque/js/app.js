@@ -561,7 +561,7 @@
         <td>${treinoChip(T)}</td>
         <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
-        <td class="c-status">${statusChip(T)}${fotoChip(T)}</td>
+        <td class="c-status">${statusChip(T)}${fotoChip(T)}${quemAbriu(T.transporte).map(n => ` <span class="chip pres" title="${esc(n)} está com esta ordem aberta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>${esc(n.split(' ')[0])}</span>`).join('')}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
     })(L.T)).join('');
@@ -1171,7 +1171,7 @@
     </div>`;
   }
   async function carregarMiniaturas(root) {
-    for (const img of $$('img[data-fid]', root)) { const u = await urlFoto(img.dataset.fid); if (u) img.src = u; else img.replaceWith(Object.assign(document.createElement('span'), { className: 'muted small', textContent: 'foto em outro computador' })); }
+    for (const img of $$('img[data-fid]', root)) { const u = await urlFoto(img.dataset.fid); if (u) img.src = u; else img.replaceWith(Object.assign(document.createElement('span'), { className: 'muted small', textContent: 'foto ainda não está na pasta compartilhada' })); }
   }
   async function gravarFoto(t, slot, file, blob) {
     const f = fotosDe(t);
@@ -1610,6 +1610,7 @@
     }).join('');
 
     $('#d-body').innerHTML = `
+      <div class="alert info d-presenca" id="d-presenca" hidden></div>
       ${alerts.join('')}
       <div class="section">
         <h3>Materiais <span class="h-note">${esc(e.cliente)} · entrega ${esc(e.entrega)} · ${esc(e.incoterm)}</span></h3>
@@ -1659,6 +1660,7 @@
         </div>
       </div>`;
     renderThumbs(T);
+    renderPresencaPainel();
     $('#d-mail').hidden = !temContainer(T);
     if (temContainer(T)) carregarMiniaturas($('#d-body'));
   }
@@ -1704,14 +1706,15 @@
   }
 
   function openDetail(t) {
-    ui.open = t;
+    ui.open = t; if (sync) sync.setAberto(t);
     $('#detail').hidden = false;
     $('#scrim').hidden = window.innerWidth > 1400;
     renderDetail();
     renderList();
   }
   function closeDetail() {
-    ui.open = null; $('#detail').hidden = true; $('#scrim').hidden = true;
+    ui.open = null; $('#detail').hidden = true; $('#scrim').hidden = true; if (sync) sync.setAberto(null);
+    if (ui.pendRefresh) { ui.pendRefresh = false; renderAll(); }
     renderList();
     const ti = $('#transporte-input'); if (ti) { ti.focus(); ti.select(); }
   }
@@ -2399,7 +2402,8 @@
     const pill = $('#sync-pill'); if (!pill) return;
     const hm = st.at ? new Date(st.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
     let cls = 'local', txt = 'Dados só neste computador', tip = 'Clique para conectar ao arquivo compartilhado da equipe';
-    if (st.mode === 'shared') { cls = st.error ? 'err' : 'ok'; txt = st.error ? `Compartilhado · erro` : `Compartilhado · ${hm}`; tip = `${st.name}${st.error ? ' — ' + st.error : ' — sincronizado às ' + hm}`; }
+    const on = (ui.presenca || []).length;
+    if (st.mode === 'shared') { cls = st.error ? 'err' : 'ok'; txt = st.error ? `Compartilhado · erro` : `Compartilhado · ${hm}${st.pasta ? ` · ${on + 1} online` : ''}`; tip = `${st.name}${st.error ? ' — ' + st.error : ' — sincronizado às ' + hm}`; }
     if (st.mode === 'permission') { cls = 'warn'; txt = 'Reconectar dados compartilhados'; tip = `Clique para liberar o acesso a ${st.name}`; }
     if (st.mode === 'unsupported') { cls = 'local'; txt = 'Dados só neste computador'; tip = 'Para compartilhar, abra no Chrome ou Edge'; }
     pill.className = `sync-pill ${cls}`; pill.title = tip; $('#sync-txt').textContent = txt;
@@ -2411,6 +2415,44 @@
     $('#sync-reconnect').hidden = st.mode !== 'permission';
     $('#sync-disconnect').hidden = !(st.mode === 'shared' || st.mode === 'permission');
   }
+  // ---------- uso simultâneo (pasta no servidor) ----------
+  const USER_KEY = 'arauco.ordensEmbarque.usuario';
+  function usuario() { try { return (localStorage.getItem(USER_KEY) || '').trim(); } catch (e) { return ''; } }
+  const idsFotos = () => [].concat(...Object.values(state.fotos || {}).map(f => Object.values(f.slots || {}).map(x => x.id)));
+  // transporte de cada registro alterado (chaves do sync: item:, man:t|campo, printed:t, foto:t…)
+  function transporteDoRegistro(k, v) {
+    const i = k.indexOf(':'); const kind = k.slice(0, i), id = k.slice(i + 1);
+    if (kind === 'item') { try { return JSON.parse(v).transporte; } catch (e) { return null; } }
+    if (kind === 'man') return id.slice(0, id.lastIndexOf('|'));
+    if (['printed', 'snap', 'fat', 'fatnf', 'foto'].includes(kind)) return id;
+    return null;
+  }
+  function avisarAlteracoes(lista) {
+    if (!lista.length) return;
+    const porUser = new Map();
+    lista.forEach(x => { const t = transporteDoRegistro(x.k, x.v); if (!porUser.has(x.by)) porUser.set(x.by, new Set()); if (t) porUser.get(x.by).add(t); });
+    porUser.forEach((ts, by) => {
+      const l = [...ts];
+      toast(l.length ? `${by} atualizou ${l.length === 1 ? 'o transporte' : 'os transportes'} ${l.slice(0, 4).join(', ')}${l.length > 4 ? '…' : ''}.` : `${by} atualizou os dados (agendamentos, OTs ou listas).`, 'ok');
+    });
+  }
+  // não redesenha o painel enquanto a pessoa digita nele; redesenha quando ela sai do campo
+  // atualiza a tela com os dados dos colegas sem tirar o cursor de quem está digitando no painel
+  // (o que a pessoa digita já está gravado no estado a cada tecla, então o painel redesenhado mostra o valor dela)
+  function renderSemAtrapalhar() {
+    const a = document.activeElement, body = $('#d-body'), sc = body ? body.scrollTop : 0;
+    const foco = ui.open && a && a.id && $('#detail').contains(a) ? { id: a.id, s: a.selectionStart, e: a.selectionEnd } : null;
+    renderAll();
+    if (body) body.scrollTop = sc;
+    if (foco) { const el = document.getElementById(foco.id); if (el) { el.focus({ preventScroll: true }); try { if (foco.s != null) el.setSelectionRange(foco.s, foco.e); } catch (e) { /* select/checkbox */ } } }
+  }
+  const quemAbriu = t => (ui.presenca || []).filter(p => p.aberto === t).map(p => p.nome);
+  function renderPresencaPainel() {
+    const el = $('#d-presenca'); if (!el) return;
+    const q = ui.open ? quemAbriu(ui.open) : [];
+    el.hidden = !q.length;
+    el.innerHTML = q.length ? `<b>${esc(q.join(' e '))}</b> também ${q.length > 1 ? 'estão' : 'está'} com esta ordem aberta. As alterações de cada um aparecem para o outro em poucos segundos; se mexerem no mesmo campo, vale a última gravada.` : '';
+  }
   function bindSync() {
     sync = window.OESync.create({
       getState: () => state,
@@ -2418,12 +2460,21 @@
       empty: emptyState,
       sewKey,
       onStatus: syncPill,
-      onRemoteChange: () => {
+      user: usuario,
+      onRemoteChange: ({ deOutros } = {}) => {
         // chegaram dados de outro usuário: se a data aberta está vazia, vai para a data com cargas
         if (!allTransports().some(T => T.eff.data === ui.date)) { ui.date = pickDefaultDate(); $('#date-filter').value = ui.date; }
-        renderAll();
+        renderSemAtrapalhar();
+        avisarAlteracoes(deOutros || []);
       },
+      onPresence: lista => { const sig = JSON.stringify(lista.map(p => [p.nome, p.aberto])); if (sig === ui.presencaSig) return; ui.presenca = lista; ui.presencaSig = sig; renderList(); renderPresencaPainel(); syncPill(sync.status()); },
     });
+    window.OEF.setRemoto(sync.fotos);
+    // saiu do campo do painel e havia alteração de outro usuário esperando: redesenha agora
+    $('#detail').addEventListener('focusout', () => setTimeout(() => {
+      const a = document.activeElement;
+      if (ui.pendRefresh && !(a && $('#detail').contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) { ui.pendRefresh = false; renderAll(); }
+    }, 300));
     const run = async (fn, okMsg) => {
       try { await fn(); $('#sync-dialog').close(); if (okMsg) toast(okMsg, 'ok'); }
       catch (e) { if (e && e.name === 'AbortError') return; toast('Não foi possível usar o arquivo: ' + (e.message || e), 'err'); }
@@ -2434,6 +2485,13 @@
     });
     $('#sync-create').addEventListener('click', () => run(() => sync.createFile(), 'Arquivo compartilhado criado. Os outros computadores devem usar "Conectar a arquivo existente" e escolher este mesmo arquivo.'));
     $('#sync-open').addEventListener('click', () => run(() => sync.openFile(), 'Conectado ao arquivo compartilhado. Os dados da equipe foram carregados.'));
+    try { $('#sync-user').value = usuario(); } catch (e) { /* sem storage */ }
+    $('#sync-user').addEventListener('change', e => { try { localStorage.setItem(USER_KEY, e.target.value.trim()); } catch (er) { /* sem storage */ } });
+    $('#sync-folder').addEventListener('click', () => {
+      if (!usuario()) { toast('Digite primeiro o seu nome (aparece para os colegas).', 'warn'); $('#sync-user').focus(); return; }
+      run(async () => { await sync.openFolder(); const n = await window.OEF.enviarPendentes(idsFotos()); renderAll(); if (n) toast(`${n} foto(s) deste computador enviadas para a pasta.`, 'ok'); },
+        'Conectado à pasta compartilhada: dados, fotos e quem está usando são compartilhados (atualiza a cada 4 segundos).');
+    });
     $('#sync-reconnect').addEventListener('click', () => run(async () => { if (!(await sync.reconnect())) throw new Error('acesso não liberado'); }, 'Dados compartilhados reconectados.'));
     $('#sync-disconnect').addEventListener('click', () => run(() => sync.disconnect(), 'Desconectado. Os dados continuam neste computador.'));
     $('#sync-now').addEventListener('click', () => run(() => sync.syncNow(), null));

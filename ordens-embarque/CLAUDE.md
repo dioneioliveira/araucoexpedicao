@@ -49,6 +49,15 @@
   Access API (Chrome/Edge); atalho do arquivo no IndexedDB. Estado achatado em registros com horário
   (`item:`, `man:<t>|<campo>`, `printed:`, `snap:`, `fat:`, `fatnf:`, `ot:`, `sew:`, `fsc`) + exclusões
   (`tomb`); `mergeDocs` = mais recente vence. Dados reais ficam nesse arquivo da rede, nunca no repositório.
+- Uso simultâneo (2–3 pessoas, Chrome, pasta no servidor): modo **pasta** (`openFolder` → `showDirectoryPicker`, atalho
+  `sharedDir` no IndexedDB). Na pasta: `ordens-embarque-dados.json` (mesmo formato), `fotos/<id>.jpg` (fotos dos
+  containers; `OEF.setRemoto(sync.fotos)`: grava local + pasta, busca na pasta o que não tem) e `presenca/<nome>.json`
+  (nome + ordem aberta, a cada ≤10 s; vale por 30 s). Verificação a cada 4 s. Cada registro guarda `by` (nome do usuário,
+  `arauco.ordensEmbarque.usuario`): alterações de outros geram aviso "Fulano atualizou o transporte X". Antes de gravar,
+  confere se o arquivo mudou desde a leitura e junta de novo (não apaga a gravação do colega). `renderSemAtrapalhar`
+  redesenha com os dados dos colegas mantendo foco, cursor e rolagem de quem digita (o digitado já está no estado).
+  Presença: chip amarelo com o nome na lista, aviso no painel (`#d-presenca`) e "n online" no topo. Modo arquivo antigo
+  continua disponível (sem fotos/presença).
 - FSC (célula V23:X23, ao lado da OT): planilha FSC importada (`parseFSC`, arquivo via SheetJS ou colagem) →
   `state.fsc` + `state.fscInfo` (sincronizados), salvos na hora ao ler o arquivo/colagem (`salvarFSC`, sem botão Importar). `fscOf` relaciona pelo nome do cliente (exato → `nomeChave`
   sem acentos/pontuação/LTDA/S.A. → prefixo 12+ → 85% das palavras); exclusão sem reingresso = inativo.

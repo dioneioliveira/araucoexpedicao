@@ -99,7 +99,7 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .cb-ico.fsc{background:rgba(46,125,79,.12);color:#2e7d4f}
 .cb-ico .flag{fill:#2e9b4f;stroke:#2e9b4f}
 .colar-btn small{overflow:hidden;text-overflow:ellipsis}
-@media (max-width:1500px){.colar-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1680px){.colar-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .colar-wide{grid-column:auto}
 
 .colar-hint{grid-column:1/-1;margin:0;font-size:10.5px;color:var(--ink-dim)}
@@ -604,6 +604,11 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .zm-wrap img{max-width:100%;max-height:68vh;display:inline-block;vertical-align:top}
 .zm-sel{position:absolute;border:2px solid #D0CC00;background:rgba(208,204,0,.15);box-shadow:0 0 0 9999px rgba(0,0,0,.25);pointer-events:none}
 #zm-res .alert{margin:8px 0}
+.chip.pres{background:rgba(208,204,0,.22);color:#5c5a00}
+.chip.pres svg{width:11px;height:11px;margin-right:2px}
+.d-presenca{border-left:4px solid #D0CC00}
+.sync-user{margin:6px 0 4px}.sync-user input{width:220px}
+.sync-antigo{margin-top:6px}.sync-antigo summary{cursor:pointer}
 
 </style>
 </head>
@@ -1001,19 +1006,25 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
     </div>
     <div class="cf-body">
       <p id="sync-info" class="muted"></p>
-      <p>Para todos verem os mesmos dados, o app grava num <b>arquivo único na pasta de rede da expedição</b> (ou pasta sincronizada do OneDrive/SharePoint). Cada computador conecta uma vez; depois abre já com os dados preenchidos pelos outros e atualiza sozinho a cada 15 segundos.</p>
+      <p>Para <b>2 ou 3 pessoas usarem ao mesmo tempo</b>, o app grava numa <b>pasta do servidor</b> (ex.: <code>\\servidor\expedicao\ordens-embarque</code>): os dados, as <b>fotos dos containers</b> e quem está usando. As alterações de um aparecem para os outros em cerca de 4 segundos.</p>
+      <label class="field-inline sync-user">Seu nome <input type="text" id="sync-user" placeholder="ex.: Dionei" spellcheck="false" maxlength="40"></label>
       <ol class="sync-steps">
-        <li><b>Primeiro computador:</b> <i>Criar arquivo compartilhado</i> e salvar na pasta de rede (ex.: <code>\\servidor\expedicao\ordens-embarque-dados.json</code>).</li>
-        <li><b>Demais computadores:</b> <i>Conectar a arquivo existente</i> e escolher esse mesmo arquivo.</li>
+        <li>Crie (uma vez) uma pasta no servidor, por exemplo <code>ordens-embarque</code>, com acesso de leitura e gravação para a equipe.</li>
+        <li>Em <b>cada computador</b>: digite seu nome, clique em <i>Escolher pasta compartilhada</i> e escolha essa mesma pasta. O Chrome pede para permitir: clique em <b>Permitir</b>/<b>Editar arquivos</b>.</li>
       </ol>
       <div class="sync-actions">
-        <button class="btn btn-primary" id="sync-open">Conectar a arquivo existente</button>
-        <button class="btn btn-ghost" id="sync-create">Criar arquivo compartilhado</button>
+        <button class="btn btn-primary" id="sync-folder">Escolher pasta compartilhada</button>
         <button class="btn btn-ghost" id="sync-reconnect" hidden>Reconectar</button>
         <button class="btn btn-ghost" id="sync-now">Sincronizar agora</button>
         <button class="btn btn-danger" id="sync-disconnect" hidden>Desconectar</button>
       </div>
-      <p class="muted small">Funciona no Google Chrome e no Microsoft Edge. Ao abrir o app, o navegador pode pedir para liberar o acesso ao arquivo: clique no aviso <b>Reconectar dados compartilhados</b> no topo.</p>
+      <details class="sync-antigo"><summary class="muted small">Modo antigo: um arquivo .json (sem fotos e sem "quem está usando")</summary>
+        <div class="sync-actions">
+          <button class="btn btn-ghost btn-sm" id="sync-open">Conectar a arquivo existente</button>
+          <button class="btn btn-ghost btn-sm" id="sync-create">Criar arquivo compartilhado</button>
+        </div>
+      </details>
+      <p class="muted small">Use o Google Chrome. Ao abrir o app, o Chrome pode pedir para liberar o acesso de novo: clique no aviso <b>Reconectar dados compartilhados</b> no topo.</p>
     </div>
   </div>
 </dialog>
@@ -4493,7 +4504,9 @@ window.ORDEM_TEMPLATES = {
 (function (global) {
   'use strict';
 
-  const DB = 'arauco-ordens-embarque', STORE = 'kv', HANDLE_KEY = 'sharedFile';
+  const DB = 'arauco-ordens-embarque', STORE = 'kv', HANDLE_KEY = 'sharedFile', DIR_KEY = 'sharedDir';
+  const ARQ = 'ordens-embarque-dados.json';
+  const nomeArq = s => String(s || '').replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 120); // nome válido no Windows
   const TOMB_DAYS = 45;
 
   // ---------- IndexedDB (o "atalho" para o arquivo fica salvo no navegador) ----------
@@ -4578,7 +4591,10 @@ window.ORDEM_TEMPLATES = {
     // cfg: { getState, setState(state), empty(), sewKey, onStatus(info), onRemoteChange(), metaKey }
     const META_KEY = cfg.metaKey || 'arauco.ordensEmbarque.syncMeta';
     let doc = loadMeta();           // registros com horário (cópia local)
-    let handle = null, needsPermission = false, lastModified = 0, timer = null, poll = null, busy = false, pending = false;
+    let handle = null, dir = null, needsPermission = false, lastModified = 0, timer = null, poll = null, busy = false, pending = false;
+    const me = () => (cfg.user && cfg.user()) || '';
+    // presença: cada usuário grava presenca/<nome>.json com a ordem aberta; os outros leem a cada verificação
+    let aberto = null, presencaEm = 0, presencaTxt = '';
     let status = { mode: 'local', name: '', at: null, error: '' };
 
     function loadMeta() {
@@ -4596,7 +4612,7 @@ window.ORDEM_TEMPLATES = {
       // para não sobrescrever o que outros usuários já gravaram no arquivo compartilhado
       if (!doc) { doc = { entities: {}, tomb: {} }; Object.entries(flat).forEach(([k, v]) => { doc.entities[k] = { v, ts: 1 }; }); saveMeta(); return; }
       let changed = false;
-      Object.entries(flat).forEach(([k, v]) => { const e = doc.entities[k]; if (!e || e.v !== v) { doc.entities[k] = { v, ts: now }; delete doc.tomb[k]; changed = true; } });
+      Object.entries(flat).forEach(([k, v]) => { const e = doc.entities[k]; if (!e || e.v !== v) { doc.entities[k] = { v, ts: now, by: me() }; delete doc.tomb[k]; changed = true; } });
       Object.keys(doc.entities).forEach(k => { if (!(k in flat)) { delete doc.entities[k]; doc.tomb[k] = now; changed = true; } });
       if (changed) saveMeta();
       return changed;
@@ -4630,12 +4646,20 @@ window.ORDEM_TEMPLATES = {
       try {
         stamp();
         const { remote, mtime } = await readRemote();
+        // o que outro usuário alterou desde a última vez (para avisar quem está usando)
+        const deOutros = [];
+        Object.entries(remote.entities).forEach(([k, re]) => { const le = doc.entities[k]; if ((!le || re.ts > le.ts) && re.by && re.by !== me()) deOutros.push({ k, by: re.by, v: re.v }); });
         const merged = mergeDocs(doc, remote);
         const mergedFlat = flatOf(merged);
         const localFlat = flatten(cfg.getState(), cfg);
         doc = merged; saveMeta();
-        if (!sameFlat(mergedFlat, localFlat)) { cfg.setState(unflatten(mergedFlat, cfg.empty)); cfg.onRemoteChange(); }
-        if (forceWrite || !sameFlat(mergedFlat, flatOf(remote)) || Object.keys(merged.tomb).length !== Object.keys(remote.tomb).length) await writeRemote(merged);
+        if (!sameFlat(mergedFlat, localFlat)) { cfg.setState(unflatten(mergedFlat, cfg.empty)); cfg.onRemoteChange({ deOutros }); }
+        if (forceWrite || !sameFlat(mergedFlat, flatOf(remote)) || Object.keys(merged.tomb).length !== Object.keys(remote.tomb).length) {
+          // alguém gravou entre a leitura e agora? junta de novo antes de gravar (não apaga a gravação do colega)
+          const agora = (await handle.getFile()).lastModified;
+          if (agora !== mtime) { const { remote: r2 } = await readRemote(); doc = mergeDocs(doc, r2); saveMeta(); const f2 = flatOf(doc); if (!sameFlat(f2, flatten(cfg.getState(), cfg))) { cfg.setState(unflatten(f2, cfg.empty)); cfg.onRemoteChange({ deOutros: [] }); } }
+          await writeRemote(doc);
+        }
         else lastModified = mtime;
         setStatus({ mode: 'shared', at: new Date(), error: '' });
       } catch (e) {
@@ -4650,11 +4674,44 @@ window.ORDEM_TEMPLATES = {
     async function check() {
       if (!handle || needsPermission || busy) return;
       try { const f = await handle.getFile(); if (f.lastModified !== lastModified) await syncNow(); } catch (e) { setStatus({ error: e.message || String(e) }); }
+      if (dir) presenca().catch(() => {});
     }
-    function startPolling() { clearInterval(poll); poll = setInterval(check, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); }); }
+    async function presenca() {
+      const pd = await dir.getDirectoryHandle('presenca', { create: true });
+      const meu = JSON.stringify({ nome: me(), aberto, em: Date.now() });
+      if (me() && (meu.replace(/"em":\d+/, '') !== presencaTxt || Date.now() - presencaEm > 10000)) {
+        const w = await (await pd.getFileHandle(nomeArq(me()) + '.json', { create: true })).createWritable(); await w.write(meu); await w.close();
+        presencaTxt = meu.replace(/"em":\d+/, ''); presencaEm = Date.now();
+      }
+      const outros = [];
+      for await (const [nome, h] of pd.entries()) {
+        if (h.kind !== 'file' || nome === nomeArq(me()) + '.json') continue;
+        try { const j = JSON.parse(await (await h.getFile()).text()); if (j && j.nome && Date.now() - j.em < 30000) outros.push(j); } catch (e) { /* arquivo sendo gravado */ }
+      }
+      if (cfg.onPresence) cfg.onPresence(outros);
+    }
+    let visBind = false;
+    function startPolling() {
+      clearInterval(poll); poll = setInterval(check, dir ? 4000 : 15000);
+      if (!visBind) { visBind = true; document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); }); }
+    }
+    // fotos na pasta compartilhada (fotos/<id>.jpg): todos veem as mesmas fotos
+    const fotos = {
+      async put(id, blob) { if (!dir || needsPermission) return false; const fd = await dir.getDirectoryHandle('fotos', { create: true }); const w = await (await fd.getFileHandle(nomeArq(id) + '.jpg', { create: true })).createWritable(); await w.write(blob); await w.close(); return true; },
+      async get(id) { if (!dir || needsPermission) return null; try { const fd = await dir.getDirectoryHandle('fotos'); return await (await fd.getFileHandle(nomeArq(id) + '.jpg')).getFile(); } catch (e) { return null; } },
+      async del(id) { if (!dir || needsPermission) return; try { const fd = await dir.getDirectoryHandle('fotos'); await fd.removeEntry(nomeArq(id) + '.jpg'); } catch (e) { /* já não existe */ } },
+    };
+    async function attachDir(d) {
+      dir = d; handle = await d.getFileHandle(ARQ, { create: true }); needsPermission = false;
+      try { await idbSet(DIR_KEY, d); await idbDel(HANDLE_KEY); } catch (e) { /* reconectar manualmente na próxima vez */ }
+      setStatus({ mode: 'shared', name: d.name, pasta: true, error: '' });
+      const vazio = !(await (await handle.getFile()).text()).trim();
+      await syncNow(vazio);
+      startPolling(); presenca().catch(() => {});
+    }
 
     async function attach(h, isNew) {
-      handle = h; needsPermission = false;
+      handle = h; dir = null; needsPermission = false;
       try { await idbSet(HANDLE_KEY, h); } catch (e) { /* atalho não salvo: reconectar manualmente na próxima vez */ }
       setStatus({ mode: 'shared', name: h.name, error: '' });
       await syncNow(!!isNew);
@@ -4673,6 +4730,13 @@ window.ORDEM_TEMPLATES = {
       async init() {
         stamp();
         if (!this.supported()) { setStatus({ mode: 'unsupported' }); return; }
+        let d = null; try { d = await idbGet(DIR_KEY); } catch (e) { d = null; }
+        if (d) {
+          dir = d; setStatus({ name: d.name, pasta: true });
+          if ((await d.queryPermission({ mode: 'readwrite' })) === 'granted') { handle = await d.getFileHandle(ARQ, { create: true }); await syncNow(); startPolling(); presenca().catch(() => {}); }
+          else { needsPermission = true; setStatus({ mode: 'permission' }); }
+          return;
+        }
         let h = null; try { h = await idbGet(HANDLE_KEY); } catch (e) { h = null; }
         if (!h) { setStatus({ mode: 'local' }); return; }
         handle = h; setStatus({ name: h.name });
@@ -4682,11 +4746,20 @@ window.ORDEM_TEMPLATES = {
       },
       // precisam de clique do usuário (o navegador exige)
       async reconnect() {
+        if (dir) {
+          if ((await dir.requestPermission({ mode: 'readwrite' })) !== 'granted') return false;
+          needsPermission = false; handle = await dir.getFileHandle(ARQ, { create: true }); await syncNow(); startPolling(); presenca().catch(() => {}); return true;
+        }
         if (!handle) return false;
         const p = await handle.requestPermission({ mode: 'readwrite' });
         if (p !== 'granted') return false;
         needsPermission = false; await syncNow(); startPolling(); return true;
       },
+      // pasta compartilhada no servidor: dados + fotos + quem está usando
+      async openFolder() { const d = await global.showDirectoryPicker({ id: 'oe-pasta', mode: 'readwrite' }); await attachDir(d); },
+      pasta: () => !!dir && !needsPermission,
+      setAberto(t) { if (aberto === (t || null)) return; aberto = t || null; if (dir && !needsPermission) presenca().catch(() => {}); },
+      fotos,
       async createFile() {
         const h = await global.showSaveFilePicker({ suggestedName: 'ordens-embarque-dados.json', types: [{ description: 'Dados das ordens de embarque', accept: { 'application/json': ['.json'] } }] });
         await attach(h, true);
@@ -4695,10 +4768,11 @@ window.ORDEM_TEMPLATES = {
         const [h] = await global.showOpenFilePicker({ types: [{ description: 'Dados das ordens de embarque', accept: { 'application/json': ['.json'] } }] });
         await attach(h, false);
       },
-      async disconnect() { clearInterval(poll); handle = null; needsPermission = false; await idbDel(HANDLE_KEY); setStatus({ mode: 'local', name: '' }); },
+      async disconnect() { clearInterval(poll); handle = null; dir = null; needsPermission = false; await idbDel(HANDLE_KEY); await idbDel(DIR_KEY); setStatus({ mode: 'local', name: '', pasta: false }); },
       syncNow: () => syncNow(),
       // para testes
       _attachForTest: (h) => attach(h, false),
+      _attachDirForTest: (d) => attachDir(d),
     };
   }
 
@@ -4743,9 +4817,23 @@ window.ORDEM_TEMPLATES = {
     const t = d.transaction(STORE, mode); const q = fn(t.objectStore(STORE));
     t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error);
   }));
-  const put = (id, blob) => tx('readwrite', s => s.put(blob, id));
-  const get = id => tx('readonly', s => s.get(id));
-  const del = id => tx('readwrite', s => s.delete(id));
+  const putLocal = (id, blob) => tx('readwrite', s => s.put(blob, id));
+  const getLocal = id => tx('readonly', s => s.get(id));
+  const delLocal = id => tx('readwrite', s => s.delete(id));
+  // pasta compartilhada (servidor): a foto fica nos dois lugares; quem não tem a foto busca na pasta e guarda cópia
+  let remoto = null;
+  const setRemoto = r => { remoto = r; };
+  async function put(id, blob) { await putLocal(id, blob); if (remoto) await remoto.put(id, blob).catch(() => false); }
+  async function get(id) {
+    const b = await getLocal(id).catch(() => null); if (b) return b;
+    if (!remoto) return null;
+    const r = await remoto.get(id).catch(() => null);
+    if (r) { await putLocal(id, r).catch(() => {}); return r; }
+    return null;
+  }
+  async function del(id) { await delLocal(id).catch(() => {}); if (remoto) await remoto.del(id).catch(() => {}); }
+  // envia para a pasta as fotos que só existem neste computador (ex.: importadas antes de conectar a pasta)
+  async function enviarPendentes(ids) { if (!remoto) return 0; let n = 0; for (const id of ids) { if (await remoto.get(id).catch(() => null)) continue; const b = await getLocal(id).catch(() => null); if (b && await remoto.put(id, b).catch(() => false)) n++; } return n; }
 
   // ---------- imagem: reduz para no máx. 1600 px (JPEG) ----------
   async function comprimir(file, max = 2400, q = 0.85) {
@@ -5052,7 +5140,7 @@ window.ORDEM_TEMPLATES = {
   }
 
   global.OEF = {
-    SLOTS, CAMPO_NOME, put, get, del, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
+    SLOTS, CAMPO_NOME, put, get, del, setRemoto, enviarPendentes, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
     ILEGIVEL, ehIlegivel, PADRAO_MWG, digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
     carregarOCR, ocr, recortar, dadosJuntos, montarEML, estadoOCR: () => estado,
   };
@@ -5623,7 +5711,7 @@ window.ORDEM_TEMPLATES = {
         <td>${treinoChip(T)}</td>
         <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
-        <td class="c-status">${statusChip(T)}${fotoChip(T)}</td>
+        <td class="c-status">${statusChip(T)}${fotoChip(T)}${quemAbriu(T.transporte).map(n => ` <span class="chip pres" title="${esc(n)} está com esta ordem aberta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>${esc(n.split(' ')[0])}</span>`).join('')}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
     })(L.T)).join('');
@@ -6233,7 +6321,7 @@ window.ORDEM_TEMPLATES = {
     </div>`;
   }
   async function carregarMiniaturas(root) {
-    for (const img of $$('img[data-fid]', root)) { const u = await urlFoto(img.dataset.fid); if (u) img.src = u; else img.replaceWith(Object.assign(document.createElement('span'), { className: 'muted small', textContent: 'foto em outro computador' })); }
+    for (const img of $$('img[data-fid]', root)) { const u = await urlFoto(img.dataset.fid); if (u) img.src = u; else img.replaceWith(Object.assign(document.createElement('span'), { className: 'muted small', textContent: 'foto ainda não está na pasta compartilhada' })); }
   }
   async function gravarFoto(t, slot, file, blob) {
     const f = fotosDe(t);
@@ -6672,6 +6760,7 @@ window.ORDEM_TEMPLATES = {
     }).join('');
 
     $('#d-body').innerHTML = `
+      <div class="alert info d-presenca" id="d-presenca" hidden></div>
       ${alerts.join('')}
       <div class="section">
         <h3>Materiais <span class="h-note">${esc(e.cliente)} · entrega ${esc(e.entrega)} · ${esc(e.incoterm)}</span></h3>
@@ -6721,6 +6810,7 @@ window.ORDEM_TEMPLATES = {
         </div>
       </div>`;
     renderThumbs(T);
+    renderPresencaPainel();
     $('#d-mail').hidden = !temContainer(T);
     if (temContainer(T)) carregarMiniaturas($('#d-body'));
   }
@@ -6766,14 +6856,15 @@ window.ORDEM_TEMPLATES = {
   }
 
   function openDetail(t) {
-    ui.open = t;
+    ui.open = t; if (sync) sync.setAberto(t);
     $('#detail').hidden = false;
     $('#scrim').hidden = window.innerWidth > 1400;
     renderDetail();
     renderList();
   }
   function closeDetail() {
-    ui.open = null; $('#detail').hidden = true; $('#scrim').hidden = true;
+    ui.open = null; $('#detail').hidden = true; $('#scrim').hidden = true; if (sync) sync.setAberto(null);
+    if (ui.pendRefresh) { ui.pendRefresh = false; renderAll(); }
     renderList();
     const ti = $('#transporte-input'); if (ti) { ti.focus(); ti.select(); }
   }
@@ -7461,7 +7552,8 @@ window.ORDEM_TEMPLATES = {
     const pill = $('#sync-pill'); if (!pill) return;
     const hm = st.at ? new Date(st.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
     let cls = 'local', txt = 'Dados só neste computador', tip = 'Clique para conectar ao arquivo compartilhado da equipe';
-    if (st.mode === 'shared') { cls = st.error ? 'err' : 'ok'; txt = st.error ? `Compartilhado · erro` : `Compartilhado · ${hm}`; tip = `${st.name}${st.error ? ' — ' + st.error : ' — sincronizado às ' + hm}`; }
+    const on = (ui.presenca || []).length;
+    if (st.mode === 'shared') { cls = st.error ? 'err' : 'ok'; txt = st.error ? `Compartilhado · erro` : `Compartilhado · ${hm}${st.pasta ? ` · ${on + 1} online` : ''}`; tip = `${st.name}${st.error ? ' — ' + st.error : ' — sincronizado às ' + hm}`; }
     if (st.mode === 'permission') { cls = 'warn'; txt = 'Reconectar dados compartilhados'; tip = `Clique para liberar o acesso a ${st.name}`; }
     if (st.mode === 'unsupported') { cls = 'local'; txt = 'Dados só neste computador'; tip = 'Para compartilhar, abra no Chrome ou Edge'; }
     pill.className = `sync-pill ${cls}`; pill.title = tip; $('#sync-txt').textContent = txt;
@@ -7473,6 +7565,44 @@ window.ORDEM_TEMPLATES = {
     $('#sync-reconnect').hidden = st.mode !== 'permission';
     $('#sync-disconnect').hidden = !(st.mode === 'shared' || st.mode === 'permission');
   }
+  // ---------- uso simultâneo (pasta no servidor) ----------
+  const USER_KEY = 'arauco.ordensEmbarque.usuario';
+  function usuario() { try { return (localStorage.getItem(USER_KEY) || '').trim(); } catch (e) { return ''; } }
+  const idsFotos = () => [].concat(...Object.values(state.fotos || {}).map(f => Object.values(f.slots || {}).map(x => x.id)));
+  // transporte de cada registro alterado (chaves do sync: item:, man:t|campo, printed:t, foto:t…)
+  function transporteDoRegistro(k, v) {
+    const i = k.indexOf(':'); const kind = k.slice(0, i), id = k.slice(i + 1);
+    if (kind === 'item') { try { return JSON.parse(v).transporte; } catch (e) { return null; } }
+    if (kind === 'man') return id.slice(0, id.lastIndexOf('|'));
+    if (['printed', 'snap', 'fat', 'fatnf', 'foto'].includes(kind)) return id;
+    return null;
+  }
+  function avisarAlteracoes(lista) {
+    if (!lista.length) return;
+    const porUser = new Map();
+    lista.forEach(x => { const t = transporteDoRegistro(x.k, x.v); if (!porUser.has(x.by)) porUser.set(x.by, new Set()); if (t) porUser.get(x.by).add(t); });
+    porUser.forEach((ts, by) => {
+      const l = [...ts];
+      toast(l.length ? `${by} atualizou ${l.length === 1 ? 'o transporte' : 'os transportes'} ${l.slice(0, 4).join(', ')}${l.length > 4 ? '…' : ''}.` : `${by} atualizou os dados (agendamentos, OTs ou listas).`, 'ok');
+    });
+  }
+  // não redesenha o painel enquanto a pessoa digita nele; redesenha quando ela sai do campo
+  // atualiza a tela com os dados dos colegas sem tirar o cursor de quem está digitando no painel
+  // (o que a pessoa digita já está gravado no estado a cada tecla, então o painel redesenhado mostra o valor dela)
+  function renderSemAtrapalhar() {
+    const a = document.activeElement, body = $('#d-body'), sc = body ? body.scrollTop : 0;
+    const foco = ui.open && a && a.id && $('#detail').contains(a) ? { id: a.id, s: a.selectionStart, e: a.selectionEnd } : null;
+    renderAll();
+    if (body) body.scrollTop = sc;
+    if (foco) { const el = document.getElementById(foco.id); if (el) { el.focus({ preventScroll: true }); try { if (foco.s != null) el.setSelectionRange(foco.s, foco.e); } catch (e) { /* select/checkbox */ } } }
+  }
+  const quemAbriu = t => (ui.presenca || []).filter(p => p.aberto === t).map(p => p.nome);
+  function renderPresencaPainel() {
+    const el = $('#d-presenca'); if (!el) return;
+    const q = ui.open ? quemAbriu(ui.open) : [];
+    el.hidden = !q.length;
+    el.innerHTML = q.length ? `<b>${esc(q.join(' e '))}</b> também ${q.length > 1 ? 'estão' : 'está'} com esta ordem aberta. As alterações de cada um aparecem para o outro em poucos segundos; se mexerem no mesmo campo, vale a última gravada.` : '';
+  }
   function bindSync() {
     sync = window.OESync.create({
       getState: () => state,
@@ -7480,12 +7610,21 @@ window.ORDEM_TEMPLATES = {
       empty: emptyState,
       sewKey,
       onStatus: syncPill,
-      onRemoteChange: () => {
+      user: usuario,
+      onRemoteChange: ({ deOutros } = {}) => {
         // chegaram dados de outro usuário: se a data aberta está vazia, vai para a data com cargas
         if (!allTransports().some(T => T.eff.data === ui.date)) { ui.date = pickDefaultDate(); $('#date-filter').value = ui.date; }
-        renderAll();
+        renderSemAtrapalhar();
+        avisarAlteracoes(deOutros || []);
       },
+      onPresence: lista => { const sig = JSON.stringify(lista.map(p => [p.nome, p.aberto])); if (sig === ui.presencaSig) return; ui.presenca = lista; ui.presencaSig = sig; renderList(); renderPresencaPainel(); syncPill(sync.status()); },
     });
+    window.OEF.setRemoto(sync.fotos);
+    // saiu do campo do painel e havia alteração de outro usuário esperando: redesenha agora
+    $('#detail').addEventListener('focusout', () => setTimeout(() => {
+      const a = document.activeElement;
+      if (ui.pendRefresh && !(a && $('#detail').contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) { ui.pendRefresh = false; renderAll(); }
+    }, 300));
     const run = async (fn, okMsg) => {
       try { await fn(); $('#sync-dialog').close(); if (okMsg) toast(okMsg, 'ok'); }
       catch (e) { if (e && e.name === 'AbortError') return; toast('Não foi possível usar o arquivo: ' + (e.message || e), 'err'); }
@@ -7496,6 +7635,13 @@ window.ORDEM_TEMPLATES = {
     });
     $('#sync-create').addEventListener('click', () => run(() => sync.createFile(), 'Arquivo compartilhado criado. Os outros computadores devem usar "Conectar a arquivo existente" e escolher este mesmo arquivo.'));
     $('#sync-open').addEventListener('click', () => run(() => sync.openFile(), 'Conectado ao arquivo compartilhado. Os dados da equipe foram carregados.'));
+    try { $('#sync-user').value = usuario(); } catch (e) { /* sem storage */ }
+    $('#sync-user').addEventListener('change', e => { try { localStorage.setItem(USER_KEY, e.target.value.trim()); } catch (er) { /* sem storage */ } });
+    $('#sync-folder').addEventListener('click', () => {
+      if (!usuario()) { toast('Digite primeiro o seu nome (aparece para os colegas).', 'warn'); $('#sync-user').focus(); return; }
+      run(async () => { await sync.openFolder(); const n = await window.OEF.enviarPendentes(idsFotos()); renderAll(); if (n) toast(`${n} foto(s) deste computador enviadas para a pasta.`, 'ok'); },
+        'Conectado à pasta compartilhada: dados, fotos e quem está usando são compartilhados (atualiza a cada 4 segundos).');
+    });
     $('#sync-reconnect').addEventListener('click', () => run(async () => { if (!(await sync.reconnect())) throw new Error('acesso não liberado'); }, 'Dados compartilhados reconectados.'));
     $('#sync-disconnect').addEventListener('click', () => run(() => sync.disconnect(), 'Desconectado. Os dados continuam neste computador.'));
     $('#sync-now').addEventListener('click', () => run(() => sync.syncNow(), null));

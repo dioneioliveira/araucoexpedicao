@@ -405,19 +405,25 @@
     </div>
     <div class="cf-body">
       <p id="sync-info" class="muted"></p>
-      <p>Para todos verem os mesmos dados, o app grava num <b>arquivo único na pasta de rede da expedição</b> (ou pasta sincronizada do OneDrive/SharePoint). Cada computador conecta uma vez; depois abre já com os dados preenchidos pelos outros e atualiza sozinho a cada 15 segundos.</p>
+      <p>Para <b>2 ou 3 pessoas usarem ao mesmo tempo</b>, o app grava numa <b>pasta do servidor</b> (ex.: <code>\\servidor\expedicao\ordens-embarque</code>): os dados, as <b>fotos dos containers</b> e quem está usando. As alterações de um aparecem para os outros em cerca de 4 segundos.</p>
+      <label class="field-inline sync-user">Seu nome <input type="text" id="sync-user" placeholder="ex.: Dionei" spellcheck="false" maxlength="40"></label>
       <ol class="sync-steps">
-        <li><b>Primeiro computador:</b> <i>Criar arquivo compartilhado</i> e salvar na pasta de rede (ex.: <code>\\servidor\expedicao\ordens-embarque-dados.json</code>).</li>
-        <li><b>Demais computadores:</b> <i>Conectar a arquivo existente</i> e escolher esse mesmo arquivo.</li>
+        <li>Crie (uma vez) uma pasta no servidor, por exemplo <code>ordens-embarque</code>, com acesso de leitura e gravação para a equipe.</li>
+        <li>Em <b>cada computador</b>: digite seu nome, clique em <i>Escolher pasta compartilhada</i> e escolha essa mesma pasta. O Chrome pede para permitir: clique em <b>Permitir</b>/<b>Editar arquivos</b>.</li>
       </ol>
       <div class="sync-actions">
-        <button class="btn btn-primary" id="sync-open">Conectar a arquivo existente</button>
-        <button class="btn btn-ghost" id="sync-create">Criar arquivo compartilhado</button>
+        <button class="btn btn-primary" id="sync-folder">Escolher pasta compartilhada</button>
         <button class="btn btn-ghost" id="sync-reconnect" hidden>Reconectar</button>
         <button class="btn btn-ghost" id="sync-now">Sincronizar agora</button>
         <button class="btn btn-danger" id="sync-disconnect" hidden>Desconectar</button>
       </div>
-      <p class="muted small">Funciona no Google Chrome e no Microsoft Edge. Ao abrir o app, o navegador pode pedir para liberar o acesso ao arquivo: clique no aviso <b>Reconectar dados compartilhados</b> no topo.</p>
+      <details class="sync-antigo"><summary class="muted small">Modo antigo: um arquivo .json (sem fotos e sem "quem está usando")</summary>
+        <div class="sync-actions">
+          <button class="btn btn-ghost btn-sm" id="sync-open">Conectar a arquivo existente</button>
+          <button class="btn btn-ghost btn-sm" id="sync-create">Criar arquivo compartilhado</button>
+        </div>
+      </details>
+      <p class="muted small">Use o Google Chrome. Ao abrir o app, o Chrome pode pedir para liberar o acesso de novo: clique no aviso <b>Reconectar dados compartilhados</b> no topo.</p>
     </div>
   </div>
 </dialog>

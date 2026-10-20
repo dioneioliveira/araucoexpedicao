@@ -10,7 +10,9 @@
 (function (global) {
   'use strict';
 
-  const DB = 'arauco-ordens-embarque', STORE = 'kv', HANDLE_KEY = 'sharedFile';
+  const DB = 'arauco-ordens-embarque', STORE = 'kv', HANDLE_KEY = 'sharedFile', DIR_KEY = 'sharedDir';
+  const ARQ = 'ordens-embarque-dados.json';
+  const nomeArq = s => String(s || '').replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 120); // nome válido no Windows
   const TOMB_DAYS = 45;
 
   // ---------- IndexedDB (o "atalho" para o arquivo fica salvo no navegador) ----------
@@ -95,7 +97,10 @@
     // cfg: { getState, setState(state), empty(), sewKey, onStatus(info), onRemoteChange(), metaKey }
     const META_KEY = cfg.metaKey || 'arauco.ordensEmbarque.syncMeta';
     let doc = loadMeta();           // registros com horário (cópia local)
-    let handle = null, needsPermission = false, lastModified = 0, timer = null, poll = null, busy = false, pending = false;
+    let handle = null, dir = null, needsPermission = false, lastModified = 0, timer = null, poll = null, busy = false, pending = false;
+    const me = () => (cfg.user && cfg.user()) || '';
+    // presença: cada usuário grava presenca/<nome>.json com a ordem aberta; os outros leem a cada verificação
+    let aberto = null, presencaEm = 0, presencaTxt = '';
     let status = { mode: 'local', name: '', at: null, error: '' };
 
     function loadMeta() {
@@ -113,7 +118,7 @@
       // para não sobrescrever o que outros usuários já gravaram no arquivo compartilhado
       if (!doc) { doc = { entities: {}, tomb: {} }; Object.entries(flat).forEach(([k, v]) => { doc.entities[k] = { v, ts: 1 }; }); saveMeta(); return; }
       let changed = false;
-      Object.entries(flat).forEach(([k, v]) => { const e = doc.entities[k]; if (!e || e.v !== v) { doc.entities[k] = { v, ts: now }; delete doc.tomb[k]; changed = true; } });
+      Object.entries(flat).forEach(([k, v]) => { const e = doc.entities[k]; if (!e || e.v !== v) { doc.entities[k] = { v, ts: now, by: me() }; delete doc.tomb[k]; changed = true; } });
       Object.keys(doc.entities).forEach(k => { if (!(k in flat)) { delete doc.entities[k]; doc.tomb[k] = now; changed = true; } });
       if (changed) saveMeta();
       return changed;
@@ -147,12 +152,20 @@
       try {
         stamp();
         const { remote, mtime } = await readRemote();
+        // o que outro usuário alterou desde a última vez (para avisar quem está usando)
+        const deOutros = [];
+        Object.entries(remote.entities).forEach(([k, re]) => { const le = doc.entities[k]; if ((!le || re.ts > le.ts) && re.by && re.by !== me()) deOutros.push({ k, by: re.by, v: re.v }); });
         const merged = mergeDocs(doc, remote);
         const mergedFlat = flatOf(merged);
         const localFlat = flatten(cfg.getState(), cfg);
         doc = merged; saveMeta();
-        if (!sameFlat(mergedFlat, localFlat)) { cfg.setState(unflatten(mergedFlat, cfg.empty)); cfg.onRemoteChange(); }
-        if (forceWrite || !sameFlat(mergedFlat, flatOf(remote)) || Object.keys(merged.tomb).length !== Object.keys(remote.tomb).length) await writeRemote(merged);
+        if (!sameFlat(mergedFlat, localFlat)) { cfg.setState(unflatten(mergedFlat, cfg.empty)); cfg.onRemoteChange({ deOutros }); }
+        if (forceWrite || !sameFlat(mergedFlat, flatOf(remote)) || Object.keys(merged.tomb).length !== Object.keys(remote.tomb).length) {
+          // alguém gravou entre a leitura e agora? junta de novo antes de gravar (não apaga a gravação do colega)
+          const agora = (await handle.getFile()).lastModified;
+          if (agora !== mtime) { const { remote: r2 } = await readRemote(); doc = mergeDocs(doc, r2); saveMeta(); const f2 = flatOf(doc); if (!sameFlat(f2, flatten(cfg.getState(), cfg))) { cfg.setState(unflatten(f2, cfg.empty)); cfg.onRemoteChange({ deOutros: [] }); } }
+          await writeRemote(doc);
+        }
         else lastModified = mtime;
         setStatus({ mode: 'shared', at: new Date(), error: '' });
       } catch (e) {
@@ -167,11 +180,44 @@
     async function check() {
       if (!handle || needsPermission || busy) return;
       try { const f = await handle.getFile(); if (f.lastModified !== lastModified) await syncNow(); } catch (e) { setStatus({ error: e.message || String(e) }); }
+      if (dir) presenca().catch(() => {});
     }
-    function startPolling() { clearInterval(poll); poll = setInterval(check, 15000); document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); }); }
+    async function presenca() {
+      const pd = await dir.getDirectoryHandle('presenca', { create: true });
+      const meu = JSON.stringify({ nome: me(), aberto, em: Date.now() });
+      if (me() && (meu.replace(/"em":\d+/, '') !== presencaTxt || Date.now() - presencaEm > 10000)) {
+        const w = await (await pd.getFileHandle(nomeArq(me()) + '.json', { create: true })).createWritable(); await w.write(meu); await w.close();
+        presencaTxt = meu.replace(/"em":\d+/, ''); presencaEm = Date.now();
+      }
+      const outros = [];
+      for await (const [nome, h] of pd.entries()) {
+        if (h.kind !== 'file' || nome === nomeArq(me()) + '.json') continue;
+        try { const j = JSON.parse(await (await h.getFile()).text()); if (j && j.nome && Date.now() - j.em < 30000) outros.push(j); } catch (e) { /* arquivo sendo gravado */ }
+      }
+      if (cfg.onPresence) cfg.onPresence(outros);
+    }
+    let visBind = false;
+    function startPolling() {
+      clearInterval(poll); poll = setInterval(check, dir ? 4000 : 15000);
+      if (!visBind) { visBind = true; document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); }); }
+    }
+    // fotos na pasta compartilhada (fotos/<id>.jpg): todos veem as mesmas fotos
+    const fotos = {
+      async put(id, blob) { if (!dir || needsPermission) return false; const fd = await dir.getDirectoryHandle('fotos', { create: true }); const w = await (await fd.getFileHandle(nomeArq(id) + '.jpg', { create: true })).createWritable(); await w.write(blob); await w.close(); return true; },
+      async get(id) { if (!dir || needsPermission) return null; try { const fd = await dir.getDirectoryHandle('fotos'); return await (await fd.getFileHandle(nomeArq(id) + '.jpg')).getFile(); } catch (e) { return null; } },
+      async del(id) { if (!dir || needsPermission) return; try { const fd = await dir.getDirectoryHandle('fotos'); await fd.removeEntry(nomeArq(id) + '.jpg'); } catch (e) { /* já não existe */ } },
+    };
+    async function attachDir(d) {
+      dir = d; handle = await d.getFileHandle(ARQ, { create: true }); needsPermission = false;
+      try { await idbSet(DIR_KEY, d); await idbDel(HANDLE_KEY); } catch (e) { /* reconectar manualmente na próxima vez */ }
+      setStatus({ mode: 'shared', name: d.name, pasta: true, error: '' });
+      const vazio = !(await (await handle.getFile()).text()).trim();
+      await syncNow(vazio);
+      startPolling(); presenca().catch(() => {});
+    }
 
     async function attach(h, isNew) {
-      handle = h; needsPermission = false;
+      handle = h; dir = null; needsPermission = false;
       try { await idbSet(HANDLE_KEY, h); } catch (e) { /* atalho não salvo: reconectar manualmente na próxima vez */ }
       setStatus({ mode: 'shared', name: h.name, error: '' });
       await syncNow(!!isNew);
@@ -190,6 +236,13 @@
       async init() {
         stamp();
         if (!this.supported()) { setStatus({ mode: 'unsupported' }); return; }
+        let d = null; try { d = await idbGet(DIR_KEY); } catch (e) { d = null; }
+        if (d) {
+          dir = d; setStatus({ name: d.name, pasta: true });
+          if ((await d.queryPermission({ mode: 'readwrite' })) === 'granted') { handle = await d.getFileHandle(ARQ, { create: true }); await syncNow(); startPolling(); presenca().catch(() => {}); }
+          else { needsPermission = true; setStatus({ mode: 'permission' }); }
+          return;
+        }
         let h = null; try { h = await idbGet(HANDLE_KEY); } catch (e) { h = null; }
         if (!h) { setStatus({ mode: 'local' }); return; }
         handle = h; setStatus({ name: h.name });
@@ -199,11 +252,20 @@
       },
       // precisam de clique do usuário (o navegador exige)
       async reconnect() {
+        if (dir) {
+          if ((await dir.requestPermission({ mode: 'readwrite' })) !== 'granted') return false;
+          needsPermission = false; handle = await dir.getFileHandle(ARQ, { create: true }); await syncNow(); startPolling(); presenca().catch(() => {}); return true;
+        }
         if (!handle) return false;
         const p = await handle.requestPermission({ mode: 'readwrite' });
         if (p !== 'granted') return false;
         needsPermission = false; await syncNow(); startPolling(); return true;
       },
+      // pasta compartilhada no servidor: dados + fotos + quem está usando
+      async openFolder() { const d = await global.showDirectoryPicker({ id: 'oe-pasta', mode: 'readwrite' }); await attachDir(d); },
+      pasta: () => !!dir && !needsPermission,
+      setAberto(t) { if (aberto === (t || null)) return; aberto = t || null; if (dir && !needsPermission) presenca().catch(() => {}); },
+      fotos,
       async createFile() {
         const h = await global.showSaveFilePicker({ suggestedName: 'ordens-embarque-dados.json', types: [{ description: 'Dados das ordens de embarque', accept: { 'application/json': ['.json'] } }] });
         await attach(h, true);
@@ -212,10 +274,11 @@
         const [h] = await global.showOpenFilePicker({ types: [{ description: 'Dados das ordens de embarque', accept: { 'application/json': ['.json'] } }] });
         await attach(h, false);
       },
-      async disconnect() { clearInterval(poll); handle = null; needsPermission = false; await idbDel(HANDLE_KEY); setStatus({ mode: 'local', name: '' }); },
+      async disconnect() { clearInterval(poll); handle = null; dir = null; needsPermission = false; await idbDel(HANDLE_KEY); await idbDel(DIR_KEY); setStatus({ mode: 'local', name: '', pasta: false }); },
       syncNow: () => syncNow(),
       // para testes
       _attachForTest: (h) => attach(h, false),
+      _attachDirForTest: (d) => attachDir(d),
     };
   }
 

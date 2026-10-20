@@ -34,9 +34,23 @@
     const t = d.transaction(STORE, mode); const q = fn(t.objectStore(STORE));
     t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error);
   }));
-  const put = (id, blob) => tx('readwrite', s => s.put(blob, id));
-  const get = id => tx('readonly', s => s.get(id));
-  const del = id => tx('readwrite', s => s.delete(id));
+  const putLocal = (id, blob) => tx('readwrite', s => s.put(blob, id));
+  const getLocal = id => tx('readonly', s => s.get(id));
+  const delLocal = id => tx('readwrite', s => s.delete(id));
+  // pasta compartilhada (servidor): a foto fica nos dois lugares; quem não tem a foto busca na pasta e guarda cópia
+  let remoto = null;
+  const setRemoto = r => { remoto = r; };
+  async function put(id, blob) { await putLocal(id, blob); if (remoto) await remoto.put(id, blob).catch(() => false); }
+  async function get(id) {
+    const b = await getLocal(id).catch(() => null); if (b) return b;
+    if (!remoto) return null;
+    const r = await remoto.get(id).catch(() => null);
+    if (r) { await putLocal(id, r).catch(() => {}); return r; }
+    return null;
+  }
+  async function del(id) { await delLocal(id).catch(() => {}); if (remoto) await remoto.del(id).catch(() => {}); }
+  // envia para a pasta as fotos que só existem neste computador (ex.: importadas antes de conectar a pasta)
+  async function enviarPendentes(ids) { if (!remoto) return 0; let n = 0; for (const id of ids) { if (await remoto.get(id).catch(() => null)) continue; const b = await getLocal(id).catch(() => null); if (b && await remoto.put(id, b).catch(() => false)) n++; } return n; }
 
   // ---------- imagem: reduz para no máx. 1600 px (JPEG) ----------
   async function comprimir(file, max = 2400, q = 0.85) {
@@ -343,7 +357,7 @@
   }
 
   global.OEF = {
-    SLOTS, CAMPO_NOME, put, get, del, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
+    SLOTS, CAMPO_NOME, put, get, del, setRemoto, enviarPendentes, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
     ILEGIVEL, ehIlegivel, PADRAO_MWG, digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
     carregarOCR, ocr, recortar, dadosJuntos, montarEML, estadoOCR: () => estado,
   };
