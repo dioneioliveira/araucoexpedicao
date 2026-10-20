@@ -112,24 +112,45 @@
     if (/^\d{4,6}$/.test(x)) return +x;
     return null;
   }
-  function pesoApos(text, labels) {
+  // peso só na MESMA linha do rótulo e em kg (ou sem unidade, como no RIC); valor em LBS não é convertido.
+  // Fora da faixa possível => não aceita (ex.: tara lida no lugar do max gross).
+  const FAIXA = { tara: [1000, 10000], mwg: [10000, 40000], payload: [8000, 38000] };
+  const naFaixa = (v, k) => v != null && v >= FAIXA[k][0] && v <= FAIXA[k][1];
+  function pesoApos(text, labels, faixa) {
     const t = String(text || '').toUpperCase().replace(/\r/g, '');
     for (const lab of labels) {
-      const re = new RegExp(lab + '[^\\n]{0,4}', 'g'); let m;
+      const re = new RegExp(lab, 'g'); let m;
       while ((m = re.exec(t))) {
-        const resto = t.slice(m.index + m[0].length - 4).split('\n');
-        const trecho = resto.slice(0, 2).join(' '); // só a linha do rótulo e a seguinte
-        // prefere o número seguido de KG; senão o primeiro número de 4–6 dígitos
-        const kgm = trecho.match(/(\d{1,3}(?:[.,\s]\d{3})+|\d{4,6})\s*(KGS?|KG\.)/);
-        if (kgm) { const v = kgNum(kgm[1]); if (v) return v; }
-        const nm = trecho.match(/(\d{1,3}(?:[.,]\d{3})+|\d{4,6})/);
-        if (nm) { const v = kgNum(nm[1]); if (v) return v; }
+        const linha = t.slice(m.index + m[0].length).split('\n')[0];
+        const nums = linha.matchAll(/(\d{1,3}(?:[.,]\d{3})+|\d{4,6})\s*(KGS?|KG\.|LBS?\.?|CU)?/g);
+        for (const n of nums) {
+          if (n[2] && !/^KG/.test(n[2])) continue; // LBS / CU.M: não é o peso em kg
+          const v = kgNum(n[1]);
+          return naFaixa(v, faixa) ? v : null;
+        }
       }
     }
     return null;
   }
-  const lerTara = text => pesoApos(text, ['TARE', 'TARA']);
-  const lerMwg = text => pesoApos(text, ['MAX\\.?\\s*GROSS', 'MAX\\.?\\s*G\\.?\\s*W', 'M\\.?\\s*G\\.?\\s*W', 'GROSS\\s*WEIGHT', 'MAX\\.?\\s*WT', 'PESO\\s*BRUTO\\s*M', 'MAXIMUM\\s*GROSS', 'GROSS']);
+  const lerTara = text => pesoApos(text, ['\\bTARE\\b', '\\bTARA\\b'], 'tara');
+  const lerMwg = text => pesoApos(text, ['MAX\\.?\\s*GROSS', 'MAX\\.?\\s*G\\.?\\s*W', '\\bM\\.?\\s*G\\.?\\s*W\\b', 'MAX\\.?\\s*WT', 'MAXIMUM\\s*GROSS', 'PESO\\s*BRUTO\\s*M[AÁ]X'], 'mwg');
+  const lerPayload = text => pesoApos(text, ['PAYLOAD', 'PAY\\s*LOAD', '\\bNET\\b', 'CARGA\\s*[UÚ]TIL'], 'payload');
+  // placa da porta: MAX GROSS = TARE + PAYLOAD. Três valores em KG que fecham a soma identificam tara e max gross
+  // mesmo se os rótulos saírem separados dos números; leitura que não fecha a soma => ILEGÍVEL.
+  function pesosPorta(text) {
+    const t = String(text || '').toUpperCase();
+    let tara = lerTara(t), mwg = lerMwg(t); const pay = lerPayload(t);
+    const kgs = Array.from(new Set(Array.from(t.matchAll(/(\d{1,3}(?:[.,]\d{3})+|\d{4,6})\s*KG/g)).map(n => kgNum(n[1])).filter(Boolean)));
+    const triplas = [];
+    kgs.forEach(a => kgs.forEach(c => { if (naFaixa(a, 'mwg') && naFaixa(c, 'tara') && kgs.includes(a - c) && naFaixa(a - c, 'payload')) triplas.push({ mwg: a, tara: c }); }));
+    const tri = triplas.length === 1 ? triplas[0] : null;
+    if (tri) {
+      tara = tara == null ? tri.tara : (tara === tri.tara ? tara : ILEGIVEL);
+      mwg = mwg == null ? tri.mwg : (mwg === tri.mwg ? mwg : ILEGIVEL);
+    }
+    if (typeof tara === 'number' && typeof mwg === 'number' && pay != null && mwg !== tara + pay) { tara = ILEGIVEL; mwg = ILEGIVEL; }
+    return { tara: tara || ILEGIVEL, mwg: mwg || ILEGIVEL };
+  }
 
   // ---------- lacre ----------
   const normLacre = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -176,7 +197,7 @@
     if (slot === 'porta') {
       const cs = containersNoTexto(text);
       r.container = cs.length === 1 ? cs[0].c : ILEGIVEL; // nenhum ou mais de um nº diferente: não escolhe
-      r.tara = lerTara(text) || ILEGIVEL; r.mwg = lerMwg(text) || ILEGIVEL;
+      Object.assign(r, pesosPorta(text));
     }
     if (slot === 'lacre') {
       // foto só do lacre: o único código (letras + dígitos) escrito nela

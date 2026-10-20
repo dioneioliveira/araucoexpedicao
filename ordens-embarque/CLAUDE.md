@@ -90,7 +90,9 @@
   KPI "Fotos faltando" e nomes das posições vazias na conferência (`faltandoFotos`). Leitura automática opcional
   (Tesseract.js via CDN, `OEF.ocr`). **Nunca adivinhar**: só vale o que foi lido exatamente (container = 4 letras +
   7 dígitos com dígito verificador ISO 6346 certo, sem trocar letras parecidas; lacre igual ao escrito; peso na linha do
-  rótulo ou na seguinte; mais de um nº possível = não escolhe). Campo esperado e não lido com certeza = `ILEGÍVEL`
+  rótulo, em KG — LBS não é convertido —, dentro da faixa: tara 1–10 t, max gross 10–40 t; mais de um nº possível =
+  não escolhe). Placa da porta (`pesosPorta`): MAX GROSS = TARE + PAYLOAD; três valores em KG que fecham a soma (única
+  combinação) definem tara e max gross mesmo com rótulo mal lido; leitura que contradiz a soma = ILEGÍVEL. Campo esperado e não lido com certeza = `ILEGÍVEL`
   (`OEF.ILEGIVEL`), que não entra na comparação mas impede o "confere" (status `ileg`, chip amarelo "ilegível"). A foto do RIC (modelo real: comprovante "Gate Out" em inglês sobre a
   Solicitação de Embarque Arauco, com o lacre físico na mesma foto) tem os campos container ("Container No"),
   contOrdem ("Número Container" da ordem; OCR lê "Nidmero"), lacre ("Seal No"), lacreFis (código repetido na foto),
