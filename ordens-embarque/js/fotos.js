@@ -224,17 +224,42 @@
   }
 
   // ---------- OCR (Tesseract.js, carregado só quando usado; precisa de internet) ----------
-  const TESS = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-  let tessP = null;
-  function carregarOCR() {
-    if (global.Tesseract) return Promise.resolve(global.Tesseract);
-    if (!tessP) tessP = new Promise((res, rej) => {
-      const s = document.createElement('script'); s.src = TESS; s.async = true;
-      s.onload = () => (global.Tesseract ? res(global.Tesseract) : rej(new Error('OCR indisponível')));
-      s.onerror = () => { tessP = null; rej(new Error('sem internet para carregar a leitura automática (OCR)')); };
+  // Duas fontes (se a rede bloquear uma, tenta a outra). Um único "motor" de leitura é criado e reaproveitado
+  // para todas as fotos (antes era baixado de novo a cada foto).
+  const FONTES = [
+    { nome: 'jsDelivr', lib: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
+      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js', corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
+      langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int' },
+    { nome: 'unpkg', lib: 'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js',
+      workerPath: 'https://unpkg.com/tesseract.js@5.1.1/dist/worker.min.js', corePath: 'https://unpkg.com/tesseract.js-core@5.1.1',
+      langPath: 'https://unpkg.com/@tesseract.js-data/eng@1.0.0/4.0.0_best_int' },
+  ];
+  const estado = { st: 'nao', msg: 'Leitura automática ainda não usada.' }; // nao | carregando | ok | erro
+  const prazo = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
+  function script(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = src; s.async = true;
+      s.onload = () => res(); s.onerror = () => { s.remove(); rej(new Error('bloqueado')); };
       document.head.appendChild(s);
     });
-    return tessP;
+  }
+  let motorP = null;
+  function carregarOCR() {
+    if (motorP) return motorP;
+    estado.st = 'carregando'; estado.msg = 'Carregando a leitura automática…';
+    motorP = (async () => {
+      const erros = [];
+      for (const f of FONTES) {
+        try {
+          if (!global.Tesseract) await prazo(script(f.lib), 20000, 'tempo esgotado');
+          const w = await prazo(global.Tesseract.createWorker('eng', 1, { workerPath: f.workerPath, corePath: f.corePath, langPath: f.langPath }), 90000, 'tempo esgotado');
+          estado.st = 'ok'; estado.msg = `Leitura automática disponível (${f.nome}).`;
+          return w;
+        } catch (e) { erros.push(`${f.nome}: ${e.message || e}`); }
+      }
+      throw new Error('a rede não deixou baixar a leitura automática (' + erros.join('; ') + ')');
+    })().catch(e => { motorP = null; estado.st = 'erro'; estado.msg = 'Leitura automática indisponível: ' + e.message + '. Digite os dados nos campos de cada foto.'; throw e; });
+    return motorP;
   }
   // realce para OCR: tons de cinza + contraste, ampliado
   async function prepararOCR(blob) {
@@ -248,9 +273,9 @@
     } finally { URL.revokeObjectURL(url); }
   }
   async function ocr(blob, onProgress) {
-    const T = await carregarOCR();
+    const w = await carregarOCR();
     const img = await prepararOCR(blob);
-    const r = await T.recognize(img, 'eng', { logger: m => onProgress && m.status === 'recognizing text' && onProgress(m.progress) });
+    const r = await w.recognize(img);
     return (r && r.data && r.data.text) || '';
   }
 
@@ -269,6 +294,6 @@
   global.OEF = {
     SLOTS, CAMPO_NOME, put, get, del, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
     ILEGIVEL, ehIlegivel, digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
-    carregarOCR, ocr, montarEML,
+    carregarOCR, ocr, montarEML, estadoOCR: () => estado,
   };
 })(window);

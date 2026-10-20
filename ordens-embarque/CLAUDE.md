@@ -65,7 +65,7 @@
   balança, faturar, excluir).
 - Visual da tela inicial: campo Transporte compacto (coluna 330–430px, fonte 30px), 5 botões de colagem numa linha
   alinhados com o campo (3 colunas abaixo de 1500px); ícones: lista com bandeira verde (ordem), caminhão grade baixa
-  (mercado interno), container (exportação), lista (LT22), árvore (FSC); contadores
+  (botão MERCADO INTERNO), container (botão CONTAINER), lista (LT22), árvore (FSC); contadores
   em etiquetas pequenas (`.kpi` em linha); lista diária em destaque com legenda; linha impressa verde com
   "Impressa hh:mm", alterada vermelha, faturada esmaecida. Rodapé `.credit` com o crédito do autor.
 - Lista diária inclui agendamentos sem ordem (`agendamentosSemOrdem` → `linhaAgendamento`, `tr.ghost`, chip
@@ -90,7 +90,10 @@
   sem OCR, a foto mais "folha branca" (`papelBranco`) vai para o RIC; o resto vai para f4–f6 e depois às vagas.
   Fotos faltando: chip "n/6 faltam x" (lista e Agendamentos), contagem no cabeçalho da janela de containers,
   KPI "Fotos faltando" e nomes das posições vazias na conferência (`faltandoFotos`). Leitura automática opcional
-  (Tesseract.js via CDN, `OEF.ocr`). **Nunca adivinhar**: só vale o que foi lido exatamente (container = 4 letras +
+  (Tesseract.js via CDN, `OEF.ocr`): um único worker reaproveitado (`carregarOCR`), fontes jsDelivr e, se bloqueado,
+  unpkg; estado em `OEF.estadoOCR()` mostrado na seção (`.ft-ocr`: disponível / indisponível com o motivo). Na importação,
+  TODA foto que fica em Porta/RIC/Lacre é lida (também as posicionadas pelo nome do arquivo); sem prazo curto no
+  carregamento (1ª vez baixa ~6 MB). **Nunca adivinhar**: só vale o que foi lido exatamente (container = 4 letras +
   7 dígitos com dígito verificador ISO 6346 certo, sem trocar letras parecidas; lacre igual ao escrito; peso na linha do
   rótulo, em KG — LBS não é convertido —, dentro da faixa: tara 1–10 t, max gross 10–40 t; mais de um nº possível =
   não escolhe). Placa da porta (`pesosPorta`): MAX GROSS = TARE + PAYLOAD; três valores em KG que fecham a soma (única

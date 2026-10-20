@@ -582,3 +582,8 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .ft-f input.ileg{color:var(--err);font-weight:700;background:var(--err-soft);border-color:#e3b5ae}
 .ft-val tr.st-ileg td{background:rgba(208,204,0,.10)}
 .cb-ico.mi svg,.cb-ico.ct svg{width:24px;height:24px;stroke-width:1.5}
+.ft-ocr{font-size:11.5px;border-radius:8px;padding:5px 10px;margin:4px 0}
+.ft-ocr.ok{background:var(--ok-soft);color:var(--ok)}.ft-ocr.erro{background:var(--err-soft);color:var(--err);font-weight:600}.ft-ocr.carregando{background:var(--turq-ghost);color:var(--turq-strong)}
+.colar-btn small{white-space:nowrap}
+.colar-btn > span:last-child{min-width:0}
+.ft-f i{align-self:flex-start;display:inline-block;margin-left:0}

@@ -595,6 +595,11 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .ft-f input.ileg{color:var(--err);font-weight:700;background:var(--err-soft);border-color:#e3b5ae}
 .ft-val tr.st-ileg td{background:rgba(208,204,0,.10)}
 .cb-ico.mi svg,.cb-ico.ct svg{width:24px;height:24px;stroke-width:1.5}
+.ft-ocr{font-size:11.5px;border-radius:8px;padding:5px 10px;margin:4px 0}
+.ft-ocr.ok{background:var(--ok-soft);color:var(--ok)}.ft-ocr.erro{background:var(--err-soft);color:var(--err);font-weight:600}.ft-ocr.carregando{background:var(--turq-ghost);color:var(--turq-strong)}
+.colar-btn small{white-space:nowrap}
+.colar-btn > span:last-child{min-width:0}
+.ft-f i{align-self:flex-start;display:inline-block;margin-left:0}
 
 </style>
 </head>
@@ -631,8 +636,8 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       </form>
       <div class="colar-grid" aria-label="Colar dados (Ctrl+C no sistema, depois clique)">
         <button type="button" class="colar-btn" data-colar="ordem"><span class="cb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h1M7 6h7M3 11h1M7 11h7M3 16h1M7 16h5"/><path d="M17 21V5"/><path class="flag" d="M17 5h5l-1.6 2.5L22 10h-5z"/></svg></span><span><b>Importar ordem</b><small>Solicitação de Embarque</small></span></button>
-        <button type="button" class="colar-btn" data-colar="MI"><span class="cb-ico mi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 16.5h22"/><path d="M1.5 16.5v-5h12v5M5.5 11.5v5M9.5 11.5v5"/><path d="M14 16.5V6.5h4.6l3.9 4.6v5.4"/><path d="M16.3 6.5v4.6h6"/><circle cx="5" cy="18.8" r="2"/><circle cx="10.5" cy="18.8" r="2"/><circle cx="18.6" cy="18.8" r="2"/></svg></span><span><b>Agendamento</b><small>Mercado interno · PIÊN PAINÉIS</small></span></button>
-        <button type="button" class="colar-btn" data-colar="CONTAINER"><span class="cb-ico ct"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="5.5" width="21" height="13" rx="1"/><path d="M1.5 8h21M1.5 16h21M5 8v8M8 8v8M11 8v8M14 8v8M17 8v8M20 8v8"/></svg></span><span><b>Agendamento</b><small>Exportação · PIÊN CONTAINERS</small></span></button>
+        <button type="button" class="colar-btn" data-colar="MI"><span class="cb-ico mi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 16.5h22"/><path d="M1.5 16.5v-5h12v5M5.5 11.5v5M9.5 11.5v5"/><path d="M14 16.5V6.5h4.6l3.9 4.6v5.4"/><path d="M16.3 6.5v4.6h6"/><circle cx="5" cy="18.8" r="2"/><circle cx="10.5" cy="18.8" r="2"/><circle cx="18.6" cy="18.8" r="2"/></svg></span><span><b>MERCADO INTERNO</b><small>Janela PIÊN PAINÉIS</small></span></button>
+        <button type="button" class="colar-btn" data-colar="CONTAINER"><span class="cb-ico ct"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="5.5" width="21" height="13" rx="1"/><path d="M1.5 8h21M1.5 16h21M5 8v8M8 8v8M11 8v8M14 8v8M17 8v8M20 8v8"/></svg></span><span><b>CONTAINER</b><small>Janela PIÊN CONTAINERS</small></span></button>
         <button type="button" class="colar-btn" data-colar="ots"><span class="cb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M7 8h1M11 8h6M7 12h1M11 12h6M7 16h1M11 16h4"/></svg></span><span><b>LT22 · OTs</b><small>OT por entrega</small></span></button>
         <button type="button" class="colar-btn colar-wide" data-colar="fsc"><span class="cb-ico fsc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l4.5 6h-2.6l4.1 5.5h-2.7l3.7 5H5l3.7-5H6l4.1-5.5H7.5z"/><path d="M12 19v3"/></svg></span><span><b>Clientes FSC</b><small>Planilha por cliente</small></span></button>
         <p class="colar-hint">Copie a tela no sistema (<b>Ctrl+A</b>, <b>Ctrl+C</b>) e clique no botão do processo.</p>
@@ -4912,17 +4917,42 @@ window.ORDEM_TEMPLATES = {
   }
 
   // ---------- OCR (Tesseract.js, carregado só quando usado; precisa de internet) ----------
-  const TESS = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-  let tessP = null;
-  function carregarOCR() {
-    if (global.Tesseract) return Promise.resolve(global.Tesseract);
-    if (!tessP) tessP = new Promise((res, rej) => {
-      const s = document.createElement('script'); s.src = TESS; s.async = true;
-      s.onload = () => (global.Tesseract ? res(global.Tesseract) : rej(new Error('OCR indisponível')));
-      s.onerror = () => { tessP = null; rej(new Error('sem internet para carregar a leitura automática (OCR)')); };
+  // Duas fontes (se a rede bloquear uma, tenta a outra). Um único "motor" de leitura é criado e reaproveitado
+  // para todas as fotos (antes era baixado de novo a cada foto).
+  const FONTES = [
+    { nome: 'jsDelivr', lib: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
+      workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js', corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
+      langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int' },
+    { nome: 'unpkg', lib: 'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js',
+      workerPath: 'https://unpkg.com/tesseract.js@5.1.1/dist/worker.min.js', corePath: 'https://unpkg.com/tesseract.js-core@5.1.1',
+      langPath: 'https://unpkg.com/@tesseract.js-data/eng@1.0.0/4.0.0_best_int' },
+  ];
+  const estado = { st: 'nao', msg: 'Leitura automática ainda não usada.' }; // nao | carregando | ok | erro
+  const prazo = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
+  function script(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = src; s.async = true;
+      s.onload = () => res(); s.onerror = () => { s.remove(); rej(new Error('bloqueado')); };
       document.head.appendChild(s);
     });
-    return tessP;
+  }
+  let motorP = null;
+  function carregarOCR() {
+    if (motorP) return motorP;
+    estado.st = 'carregando'; estado.msg = 'Carregando a leitura automática…';
+    motorP = (async () => {
+      const erros = [];
+      for (const f of FONTES) {
+        try {
+          if (!global.Tesseract) await prazo(script(f.lib), 20000, 'tempo esgotado');
+          const w = await prazo(global.Tesseract.createWorker('eng', 1, { workerPath: f.workerPath, corePath: f.corePath, langPath: f.langPath }), 90000, 'tempo esgotado');
+          estado.st = 'ok'; estado.msg = `Leitura automática disponível (${f.nome}).`;
+          return w;
+        } catch (e) { erros.push(`${f.nome}: ${e.message || e}`); }
+      }
+      throw new Error('a rede não deixou baixar a leitura automática (' + erros.join('; ') + ')');
+    })().catch(e => { motorP = null; estado.st = 'erro'; estado.msg = 'Leitura automática indisponível: ' + e.message + '. Digite os dados nos campos de cada foto.'; throw e; });
+    return motorP;
   }
   // realce para OCR: tons de cinza + contraste, ampliado
   async function prepararOCR(blob) {
@@ -4936,9 +4966,9 @@ window.ORDEM_TEMPLATES = {
     } finally { URL.revokeObjectURL(url); }
   }
   async function ocr(blob, onProgress) {
-    const T = await carregarOCR();
+    const w = await carregarOCR();
     const img = await prepararOCR(blob);
-    const r = await T.recognize(img, 'eng', { logger: m => onProgress && m.status === 'recognizing text' && onProgress(m.progress) });
+    const r = await w.recognize(img);
     return (r && r.data && r.data.text) || '';
   }
 
@@ -4957,7 +4987,7 @@ window.ORDEM_TEMPLATES = {
   global.OEF = {
     SLOTS, CAMPO_NOME, put, get, del, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
     ILEGIVEL, ehIlegivel, digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
-    carregarOCR, ocr, montarEML,
+    carregarOCR, ocr, montarEML, estadoOCR: () => estado,
   };
 })(window);
 
@@ -6129,6 +6159,7 @@ window.ORDEM_TEMPLATES = {
       </div>
       <p class="muted small">Selecione as fotos todas de uma vez (sem renomear): cada uma vai para a posição certa pelo conteúdo. Dá para importar aos poucos — as posições já preenchidas são mantidas. Arraste para trocar. As imagens ficam guardadas neste computador.</p>
       <div class="ft-status" id="ft-status" hidden></div>
+      ${(() => { const o = F.estadoOCR(); return o.st === 'nao' ? '' : `<div class="ft-ocr ${o.st}">${esc(o.msg)}</div>`; })()}
       <div class="ft-grid">${slots}</div>
       <div id="ft-val">${validacaoHTML(T)}</div>
     </div>`;
@@ -6174,7 +6205,7 @@ window.ORDEM_TEMPLATES = {
       let leu = false;
       if (pend.length && chaves().length) {
         try {
-          ftStatus('Carregando a leitura das fotos…'); await comPrazo(F.carregarOCR(), 15000); leu = true;
+          ftStatus('Carregando a leitura automática (na 1ª vez pode levar até 1 minuto)…'); await F.carregarOCR(); leu = true;
           for (let i = 0; i < pend.length; i++) { ftStatus(`Identificando foto ${i + 1} de ${pend.length}…`); texto.set(pend[i], await F.ocr(pend[i])); } // original, em alta resolução
         } catch (e) { leu = false; }
         if (leu) {
@@ -6192,6 +6223,14 @@ window.ORDEM_TEMPLATES = {
       // 3) o resto vai para as fotos 4–6 e, depois, para as posições que ainda faltam
       const ordem = ['f4', 'f5', 'f6', 'porta', 'ric', 'lacre'];
       pend.forEach(x => { const k = ordem.find(k => !f.slots[k] && ![...pos.values()].includes(k)); if (k) pos.set(x, k); });
+      // toda foto que ficou em Porta/RIC/Lacre é lida (também as posicionadas pelo nome do arquivo)
+      const chave = k => ['porta', 'ric', 'lacre'].includes(k);
+      if (F.estadoOCR().st !== 'erro') {
+        const aLer = [...pos].filter(([x, k]) => chave(k) && !texto.has(x));
+        for (let i = 0; i < aLer.length; i++) {
+          try { ftStatus(i === 0 && F.estadoOCR().st !== 'ok' ? 'Carregando a leitura automática (na 1ª vez pode levar até 1 minuto)…' : `Lendo os dados da foto ${i + 1} de ${aLer.length}…`); texto.set(aLer[i][0], await F.ocr(aLer[i][0])); } catch (e) { break; }
+        }
+      }
       for (const [x, k] of pos) {
         await gravarFoto(t, k, x, x._blob);
         // aproveita o texto lido para preencher os dados da foto (só campos vazios)
@@ -6207,7 +6246,7 @@ window.ORDEM_TEMPLATES = {
     const fora = novos.length - pos.size; const falta = faltandoFotos(t);
     toast(`${pos.size} foto(s) guardada(s) no transporte ${t}${fora ? ` · ${fora} a mais ficaram de fora (máx. 6)` : ''}.`
       + (falta.length ? ` Faltam: ${falta.join(', ')}.` : ' As 6 fotos estão completas.')
-      + (texto.size ? ' Fotos identificadas pelo conteúdo: confira as posições e os campos "auto".' : (pos.size > 1 ? ' Sem leitura automática: confira as posições (arraste para trocar).' : '')), falta.length ? 'warn' : 'ok');
+      + (texto.size ? ' Dados lidos das fotos: confira os campos marcados "auto".' : ` ${F.estadoOCR().st === 'erro' ? F.estadoOCR().msg : 'Nenhum dado lido.'} Confira as posições (arraste para trocar).`), falta.length || !texto.size ? 'warn' : 'ok');
   }
   const faltandoFotos = t => { const f = state.fotos[t] || { slots: {} }; return F.SLOTS.filter(s => !f.slots[s.k]).map(s => s.k === 'porta' ? 'Porta' : (s.k === 'ric' ? 'RIC' : (s.k === 'lacre' ? 'Lacre' : s.nome))); };
   async function lerFotos(t) {
@@ -6228,8 +6267,8 @@ window.ORDEM_TEMPLATES = {
       const ileg = alvo.reduce((a, k) => a + Object.values(f.lido[k] || {}).filter(F.ehIlegivel).length, 0);
       toast(`${achou} campo(s) preenchido(s) pela leitura das fotos${ileg ? ` · ${ileg} ILEGÍVEL(is): leia na foto e digite` : ''}. Confira os campos marcados "auto".`, ileg ? 'warn' : 'ok');
     } catch (e) {
-      toast('Leitura automática indisponível: ' + (e.message || e) + '. Digite os dados nos campos abaixo de cada foto.', 'warn');
-      if (b) { b.disabled = false; b.textContent = 'Ler dados das fotos'; }
+      toast(F.estadoOCR().msg || ('Leitura automática indisponível: ' + (e.message || e)), 'warn');
+      renderAll();
     }
   }
   function preencherOTdasFotos(t) {

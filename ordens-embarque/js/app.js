@@ -1164,6 +1164,7 @@
       </div>
       <p class="muted small">Selecione as fotos todas de uma vez (sem renomear): cada uma vai para a posição certa pelo conteúdo. Dá para importar aos poucos — as posições já preenchidas são mantidas. Arraste para trocar. As imagens ficam guardadas neste computador.</p>
       <div class="ft-status" id="ft-status" hidden></div>
+      ${(() => { const o = F.estadoOCR(); return o.st === 'nao' ? '' : `<div class="ft-ocr ${o.st}">${esc(o.msg)}</div>`; })()}
       <div class="ft-grid">${slots}</div>
       <div id="ft-val">${validacaoHTML(T)}</div>
     </div>`;
@@ -1209,7 +1210,7 @@
       let leu = false;
       if (pend.length && chaves().length) {
         try {
-          ftStatus('Carregando a leitura das fotos…'); await comPrazo(F.carregarOCR(), 15000); leu = true;
+          ftStatus('Carregando a leitura automática (na 1ª vez pode levar até 1 minuto)…'); await F.carregarOCR(); leu = true;
           for (let i = 0; i < pend.length; i++) { ftStatus(`Identificando foto ${i + 1} de ${pend.length}…`); texto.set(pend[i], await F.ocr(pend[i])); } // original, em alta resolução
         } catch (e) { leu = false; }
         if (leu) {
@@ -1227,6 +1228,14 @@
       // 3) o resto vai para as fotos 4–6 e, depois, para as posições que ainda faltam
       const ordem = ['f4', 'f5', 'f6', 'porta', 'ric', 'lacre'];
       pend.forEach(x => { const k = ordem.find(k => !f.slots[k] && ![...pos.values()].includes(k)); if (k) pos.set(x, k); });
+      // toda foto que ficou em Porta/RIC/Lacre é lida (também as posicionadas pelo nome do arquivo)
+      const chave = k => ['porta', 'ric', 'lacre'].includes(k);
+      if (F.estadoOCR().st !== 'erro') {
+        const aLer = [...pos].filter(([x, k]) => chave(k) && !texto.has(x));
+        for (let i = 0; i < aLer.length; i++) {
+          try { ftStatus(i === 0 && F.estadoOCR().st !== 'ok' ? 'Carregando a leitura automática (na 1ª vez pode levar até 1 minuto)…' : `Lendo os dados da foto ${i + 1} de ${aLer.length}…`); texto.set(aLer[i][0], await F.ocr(aLer[i][0])); } catch (e) { break; }
+        }
+      }
       for (const [x, k] of pos) {
         await gravarFoto(t, k, x, x._blob);
         // aproveita o texto lido para preencher os dados da foto (só campos vazios)
@@ -1242,7 +1251,7 @@
     const fora = novos.length - pos.size; const falta = faltandoFotos(t);
     toast(`${pos.size} foto(s) guardada(s) no transporte ${t}${fora ? ` · ${fora} a mais ficaram de fora (máx. 6)` : ''}.`
       + (falta.length ? ` Faltam: ${falta.join(', ')}.` : ' As 6 fotos estão completas.')
-      + (texto.size ? ' Fotos identificadas pelo conteúdo: confira as posições e os campos "auto".' : (pos.size > 1 ? ' Sem leitura automática: confira as posições (arraste para trocar).' : '')), falta.length ? 'warn' : 'ok');
+      + (texto.size ? ' Dados lidos das fotos: confira os campos marcados "auto".' : ` ${F.estadoOCR().st === 'erro' ? F.estadoOCR().msg : 'Nenhum dado lido.'} Confira as posições (arraste para trocar).`), falta.length || !texto.size ? 'warn' : 'ok');
   }
   const faltandoFotos = t => { const f = state.fotos[t] || { slots: {} }; return F.SLOTS.filter(s => !f.slots[s.k]).map(s => s.k === 'porta' ? 'Porta' : (s.k === 'ric' ? 'RIC' : (s.k === 'lacre' ? 'Lacre' : s.nome))); };
   async function lerFotos(t) {
@@ -1263,8 +1272,8 @@
       const ileg = alvo.reduce((a, k) => a + Object.values(f.lido[k] || {}).filter(F.ehIlegivel).length, 0);
       toast(`${achou} campo(s) preenchido(s) pela leitura das fotos${ileg ? ` · ${ileg} ILEGÍVEL(is): leia na foto e digite` : ''}. Confira os campos marcados "auto".`, ileg ? 'warn' : 'ok');
     } catch (e) {
-      toast('Leitura automática indisponível: ' + (e.message || e) + '. Digite os dados nos campos abaixo de cada foto.', 'warn');
-      if (b) { b.disabled = false; b.textContent = 'Ler dados das fotos'; }
+      toast(F.estadoOCR().msg || ('Leitura automática indisponível: ' + (e.message || e)), 'warn');
+      renderAll();
     }
   }
   function preencherOTdasFotos(t) {
