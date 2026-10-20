@@ -63,7 +63,9 @@
 - Painel da ordem: meia tela (`.drawer` max(50vw, 860px)); ações na coluna `#d-actions` (imprimir, separação,
   identificador, cópias "Dados de texto (VL02N/texto)", "Placa p/ nota (VL02N/placa)", "Dados do motorista (VT02N)",
   balança, faturar, excluir).
-- Visual da tela inicial: campo Transporte compacto (fonte 30px), botões de colagem em 3 colunas, contadores
+- Visual da tela inicial: campo Transporte compacto (coluna 330–430px, fonte 30px), 5 botões de colagem numa linha
+  alinhados com o campo (3 colunas abaixo de 1500px); ícones: lista com bandeira verde (ordem), caminhão grade baixa
+  (mercado interno), container (exportação), lista (LT22), árvore (FSC); contadores
   em etiquetas pequenas (`.kpi` em linha); lista diária em destaque com legenda; linha impressa verde com
   "Impressa hh:mm", alterada vermelha, faturada esmaecida. Rodapé `.credit` com o crédito do autor.
 - Lista diária inclui agendamentos sem ordem (`agendamentosSemOrdem` → `linhaAgendamento`, `tr.ghost`, chip

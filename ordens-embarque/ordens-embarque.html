@@ -78,24 +78,30 @@ input,select,textarea{font:inherit;color:var(--ink)}
 .brand-mark b{color:var(--ink);font-weight:800}
 .brand-sub{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
 
-.home-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:22px;align-items:center;
+.home-hero{display:grid;grid-template-columns:minmax(330px,430px) minmax(0,1fr);gap:22px;align-items:end;
   padding:14px 20px 14px 26px;position:relative;overflow:hidden;
   background:linear-gradient(110deg,#FFFFFF 0%,#FFFFFF 50%,rgba(183,217,216,.30) 100%)}
 .home-hero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:linear-gradient(180deg,var(--turq),var(--lime))}
 .transporte-hero{display:flex;flex-direction:column;gap:6px;min-width:0}
 .th-title{font-family:var(--f-title);font-weight:800;font-size:19px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink)}
 .th-hint{font-size:11px;color:var(--ink-dim)}
-.colar-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.colar-btn{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:rgba(255,255,255,.85);border-radius:12px;padding:8px 11px;cursor:pointer;box-shadow:var(--shadow-1);transition:transform .12s,border-color .15s,background .15s}
+.colar-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.th-hint,.colar-hint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5}
+.colar-btn{display:flex;align-items:center;gap:10px;text-align:left;min-height:61px;min-width:0;border:1px solid var(--line);background:rgba(255,255,255,.85);border-radius:12px;padding:8px 11px;cursor:pointer;box-shadow:var(--shadow-1);transition:transform .12s,border-color .15s,background .15s}
 .colar-btn:hover{border-color:var(--turq-strong);background:#fff;transform:translateY(-1px)}
 .colar-btn b{display:block;font-size:12.5px;color:var(--ink)}
 .colar-btn small{display:block;font-size:10.5px;color:var(--ink-dim)}
 .cb-ico{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--turq-ghost);color:var(--turq-strong);flex:0 0 auto}
 .cb-ico.mi{background:var(--turq-soft);color:#3d6f6d}
 .cb-ico.ct{background:var(--lime-soft);color:#6b6900}
-.cb-ico svg{width:16px;height:16px}
+.cb-ico svg{width:19px;height:19px;stroke-width:1.6}
+.cb-ico{width:34px;height:34px}
+.cb-ico.fsc{background:rgba(46,125,79,.12);color:#2e7d4f}
+.cb-ico .flag{fill:#2e9b4f;stroke:#2e9b4f}
+.colar-btn small{overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1500px){.colar-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .colar-wide{grid-column:auto}
-.colar-wide .cb-ico{width:32px;height:32px}
+
 .colar-hint{grid-column:1/-1;margin:0;font-size:10.5px;color:var(--ink-dim)}
 .paste-area{width:100%;min-height:150px;border:2px dashed var(--turq);border-radius:var(--r-m);padding:14px;font-family:var(--f-mono);font-size:12px;outline:0;resize:vertical;margin-top:8px}
 .paste-area:focus{border-color:var(--turq-strong);background:var(--turq-ghost)}
@@ -588,6 +594,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .ft-status{font-size:12.5px;font-weight:600;color:var(--turq-strong);background:var(--turq-ghost);border-radius:8px;padding:6px 10px;margin:4px 0}
 .ft-f input.ileg{color:var(--err);font-weight:700;background:var(--err-soft);border-color:#e3b5ae}
 .ft-val tr.st-ileg td{background:rgba(208,204,0,.10)}
+.cb-ico.mi svg,.cb-ico.ct svg{width:24px;height:24px;stroke-width:1.5}
 
 </style>
 </head>
@@ -620,14 +627,14 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
           <datalist id="transporte-list"></datalist>
           <button type="submit" class="btn btn-primary btn-lg" title="Abrir ordem de embarque">Abrir ordem</button>
         </div>
-        <span class="th-hint">Referência de tudo: digite o nº e pressione Enter. A ordem abre com Solicitação, agendamento, OTs e Controle OT ligados a ele.</span>
+        <span class="th-hint" title="A ordem abre com Solicitação, agendamento, OTs e Controle OT ligados a ele.">Digite o nº e pressione Enter: abre a ordem com tudo ligado a ele.</span>
       </form>
       <div class="colar-grid" aria-label="Colar dados (Ctrl+C no sistema, depois clique)">
-        <button type="button" class="colar-btn" data-colar="ordem"><span class="cb-ico"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M8 13h8M8 17h5"/></svg></span><span><b>Importar ordem</b><small>Solicitação de Embarque</small></span></button>
-        <button type="button" class="colar-btn" data-colar="MI"><span class="cb-ico mi"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span><span><b>Agendamento</b><small>Mercado interno · PIÊN PAINÉIS</small></span></button>
-        <button type="button" class="colar-btn" data-colar="CONTAINER"><span class="cb-ico ct"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="1"/><path d="M6 7v11M10 7v11M14 7v11M18 7v11"/></svg></span><span><b>Agendamento</b><small>Exportação · PIÊN CONTAINERS</small></span></button>
-        <button type="button" class="colar-btn" data-colar="ots"><span class="cb-ico"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span><span><b>LT22 · OTs</b><small>OT por entrega</small></span></button>
-        <button type="button" class="colar-btn colar-wide" data-colar="fsc"><span class="cb-ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span><span><b>Clientes FSC</b><small>Importar planilha (relação por cliente)</small></span></button>
+        <button type="button" class="colar-btn" data-colar="ordem"><span class="cb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h1M7 6h7M3 11h1M7 11h7M3 16h1M7 16h5"/><path d="M17 21V5"/><path class="flag" d="M17 5h5l-1.6 2.5L22 10h-5z"/></svg></span><span><b>Importar ordem</b><small>Solicitação de Embarque</small></span></button>
+        <button type="button" class="colar-btn" data-colar="MI"><span class="cb-ico mi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 16.5h22"/><path d="M1.5 16.5v-5h12v5M5.5 11.5v5M9.5 11.5v5"/><path d="M14 16.5V6.5h4.6l3.9 4.6v5.4"/><path d="M16.3 6.5v4.6h6"/><circle cx="5" cy="18.8" r="2"/><circle cx="10.5" cy="18.8" r="2"/><circle cx="18.6" cy="18.8" r="2"/></svg></span><span><b>Agendamento</b><small>Mercado interno · PIÊN PAINÉIS</small></span></button>
+        <button type="button" class="colar-btn" data-colar="CONTAINER"><span class="cb-ico ct"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="5.5" width="21" height="13" rx="1"/><path d="M1.5 8h21M1.5 16h21M5 8v8M8 8v8M11 8v8M14 8v8M17 8v8M20 8v8"/></svg></span><span><b>Agendamento</b><small>Exportação · PIÊN CONTAINERS</small></span></button>
+        <button type="button" class="colar-btn" data-colar="ots"><span class="cb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M7 8h1M11 8h6M7 12h1M11 12h6M7 16h1M11 16h4"/></svg></span><span><b>LT22 · OTs</b><small>OT por entrega</small></span></button>
+        <button type="button" class="colar-btn colar-wide" data-colar="fsc"><span class="cb-ico fsc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l4.5 6h-2.6l4.1 5.5h-2.7l3.7 5H5l3.7-5H6l4.1-5.5H7.5z"/><path d="M12 19v3"/></svg></span><span><b>Clientes FSC</b><small>Planilha por cliente</small></span></button>
         <p class="colar-hint">Copie a tela no sistema (<b>Ctrl+A</b>, <b>Ctrl+C</b>) e clique no botão do processo.</p>
       </div>
     </section>
