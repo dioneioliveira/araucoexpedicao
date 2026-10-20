@@ -82,7 +82,12 @@
 - Fotos do container (`js/fotos.js` = `OEF`; UI em `fotosHTML`/`bindFotos`): carga com container (`temContainer` = janela
   CONTAINER ou cabotagem) tem 6 posições (`OEF.SLOTS`: porta, ric, lacre, f4–f6). Imagens comprimidas (1600 px JPEG) no
   IndexedDB `arauco-ordens-fotos` deste computador; em `state.fotos[t]` (sync `foto:`) só nomes e dados lidos
-  (`lido[slot][campo]`). Importar pasta/arquivos distribui pelo nome (porta/ric/lacre). Leitura automática opcional
+  (`lido[slot][campo]`). Importação de várias fotos sem renomear (`importarFotos`): ignora fotos já guardadas
+  (`sig` = nome|tamanho|data), não troca posições preenchidas (importar aos poucos); posição pelo nome, senão pelo
+  conteúdo (OCR + `OEF.classificar`: porta = TARE/MAX GROSS, RIC = folha com container + lacre, lacre = só o código);
+  sem OCR, a foto mais "folha branca" (`papelBranco`) vai para o RIC; o resto vai para f4–f6 e depois às vagas.
+  Fotos faltando: chip "n/6 faltam x" (lista e Agendamentos), contagem no cabeçalho da janela de containers,
+  KPI "Fotos faltando" e nomes das posições vazias na conferência (`faltandoFotos`). Leitura automática opcional
   (Tesseract.js via CDN, `OEF.ocr`): nº container com dígito verificador ISO 6346 (corrige letras parecidas), TARE /
   MAX GROSS em kg, lacre procurado pelo esperado. `validarFotos`: container (Controle OT/agendado × porta × RIC, aviso
   se o SEW difere), lacre (Controle OT × RIC × foto), tara e MWG (Controle OT × porta) → chip na lista (`fotoChip`).

@@ -59,6 +59,22 @@
     return { porSlot: out, sobra: resto.length, total: imgs.length };
   }
 
+  const imagens = files => Array.from(files).filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|bmp)$/i.test(f.name))
+    .sort((a, b) => (a.lastModified - b.lastModified) || a.name.localeCompare(b.name, undefined, { numeric: true }));
+  const assinatura = f => `${f.name}|${f.size}|${f.lastModified}`;
+
+  // folha de papel (RIC): fração de pixels claros e sem cor — usado quando a leitura do texto não está disponível
+  async function papelBranco(blob) {
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+      const c = document.createElement('canvas'); c.width = 96; c.height = 72; const g = c.getContext('2d'); g.drawImage(img, 0, 0, 96, 72);
+      const d = g.getImageData(0, 0, 96, 72).data; let n = 0;
+      for (let i = 0; i < d.length; i += 4) { const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]); if (mn > 175 && mx - mn < 30) n++; }
+      return n / (d.length / 4);
+    } catch (e) { return 0; } finally { URL.revokeObjectURL(url); }
+  }
+
   // ---------- nº de container (ISO 6346) ----------
   const ISO_VAL = (() => { const m = {}; let v = 10; for (let c = 65; c <= 90; c++) { if (v % 11 === 0) v++; m[String.fromCharCode(c)] = v++; } return m; })();
   function digitoVerificador(c10) {
@@ -158,6 +174,20 @@
     return r;
   }
 
+  // que foto é esta? pontuação pelo texto lido: porta (placa com TARE/MAX GROSS), RIC (folha com muitos campos), lacre
+  function classificar(text, esperado) {
+    const t = String(text || '').toUpperCase(); const len = t.replace(/\s+/g, '').length;
+    const cont = containersNoTexto(t).length > 0;
+    const conta = (re) => (t.match(re) || []).length;
+    const porta = (cont ? 2 : 0) + (/\bTARE\b|\bTARA\b/.test(t) ? 3 : 0) + (/GROSS|MAX\.?\s*G|M\.?\s*G\.?\s*W|PAYLOAD|CU\.?\s*CAP|\bNET\b|\bLB\b/.test(t) ? 3 : 0);
+    const ric = conta(/\bRIC\b|INTERC[AÂ]MBIO|RECIBO|\bEIR\b|INTERCHANGE|AVARIA|TERMINAL|MOTORISTA|ASSINATURA|TRANSPORTADORA|BOOKING|NAVIO|ARMADOR|PLACA|DEPOT|DEP[OÓ]SITO|VISTORIA/g) * 2 + (cont ? 1 : 0) + (len > 220 ? 2 : 0);
+    const temLacre = esperado && esperado.lacre ? !!lerLacre(t, esperado.lacre) : /(LACRE|SEAL|SELO)[^A-Z0-9]{0,12}[A-Z]{0,4}\d{5,}/.test(t);
+    // folha com container E lacre = RIC; o lacre sozinho (sem nº de container nem pesos) = foto do lacre
+    const ricTotal = ric + (/\bRIC\b/.test(t) ? 3 : 0) + (cont && temLacre ? 4 : 0);
+    const lacre = (temLacre ? 4 : 0) + (/LACRE|SEAL|SELO/.test(t) ? 1 : 0) + (len < 80 && /\d{5,}/.test(t) ? 3 : 0) - (len > 220 ? 2 : 0) - (cont ? 4 : 0) - (porta >= 6 ? 3 : 0);
+    return { porta, ric: ricTotal, lacre };
+  }
+
   // ---------- OCR (Tesseract.js, carregado só quando usado; precisa de internet) ----------
   const TESS = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
   let tessP = null;
@@ -202,7 +232,7 @@
   }
 
   global.OEF = {
-    SLOTS, CAMPO_NOME, put, get, del, comprimir, blobToDataURL, distribuir,
+    SLOTS, CAMPO_NOME, put, get, del, comprimir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
     digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
     carregarOCR, ocr, montarEML,
   };

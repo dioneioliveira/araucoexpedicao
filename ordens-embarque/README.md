@@ -417,9 +417,12 @@ Cargas de container (e cabotagem) têm, no painel da ordem, a seção **Fotos do
 **Porta do container** (nº do container, tara e carga máx.), **RIC** (nº do container e lacre), **Lacre** e
 mais 3 fotos (interno, carga, porta fechada).
 
-1. **Importar pasta** (ou **Selecionar fotos**, ou arrastar do Windows): arquivos com "porta", "ric" e
-   "lacre" no nome vão direto para a posição certa; os demais preenchem as posições livres. Arraste uma
-   foto sobre outra para trocar. As imagens ficam guardadas **neste computador**; os dados lidos vão para
+1. **Selecionar fotos** (ou **Importar pasta**, ou arrastar do Windows): escolha todas as fotos de uma vez,
+   **sem renomear**. O app lê cada foto e coloca na posição certa: placa da porta (TARE / MAX GROSS) →
+   Porta; folha com nº do container e lacre → RIC; só o código do lacre → Lacre; as demais → fotos 4 a 6.
+   Sem internet para a leitura, a foto da folha branca vai para o RIC e as outras ocupam as posições livres
+   (arraste uma foto sobre outra para trocar). Dá para importar **aos poucos**: fotos já guardadas são
+   ignoradas e as posições preenchidas não mudam. As imagens ficam guardadas **neste computador**; os dados lidos vão para
    o arquivo compartilhado.
 2. **Ler dados das fotos** tenta ler automaticamente (precisa de internet): nº do container (validado pelo
    dígito verificador), TARE e MAX GROSS em kg e o lacre. Os campos marcados "auto" devem ser conferidos;
@@ -428,6 +431,9 @@ mais 3 fotos (interno, carga, porta fechada).
    (Controle OT × RIC × foto do lacre), **tara** e **carga máx.** (Controle OT × porta). Qualquer
    diferença marca o embarque como **divergente** (vermelho, também na lista diária: "6/6 divergente");
    tudo batendo e 6 fotos = "6/6 ok". Campos vazios do Controle OT podem ser preenchidos com os dados das fotos.
-4. **E-mail do container** (no painel ou na lateral): EXP, nº do container e lacre em destaque, tara, carga
+4. **Fotos faltando**: a lista diária e a guia Agendamentos mostram "n/6 · faltam x" em cada carga de
+   container (passe o mouse para ver quais), o cabeçalho da janela de containers mostra quantas cargas
+   estão com fotos faltando, e o contador **Fotos faltando** aparece no topo da lista.
+5. **E-mail do container** (no painel ou na lateral): EXP, nº do container e lacre em destaque, tara, carga
    máx. e resultado da conferência, com as fotos logo abaixo. **E-mail pronto (Outlook)** baixa um arquivo
    .eml que o Outlook abre como mensagem nova, já com as fotos; **Copiar e-mail** copia tudo para colar.

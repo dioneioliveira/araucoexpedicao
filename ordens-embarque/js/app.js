@@ -489,6 +489,7 @@
       ['Ordens impressas', `${printed}<span class="k-sub"> / ${dayAll.length}</span>`, `${dayAll.length - printed} a imprimir · ${fat} faturada(s)`, ''],
       ['Com alterações', alt, 'impressas com agendamento alterado', alt ? 'red' : 'grey'],
       ['Atenção', pend + tr, `${pend} com dados faltando · ${tr} treinamento`, 'lime'],
+      ...(() => { const cts = dayAll.filter(temContainer); if (!cts.length) return []; const f = cts.filter(T => nFotos(T.transporte) < 6); return [['Fotos faltando', `${f.length}<span class="k-sub"> / ${cts.length}</span>`, f.length ? 'containers sem as 6 fotos: ' + f.map(T => `${T.transporte} (${nFotos(T.transporte)}/6)`).join(', ') : 'todas as cargas de container com as 6 fotos', f.length ? 'red' : 'grey']]; })(),
     ].map(([l, v, s, c]) => `<div class="card kpi ${c}" title="${esc(s)}"><div class="k-label">${l}</div><div class="k-val">${v}</div></div>`).join('');
   }
 
@@ -1119,14 +1120,15 @@
     const v = validarFotos(T);
     const cls = v.st === 'div' ? 'alt' : (v.st === 'ok' ? 'imp' : 'grey');
     const tit = v.st === 'div' ? 'Divergência entre fotos e agendamento: ' + v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', ') : (v.st === 'ok' ? 'Fotos conferidas' : 'Fotos/conferência pendentes');
-    return ` <span class="chip ${cls} ft-chip" title="${esc(tit)}"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${v.n}/6${v.st === 'div' ? ' divergente' : (v.st === 'ok' ? ' ok' : '')}</span>`;
+    const falta = faltandoFotos(T.transporte);
+    return ` <span class="chip ${cls} ft-chip" title="${esc(tit + (falta.length ? '\nFaltam fotos: ' + falta.join(', ') : ''))}"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${v.n}/6${v.st === 'div' ? ' divergente' : (v.st === 'ok' ? ' ok' : (v.n < 6 ? ' faltam ' + (6 - v.n) : ''))}</span>`;
   }
   const fmtVal = (dado, v) => !v ? '' : (dado === 'Nº container' ? F.fmtCont(v) : (/Tara|MWG/.test(dado) ? fmtNum(+String(v).replace(/\D/g, ''), 0) + ' kg' : String(v)));
   function validacaoHTML(T) {
     const v = validarFotos(T);
     const ST = { ok: '<span class="chip imp">Confere</span>', div: '<span class="chip alt">Divergente</span>', falta: '<span class="chip grey">Falta dado</span>' };
     const podeFill = ['container', 'lacre', 'tara', 'mwg'].some(k => !T.ot[k] && valorFoto(v.f, k));
-    return `<div class="alert ${v.st === 'div' ? 'err' : (v.st === 'ok' ? 'ok' : 'info')}">${v.st === 'div' ? '<b>Embarque com divergência</b>: os dados das fotos não batem com o agendado. Confira antes de liberar.' : (v.st === 'ok' ? '<b>Embarque conferido</b>: container, lacre, tara e carga máx. batem entre fotos e agendamento.' : `Conferência pendente: ${v.n}/6 fotos${v.linhas.some(l => l.st === 'falta') ? ' · faltam dados para confrontar' : ''}.`)}</div>
+    return `<div class="alert ${v.st === 'div' ? 'err' : (v.st === 'ok' ? 'ok' : 'info')}">${v.st === 'div' ? '<b>Embarque com divergência</b>: os dados das fotos não batem com o agendado. Confira antes de liberar.' : (v.st === 'ok' ? '<b>Embarque conferido</b>: container, lacre, tara e carga máx. batem entre fotos e agendamento.' : `Conferência pendente: ${v.n}/6 fotos${v.n < 6 ? ` — <b>faltam: ${esc(faltandoFotos(T.transporte).join(', '))}</b>` : ''}${v.linhas.some(l => l.st === 'falta') ? ' · faltam dados para confrontar' : ''}.`)}</div>
       <table class="items ft-val"><thead><tr><th>Dado</th><th>Agendado / Controle OT</th><th>Fotos</th><th>Resultado</th></tr></thead><tbody>
       ${v.linhas.map(l => `<tr class="st-${l.st}"><td><b>${esc(l.dado)}</b></td><td class="mono">${esc(fmtVal(l.dado, l.ref)) || '<span class="muted">—</span>'}<span class="sub">${esc(l.refNome)}</span></td>
         <td>${l.vals.map(x => `<div><span class="muted small">${esc(x.n)}:</span> <span class="mono">${esc(fmtVal(l.dado, x.v)) || '<span class="muted">—</span>'}</span></div>`).join('')}${l.extra ? `<div class="small ft-aviso">${esc(l.extra)}</div>` : ''}</td><td>${ST[l.st]}</td></tr>`).join('')}
@@ -1148,12 +1150,13 @@
       <h3>Fotos do container <span class="h-note">${nFotos(T.transporte)}/6 · confronto com o agendamento</span></h3>
       <div class="ft-bar">
         <label class="btn btn-ghost btn-sm">Importar pasta<input type="file" id="ft-pasta" webkitdirectory multiple hidden></label>
-        <label class="btn btn-ghost btn-sm">Selecionar fotos<input type="file" id="ft-arq" accept="image/*" multiple hidden></label>
+        <label class="btn btn-primary btn-sm">Selecionar fotos<input type="file" id="ft-arq" accept="image/*" multiple hidden></label>
         <button class="btn btn-ghost btn-sm" id="ft-ocr">Ler dados das fotos</button>
         <button class="btn btn-primary btn-sm" id="ft-mail">E-mail do container</button>
         <input type="file" id="ft-um" accept="image/*" hidden>
       </div>
-      <p class="muted small">Nomes com "porta", "ric" e "lacre" vão direto para a posição certa; arraste as fotos para trocar. As imagens ficam guardadas neste computador.</p>
+      <p class="muted small">Selecione as fotos todas de uma vez (sem renomear): cada uma vai para a posição certa pelo conteúdo. Dá para importar aos poucos — as posições já preenchidas são mantidas. Arraste para trocar. As imagens ficam guardadas neste computador.</p>
+      <div class="ft-status" id="ft-status" hidden></div>
       <div class="ft-grid">${slots}</div>
       <div id="ft-val">${validacaoHTML(T)}</div>
     </div>`;
@@ -1161,29 +1164,80 @@
   async function carregarMiniaturas(root) {
     for (const img of $$('img[data-fid]', root)) { const u = await urlFoto(img.dataset.fid); if (u) img.src = u; else img.replaceWith(Object.assign(document.createElement('span'), { className: 'muted small', textContent: 'foto em outro computador' })); }
   }
-  async function gravarFoto(t, slot, file) {
+  async function gravarFoto(t, slot, file, blob) {
     const f = fotosDe(t);
-    const blob = await F.comprimir(file);
-    const id = `${t}|${slot}|${Date.now().toString(36)}`;
+    blob = blob || await F.comprimir(file);
+    const id = `${t}|${slot}|${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     await F.put(id, blob);
     const old = f.slots[slot]; if (old) { F.del(old.id).catch(() => {}); fotoURL.delete(old.id); }
-    f.slots[slot] = { id, nome: file.name, em: new Date().toISOString() };
+    f.slots[slot] = { id, nome: file.name, sig: F.assinatura(file), em: new Date().toISOString() };
   }
+  const ftStatus = txt => { const el = $('#ft-status'); if (el) { el.textContent = txt || ''; el.hidden = !txt; } };
+  const comPrazo = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('tempo esgotado')), ms))]);
+  // Importa várias fotos de uma vez, sem renomear: cada foto vai para a posição certa pelo conteúdo
+  // (texto lido: porta = TARE/MAX GROSS, RIC = folha preenchida, lacre = nº do lacre). Fotos já guardadas
+  // são ignoradas e as posições já preenchidas não são trocadas, então dá para importar aos poucos.
   async function importarFotos(t, files, slot) {
     const T = getTransport(t); if (!T) return;
-    let n = 0, msg = '';
+    const f = fotosDe(t);
+    if (slot) {
+      try { await gravarFoto(t, slot, files[0]); } catch (e) { toast('Não foi possível guardar a foto: ' + (e.message || e), 'err'); return; }
+      save(true); renderAll(); toast(`Foto guardada em "${F.SLOTS.find(s => s.k === slot).nome}".`, 'ok'); return;
+    }
+    const sigs = new Set(Object.values(f.slots).map(x => x.sig));
+    const imgs = F.imagens(files); const novos = imgs.filter(x => !sigs.has(F.assinatura(x)));
+    if (!imgs.length) { toast('Nenhuma imagem encontrada (JPG/PNG).', 'err'); return; }
+    if (!novos.length) { toast('Essas fotos já estão nesta carga.', 'warn'); return; }
+    const livres = () => F.SLOTS.map(s => s.k).filter(k => !f.slots[k]);
+    if (!livres().length) { toast('A carga já tem as 6 fotos. Remova uma (×) para trocar.', 'warn'); return; }
+    const pos = new Map(); // arquivo -> posição
+    const texto = new Map(); // arquivo -> texto lido (OCR)
     try {
-      if (slot) { await gravarFoto(t, slot, files[0]); n = 1; }
-      else {
-        const d = F.distribuir(files);
-        if (!d.total) { toast('Nenhuma imagem encontrada (JPG/PNG).', 'err'); return; }
-        for (const [k, file] of Object.entries(d.porSlot)) { await gravarFoto(t, k, file); n++; }
-        if (d.sobra) msg = ` ${d.sobra} imagem(ns) a mais ficaram de fora (máx. 6).`;
+      ftStatus('Preparando fotos…');
+      for (const x of novos) x._blob = await F.comprimir(x);
+      // 1) nome do arquivo, se tiver (porta, ric, lacre…)
+      let pend = novos.filter(x => { const s = F.SLOTS.find(s => !f.slots[s.k] && ![...pos.values()].includes(s.k) && s.re.test(x.name)); if (s) { pos.set(x, s.k); return false; } return true; });
+      // 2) conteúdo da foto
+      const chaves = () => ['porta', 'ric', 'lacre'].filter(k => !f.slots[k] && ![...pos.values()].includes(k));
+      let leu = false;
+      if (pend.length && chaves().length) {
+        try {
+          ftStatus('Carregando a leitura das fotos…'); await comPrazo(F.carregarOCR(), 15000); leu = true;
+          for (let i = 0; i < pend.length; i++) { ftStatus(`Identificando foto ${i + 1} de ${pend.length}…`); texto.set(pend[i], await F.ocr(pend[i]._blob)); }
+        } catch (e) { leu = false; }
+        if (leu) {
+          const esp = { container: T.ot.container, lacre: T.ot.lacre }; const pares = [];
+          pend.forEach(x => { const sc = F.classificar(texto.get(x), esp); chaves().forEach(k => { if (sc[k] >= 3) pares.push({ x, k, v: sc[k] }); }); });
+          pares.sort((a, b) => b.v - a.v).forEach(p => { if (!pos.has(p.x) && ![...pos.values()].includes(p.k)) pos.set(p.x, p.k); });
+        } else if (chaves().includes('ric')) {
+          // sem leitura de texto: a foto mais "folha branca" é o RIC
+          let best = null, br = 0.3;
+          for (const x of pend) { const r = await F.papelBranco(x._blob); if (r > br) { br = r; best = x; } }
+          if (best) pos.set(best, 'ric');
+        }
+        pend = pend.filter(x => !pos.has(x));
       }
-    } catch (e) { toast('Não foi possível guardar a foto: ' + (e.message || e), 'err'); return; }
+      // 3) o resto vai para as fotos 4–6 e, depois, para as posições que ainda faltam
+      const ordem = ['f4', 'f5', 'f6', 'porta', 'ric', 'lacre'];
+      pend.forEach(x => { const k = ordem.find(k => !f.slots[k] && ![...pos.values()].includes(k)); if (k) pos.set(x, k); });
+      for (const [x, k] of pos) {
+        await gravarFoto(t, k, x, x._blob);
+        // aproveita o texto lido para preencher os dados da foto (só campos vazios)
+        if (texto.has(x) && ['porta', 'ric', 'lacre'].includes(k)) {
+          const d = F.dadosDoTexto(k, texto.get(x), { container: T.ot.container, lacre: T.ot.lacre });
+          const lido = f.lido[k] || (f.lido[k] = {}); const auto = (f.auto = f.auto || {})[k] || (f.auto[k] = {});
+          Object.entries(d).forEach(([c, v]) => { if (!lido[c]) { lido[c] = v; auto[c] = true; } });
+        }
+      }
+    } catch (e) { ftStatus(''); toast('Não foi possível guardar as fotos: ' + (e.message || e), 'err'); return; }
+    ftStatus('');
     save(true); renderAll();
-    toast(`${n} foto(s) guardada(s) no transporte ${t}.${msg} Use "Ler dados das fotos" ou digite os dados de cada foto.`, 'ok');
+    const fora = novos.length - pos.size; const falta = faltandoFotos(t);
+    toast(`${pos.size} foto(s) guardada(s) no transporte ${t}${fora ? ` · ${fora} a mais ficaram de fora (máx. 6)` : ''}.`
+      + (falta.length ? ` Faltam: ${falta.join(', ')}.` : ' As 6 fotos estão completas.')
+      + (texto.size ? ' Fotos identificadas pelo conteúdo: confira as posições e os campos "auto".' : (pos.size > 1 ? ' Sem leitura automática: confira as posições (arraste para trocar).' : '')), falta.length ? 'warn' : 'ok');
   }
+  const faltandoFotos = t => { const f = state.fotos[t] || { slots: {} }; return F.SLOTS.filter(s => !f.slots[s.k]).map(s => s.k === 'porta' ? 'Porta' : (s.k === 'ric' ? 'RIC' : (s.k === 'lacre' ? 'Lacre' : s.nome))); };
   async function lerFotos(t) {
     const T = getTransport(t); if (!T) return;
     const f = fotosDe(t); const alvo = ['porta', 'ric', 'lacre'].filter(k => f.slots[k]);
@@ -1348,11 +1402,11 @@
           ${ct ? `<td class="mono">${esc(e.container)}</td>` : ''}
           <td class="wrap">${esc(e.transportadora)}</td><td class="wrap">${esc(e.cliente)}</td><td class="num">${fmtNum(e.volume, 3)}</td>
           <td class="mono">${T ? `<b>${esc(T.transporte)}</b>` : '<span class="muted">—</span>'}</td>
-          <td>${T ? statusChip(T) : '<span class="chip grey">Sem ordem</span>'}</td></tr>`;
+          <td>${T ? statusChip(T) + fotoChip(T) : `<span class="chip grey">Sem ordem</span>${ct && !e.removed ? ' <span class="chip alt" title="Sem ordem, ainda não dá para incluir as fotos">sem fotos</span>' : ''}`}</td></tr>`;
       }).join('');
       box.innerHTML = `<div class="ag-head"><span class="chip ${ct ? 'ct' : 'mi'}"><span class="dot"></span>${ct ? 'PIÊN CONTAINERS' : 'PIÊN PAINÉIS'}</span>
         <h3>${ct ? 'Containers' : 'Mercado interno'}</h3>
-        <span class="muted">${rows.filter(e => !e.removed).length} agendamento(s)${last ? ` · atualizado às ${esc(new Date(last).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))}` : ''}</span></div>
+        <span class="muted">${rows.filter(e => !e.removed).length} agendamento(s)${ct ? (() => { const n = rows.filter(e => !e.removed && (() => { const T = byPlate.get(P.plate7(e.carreta)); return !T || nFotos(T.transporte) < 6; })()).length; return n ? ` · <b class="txt-alt">${n} com fotos faltando</b>` : ' · fotos completas'; })() : ''}${last ? ` · atualizado às ${esc(new Date(last).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))}` : ''}</span></div>
         <div class="table-wrap" style="max-height:none;min-height:0">${rows.length ? `<table class="grid"><thead><tr><th>Hora</th><th>Senha</th><th>Status</th><th>Tipo de veículo</th><th>Carreta</th><th>Cavalo</th><th>CPF</th>${ct ? '<th>Container</th>' : ''}<th>Transportadora</th><th>Cliente</th><th class="num">Volume</th><th>Transporte</th><th>Ordem</th></tr></thead><tbody>${body}</tbody></table>`
           : `<div class="empty" style="padding:28px"><p>Nenhum agendamento de ${ct ? 'containers' : 'mercado interno'} em ${esc(P.fmtDateBR(ui.date))}. Copie a tela no SEW e pressione <b>Ctrl+V</b>.</p></div>`}</div>`;
     });
