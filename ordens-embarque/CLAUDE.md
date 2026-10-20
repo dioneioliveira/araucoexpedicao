@@ -79,3 +79,12 @@
   rateio do peso por NF da carga → média da base de pesos → volume da chapa → quantidade (`registrosBalanca`).
   Cada carga de um item é um ponto do gráfico SVG (`svgBalanca`): kg/lote (ou kg/peça) no tempo, média, faixa ±tol,
   pontos fora em vermelho com a diferença na carga inteira em kg (desvio × lotes).
+- Fotos do container (`js/fotos.js` = `OEF`; UI em `fotosHTML`/`bindFotos`): carga com container (`temContainer` = janela
+  CONTAINER ou cabotagem) tem 6 posições (`OEF.SLOTS`: porta, ric, lacre, f4–f6). Imagens comprimidas (1600 px JPEG) no
+  IndexedDB `arauco-ordens-fotos` deste computador; em `state.fotos[t]` (sync `foto:`) só nomes e dados lidos
+  (`lido[slot][campo]`). Importar pasta/arquivos distribui pelo nome (porta/ric/lacre). Leitura automática opcional
+  (Tesseract.js via CDN, `OEF.ocr`): nº container com dígito verificador ISO 6346 (corrige letras parecidas), TARE /
+  MAX GROSS em kg, lacre procurado pelo esperado. `validarFotos`: container (Controle OT/agendado × porta × RIC, aviso
+  se o SEW difere), lacre (Controle OT × RIC × foto), tara e MWG (Controle OT × porta) → chip na lista (`fotoChip`).
+  E-mail do container (`#mail-dialog`): EXP, container e lacre em destaque + fotos; `.eml` com `X-Unsent: 1` e imagens
+  `cid:` (abre como rascunho no Outlook), ou copiar HTML com as fotos.

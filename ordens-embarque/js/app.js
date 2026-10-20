@@ -13,7 +13,7 @@
 
   // ------------------------------------------------------------------ estado
   const STORE_KEY = 'arauco.ordensEmbarque.v1';
-  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {} });
+  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {}, fotos: {} });
   let state = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.v === 1) return Object.assign(emptyState(), s); } catch (e) { /* sem storage */ }
@@ -560,7 +560,7 @@
         <td>${treinoChip(T)}</td>
         <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
-        <td class="c-status">${statusChip(T)}</td>
+        <td class="c-status">${statusChip(T)}${fotoChip(T)}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
     })(L.T)).join('');
@@ -712,7 +712,8 @@
     if (!ok) return;
     const set = new Set(ts);
     Object.values(state.items).forEach(i => { if (set.has(i.transporte)) delete state.items[i.key]; });
-    ts.forEach(t => { delete state.manual[t]; delete state.printed[t]; delete state.snap[t]; delete state.faturado[t]; if (state.fatNf) delete state.fatNf[t]; ui.selected.delete(t); });
+    ts.forEach(t => { delete state.manual[t]; delete state.printed[t]; delete state.snap[t]; delete state.faturado[t]; if (state.fatNf) delete state.fatNf[t]; ui.selected.delete(t);
+      const fo = state.fotos[t]; if (fo) { Object.values(fo.slots || {}).forEach(it => window.OEF.del(it.id).catch(() => {})); delete state.fotos[t]; } });
     if (ui.open && set.has(ui.open)) closeDetail();
     save(true); renderAll();
     toast(`${ts.length} transporte(s) excluído(s) da lista.`, 'ok');
@@ -1074,6 +1075,246 @@
     return true;
   }
 
+  // ------------------------------------------------------------------ fotos do container (6 por carga) e conferência
+  // Imagens no IndexedDB deste computador (OEF); em state.fotos[t] vão só os nomes e os dados lidos de cada foto.
+  const F = window.OEF;
+  const temContainer = T => T.janela === 'CONTAINER' || isCabotagem(T);
+  const fotosDe = t => state.fotos[t] || (state.fotos[t] = { slots: {}, lido: {}, auto: {} });
+  const nFotos = t => { const f = state.fotos[t]; return f ? F.SLOTS.filter(s => f.slots[s.k]).length : 0; };
+  const fotoURL = new Map(); // id -> objectURL
+  async function urlFoto(id) {
+    if (fotoURL.has(id)) return fotoURL.get(id);
+    const b = await F.get(id).catch(() => null); if (!b) return null;
+    const u = URL.createObjectURL(b); fotoURL.set(id, u); return u;
+  }
+  const numIgual = (a, b) => { const x = String(a || '').replace(/\D/g, ''), y = String(b || '').replace(/\D/g, ''); return !!x && x === y; };
+  // confronto: agendamento / Controle OT × porta × RIC × foto do lacre
+  function validarFotos(T) {
+    const f = state.fotos[T.transporte] || { slots: {}, lido: {} };
+    const L = s => f.lido[s] || {};
+    const sewC = T.sew && T.sew.container ? T.sew.container : '';
+    const linha = (dado, ref, refNome, vals, igual, extra) => {
+      const todos = [ref, ...vals.map(v => v.v)];
+      const presentes = todos.filter(Boolean);
+      let st = 'falta';
+      if (presentes.length >= 2 && presentes.some(v => !igual(v, presentes[0]))) st = 'div';
+      else if (todos.every(Boolean)) st = 'ok';
+      return { dado, ref, refNome, vals, st, extra: extra || '' };
+    };
+    const contEq = (a, b) => F.normCont(a) === F.normCont(b);
+    const avisoCD = [L('porta').container, L('ric').container].filter(c => c && !F.contValido(c)).map(c => `${F.fmtCont(c)}: dígito verificador não confere`).join(' · ');
+    const linhas = [
+      linha('Nº container', T.ot.container, T.man.container ? 'Controle OT' : 'Agendado', [{ n: 'Porta', v: L('porta').container }, { n: 'RIC', v: L('ric').container }], contEq,
+        [sewC && T.ot.container && !contEq(sewC, T.ot.container) ? `agendamento SEW: ${F.fmtCont(sewC)} (diferente)` : '', avisoCD].filter(Boolean).join(' · ')),
+      linha('Lacre', T.ot.lacre, 'Controle OT', [{ n: 'RIC', v: L('ric').lacre }, { n: 'Foto do lacre', v: L('lacre').lacre }], F.lacreIgual),
+      linha('Tara', T.ot.tara, 'Controle OT', [{ n: 'Porta', v: L('porta').tara }], numIgual),
+      linha('Carga máx. (MWG)', T.ot.mwg, 'Controle OT', [{ n: 'Porta', v: L('porta').mwg }], numIgual),
+    ];
+    const n = F.SLOTS.filter(s => f.slots[s.k]).length;
+    const st = linhas.some(l => l.st === 'div') ? 'div' : (linhas.every(l => l.st === 'ok') && n === 6 ? 'ok' : 'pend');
+    return { linhas, n, st, f };
+  }
+  function fotoChip(T) {
+    if (!temContainer(T)) return '';
+    const v = validarFotos(T);
+    const cls = v.st === 'div' ? 'alt' : (v.st === 'ok' ? 'imp' : 'grey');
+    const tit = v.st === 'div' ? 'Divergência entre fotos e agendamento: ' + v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', ') : (v.st === 'ok' ? 'Fotos conferidas' : 'Fotos/conferência pendentes');
+    return ` <span class="chip ${cls} ft-chip" title="${esc(tit)}"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${v.n}/6${v.st === 'div' ? ' divergente' : (v.st === 'ok' ? ' ok' : '')}</span>`;
+  }
+  const fmtVal = (dado, v) => !v ? '' : (dado === 'Nº container' ? F.fmtCont(v) : (/Tara|MWG/.test(dado) ? fmtNum(+String(v).replace(/\D/g, ''), 0) + ' kg' : String(v)));
+  function validacaoHTML(T) {
+    const v = validarFotos(T);
+    const ST = { ok: '<span class="chip imp">Confere</span>', div: '<span class="chip alt">Divergente</span>', falta: '<span class="chip grey">Falta dado</span>' };
+    const podeFill = ['container', 'lacre', 'tara', 'mwg'].some(k => !T.ot[k] && valorFoto(v.f, k));
+    return `<div class="alert ${v.st === 'div' ? 'err' : (v.st === 'ok' ? 'ok' : 'info')}">${v.st === 'div' ? '<b>Embarque com divergência</b>: os dados das fotos não batem com o agendado. Confira antes de liberar.' : (v.st === 'ok' ? '<b>Embarque conferido</b>: container, lacre, tara e carga máx. batem entre fotos e agendamento.' : `Conferência pendente: ${v.n}/6 fotos${v.linhas.some(l => l.st === 'falta') ? ' · faltam dados para confrontar' : ''}.`)}</div>
+      <table class="items ft-val"><thead><tr><th>Dado</th><th>Agendado / Controle OT</th><th>Fotos</th><th>Resultado</th></tr></thead><tbody>
+      ${v.linhas.map(l => `<tr class="st-${l.st}"><td><b>${esc(l.dado)}</b></td><td class="mono">${esc(fmtVal(l.dado, l.ref)) || '<span class="muted">—</span>'}<span class="sub">${esc(l.refNome)}</span></td>
+        <td>${l.vals.map(x => `<div><span class="muted small">${esc(x.n)}:</span> <span class="mono">${esc(fmtVal(l.dado, x.v)) || '<span class="muted">—</span>'}</span></div>`).join('')}${l.extra ? `<div class="small ft-aviso">${esc(l.extra)}</div>` : ''}</td><td>${ST[l.st]}</td></tr>`).join('')}
+      </tbody></table>${podeFill ? '<button class="btn btn-ghost btn-sm" data-ft-fill>Preencher Controle OT vazio com os dados das fotos</button>' : ''}`;
+  }
+  const valorFoto = (f, k) => { for (const s of ['porta', 'ric', 'lacre']) { const x = (f.lido[s] || {})[k]; if (x) return x; } return ''; };
+  function fotosHTML(T) {
+    const f = state.fotos[T.transporte] || { slots: {}, lido: {}, auto: {} };
+    const slots = F.SLOTS.map(s => {
+      const it = f.slots[s.k]; const lido = f.lido[s.k] || {}; const auto = (f.auto || {})[s.k] || {};
+      return `<div class="ft-slot ${it ? 'tem' : ''}" data-slot="${s.k}" draggable="${it ? 'true' : 'false'}">
+        <div class="ft-img" title="${it ? esc(it.nome) + ' — arraste para trocar de posição' : 'Clique ou arraste a foto aqui'}">${it ? `<img data-fid="${esc(it.id)}" alt="${esc(s.nome)}">` : '<span>+ foto</span>'}
+          ${it ? `<button class="ft-del" data-ft-del="${s.k}" title="Remover foto">×</button>` : ''}</div>
+        <div class="ft-cap"><b>${esc(s.nome)}</b><small>${esc(s.dica)}</small></div>
+        ${s.campos.map(c => `<label class="ft-f">${esc(F.CAMPO_NOME[c])}${auto[c] ? ' <i title="lido automaticamente — confira">auto</i>' : ''}<input data-ft="${s.k}|${c}" value="${esc(lido[c] == null ? '' : (c === 'container' ? F.fmtCont(lido[c]) : lido[c]))}" spellcheck="false"></label>`).join('')}
+      </div>`;
+    }).join('');
+    return `<div class="section" id="ft-sec">
+      <h3>Fotos do container <span class="h-note">${nFotos(T.transporte)}/6 · confronto com o agendamento</span></h3>
+      <div class="ft-bar">
+        <label class="btn btn-ghost btn-sm">Importar pasta<input type="file" id="ft-pasta" webkitdirectory multiple hidden></label>
+        <label class="btn btn-ghost btn-sm">Selecionar fotos<input type="file" id="ft-arq" accept="image/*" multiple hidden></label>
+        <button class="btn btn-ghost btn-sm" id="ft-ocr">Ler dados das fotos</button>
+        <button class="btn btn-primary btn-sm" id="ft-mail">E-mail do container</button>
+        <input type="file" id="ft-um" accept="image/*" hidden>
+      </div>
+      <p class="muted small">Nomes com "porta", "ric" e "lacre" vão direto para a posição certa; arraste as fotos para trocar. As imagens ficam guardadas neste computador.</p>
+      <div class="ft-grid">${slots}</div>
+      <div id="ft-val">${validacaoHTML(T)}</div>
+    </div>`;
+  }
+  async function carregarMiniaturas(root) {
+    for (const img of $$('img[data-fid]', root)) { const u = await urlFoto(img.dataset.fid); if (u) img.src = u; else img.replaceWith(Object.assign(document.createElement('span'), { className: 'muted small', textContent: 'foto em outro computador' })); }
+  }
+  async function gravarFoto(t, slot, file) {
+    const f = fotosDe(t);
+    const blob = await F.comprimir(file);
+    const id = `${t}|${slot}|${Date.now().toString(36)}`;
+    await F.put(id, blob);
+    const old = f.slots[slot]; if (old) { F.del(old.id).catch(() => {}); fotoURL.delete(old.id); }
+    f.slots[slot] = { id, nome: file.name, em: new Date().toISOString() };
+  }
+  async function importarFotos(t, files, slot) {
+    const T = getTransport(t); if (!T) return;
+    let n = 0, msg = '';
+    try {
+      if (slot) { await gravarFoto(t, slot, files[0]); n = 1; }
+      else {
+        const d = F.distribuir(files);
+        if (!d.total) { toast('Nenhuma imagem encontrada (JPG/PNG).', 'err'); return; }
+        for (const [k, file] of Object.entries(d.porSlot)) { await gravarFoto(t, k, file); n++; }
+        if (d.sobra) msg = ` ${d.sobra} imagem(ns) a mais ficaram de fora (máx. 6).`;
+      }
+    } catch (e) { toast('Não foi possível guardar a foto: ' + (e.message || e), 'err'); return; }
+    save(true); renderAll();
+    toast(`${n} foto(s) guardada(s) no transporte ${t}.${msg} Use "Ler dados das fotos" ou digite os dados de cada foto.`, 'ok');
+  }
+  async function lerFotos(t) {
+    const T = getTransport(t); if (!T) return;
+    const f = fotosDe(t); const alvo = ['porta', 'ric', 'lacre'].filter(k => f.slots[k]);
+    if (!alvo.length) { toast('Inclua as fotos da porta, do RIC e do lacre primeiro.', 'warn'); return; }
+    const b = $('#ft-ocr'); if (b) { b.disabled = true; b.textContent = 'Lendo fotos…'; }
+    let achou = 0;
+    try {
+      for (const k of alvo) {
+        const blob = await F.get(f.slots[k].id); if (!blob) continue;
+        const txt = await F.ocr(blob, p => { if (b) b.textContent = `Lendo ${F.SLOTS.find(s => s.k === k).nome}… ${Math.round(p * 100)}%`; });
+        const d = F.dadosDoTexto(k, txt, { container: T.ot.container, lacre: T.ot.lacre });
+        const lido = f.lido[k] || (f.lido[k] = {}); const auto = (f.auto = f.auto || {})[k] || (f.auto[k] = {});
+        Object.entries(d).forEach(([c, v]) => { if (!lido[c]) { lido[c] = v; auto[c] = true; achou++; } });
+      }
+      save(true); renderAll();
+      toast(achou ? `${achou} dado(s) lido(s) das fotos. Confira os campos marcados "auto".` : 'Não consegui ler os dados nas fotos. Digite-os nos campos abaixo de cada foto.', achou ? 'ok' : 'warn');
+    } catch (e) {
+      toast('Leitura automática indisponível: ' + (e.message || e) + '. Digite os dados nos campos abaixo de cada foto.', 'warn');
+      if (b) { b.disabled = false; b.textContent = 'Ler dados das fotos'; }
+    }
+  }
+  function preencherOTdasFotos(t) {
+    const T = getTransport(t); const f = fotosDe(t); const man = state.manual[t] || (state.manual[t] = {});
+    const feitos = [];
+    ['container', 'lacre', 'tara', 'mwg'].forEach(k => { if (!T.ot[k]) { const v = valorFoto(f, k); if (v) { man[k] = k === 'container' ? F.normCont(v) : String(v); feitos.push(OT_FIELDS.find(x => x[0] === k)[1]); } } });
+    save(true); renderAll(); toast(feitos.length ? `Controle OT preenchido: ${feitos.join(', ')}.` : 'Nada a preencher.', 'ok');
+  }
+  function bindFotos() {
+    const body = $('#d-body');
+    body.addEventListener('change', e => {
+      const t = ui.open; if (!t) return;
+      if (e.target.id === 'ft-pasta' || e.target.id === 'ft-arq') { if (e.target.files.length) importarFotos(t, e.target.files); e.target.value = ''; }
+      else if (e.target.id === 'ft-um') { if (e.target.files.length) importarFotos(t, e.target.files, e.target.dataset.slot); e.target.value = ''; }
+    });
+    body.addEventListener('input', e => {
+      const k = e.target.dataset.ft; if (!k || !ui.open) return;
+      const [slot, campo] = k.split('|'); const f = fotosDe(ui.open);
+      const lido = f.lido[slot] || (f.lido[slot] = {}); let v = e.target.value.trim();
+      if (campo === 'container' || campo === 'lacre') v = v.toUpperCase();
+      if (campo === 'container') v = F.normCont(v);
+      if (v) lido[campo] = v; else delete lido[campo];
+      if (f.auto && f.auto[slot]) delete f.auto[slot][campo];
+      save();
+      clearTimeout(bindFotos.tm); bindFotos.tm = setTimeout(() => { const T = getTransport(ui.open); if (T && $('#ft-val')) $('#ft-val').innerHTML = validacaoHTML(T); renderList(); }, 250);
+    });
+    body.addEventListener('click', e => {
+      const t = ui.open; if (!t) return;
+      if (e.target.closest('#ft-ocr')) { lerFotos(t); return; }
+      if (e.target.closest('#ft-mail')) { abrirEmailContainer(t); return; }
+      if (e.target.closest('[data-ft-fill]')) { preencherOTdasFotos(t); return; }
+      const d = e.target.closest('[data-ft-del]');
+      if (d) { const f = fotosDe(t); const it = f.slots[d.dataset.ftDel]; if (it) { F.del(it.id).catch(() => {}); fotoURL.delete(it.id); delete f.slots[d.dataset.ftDel]; save(true); renderAll(); } return; }
+      const im = e.target.closest('.ft-img');
+      if (im) { const s = im.closest('.ft-slot'); const it = fotosDe(t).slots[s.dataset.slot];
+        if (it) { const img = $('img', im); if (img && img.src) window.open(img.src, '_blank'); }
+        else { const inp = $('#ft-um'); inp.dataset.slot = s.dataset.slot; inp.click(); } }
+    });
+    // arrastar: arquivos do Windows para uma posição, ou trocar fotos de posição
+    body.addEventListener('dragstart', e => { const s = e.target.closest && e.target.closest('.ft-slot.tem'); if (s) e.dataTransfer.setData('text/oe-slot', s.dataset.slot); });
+    body.addEventListener('dragover', e => { const s = e.target.closest('.ft-slot'); if (s) { e.preventDefault(); s.classList.add('over'); } });
+    body.addEventListener('dragleave', e => { const s = e.target.closest('.ft-slot'); if (s) s.classList.remove('over'); });
+    body.addEventListener('drop', e => {
+      const s = e.target.closest('.ft-slot'); if (!s || !ui.open) return; e.preventDefault(); s.classList.remove('over');
+      const de = e.dataTransfer.getData('text/oe-slot');
+      if (de && de !== s.dataset.slot) { const f = fotosDe(ui.open); const a = f.slots[de], b = f.slots[s.dataset.slot]; if (a) f.slots[s.dataset.slot] = a; else delete f.slots[s.dataset.slot]; if (b) f.slots[de] = b; else delete f.slots[de]; save(true); renderAll(); return; }
+      const files = e.dataTransfer.files; if (files && files.length) importarFotos(ui.open, files, files.length === 1 ? s.dataset.slot : null);
+    });
+  }
+
+  // ---------- e-mail do container: EXP, container e lacre em destaque; fotos logo abaixo ----------
+  const MAIL_KEY = 'arauco.ordensEmbarque.emailContainer';
+  async function emailContainer(t, modo) {
+    const T = getTransport(t); const v = validarFotos(T); const f = v.f;
+    const fotos = [];
+    for (const s of F.SLOTS) { const it = f.slots[s.k]; if (!it) continue; const b = await F.get(it.id).catch(() => null); if (b) fotos.push({ s, b, nome: `${s.k}-${F.normCont(T.ot.container) || t}.jpg` }); }
+    for (const x of fotos) { x.base64 = (await F.blobToDataURL(x.b)).split(',')[1]; x.cid = `${x.s.k}.${t}@ordens-embarque`; }
+    const src = x => modo === 'eml' ? `cid:${x.cid}` : `data:image/jpeg;base64,${x.base64}`;
+    const cell = (l, val) => `<td style="border:1px solid #4A4A4A;padding:10px 14px;text-align:center"><div style="font-size:11px;color:#7A7A7A;letter-spacing:1px;font-weight:bold">${l}</div><div style="font-size:22px;font-weight:bold;font-family:Consolas,'Courier New',monospace;color:#000">${esc(val || '—')}</div></td>`;
+    const conf = v.st === 'ok' ? '<span style="color:#2e7d4f;font-weight:bold">✔ Dados conferidos: container, lacre, tara e carga máx. batem com o agendamento.</span>'
+      : (v.st === 'div' ? `<span style="color:#b4473b;font-weight:bold">⚠ Divergência: ${esc(v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', '))}.</span>` : '<span style="color:#7A7A7A">Conferência pendente.</span>');
+    const linhasFotos = [];
+    for (let i = 0; i < fotos.length; i += 2) linhasFotos.push(`<tr>${fotos.slice(i, i + 2).map(x => `<td style="padding:6px;vertical-align:top;width:50%"><img src="${src(x)}" width="330" style="width:330px;max-width:100%;border:1px solid #D9D9D9;display:block" alt="${esc(x.s.nome)}"><div style="font-size:12px;color:#4A4A4A;margin-top:3px"><b>${esc(x.s.nome)}</b></div></td>`).join('')}</tr>`);
+    const assunto = `Embarque container ${F.fmtCont(T.ot.container) || ''} · EXP ${T.ot.exp || '—'} · Lacre ${T.ot.lacre || '—'} · Transporte ${t}`;
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#4A4A4A;max-width:700px">
+      <p style="margin:0 0 10px">Segue o embarque do container — transporte <b>${esc(t)}</b>, ${esc(T.eff.cliente)}, ${esc(P.fmtDateBR(T.eff.data))}.</p>
+      <table style="border-collapse:collapse;width:100%;margin-bottom:8px"><tr>${cell('EXP', T.ot.exp)}${cell('CONTAINER', F.fmtCont(T.ot.container))}${cell('LACRE', T.ot.lacre)}</tr></table>
+      <p style="font-size:12px;margin:4px 0 6px">Tara: <b>${T.ot.tara ? esc(fmtVal('Tara', T.ot.tara)) : '—'}</b> · Carga máx.: <b>${T.ot.mwg ? esc(fmtVal('MWG', T.ot.mwg)) : '—'}</b> · Placa: <b>${esc(T.eff.placaL)}</b>${T.otList.length ? ` · OT: <b>${esc(T.otList.join(' / '))}</b>` : ''}</p>
+      <p style="font-size:12px;margin:0 0 10px">${conf}</p>
+      <table style="border-collapse:collapse;width:100%">${linhasFotos.join('')}</table>
+      <p style="font-size:11px;color:#7A7A7A;margin-top:10px">Arauco · Expedição Piên</p></div>`;
+    return { T, html, assunto, fotos, v };
+  }
+  async function abrirEmailContainer(t) {
+    const T = getTransport(t); if (!T) return;
+    if (!nFotos(t)) toast('Esta carga ainda não tem fotos.', 'warn');
+    const dlg = $('#mail-dialog'); dlg.dataset.t = t;
+    try { const s = JSON.parse(localStorage.getItem(MAIL_KEY) || '{}'); $('#ml-to').value = s.to || ''; $('#ml-cc').value = s.cc || ''; } catch (e) { /* sem storage */ }
+    $('#ml-title').textContent = `Container ${F.fmtCont(T.ot.container) || '(sem nº)'} · transporte ${t}`;
+    $('#ml-preview').innerHTML = '<p class="muted">Montando…</p>';
+    dlg.showModal();
+    const m = await emailContainer(t, 'preview');
+    $('#ml-preview').innerHTML = (m.v.st === 'div' ? '<div class="alert err"><b>Atenção:</b> há divergência entre as fotos e o agendamento.</div>' : '') + m.html;
+  }
+  function bindEmailContainer() {
+    const dlg = $('#mail-dialog');
+    const salvar = () => { try { localStorage.setItem(MAIL_KEY, JSON.stringify({ to: $('#ml-to').value.trim(), cc: $('#ml-cc').value.trim() })); } catch (e) { /* sem storage */ } };
+    $('#ml-to').addEventListener('change', salvar); $('#ml-cc').addEventListener('change', salvar);
+    $('#ml-close').addEventListener('click', () => dlg.close());
+    $('#d-mail').addEventListener('click', () => { if (ui.open) abrirEmailContainer(ui.open); });
+    $('#ml-eml').addEventListener('click', async () => {
+      salvar(); const t = dlg.dataset.t; const m = await emailContainer(t, 'eml');
+      const eml = F.montarEML({ para: $('#ml-to').value.trim().replace(/;/g, ','), cc: $('#ml-cc').value.trim().replace(/;/g, ','), assunto: m.assunto, html: m.html,
+        anexos: m.fotos.map(x => ({ nome: x.nome, tipo: 'image/jpeg', cid: x.cid, base64: x.base64 })) });
+      baixar(`container-${F.normCont(m.T.ot.container) || t}.eml`, new Blob([eml], { type: 'message/rfc822' }));
+      toast('E-mail baixado (.eml). Abra o arquivo: o Outlook mostra o e-mail pronto, com as fotos, para enviar.', 'ok');
+    });
+    $('#ml-copy').addEventListener('click', async () => {
+      const m = await emailContainer(dlg.dataset.t, 'copy');
+      const ok = await copiarHTML(m.html, m.assunto);
+      toast(ok ? 'E-mail copiado com as fotos — cole (Ctrl+V) no corpo da mensagem.' : 'Não foi possível copiar.', ok ? 'ok' : 'err');
+    });
+    $('#ml-mailto').addEventListener('click', async () => {
+      salvar(); const m = await emailContainer(dlg.dataset.t, 'copy');
+      const ok = await copiarHTML(m.html, m.assunto);
+      const para = $('#ml-to').value.split(/[;,\s]+/).filter(x => /^[^@\s]+@[^@\s]+$/.test(x)).join(',');
+      const cc = $('#ml-cc').value.split(/[;,\s]+/).filter(x => /^[^@\s]+@[^@\s]+$/.test(x)).join(',');
+      window.location.href = `mailto:${para}?${cc ? `cc=${encodeURIComponent(cc)}&` : ''}subject=${encodeURIComponent(m.assunto)}&body=${encodeURIComponent(ok ? '(cole aqui: Ctrl+V)' : '')}`;
+      toast(ok ? 'E-mail aberto. O conteúdo com as fotos já está copiado: clique no corpo e pressione Ctrl+V.' : 'E-mail aberto (não foi possível copiar as fotos).', ok ? 'ok' : 'warn');
+    });
+  }
+
   // ------------------------------------------------------------------ guia Agendamentos
   function setView(v) {
     ui.view = v;
@@ -1209,7 +1450,7 @@
       $('#d-print-sub').textContent = ex.length ? `${2 + ex.length} páginas: check-lists + ${ex.join(' + ')}` : '2 check-lists'; }
     $('#d-fat-txt').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
     $('#d-fat').classList.toggle('on', !!T.faturado);
-    $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
+    $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), fotoChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
     const e = T.eff;
     const alerts = [];
     if (isAmostra(T)) alerts.push(`<div class="alert warn"><b>Amostra — conferir cliente.</b> A carga contém amostra; o aviso sai no check-list ao lado da quantidade de lotes.</div>`);
@@ -1276,6 +1517,7 @@
           ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'ot' && T.otList.length > 1 ? ` (${T.otList.length})` : ''}${k === 'container' && !T.man.container && T.ot.container ? ' <span class="src">SEW</span>' : ''}${k === 'ot' && T.otSrc === 'LT22' ? ' <span class="src">tela de OTs</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
         </div>
       </div>
+      ${temContainer(T) ? fotosHTML(T) : ''}
       <div class="section">
         <h3>Documentos da ordem <span class="h-note">clique para ampliar</span></h3>
         <div class="pv-thumbs" id="pv-thumbs"></div>
@@ -1284,6 +1526,8 @@
         </div>
       </div>`;
     renderThumbs(T);
+    $('#d-mail').hidden = !temContainer(T);
+    if (temContainer(T)) carregarMiniaturas($('#d-body'));
   }
 
   function scalePage(page, boxWidth) {
@@ -1463,6 +1707,7 @@
       save(); softRefresh();
     });
     $('#d-del').addEventListener('click', () => { if (ui.open) excluirTransportes([ui.open]); });
+    bindFotos(); bindEmailContainer();
     $('#d-actions').addEventListener('click', e => {
       const doc = e.target.closest('[data-doc]'); if (!doc) return;
       const T = getTransport(ui.open); if (!T) return;
@@ -1624,7 +1869,7 @@
     clearTimeout(softTimer);
     softTimer = setTimeout(() => {
       const T = getTransport(ui.open); if (!T) return;
-      $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
+      $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), fotoChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
       $('#d-fat-txt').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
       $('#d-fat').classList.toggle('on', !!T.faturado);
       $$('[data-ov]', $('#d-body')).forEach(inp => {
@@ -1995,7 +2240,7 @@
     const grid = rows.map(r => [r[0], r[1], 100, r[2], d.split('-').reverse().join('/'), r[3], r[4], r[5], r[6], r[15].split('-')[0], '-', r[7], r[8], r[9], r[10], 1, r[11], r[12], r[13], 1, r[14], r[15], '', r[16], r[17]]);
     const res = P.rowsToItems(grid, { headerRow: -1, map: P.LOG_KEYS.slice() });
     mergeLogItems(res.items, false);
-    mergeSew([{ janela: 'CONTAINER', data: d, hora: '14:00', status: '200 - Agendamento Concluído', senha: '3*', seq: '1', tipoVeiculo: '', carreta: 'QRS4T56', cavalo: 'UVW7X89', cpf: '333.333.333-33', container: 'ABCU1234567', transportadora: 'TRANSPORTADORA EXEMPLO C', cliente: 'EXPORT CLIENT S.A.', incoterm: 'CIF', volume: null }]);
+    mergeSew([{ janela: 'CONTAINER', data: d, hora: '14:00', status: '200 - Agendamento Concluído', senha: '3*', seq: '1', tipoVeiculo: '', carreta: 'QRS4T56', cavalo: 'UVW7X89', cpf: '333.333.333-33', container: 'ABCU1234560', transportadora: 'TRANSPORTADORA EXEMPLO C', cliente: 'EXPORT CLIENT S.A.', incoterm: 'CIF', volume: null }]);
     state.manual['10000103'] = Object.assign({ ot: '660001', exp: '1000000001', tara: '3700', mwg: '32500', lacre: 'LC0000001', ticket: '900001' }, state.manual['10000103'] || {});
     save(true); ui.date = d; $('#date-filter').value = d; renderAll();
     toast('Exemplo carregado (dados fictícios).', 'ok');

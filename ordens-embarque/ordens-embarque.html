@@ -567,6 +567,25 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .bl-tip{position:absolute;pointer-events:none;background:#fff;border:1px solid var(--line-soft);box-shadow:0 6px 18px rgba(0,0,0,.12);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.45;color:#4A4A4A;min-width:220px;z-index:3}
 .ps-sub{margin:4px 0 10px;font-size:14px;color:#4A4A4A}
 
+/* fotos do container */
+.ft-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.ft-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:8px 0 12px}
+.ft-slot{border:1px solid var(--line-soft);border-radius:var(--r-s);background:#fff;padding:6px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.ft-slot.over{border-color:var(--turq-strong);box-shadow:0 0 0 3px var(--turq-soft)}
+.ft-img{position:relative;aspect-ratio:4/3;border-radius:8px;background:var(--turq-ghost);border:1px dashed #cfd8d8;display:grid;place-items:center;overflow:hidden;cursor:pointer;color:var(--turq-strong);font-size:12.5px;font-weight:600}
+.ft-slot.tem .ft-img{border-style:solid;background:#f4f4f4;cursor:zoom-in}
+.ft-img img{width:100%;height:100%;object-fit:cover;display:block}
+.ft-del{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:15px;line-height:1;cursor:pointer}
+.ft-cap{display:flex;flex-direction:column;line-height:1.2}
+.ft-cap b{font-size:12.5px}.ft-cap small{font-size:11px;color:var(--grey,#7A7A7A)}
+.ft-f{display:flex;flex-direction:column;font-size:10.5px;color:#7A7A7A;gap:2px}
+.ft-f i{font-style:normal;background:#D0CC00;color:#4A4A4A;border-radius:4px;padding:0 4px;font-size:9.5px;font-weight:700}
+.ft-f input{font-family:var(--f-mono);font-size:12.5px;padding:4px 6px;border:1px solid #dcdcdc;border-radius:6px;min-width:0}
+.ft-val tr.st-div td{background:var(--err-soft)}
+.ft-aviso{color:var(--err);margin-top:2px}
+.chip.ft-chip svg{width:12px;height:12px;margin-right:2px}
+@media (max-width:900px){.ft-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 </head>
 <body>
@@ -769,6 +788,10 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
           <button class="btn btn-copy da-btn" data-copy="motorista"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg><span>Dados do motorista<small>VT02N</small></span></button>
           <button class="btn btn-copy da-btn" data-copy="balanca"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 7h14M5 7l-3 7a4 4 0 006 0L5 7zm14 0l-3 7a4 4 0 006 0l-3-7z"/></svg><span>Dados de balança<small>planilha da balança</small></span></button>
         </div>
+        <div class="da-group" id="d-mail" hidden>
+          <div class="da-title">Container</div>
+          <button class="btn btn-ghost da-btn" type="button"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 7l9 6 9-6"/></svg><span>E-mail do container<small>EXP, container, lacre e fotos</small></span></button>
+        </div>
         <div class="da-group">
           <div class="da-title">Status</div>
           <button class="btn btn-ghost da-btn" id="d-fat"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg><span id="d-fat-txt">Marcar como faturada</span></button>
@@ -895,6 +918,28 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       </div>
     </div>
     <div class="rel-preview" id="rel-preview"></div>
+  </div>
+</dialog>
+
+<dialog id="mail-dialog" class="modal modal-wide">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">E-mail do container</div>
+        <h2 id="ml-title">Container</h2>
+      </div>
+      <button class="icon-btn" id="ml-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="rel-bar">
+      <label class="field-inline">Para <input type="text" id="ml-to" placeholder="email@arauco.com; outro@arauco.com" spellcheck="false"></label>
+      <label class="field-inline">Cc <input type="text" id="ml-cc" placeholder="opcional" spellcheck="false"></label>
+      <div class="rel-actions">
+        <button class="btn btn-ghost" id="ml-copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>Copiar e-mail</button>
+        <button class="btn btn-ghost" id="ml-mailto"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 7l9 6 9-6"/></svg>Abrir e-mail padrão</button>
+        <button class="btn btn-primary" id="ml-eml" title="Baixa um arquivo .eml: ao abrir, o Outlook mostra o e-mail pronto com as fotos"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>E-mail pronto (Outlook)</button>
+      </div>
+    </div>
+    <div class="rel-preview" id="ml-preview"></div>
   </div>
 </dialog>
 
@@ -4448,6 +4493,7 @@ window.ORDEM_TEMPLATES = {
     (state.sew || []).forEach(e => put('sew:' + cfg.sewKey(e), e));
     Object.entries(state.pesos || {}).forEach(([k, v]) => put('peso:' + k, v));
     Object.entries(state.tickets || {}).forEach(([k, v]) => put('tk:' + k, v));
+    Object.entries(state.fotos || {}).forEach(([k, v]) => put('foto:' + k, v)); // só nomes e dados lidos; as imagens ficam no computador
     if (state.fsc && Object.keys(state.fsc).length) put('fsc', state.fsc);
     if (state.fscInfo) put('fscinfo', state.fscInfo);
     return out;
@@ -4469,6 +4515,7 @@ window.ORDEM_TEMPLATES = {
         case 'sew': s.sew.push(v); break;
         case 'peso': (s.pesos = s.pesos || {})[id] = v; break;
         case 'tk': (s.tickets = s.tickets || {})[id] = v; break;
+        case 'foto': (s.fotos = s.fotos || {})[id] = v; break;
         case 'fsc': s.fsc = v; break;
         case 'fscinfo': s.fscInfo = v; break;
         default: break;
@@ -4629,6 +4676,218 @@ window.ORDEM_TEMPLATES = {
 
 </script>
 <script>
+/* Fotos das cargas de container: armazenamento (IndexedDB), compressão,
+   leitura dos dados nas fotos (OCR opcional, Tesseract.js via CDN) e e-mail (.eml).
+   As imagens ficam só neste computador (IndexedDB); no estado do app (e no arquivo
+   compartilhado) vão apenas o nome do arquivo e os dados lidos/conferidos. */
+(function (global) {
+  'use strict';
+
+  // 6 fotos por carga de container; as 3 primeiras trazem dados que são confrontados
+  const SLOTS = [
+    { k: 'porta', nome: 'Porta do container', dica: 'nº do container, tara e carga máx.', campos: ['container', 'tara', 'mwg'], re: /porta|door|tara|tare|placa|plate/i },
+    { k: 'ric', nome: 'RIC', dica: 'nº do container e lacre', campos: ['container', 'lacre'], re: /\bric\b|ric[\s_\-.]|^ric|interc[aâ]mbio|eir/i },
+    { k: 'lacre', nome: 'Lacre', dica: 'nº do lacre', campos: ['lacre'], re: /lacre|seal|selo/i },
+    { k: 'f4', nome: 'Foto 4', dica: 'container vazio / interno', campos: [], re: /vazio|empty|interno|inside/i },
+    { k: 'f5', nome: 'Foto 5', dica: 'carga / meia porta', campos: [], re: /meia|carga|carregad|half|load/i },
+    { k: 'f6', nome: 'Foto 6', dica: 'porta fechada e lacrada', campos: [], re: /fechad|closed|lacrad|final/i },
+  ];
+  const CAMPO_NOME = { container: 'Nº container', tara: 'Tara (kg)', mwg: 'Carga máx. / Max gross (kg)', lacre: 'Lacre' };
+
+  // ---------- IndexedDB das imagens ----------
+  const DB = 'arauco-ordens-fotos', STORE = 'fotos';
+  let dbp = null;
+  function db() {
+    if (!dbp) dbp = new Promise((res, rej) => {
+      const r = indexedDB.open(DB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    return dbp;
+  }
+  const tx = (mode, fn) => db().then(d => new Promise((res, rej) => {
+    const t = d.transaction(STORE, mode); const q = fn(t.objectStore(STORE));
+    t.oncomplete = () => res(q && q.result); t.onerror = () => rej(t.error);
+  }));
+  const put = (id, blob) => tx('readwrite', s => s.put(blob, id));
+  const get = id => tx('readonly', s => s.get(id));
+  const del = id => tx('readwrite', s => s.delete(id));
+
+  // ---------- imagem: reduz para no máx. 1600 px (JPEG) ----------
+  async function comprimir(file, max = 1600, q = 0.82) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('imagem inválida')); i.src = url; });
+      const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      return await new Promise(res => c.toBlob(b => res(b || file), 'image/jpeg', q));
+    } finally { URL.revokeObjectURL(url); }
+  }
+  const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+
+  // distribui os arquivos de uma pasta nas 6 posições: pelo nome (porta, ric, lacre…), o resto em ordem
+  function distribuir(files) {
+    const imgs = Array.from(files).filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|bmp|heic)$/i.test(f.name))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    const out = {}; const usados = new Set();
+    SLOTS.forEach(s => { const f = imgs.find(x => !usados.has(x) && s.re.test(x.name)); if (f) { out[s.k] = f; usados.add(f); } });
+    const resto = imgs.filter(f => !usados.has(f));
+    SLOTS.forEach(s => { if (!out[s.k] && resto.length) out[s.k] = resto.shift(); });
+    return { porSlot: out, sobra: resto.length, total: imgs.length };
+  }
+
+  // ---------- nº de container (ISO 6346) ----------
+  const ISO_VAL = (() => { const m = {}; let v = 10; for (let c = 65; c <= 90; c++) { if (v % 11 === 0) v++; m[String.fromCharCode(c)] = v++; } return m; })();
+  function digitoVerificador(c10) {
+    let s = 0; for (let i = 0; i < 10; i++) { const ch = c10[i]; const v = /\d/.test(ch) ? +ch : ISO_VAL[ch]; if (v == null) return null; s += v * 2 ** i; }
+    return (s % 11) % 10;
+  }
+  const normCont = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const contValido = v => { const c = normCont(v); return /^[A-Z]{3}[UJZ]\d{7}$/.test(c) && digitoVerificador(c) === +c[10]; };
+  const DIG = { O: '0', Q: '0', D: '0', I: '1', L: '1', T: '1', Z: '2', S: '5', B: '8', G: '6' };
+  const LET = { 0: 'O', 1: 'I', 5: 'S', 8: 'B', 2: 'Z', 6: 'G' };
+  // letras parecidas no prefixo (O/Q, C/G, I/L…): o dígito verificador decide
+  const PARECIDAS = { O: 'QDC', Q: 'O', D: 'O', C: 'GO', G: 'C', I: 'LT', L: 'I', T: 'I', B: 'RE', R: 'B', E: 'FB', F: 'E', M: 'NH', N: 'MH', H: 'NM', S: 'B', K: 'X', X: 'K', V: 'U', W: 'M' };
+  const COMUNS = new Set(['OQ', 'QO', 'OD', 'DO', 'CG', 'GC', 'IL', 'LI', 'IT', 'TI', 'MN', 'NM', 'VU']);
+  function corrigirPrefixo(c) {
+    if (digitoVerificador(c) === +c[10]) return [{ c, ok: true }];
+    const alts = [];
+    for (let i = 0; i < 3; i++) for (const alt of (PARECIDAS[c[i]] || '')) {
+      const x = c.slice(0, i) + alt + c.slice(i + 1);
+      if (digitoVerificador(x) === +x[10]) alts.push({ c: x, ok: true, corrigido: true, peso: COMUNS.has(c[i] + alt) ? 0 : 1 });
+    }
+    return alts.length ? alts.sort((a, b) => a.peso - b.peso) : [{ c, ok: false }];
+  }
+  function containersNoTexto(text) {
+    const t = String(text || '').toUpperCase();
+    const out = [];
+    const re = /([A-Z0-9]{3}[UJZ0])[\s\-.:]*([0-9OQDILTZSBG]{3})[\s\-.]*([0-9OQDILTZSBG]{3})[\s\-.()\[\]|]*([0-9OQDILTZSBG])/g;
+    let m;
+    while ((m = re.exec(t))) {
+      const pre = m[1].split('').map((ch, i) => (i < 3 ? (LET[ch] || ch) : (ch === '0' ? 'U' : ch))).join('');
+      const num = (m[2] + m[3] + m[4]).split('').map(ch => DIG[ch] || ch).join('');
+      const c = pre + num;
+      if (/^[A-Z]{3}[UJZ]\d{7}$/.test(c)) out.push(...corrigirPrefixo(c));
+      re.lastIndex = m.index + 1;
+    }
+    // únicos, válidos primeiro
+    const vistos = new Set();
+    return out.filter(x => !vistos.has(x.c) && vistos.add(x.c)).sort((a, b) => b.ok - a.ok);
+  }
+  const fmtCont = c => { const x = normCont(c); const m = x.match(/^([A-Z]{4})(\d{6})(\d)$/); return m ? `${m[1]} ${m[2]}-${m[3]}` : x; };
+
+  // ---------- pesos da placa da porta (TARE / MAX GROSS) ----------
+  function kgNum(s) {
+    const x = String(s).replace(/\s+/g, '');
+    if (/^\d{1,3}([.,]\d{3})+$/.test(x)) return +x.replace(/[.,]/g, '');
+    if (/^\d{4,6}$/.test(x)) return +x;
+    return null;
+  }
+  function pesoApos(text, labels) {
+    const t = String(text || '').toUpperCase().replace(/\r/g, '');
+    for (const lab of labels) {
+      const re = new RegExp(lab + '[^\\n]{0,4}', 'g'); let m;
+      while ((m = re.exec(t))) {
+        const trecho = t.slice(m.index + m[0].length - 4, m.index + 90);
+        // prefere o número seguido de KG; senão o primeiro número de 4–6 dígitos
+        const kgm = trecho.match(/(\d{1,3}(?:[.,\s]\d{3})+|\d{4,6})\s*(KGS?|KG\.)/);
+        if (kgm) { const v = kgNum(kgm[1]); if (v) return v; }
+        const nm = trecho.match(/(\d{1,3}(?:[.,]\d{3})+|\d{4,6})/);
+        if (nm) { const v = kgNum(nm[1]); if (v) return v; }
+      }
+    }
+    return null;
+  }
+  const lerTara = text => pesoApos(text, ['TARE', 'TARA']);
+  const lerMwg = text => pesoApos(text, ['MAX\\.?\\s*GROSS', 'MAX\\.?\\s*G\\.?\\s*W', 'M\\.?\\s*G\\.?\\s*W', 'GROSS\\s*WEIGHT', 'MAX\\.?\\s*WT', 'PESO\\s*BRUTO\\s*M', 'MAXIMUM\\s*GROSS', 'GROSS']);
+
+  // ---------- lacre ----------
+  const normLacre = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const lacreOCR = v => normLacre(v).replace(/[OQD]/g, '0').replace(/[IL]/g, '1');
+  // procura o lacre esperado no texto (tolerando O/0, I/1); senão, o código depois de "LACRE"/"SEAL"
+  function lerLacre(text, esperado) {
+    const t = String(text || '').toUpperCase();
+    const e = normLacre(esperado);
+    if (e && e.length >= 4) {
+      const alvo = lacreOCR(e); const corrido = lacreOCR(t);
+      if (corrido.includes(alvo)) return e;
+      // só os dígitos do lacre (prefixos de letras costumam sair errados)
+      const dig = e.replace(/\D/g, '');
+      if (dig.length >= 5 && corrido.includes(dig)) return e;
+    }
+    const m = t.match(/(?:LACRE|SEAL|SELO)[^A-Z0-9\n]{0,12}(?:N[ºO°.]*\s*)?([A-Z]{0,4}[\s\-]?\d{5,12})/);
+    if (m) return normLacre(m[1]);
+    return '';
+  }
+  const lacreIgual = (a, b) => !!a && !!b && lacreOCR(a) === lacreOCR(b);
+
+  // dados de uma foto a partir do texto lido
+  function dadosDoTexto(slot, text, esperado) {
+    const r = {};
+    if (slot === 'porta' || slot === 'ric') {
+      const cs = containersNoTexto(text);
+      const alvo = normCont(esperado.container);
+      const hit = cs.find(x => x.c === alvo) || cs.find(x => x.ok) || cs[0];
+      if (hit) r.container = hit.c;
+    }
+    if (slot === 'porta') { const ta = lerTara(text); if (ta) r.tara = ta; const mw = lerMwg(text); if (mw) r.mwg = mw; }
+    if (slot === 'ric' || slot === 'lacre') { const l = lerLacre(text, esperado.lacre); if (l) r.lacre = l; }
+    return r;
+  }
+
+  // ---------- OCR (Tesseract.js, carregado só quando usado; precisa de internet) ----------
+  const TESS = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  let tessP = null;
+  function carregarOCR() {
+    if (global.Tesseract) return Promise.resolve(global.Tesseract);
+    if (!tessP) tessP = new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = TESS; s.async = true;
+      s.onload = () => (global.Tesseract ? res(global.Tesseract) : rej(new Error('OCR indisponível')));
+      s.onerror = () => { tessP = null; rej(new Error('sem internet para carregar a leitura automática (OCR)')); };
+      document.head.appendChild(s);
+    });
+    return tessP;
+  }
+  // realce para OCR: tons de cinza + contraste, ampliado
+  async function prepararOCR(blob) {
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+      const s = Math.min(2, 2200 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      const g = c.getContext('2d'); g.filter = 'grayscale(1) contrast(1.6)'; g.drawImage(img, 0, 0, c.width, c.height);
+      return await new Promise(res => c.toBlob(res, 'image/png'));
+    } finally { URL.revokeObjectURL(url); }
+  }
+  async function ocr(blob, onProgress) {
+    const T = await carregarOCR();
+    const img = await prepararOCR(blob);
+    const r = await T.recognize(img, 'eng', { logger: m => onProgress && m.status === 'recognizing text' && onProgress(m.progress) });
+    return (r && r.data && r.data.text) || '';
+  }
+
+  // ---------- e-mail .eml (abre como rascunho no Outlook: X-Unsent) ----------
+  const b64utf8 = s => btoa(unescape(encodeURIComponent(s)));
+  const wrap76 = s => s.replace(/.{1,76}/g, '$&\r\n');
+  function montarEML({ para, cc, assunto, html, anexos }) {
+    const bd = '=_oe_' + Math.random().toString(36).slice(2);
+    const h = ['X-Unsent: 1', para ? `To: ${para}` : '', cc ? `Cc: ${cc}` : '', `Subject: =?UTF-8?B?${b64utf8(assunto)}?=`, 'MIME-Version: 1.0',
+      `Content-Type: multipart/related; boundary="${bd}"; type="text/html"`].filter(Boolean).join('\r\n');
+    const parts = [`--${bd}\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${wrap76(b64utf8(html))}`];
+    anexos.forEach(a => parts.push(`--${bd}\r\nContent-Type: ${a.tipo}; name="${a.nome}"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <${a.cid}>\r\nContent-Disposition: inline; filename="${a.nome}"\r\n\r\n${wrap76(a.base64)}`));
+    return `${h}\r\n\r\n${parts.join('\r\n')}\r\n--${bd}--\r\n`;
+  }
+
+  global.OEF = {
+    SLOTS, CAMPO_NOME, put, get, del, comprimir, blobToDataURL, distribuir,
+    digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
+    carregarOCR, ocr, montarEML,
+  };
+})(window);
+
+</script>
+<script>
 /* Arauco · Ordens de Embarque — lista diária, ordem por transporte e impressão
    dos check-lists oficiais (veículo + carga) preenchidos.
    Lógica espelhada da planilha LOG-AGENDAMENTO (guias LOG, SEW, Controle OT,
@@ -4644,7 +4903,7 @@ window.ORDEM_TEMPLATES = {
 
   // ------------------------------------------------------------------ estado
   const STORE_KEY = 'arauco.ordensEmbarque.v1';
-  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {} });
+  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {}, fotos: {} });
   let state = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.v === 1) return Object.assign(emptyState(), s); } catch (e) { /* sem storage */ }
@@ -5191,7 +5450,7 @@ window.ORDEM_TEMPLATES = {
         <td>${treinoChip(T)}</td>
         <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
-        <td class="c-status">${statusChip(T)}</td>
+        <td class="c-status">${statusChip(T)}${fotoChip(T)}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
     })(L.T)).join('');
@@ -5343,7 +5602,8 @@ window.ORDEM_TEMPLATES = {
     if (!ok) return;
     const set = new Set(ts);
     Object.values(state.items).forEach(i => { if (set.has(i.transporte)) delete state.items[i.key]; });
-    ts.forEach(t => { delete state.manual[t]; delete state.printed[t]; delete state.snap[t]; delete state.faturado[t]; if (state.fatNf) delete state.fatNf[t]; ui.selected.delete(t); });
+    ts.forEach(t => { delete state.manual[t]; delete state.printed[t]; delete state.snap[t]; delete state.faturado[t]; if (state.fatNf) delete state.fatNf[t]; ui.selected.delete(t);
+      const fo = state.fotos[t]; if (fo) { Object.values(fo.slots || {}).forEach(it => window.OEF.del(it.id).catch(() => {})); delete state.fotos[t]; } });
     if (ui.open && set.has(ui.open)) closeDetail();
     save(true); renderAll();
     toast(`${ts.length} transporte(s) excluído(s) da lista.`, 'ok');
@@ -5705,6 +5965,246 @@ window.ORDEM_TEMPLATES = {
     return true;
   }
 
+  // ------------------------------------------------------------------ fotos do container (6 por carga) e conferência
+  // Imagens no IndexedDB deste computador (OEF); em state.fotos[t] vão só os nomes e os dados lidos de cada foto.
+  const F = window.OEF;
+  const temContainer = T => T.janela === 'CONTAINER' || isCabotagem(T);
+  const fotosDe = t => state.fotos[t] || (state.fotos[t] = { slots: {}, lido: {}, auto: {} });
+  const nFotos = t => { const f = state.fotos[t]; return f ? F.SLOTS.filter(s => f.slots[s.k]).length : 0; };
+  const fotoURL = new Map(); // id -> objectURL
+  async function urlFoto(id) {
+    if (fotoURL.has(id)) return fotoURL.get(id);
+    const b = await F.get(id).catch(() => null); if (!b) return null;
+    const u = URL.createObjectURL(b); fotoURL.set(id, u); return u;
+  }
+  const numIgual = (a, b) => { const x = String(a || '').replace(/\D/g, ''), y = String(b || '').replace(/\D/g, ''); return !!x && x === y; };
+  // confronto: agendamento / Controle OT × porta × RIC × foto do lacre
+  function validarFotos(T) {
+    const f = state.fotos[T.transporte] || { slots: {}, lido: {} };
+    const L = s => f.lido[s] || {};
+    const sewC = T.sew && T.sew.container ? T.sew.container : '';
+    const linha = (dado, ref, refNome, vals, igual, extra) => {
+      const todos = [ref, ...vals.map(v => v.v)];
+      const presentes = todos.filter(Boolean);
+      let st = 'falta';
+      if (presentes.length >= 2 && presentes.some(v => !igual(v, presentes[0]))) st = 'div';
+      else if (todos.every(Boolean)) st = 'ok';
+      return { dado, ref, refNome, vals, st, extra: extra || '' };
+    };
+    const contEq = (a, b) => F.normCont(a) === F.normCont(b);
+    const avisoCD = [L('porta').container, L('ric').container].filter(c => c && !F.contValido(c)).map(c => `${F.fmtCont(c)}: dígito verificador não confere`).join(' · ');
+    const linhas = [
+      linha('Nº container', T.ot.container, T.man.container ? 'Controle OT' : 'Agendado', [{ n: 'Porta', v: L('porta').container }, { n: 'RIC', v: L('ric').container }], contEq,
+        [sewC && T.ot.container && !contEq(sewC, T.ot.container) ? `agendamento SEW: ${F.fmtCont(sewC)} (diferente)` : '', avisoCD].filter(Boolean).join(' · ')),
+      linha('Lacre', T.ot.lacre, 'Controle OT', [{ n: 'RIC', v: L('ric').lacre }, { n: 'Foto do lacre', v: L('lacre').lacre }], F.lacreIgual),
+      linha('Tara', T.ot.tara, 'Controle OT', [{ n: 'Porta', v: L('porta').tara }], numIgual),
+      linha('Carga máx. (MWG)', T.ot.mwg, 'Controle OT', [{ n: 'Porta', v: L('porta').mwg }], numIgual),
+    ];
+    const n = F.SLOTS.filter(s => f.slots[s.k]).length;
+    const st = linhas.some(l => l.st === 'div') ? 'div' : (linhas.every(l => l.st === 'ok') && n === 6 ? 'ok' : 'pend');
+    return { linhas, n, st, f };
+  }
+  function fotoChip(T) {
+    if (!temContainer(T)) return '';
+    const v = validarFotos(T);
+    const cls = v.st === 'div' ? 'alt' : (v.st === 'ok' ? 'imp' : 'grey');
+    const tit = v.st === 'div' ? 'Divergência entre fotos e agendamento: ' + v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', ') : (v.st === 'ok' ? 'Fotos conferidas' : 'Fotos/conferência pendentes');
+    return ` <span class="chip ${cls} ft-chip" title="${esc(tit)}"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${v.n}/6${v.st === 'div' ? ' divergente' : (v.st === 'ok' ? ' ok' : '')}</span>`;
+  }
+  const fmtVal = (dado, v) => !v ? '' : (dado === 'Nº container' ? F.fmtCont(v) : (/Tara|MWG/.test(dado) ? fmtNum(+String(v).replace(/\D/g, ''), 0) + ' kg' : String(v)));
+  function validacaoHTML(T) {
+    const v = validarFotos(T);
+    const ST = { ok: '<span class="chip imp">Confere</span>', div: '<span class="chip alt">Divergente</span>', falta: '<span class="chip grey">Falta dado</span>' };
+    const podeFill = ['container', 'lacre', 'tara', 'mwg'].some(k => !T.ot[k] && valorFoto(v.f, k));
+    return `<div class="alert ${v.st === 'div' ? 'err' : (v.st === 'ok' ? 'ok' : 'info')}">${v.st === 'div' ? '<b>Embarque com divergência</b>: os dados das fotos não batem com o agendado. Confira antes de liberar.' : (v.st === 'ok' ? '<b>Embarque conferido</b>: container, lacre, tara e carga máx. batem entre fotos e agendamento.' : `Conferência pendente: ${v.n}/6 fotos${v.linhas.some(l => l.st === 'falta') ? ' · faltam dados para confrontar' : ''}.`)}</div>
+      <table class="items ft-val"><thead><tr><th>Dado</th><th>Agendado / Controle OT</th><th>Fotos</th><th>Resultado</th></tr></thead><tbody>
+      ${v.linhas.map(l => `<tr class="st-${l.st}"><td><b>${esc(l.dado)}</b></td><td class="mono">${esc(fmtVal(l.dado, l.ref)) || '<span class="muted">—</span>'}<span class="sub">${esc(l.refNome)}</span></td>
+        <td>${l.vals.map(x => `<div><span class="muted small">${esc(x.n)}:</span> <span class="mono">${esc(fmtVal(l.dado, x.v)) || '<span class="muted">—</span>'}</span></div>`).join('')}${l.extra ? `<div class="small ft-aviso">${esc(l.extra)}</div>` : ''}</td><td>${ST[l.st]}</td></tr>`).join('')}
+      </tbody></table>${podeFill ? '<button class="btn btn-ghost btn-sm" data-ft-fill>Preencher Controle OT vazio com os dados das fotos</button>' : ''}`;
+  }
+  const valorFoto = (f, k) => { for (const s of ['porta', 'ric', 'lacre']) { const x = (f.lido[s] || {})[k]; if (x) return x; } return ''; };
+  function fotosHTML(T) {
+    const f = state.fotos[T.transporte] || { slots: {}, lido: {}, auto: {} };
+    const slots = F.SLOTS.map(s => {
+      const it = f.slots[s.k]; const lido = f.lido[s.k] || {}; const auto = (f.auto || {})[s.k] || {};
+      return `<div class="ft-slot ${it ? 'tem' : ''}" data-slot="${s.k}" draggable="${it ? 'true' : 'false'}">
+        <div class="ft-img" title="${it ? esc(it.nome) + ' — arraste para trocar de posição' : 'Clique ou arraste a foto aqui'}">${it ? `<img data-fid="${esc(it.id)}" alt="${esc(s.nome)}">` : '<span>+ foto</span>'}
+          ${it ? `<button class="ft-del" data-ft-del="${s.k}" title="Remover foto">×</button>` : ''}</div>
+        <div class="ft-cap"><b>${esc(s.nome)}</b><small>${esc(s.dica)}</small></div>
+        ${s.campos.map(c => `<label class="ft-f">${esc(F.CAMPO_NOME[c])}${auto[c] ? ' <i title="lido automaticamente — confira">auto</i>' : ''}<input data-ft="${s.k}|${c}" value="${esc(lido[c] == null ? '' : (c === 'container' ? F.fmtCont(lido[c]) : lido[c]))}" spellcheck="false"></label>`).join('')}
+      </div>`;
+    }).join('');
+    return `<div class="section" id="ft-sec">
+      <h3>Fotos do container <span class="h-note">${nFotos(T.transporte)}/6 · confronto com o agendamento</span></h3>
+      <div class="ft-bar">
+        <label class="btn btn-ghost btn-sm">Importar pasta<input type="file" id="ft-pasta" webkitdirectory multiple hidden></label>
+        <label class="btn btn-ghost btn-sm">Selecionar fotos<input type="file" id="ft-arq" accept="image/*" multiple hidden></label>
+        <button class="btn btn-ghost btn-sm" id="ft-ocr">Ler dados das fotos</button>
+        <button class="btn btn-primary btn-sm" id="ft-mail">E-mail do container</button>
+        <input type="file" id="ft-um" accept="image/*" hidden>
+      </div>
+      <p class="muted small">Nomes com "porta", "ric" e "lacre" vão direto para a posição certa; arraste as fotos para trocar. As imagens ficam guardadas neste computador.</p>
+      <div class="ft-grid">${slots}</div>
+      <div id="ft-val">${validacaoHTML(T)}</div>
+    </div>`;
+  }
+  async function carregarMiniaturas(root) {
+    for (const img of $$('img[data-fid]', root)) { const u = await urlFoto(img.dataset.fid); if (u) img.src = u; else img.replaceWith(Object.assign(document.createElement('span'), { className: 'muted small', textContent: 'foto em outro computador' })); }
+  }
+  async function gravarFoto(t, slot, file) {
+    const f = fotosDe(t);
+    const blob = await F.comprimir(file);
+    const id = `${t}|${slot}|${Date.now().toString(36)}`;
+    await F.put(id, blob);
+    const old = f.slots[slot]; if (old) { F.del(old.id).catch(() => {}); fotoURL.delete(old.id); }
+    f.slots[slot] = { id, nome: file.name, em: new Date().toISOString() };
+  }
+  async function importarFotos(t, files, slot) {
+    const T = getTransport(t); if (!T) return;
+    let n = 0, msg = '';
+    try {
+      if (slot) { await gravarFoto(t, slot, files[0]); n = 1; }
+      else {
+        const d = F.distribuir(files);
+        if (!d.total) { toast('Nenhuma imagem encontrada (JPG/PNG).', 'err'); return; }
+        for (const [k, file] of Object.entries(d.porSlot)) { await gravarFoto(t, k, file); n++; }
+        if (d.sobra) msg = ` ${d.sobra} imagem(ns) a mais ficaram de fora (máx. 6).`;
+      }
+    } catch (e) { toast('Não foi possível guardar a foto: ' + (e.message || e), 'err'); return; }
+    save(true); renderAll();
+    toast(`${n} foto(s) guardada(s) no transporte ${t}.${msg} Use "Ler dados das fotos" ou digite os dados de cada foto.`, 'ok');
+  }
+  async function lerFotos(t) {
+    const T = getTransport(t); if (!T) return;
+    const f = fotosDe(t); const alvo = ['porta', 'ric', 'lacre'].filter(k => f.slots[k]);
+    if (!alvo.length) { toast('Inclua as fotos da porta, do RIC e do lacre primeiro.', 'warn'); return; }
+    const b = $('#ft-ocr'); if (b) { b.disabled = true; b.textContent = 'Lendo fotos…'; }
+    let achou = 0;
+    try {
+      for (const k of alvo) {
+        const blob = await F.get(f.slots[k].id); if (!blob) continue;
+        const txt = await F.ocr(blob, p => { if (b) b.textContent = `Lendo ${F.SLOTS.find(s => s.k === k).nome}… ${Math.round(p * 100)}%`; });
+        const d = F.dadosDoTexto(k, txt, { container: T.ot.container, lacre: T.ot.lacre });
+        const lido = f.lido[k] || (f.lido[k] = {}); const auto = (f.auto = f.auto || {})[k] || (f.auto[k] = {});
+        Object.entries(d).forEach(([c, v]) => { if (!lido[c]) { lido[c] = v; auto[c] = true; achou++; } });
+      }
+      save(true); renderAll();
+      toast(achou ? `${achou} dado(s) lido(s) das fotos. Confira os campos marcados "auto".` : 'Não consegui ler os dados nas fotos. Digite-os nos campos abaixo de cada foto.', achou ? 'ok' : 'warn');
+    } catch (e) {
+      toast('Leitura automática indisponível: ' + (e.message || e) + '. Digite os dados nos campos abaixo de cada foto.', 'warn');
+      if (b) { b.disabled = false; b.textContent = 'Ler dados das fotos'; }
+    }
+  }
+  function preencherOTdasFotos(t) {
+    const T = getTransport(t); const f = fotosDe(t); const man = state.manual[t] || (state.manual[t] = {});
+    const feitos = [];
+    ['container', 'lacre', 'tara', 'mwg'].forEach(k => { if (!T.ot[k]) { const v = valorFoto(f, k); if (v) { man[k] = k === 'container' ? F.normCont(v) : String(v); feitos.push(OT_FIELDS.find(x => x[0] === k)[1]); } } });
+    save(true); renderAll(); toast(feitos.length ? `Controle OT preenchido: ${feitos.join(', ')}.` : 'Nada a preencher.', 'ok');
+  }
+  function bindFotos() {
+    const body = $('#d-body');
+    body.addEventListener('change', e => {
+      const t = ui.open; if (!t) return;
+      if (e.target.id === 'ft-pasta' || e.target.id === 'ft-arq') { if (e.target.files.length) importarFotos(t, e.target.files); e.target.value = ''; }
+      else if (e.target.id === 'ft-um') { if (e.target.files.length) importarFotos(t, e.target.files, e.target.dataset.slot); e.target.value = ''; }
+    });
+    body.addEventListener('input', e => {
+      const k = e.target.dataset.ft; if (!k || !ui.open) return;
+      const [slot, campo] = k.split('|'); const f = fotosDe(ui.open);
+      const lido = f.lido[slot] || (f.lido[slot] = {}); let v = e.target.value.trim();
+      if (campo === 'container' || campo === 'lacre') v = v.toUpperCase();
+      if (campo === 'container') v = F.normCont(v);
+      if (v) lido[campo] = v; else delete lido[campo];
+      if (f.auto && f.auto[slot]) delete f.auto[slot][campo];
+      save();
+      clearTimeout(bindFotos.tm); bindFotos.tm = setTimeout(() => { const T = getTransport(ui.open); if (T && $('#ft-val')) $('#ft-val').innerHTML = validacaoHTML(T); renderList(); }, 250);
+    });
+    body.addEventListener('click', e => {
+      const t = ui.open; if (!t) return;
+      if (e.target.closest('#ft-ocr')) { lerFotos(t); return; }
+      if (e.target.closest('#ft-mail')) { abrirEmailContainer(t); return; }
+      if (e.target.closest('[data-ft-fill]')) { preencherOTdasFotos(t); return; }
+      const d = e.target.closest('[data-ft-del]');
+      if (d) { const f = fotosDe(t); const it = f.slots[d.dataset.ftDel]; if (it) { F.del(it.id).catch(() => {}); fotoURL.delete(it.id); delete f.slots[d.dataset.ftDel]; save(true); renderAll(); } return; }
+      const im = e.target.closest('.ft-img');
+      if (im) { const s = im.closest('.ft-slot'); const it = fotosDe(t).slots[s.dataset.slot];
+        if (it) { const img = $('img', im); if (img && img.src) window.open(img.src, '_blank'); }
+        else { const inp = $('#ft-um'); inp.dataset.slot = s.dataset.slot; inp.click(); } }
+    });
+    // arrastar: arquivos do Windows para uma posição, ou trocar fotos de posição
+    body.addEventListener('dragstart', e => { const s = e.target.closest && e.target.closest('.ft-slot.tem'); if (s) e.dataTransfer.setData('text/oe-slot', s.dataset.slot); });
+    body.addEventListener('dragover', e => { const s = e.target.closest('.ft-slot'); if (s) { e.preventDefault(); s.classList.add('over'); } });
+    body.addEventListener('dragleave', e => { const s = e.target.closest('.ft-slot'); if (s) s.classList.remove('over'); });
+    body.addEventListener('drop', e => {
+      const s = e.target.closest('.ft-slot'); if (!s || !ui.open) return; e.preventDefault(); s.classList.remove('over');
+      const de = e.dataTransfer.getData('text/oe-slot');
+      if (de && de !== s.dataset.slot) { const f = fotosDe(ui.open); const a = f.slots[de], b = f.slots[s.dataset.slot]; if (a) f.slots[s.dataset.slot] = a; else delete f.slots[s.dataset.slot]; if (b) f.slots[de] = b; else delete f.slots[de]; save(true); renderAll(); return; }
+      const files = e.dataTransfer.files; if (files && files.length) importarFotos(ui.open, files, files.length === 1 ? s.dataset.slot : null);
+    });
+  }
+
+  // ---------- e-mail do container: EXP, container e lacre em destaque; fotos logo abaixo ----------
+  const MAIL_KEY = 'arauco.ordensEmbarque.emailContainer';
+  async function emailContainer(t, modo) {
+    const T = getTransport(t); const v = validarFotos(T); const f = v.f;
+    const fotos = [];
+    for (const s of F.SLOTS) { const it = f.slots[s.k]; if (!it) continue; const b = await F.get(it.id).catch(() => null); if (b) fotos.push({ s, b, nome: `${s.k}-${F.normCont(T.ot.container) || t}.jpg` }); }
+    for (const x of fotos) { x.base64 = (await F.blobToDataURL(x.b)).split(',')[1]; x.cid = `${x.s.k}.${t}@ordens-embarque`; }
+    const src = x => modo === 'eml' ? `cid:${x.cid}` : `data:image/jpeg;base64,${x.base64}`;
+    const cell = (l, val) => `<td style="border:1px solid #4A4A4A;padding:10px 14px;text-align:center"><div style="font-size:11px;color:#7A7A7A;letter-spacing:1px;font-weight:bold">${l}</div><div style="font-size:22px;font-weight:bold;font-family:Consolas,'Courier New',monospace;color:#000">${esc(val || '—')}</div></td>`;
+    const conf = v.st === 'ok' ? '<span style="color:#2e7d4f;font-weight:bold">✔ Dados conferidos: container, lacre, tara e carga máx. batem com o agendamento.</span>'
+      : (v.st === 'div' ? `<span style="color:#b4473b;font-weight:bold">⚠ Divergência: ${esc(v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', '))}.</span>` : '<span style="color:#7A7A7A">Conferência pendente.</span>');
+    const linhasFotos = [];
+    for (let i = 0; i < fotos.length; i += 2) linhasFotos.push(`<tr>${fotos.slice(i, i + 2).map(x => `<td style="padding:6px;vertical-align:top;width:50%"><img src="${src(x)}" width="330" style="width:330px;max-width:100%;border:1px solid #D9D9D9;display:block" alt="${esc(x.s.nome)}"><div style="font-size:12px;color:#4A4A4A;margin-top:3px"><b>${esc(x.s.nome)}</b></div></td>`).join('')}</tr>`);
+    const assunto = `Embarque container ${F.fmtCont(T.ot.container) || ''} · EXP ${T.ot.exp || '—'} · Lacre ${T.ot.lacre || '—'} · Transporte ${t}`;
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#4A4A4A;max-width:700px">
+      <p style="margin:0 0 10px">Segue o embarque do container — transporte <b>${esc(t)}</b>, ${esc(T.eff.cliente)}, ${esc(P.fmtDateBR(T.eff.data))}.</p>
+      <table style="border-collapse:collapse;width:100%;margin-bottom:8px"><tr>${cell('EXP', T.ot.exp)}${cell('CONTAINER', F.fmtCont(T.ot.container))}${cell('LACRE', T.ot.lacre)}</tr></table>
+      <p style="font-size:12px;margin:4px 0 6px">Tara: <b>${T.ot.tara ? esc(fmtVal('Tara', T.ot.tara)) : '—'}</b> · Carga máx.: <b>${T.ot.mwg ? esc(fmtVal('MWG', T.ot.mwg)) : '—'}</b> · Placa: <b>${esc(T.eff.placaL)}</b>${T.otList.length ? ` · OT: <b>${esc(T.otList.join(' / '))}</b>` : ''}</p>
+      <p style="font-size:12px;margin:0 0 10px">${conf}</p>
+      <table style="border-collapse:collapse;width:100%">${linhasFotos.join('')}</table>
+      <p style="font-size:11px;color:#7A7A7A;margin-top:10px">Arauco · Expedição Piên</p></div>`;
+    return { T, html, assunto, fotos, v };
+  }
+  async function abrirEmailContainer(t) {
+    const T = getTransport(t); if (!T) return;
+    if (!nFotos(t)) toast('Esta carga ainda não tem fotos.', 'warn');
+    const dlg = $('#mail-dialog'); dlg.dataset.t = t;
+    try { const s = JSON.parse(localStorage.getItem(MAIL_KEY) || '{}'); $('#ml-to').value = s.to || ''; $('#ml-cc').value = s.cc || ''; } catch (e) { /* sem storage */ }
+    $('#ml-title').textContent = `Container ${F.fmtCont(T.ot.container) || '(sem nº)'} · transporte ${t}`;
+    $('#ml-preview').innerHTML = '<p class="muted">Montando…</p>';
+    dlg.showModal();
+    const m = await emailContainer(t, 'preview');
+    $('#ml-preview').innerHTML = (m.v.st === 'div' ? '<div class="alert err"><b>Atenção:</b> há divergência entre as fotos e o agendamento.</div>' : '') + m.html;
+  }
+  function bindEmailContainer() {
+    const dlg = $('#mail-dialog');
+    const salvar = () => { try { localStorage.setItem(MAIL_KEY, JSON.stringify({ to: $('#ml-to').value.trim(), cc: $('#ml-cc').value.trim() })); } catch (e) { /* sem storage */ } };
+    $('#ml-to').addEventListener('change', salvar); $('#ml-cc').addEventListener('change', salvar);
+    $('#ml-close').addEventListener('click', () => dlg.close());
+    $('#d-mail').addEventListener('click', () => { if (ui.open) abrirEmailContainer(ui.open); });
+    $('#ml-eml').addEventListener('click', async () => {
+      salvar(); const t = dlg.dataset.t; const m = await emailContainer(t, 'eml');
+      const eml = F.montarEML({ para: $('#ml-to').value.trim().replace(/;/g, ','), cc: $('#ml-cc').value.trim().replace(/;/g, ','), assunto: m.assunto, html: m.html,
+        anexos: m.fotos.map(x => ({ nome: x.nome, tipo: 'image/jpeg', cid: x.cid, base64: x.base64 })) });
+      baixar(`container-${F.normCont(m.T.ot.container) || t}.eml`, new Blob([eml], { type: 'message/rfc822' }));
+      toast('E-mail baixado (.eml). Abra o arquivo: o Outlook mostra o e-mail pronto, com as fotos, para enviar.', 'ok');
+    });
+    $('#ml-copy').addEventListener('click', async () => {
+      const m = await emailContainer(dlg.dataset.t, 'copy');
+      const ok = await copiarHTML(m.html, m.assunto);
+      toast(ok ? 'E-mail copiado com as fotos — cole (Ctrl+V) no corpo da mensagem.' : 'Não foi possível copiar.', ok ? 'ok' : 'err');
+    });
+    $('#ml-mailto').addEventListener('click', async () => {
+      salvar(); const m = await emailContainer(dlg.dataset.t, 'copy');
+      const ok = await copiarHTML(m.html, m.assunto);
+      const para = $('#ml-to').value.split(/[;,\s]+/).filter(x => /^[^@\s]+@[^@\s]+$/.test(x)).join(',');
+      const cc = $('#ml-cc').value.split(/[;,\s]+/).filter(x => /^[^@\s]+@[^@\s]+$/.test(x)).join(',');
+      window.location.href = `mailto:${para}?${cc ? `cc=${encodeURIComponent(cc)}&` : ''}subject=${encodeURIComponent(m.assunto)}&body=${encodeURIComponent(ok ? '(cole aqui: Ctrl+V)' : '')}`;
+      toast(ok ? 'E-mail aberto. O conteúdo com as fotos já está copiado: clique no corpo e pressione Ctrl+V.' : 'E-mail aberto (não foi possível copiar as fotos).', ok ? 'ok' : 'warn');
+    });
+  }
+
   // ------------------------------------------------------------------ guia Agendamentos
   function setView(v) {
     ui.view = v;
@@ -5840,7 +6340,7 @@ window.ORDEM_TEMPLATES = {
       $('#d-print-sub').textContent = ex.length ? `${2 + ex.length} páginas: check-lists + ${ex.join(' + ')}` : '2 check-lists'; }
     $('#d-fat-txt').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
     $('#d-fat').classList.toggle('on', !!T.faturado);
-    $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
+    $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), fotoChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
     const e = T.eff;
     const alerts = [];
     if (isAmostra(T)) alerts.push(`<div class="alert warn"><b>Amostra — conferir cliente.</b> A carga contém amostra; o aviso sai no check-list ao lado da quantidade de lotes.</div>`);
@@ -5907,6 +6407,7 @@ window.ORDEM_TEMPLATES = {
           ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'ot' && T.otList.length > 1 ? ` (${T.otList.length})` : ''}${k === 'container' && !T.man.container && T.ot.container ? ' <span class="src">SEW</span>' : ''}${k === 'ot' && T.otSrc === 'LT22' ? ' <span class="src">tela de OTs</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
         </div>
       </div>
+      ${temContainer(T) ? fotosHTML(T) : ''}
       <div class="section">
         <h3>Documentos da ordem <span class="h-note">clique para ampliar</span></h3>
         <div class="pv-thumbs" id="pv-thumbs"></div>
@@ -5915,6 +6416,8 @@ window.ORDEM_TEMPLATES = {
         </div>
       </div>`;
     renderThumbs(T);
+    $('#d-mail').hidden = !temContainer(T);
+    if (temContainer(T)) carregarMiniaturas($('#d-body'));
   }
 
   function scalePage(page, boxWidth) {
@@ -6094,6 +6597,7 @@ window.ORDEM_TEMPLATES = {
       save(); softRefresh();
     });
     $('#d-del').addEventListener('click', () => { if (ui.open) excluirTransportes([ui.open]); });
+    bindFotos(); bindEmailContainer();
     $('#d-actions').addEventListener('click', e => {
       const doc = e.target.closest('[data-doc]'); if (!doc) return;
       const T = getTransport(ui.open); if (!T) return;
@@ -6255,7 +6759,7 @@ window.ORDEM_TEMPLATES = {
     clearTimeout(softTimer);
     softTimer = setTimeout(() => {
       const T = getTransport(ui.open); if (!T) return;
-      $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
+      $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), fotoChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
       $('#d-fat-txt').textContent = T.faturado ? 'Desmarcar faturada' : 'Marcar como faturada';
       $('#d-fat').classList.toggle('on', !!T.faturado);
       $$('[data-ov]', $('#d-body')).forEach(inp => {
@@ -6626,7 +7130,7 @@ window.ORDEM_TEMPLATES = {
     const grid = rows.map(r => [r[0], r[1], 100, r[2], d.split('-').reverse().join('/'), r[3], r[4], r[5], r[6], r[15].split('-')[0], '-', r[7], r[8], r[9], r[10], 1, r[11], r[12], r[13], 1, r[14], r[15], '', r[16], r[17]]);
     const res = P.rowsToItems(grid, { headerRow: -1, map: P.LOG_KEYS.slice() });
     mergeLogItems(res.items, false);
-    mergeSew([{ janela: 'CONTAINER', data: d, hora: '14:00', status: '200 - Agendamento Concluído', senha: '3*', seq: '1', tipoVeiculo: '', carreta: 'QRS4T56', cavalo: 'UVW7X89', cpf: '333.333.333-33', container: 'ABCU1234567', transportadora: 'TRANSPORTADORA EXEMPLO C', cliente: 'EXPORT CLIENT S.A.', incoterm: 'CIF', volume: null }]);
+    mergeSew([{ janela: 'CONTAINER', data: d, hora: '14:00', status: '200 - Agendamento Concluído', senha: '3*', seq: '1', tipoVeiculo: '', carreta: 'QRS4T56', cavalo: 'UVW7X89', cpf: '333.333.333-33', container: 'ABCU1234560', transportadora: 'TRANSPORTADORA EXEMPLO C', cliente: 'EXPORT CLIENT S.A.', incoterm: 'CIF', volume: null }]);
     state.manual['10000103'] = Object.assign({ ot: '660001', exp: '1000000001', tara: '3700', mwg: '32500', lacre: 'LC0000001', ticket: '900001' }, state.manual['10000103'] || {});
     save(true); ui.date = d; $('#date-filter').value = d; renderAll();
     toast('Exemplo carregado (dados fictícios).', 'ok');

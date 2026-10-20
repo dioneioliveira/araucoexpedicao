@@ -410,3 +410,24 @@ Na guia **Pesos**, card **Peso por lote — balança (ticket)**:
    vermelho com a **diferença na carga inteira em kg** (ex.: −1.000 kg). Passe o mouse para ver ticket,
    transporte e cliente; clique para abrir a ordem. Filtro de período (30 dias a tudo) e exportação Excel.
 5. Pendências: tickets sem ordem no app e ordens com ticket informado ainda sem pesagem colada.
+
+### Fotos do container e conferência
+
+Cargas de container (e cabotagem) têm, no painel da ordem, a seção **Fotos do container** com 6 posições:
+**Porta do container** (nº do container, tara e carga máx.), **RIC** (nº do container e lacre), **Lacre** e
+mais 3 fotos (interno, carga, porta fechada).
+
+1. **Importar pasta** (ou **Selecionar fotos**, ou arrastar do Windows): arquivos com "porta", "ric" e
+   "lacre" no nome vão direto para a posição certa; os demais preenchem as posições livres. Arraste uma
+   foto sobre outra para trocar. As imagens ficam guardadas **neste computador**; os dados lidos vão para
+   o arquivo compartilhado.
+2. **Ler dados das fotos** tenta ler automaticamente (precisa de internet): nº do container (validado pelo
+   dígito verificador), TARE e MAX GROSS em kg e o lacre. Os campos marcados "auto" devem ser conferidos;
+   sem leitura automática, digite os dados nos campos abaixo de cada foto.
+3. A tabela de conferência confronta: **container** (agendado/Controle OT × porta × RIC), **lacre**
+   (Controle OT × RIC × foto do lacre), **tara** e **carga máx.** (Controle OT × porta). Qualquer
+   diferença marca o embarque como **divergente** (vermelho, também na lista diária: "6/6 divergente");
+   tudo batendo e 6 fotos = "6/6 ok". Campos vazios do Controle OT podem ser preenchidos com os dados das fotos.
+4. **E-mail do container** (no painel ou na lateral): EXP, nº do container e lacre em destaque, tara, carga
+   máx. e resultado da conferência, com as fotos logo abaixo. **E-mail pronto (Outlook)** baixa um arquivo
+   .eml que o Outlook abre como mensagem nova, já com as fotos; **Copiar e-mail** copia tudo para colar.

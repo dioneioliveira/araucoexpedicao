@@ -41,6 +41,7 @@
     (state.sew || []).forEach(e => put('sew:' + cfg.sewKey(e), e));
     Object.entries(state.pesos || {}).forEach(([k, v]) => put('peso:' + k, v));
     Object.entries(state.tickets || {}).forEach(([k, v]) => put('tk:' + k, v));
+    Object.entries(state.fotos || {}).forEach(([k, v]) => put('foto:' + k, v)); // só nomes e dados lidos; as imagens ficam no computador
     if (state.fsc && Object.keys(state.fsc).length) put('fsc', state.fsc);
     if (state.fscInfo) put('fscinfo', state.fscInfo);
     return out;
@@ -62,6 +63,7 @@
         case 'sew': s.sew.push(v); break;
         case 'peso': (s.pesos = s.pesos || {})[id] = v; break;
         case 'tk': (s.tickets = s.tickets || {})[id] = v; break;
+        case 'foto': (s.fotos = s.fotos || {})[id] = v; break;
         case 'fsc': s.fsc = v; break;
         case 'fscinfo': s.fscInfo = v; break;
         default: break;
