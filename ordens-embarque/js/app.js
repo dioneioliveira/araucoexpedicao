@@ -1094,25 +1094,28 @@
     const f = state.fotos[T.transporte] || { slots: {}, lido: {} };
     const L = s => f.lido[s] || {};
     const sewC = T.sew && T.sew.container ? T.sew.container : '';
+    // confere quando há o valor agendado e ao menos uma foto com o dado, todos iguais; qualquer diferença = divergente
     const linha = (dado, ref, refNome, vals, igual, extra) => {
-      const todos = [ref, ...vals.map(v => v.v)];
-      const presentes = todos.filter(Boolean);
+      const fotos = vals.map(v => v.v).filter(Boolean);
+      const presentes = [ref, ...fotos].filter(Boolean);
       let st = 'falta';
       if (presentes.length >= 2 && presentes.some(v => !igual(v, presentes[0]))) st = 'div';
-      else if (todos.every(Boolean)) st = 'ok';
+      else if (ref && fotos.length) st = 'ok';
       return { dado, ref, refNome, vals, st, extra: extra || '' };
     };
     const contEq = (a, b) => F.normCont(a) === F.normCont(b);
     const avisoCD = [L('porta').container, L('ric').container].filter(c => c && !F.contValido(c)).map(c => `${F.fmtCont(c)}: dígito verificador não confere`).join(' · ');
     const linhas = [
-      linha('Nº container', T.ot.container, T.man.container ? 'Controle OT' : 'Agendado', [{ n: 'Porta', v: L('porta').container }, { n: 'RIC', v: L('ric').container }], contEq,
+      linha('Nº container', T.ot.container, T.man.container ? 'Controle OT' : 'Agendado', [{ n: 'Porta', v: L('porta').container }, { n: 'RIC', v: L('ric').container }, { n: 'Ordem (papel na foto)', v: L('ric').contOrdem }], contEq,
         [sewC && T.ot.container && !contEq(sewC, T.ot.container) ? `agendamento SEW: ${F.fmtCont(sewC)} (diferente)` : '', avisoCD].filter(Boolean).join(' · ')),
-      linha('Lacre', T.ot.lacre, 'Controle OT', [{ n: 'RIC', v: L('ric').lacre }, { n: 'Foto do lacre', v: L('lacre').lacre }], F.lacreIgual),
-      linha('Tara', T.ot.tara, 'Controle OT', [{ n: 'Porta', v: L('porta').tara }], numIgual),
-      linha('Carga máx. (MWG)', T.ot.mwg, 'Controle OT', [{ n: 'Porta', v: L('porta').mwg }], numIgual),
+      linha('Lacre', T.ot.lacre, 'Controle OT', [{ n: 'RIC', v: L('ric').lacre }, { n: 'Lacre físico (foto do RIC)', v: L('ric').lacreFis }, { n: 'Foto do lacre', v: L('lacre').lacre }], F.lacreIgual),
+      linha('Tara', T.ot.tara, 'Controle OT', [{ n: 'RIC', v: L('ric').tara }, { n: 'Porta', v: L('porta').tara }], numIgual),
+      linha('Carga máx. (MWG)', T.ot.mwg, 'Controle OT', [{ n: 'RIC', v: L('ric').mwg }, { n: 'Porta', v: L('porta').mwg }], numIgual),
     ];
     const n = F.SLOTS.filter(s => f.slots[s.k]).length;
     const st = linhas.some(l => l.st === 'div') ? 'div' : (linhas.every(l => l.st === 'ok') && n === 6 ? 'ok' : 'pend');
+    // a foto do RIC precisa mostrar o lacre físico (ou a foto do lacre)
+    if (st === 'ok' && !L('ric').lacreFis && !L('lacre').lacre) return { linhas, n, st: 'pend', f };
     return { linhas, n, st, f };
   }
   function fotoChip(T) {
@@ -1134,7 +1137,7 @@
         <td>${l.vals.map(x => `<div><span class="muted small">${esc(x.n)}:</span> <span class="mono">${esc(fmtVal(l.dado, x.v)) || '<span class="muted">—</span>'}</span></div>`).join('')}${l.extra ? `<div class="small ft-aviso">${esc(l.extra)}</div>` : ''}</td><td>${ST[l.st]}</td></tr>`).join('')}
       </tbody></table>${podeFill ? '<button class="btn btn-ghost btn-sm" data-ft-fill>Preencher Controle OT vazio com os dados das fotos</button>' : ''}`;
   }
-  const valorFoto = (f, k) => { for (const s of ['porta', 'ric', 'lacre']) { const x = (f.lido[s] || {})[k]; if (x) return x; } return ''; };
+  const valorFoto = (f, k) => { for (const s of ['ric', 'porta', 'lacre']) { const x = (f.lido[s] || {})[k]; if (x) return x; } return ''; };
   function fotosHTML(T) {
     const f = state.fotos[T.transporte] || { slots: {}, lido: {}, auto: {} };
     const slots = F.SLOTS.map(s => {
@@ -1143,7 +1146,7 @@
         <div class="ft-img" title="${it ? esc(it.nome) + ' — arraste para trocar de posição' : 'Clique ou arraste a foto aqui'}">${it ? `<img data-fid="${esc(it.id)}" alt="${esc(s.nome)}">` : '<span>+ foto</span>'}
           ${it ? `<button class="ft-del" data-ft-del="${s.k}" title="Remover foto">×</button>` : ''}</div>
         <div class="ft-cap"><b>${esc(s.nome)}</b><small>${esc(s.dica)}</small></div>
-        ${s.campos.map(c => `<label class="ft-f">${esc(F.CAMPO_NOME[c])}${auto[c] ? ' <i title="lido automaticamente — confira">auto</i>' : ''}<input data-ft="${s.k}|${c}" value="${esc(lido[c] == null ? '' : (c === 'container' ? F.fmtCont(lido[c]) : lido[c]))}" spellcheck="false"></label>`).join('')}
+        ${s.campos.map(c => `<label class="ft-f">${esc(F.CAMPO_NOME[c])}${auto[c] ? ' <i title="lido automaticamente — confira">auto</i>' : ''}<input data-ft="${s.k}|${c}" value="${esc(lido[c] == null ? '' : (c === 'container' || c === 'contOrdem' ? F.fmtCont(lido[c]) : lido[c]))}" spellcheck="false"></label>`).join('')}
       </div>`;
     }).join('');
     return `<div class="section" id="ft-sec">
@@ -1203,7 +1206,7 @@
       if (pend.length && chaves().length) {
         try {
           ftStatus('Carregando a leitura das fotos…'); await comPrazo(F.carregarOCR(), 15000); leu = true;
-          for (let i = 0; i < pend.length; i++) { ftStatus(`Identificando foto ${i + 1} de ${pend.length}…`); texto.set(pend[i], await F.ocr(pend[i]._blob)); }
+          for (let i = 0; i < pend.length; i++) { ftStatus(`Identificando foto ${i + 1} de ${pend.length}…`); texto.set(pend[i], await F.ocr(pend[i])); } // original, em alta resolução
         } catch (e) { leu = false; }
         if (leu) {
           const esp = { container: T.ot.container, lacre: T.ot.lacre }; const pares = [];
@@ -1276,8 +1279,8 @@
       const k = e.target.dataset.ft; if (!k || !ui.open) return;
       const [slot, campo] = k.split('|'); const f = fotosDe(ui.open);
       const lido = f.lido[slot] || (f.lido[slot] = {}); let v = e.target.value.trim();
-      if (campo === 'container' || campo === 'lacre') v = v.toUpperCase();
-      if (campo === 'container') v = F.normCont(v);
+      if (campo !== 'tara' && campo !== 'mwg') v = v.toUpperCase();
+      if (campo === 'container' || campo === 'contOrdem') v = F.normCont(v);
       if (v) lido[campo] = v; else delete lido[campo];
       if (f.auto && f.auto[slot]) delete f.auto[slot][campo];
       save();
@@ -1312,7 +1315,7 @@
   async function emailContainer(t, modo) {
     const T = getTransport(t); const v = validarFotos(T); const f = v.f;
     const fotos = [];
-    for (const s of F.SLOTS) { const it = f.slots[s.k]; if (!it) continue; const b = await F.get(it.id).catch(() => null); if (b) fotos.push({ s, b, nome: `${s.k}-${F.normCont(T.ot.container) || t}.jpg` }); }
+    for (const s of F.SLOTS) { const it = f.slots[s.k]; if (!it) continue; const b0 = await F.get(it.id).catch(() => null); const b = b0 && await F.reduzir(b0); if (b) fotos.push({ s, b, nome: `${s.k}-${F.normCont(T.ot.container) || t}.jpg` }); }
     for (const x of fotos) { x.base64 = (await F.blobToDataURL(x.b)).split(',')[1]; x.cid = `${x.s.k}.${t}@ordens-embarque`; }
     const src = x => modo === 'eml' ? `cid:${x.cid}` : `data:image/jpeg;base64,${x.base64}`;
     const cell = (l, val) => `<td style="border:1px solid #4A4A4A;padding:10px 14px;text-align:center"><div style="font-size:11px;color:#7A7A7A;letter-spacing:1px;font-weight:bold">${l}</div><div style="font-size:22px;font-weight:bold;font-family:Consolas,'Courier New',monospace;color:#000">${esc(val || '—')}</div></td>`;

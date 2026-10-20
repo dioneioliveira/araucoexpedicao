@@ -414,8 +414,14 @@ Na guia **Pesos**, card **Peso por lote — balança (ticket)**:
 ### Fotos do container e conferência
 
 Cargas de container (e cabotagem) têm, no painel da ordem, a seção **Fotos do container** com 6 posições:
-**Porta do container** (nº do container, tara e carga máx.), **RIC** (nº do container e lacre), **Lacre** e
-mais 3 fotos (interno, carga, porta fechada).
+**Porta do container** (nº do container, tara e carga máx.), **RIC**, **Lacre** e mais 3 fotos (interno, carga,
+porta fechada).
+
+A foto do **RIC** é a principal: o comprovante do terminal (Gate Out) fotografado sobre a Solicitação de
+Embarque da Arauco, com o lacre físico na mesma foto. Dela saem: **Container No** (RIC), **Número Container**
+(ordem Arauco), **Seal No** (lacre no RIC), o código gravado no **lacre físico**, **Tare/Gross Weight** (tara =
+1º número) e **Max Gross Weight** (carga máx.). Fotografe com boa luz e o RIC legível; a leitura usa a foto
+na resolução original.
 
 1. **Selecionar fotos** (ou **Importar pasta**, ou arrastar do Windows): escolha todas as fotos de uma vez,
    **sem renomear**. O app lê cada foto e coloca na posição certa: placa da porta (TARE / MAX GROSS) →
@@ -427,8 +433,9 @@ mais 3 fotos (interno, carga, porta fechada).
 2. **Ler dados das fotos** tenta ler automaticamente (precisa de internet): nº do container (validado pelo
    dígito verificador), TARE e MAX GROSS em kg e o lacre. Os campos marcados "auto" devem ser conferidos;
    sem leitura automática, digite os dados nos campos abaixo de cada foto.
-3. A tabela de conferência confronta: **container** (agendado/Controle OT × porta × RIC), **lacre**
-   (Controle OT × RIC × foto do lacre), **tara** e **carga máx.** (Controle OT × porta). Qualquer
+3. A tabela de conferência confronta: **container** (agendado/Controle OT × porta × RIC × ordem na foto),
+   **lacre** (Controle OT × RIC × lacre físico × foto do lacre), **tara** e **carga máx.** (Controle OT × RIC ×
+   porta). Qualquer
    diferença marca o embarque como **divergente** (vermelho, também na lista diária: "6/6 divergente");
    tudo batendo e 6 fotos = "6/6 ok". Campos vazios do Controle OT podem ser preenchidos com os dados das fotos.
 4. **Fotos faltando**: a lista diária e a guia Agendamentos mostram "n/6 · faltam x" em cada carga de

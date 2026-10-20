@@ -8,13 +8,13 @@
   // 6 fotos por carga de container; as 3 primeiras trazem dados que são confrontados
   const SLOTS = [
     { k: 'porta', nome: 'Porta do container', dica: 'nº do container, tara e carga máx.', campos: ['container', 'tara', 'mwg'], re: /porta|door|tara|tare|placa|plate/i },
-    { k: 'ric', nome: 'RIC', dica: 'nº do container e lacre', campos: ['container', 'lacre'], re: /\bric\b|ric[\s_\-.]|^ric|interc[aâ]mbio|eir/i },
+    { k: 'ric', nome: 'RIC', dica: 'RIC + ordem + lacre físico: container, lacre, tara, max gross', campos: ['container', 'contOrdem', 'lacre', 'lacreFis', 'tara', 'mwg'], re: /\bric\b|ric[\s_\-.]|^ric|interc[aâ]mbio|eir/i },
     { k: 'lacre', nome: 'Lacre', dica: 'nº do lacre', campos: ['lacre'], re: /lacre|seal|selo/i },
     { k: 'f4', nome: 'Foto 4', dica: 'container vazio / interno', campos: [], re: /vazio|empty|interno|inside/i },
     { k: 'f5', nome: 'Foto 5', dica: 'carga / meia porta', campos: [], re: /meia|carga|carregad|half|load/i },
     { k: 'f6', nome: 'Foto 6', dica: 'porta fechada e lacrada', campos: [], re: /fechad|closed|lacrad|final/i },
   ];
-  const CAMPO_NOME = { container: 'Nº container', tara: 'Tara (kg)', mwg: 'Carga máx. / Max gross (kg)', lacre: 'Lacre' };
+  const CAMPO_NOME = { container: 'Nº container', contOrdem: 'Container na ordem (papel)', tara: 'Tara (kg)', mwg: 'Carga máx. / Max gross (kg)', lacre: 'Lacre', lacreFis: 'Lacre físico (na foto)' };
 
   // ---------- IndexedDB das imagens ----------
   const DB = 'arauco-ordens-fotos', STORE = 'fotos';
@@ -36,7 +36,7 @@
   const del = id => tx('readwrite', s => s.delete(id));
 
   // ---------- imagem: reduz para no máx. 1600 px (JPEG) ----------
-  async function comprimir(file, max = 1600, q = 0.82) {
+  async function comprimir(file, max = 2400, q = 0.85) {
     const url = URL.createObjectURL(file);
     try {
       const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('imagem inválida')); i.src = url; });
@@ -46,6 +46,7 @@
       return await new Promise(res => c.toBlob(b => res(b || file), 'image/jpeg', q));
     } finally { URL.revokeObjectURL(url); }
   }
+  const reduzir = (blob, max = 1280) => comprimir(blob, max, 0.8); // fotos do e-mail
   const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
 
   // distribui os arquivos de uma pasta nas 6 posições: pelo nome (porta, ric, lacre…), o resto em ordem
@@ -100,10 +101,10 @@
   function containersNoTexto(text) {
     const t = String(text || '').toUpperCase();
     const out = [];
-    const re = /([A-Z0-9]{3}[UJZ0])[\s\-.:]*([0-9OQDILTZSBG]{3})[\s\-.]*([0-9OQDILTZSBG]{3})[\s\-.()\[\]|]*([0-9OQDILTZSBG])/g;
+    const re = /([A-Z0-9]{3}[UJZ])[\s\-.:]*([0-9OQDILTZSBG]{3})[\s\-.]*([0-9OQDILTZSBG]{3})[\s\-.()\[\]|]*([0-9OQDILTZSBG])/g;
     let m;
     while ((m = re.exec(t))) {
-      const pre = m[1].split('').map((ch, i) => (i < 3 ? (LET[ch] || ch) : (ch === '0' ? 'U' : ch))).join('');
+      const pre = m[1].split('').map((ch, i) => (i < 3 ? (LET[ch] || ch) : ch)).join('');
       const num = (m[2] + m[3] + m[4]).split('').map(ch => DIG[ch] || ch).join('');
       const c = pre + num;
       if (/^[A-Z]{3}[UJZ]\d{7}$/.test(c)) out.push(...corrigirPrefixo(c));
@@ -154,23 +155,47 @@
       const dig = e.replace(/\D/g, '');
       if (dig.length >= 5 && corrido.includes(dig)) return e;
     }
-    const m = t.match(/(?:LACRE|SEAL|SELO)[^A-Z0-9\n]{0,12}(?:N[ºO°.]*\s*)?([A-Z]{0,4}[\s\-]?\d{5,12})/);
+    const m = t.match(/(?:LACRE|SEAL|SELO)[^A-Z0-9\n]{0,12}(?:N[ºO°0.]*[\s:.\-]*)?([A-Z]{0,4}[\s\-_]?[0-9OIL]{5,14})/);
     if (m) return normLacre(m[1]);
     return '';
   }
   const lacreIgual = (a, b) => !!a && !!b && lacreOCR(a) === lacreOCR(b);
 
+  // container logo depois de um rótulo (ex.: "Container No:" no RIC, "Número Container" na ordem Arauco)
+  function contRotulo(text, re) {
+    const t = String(text || '').toUpperCase(); let m; const g = new RegExp(re.source, 'g');
+    while ((m = g.exec(t))) { const c = containersNoTexto(t.slice(m.index + m[0].length, m.index + m[0].length + 40))[0]; if (c) return c.c; }
+    return '';
+  }
+  const RE_CONT_RIC = /CONTAINER\s*(N[O0º°]\b\.?|NUMBER|#)|CNTR\s*N|EQUIPMENT\s*N/;
+  const RE_CONT_ORDEM = /N\S{0,3}MERO\s*(DO\s*)?CONT[AE]INER|N[º°O]\.?\s*(DO\s*)?CONT[AE]INER/;
   // dados de uma foto a partir do texto lido
   function dadosDoTexto(slot, text, esperado) {
     const r = {};
-    if (slot === 'porta' || slot === 'ric') {
+    if (slot === 'ric') {
+      // a foto do RIC traz o RIC (container, lacre, tara, max gross), a ordem Arauco (container) e o lacre físico
+      const t = String(text || '').toUpperCase();
+      const cs = containersNoTexto(t).filter(x => x.ok);
+      const alvo = normCont(esperado.container);
+      r.container = contRotulo(t, RE_CONT_RIC) || (cs.find(x => x.c === alvo) || cs[0] || {}).c || '';
+      r.contOrdem = contRotulo(t, RE_CONT_ORDEM) || (cs.find(x => x.c !== r.container) || {}).c || '';
+      // o mesmo nº aparece duas vezes (RIC e ordem) e não achamos o rótulo da ordem: é o da ordem também
+      if (!r.contOrdem && r.container && (lacreOCR(t).split(r.container.slice(4, 10)).length - 1) >= 2) r.contOrdem = r.container;
+      const l = lerLacre(t, esperado.lacre); if (l) r.lacre = l;
+      // lacre físico: o código do lacre aparece de novo na foto (gravado no lacre)
+      if (l) { const dig = l.replace(/\D/g, ''); if (dig.length >= 5 && lacreOCR(t).split(dig).length - 1 >= 2) r.lacreFis = l; }
+      const ta = lerTara(t); if (ta) r.tara = ta; const mw = lerMwg(t); if (mw) r.mwg = mw;
+      Object.keys(r).forEach(k => { if (!r[k]) delete r[k]; });
+      return r;
+    }
+    if (slot === 'porta') {
       const cs = containersNoTexto(text);
       const alvo = normCont(esperado.container);
       const hit = cs.find(x => x.c === alvo) || cs.find(x => x.ok) || cs[0];
       if (hit) r.container = hit.c;
     }
     if (slot === 'porta') { const ta = lerTara(text); if (ta) r.tara = ta; const mw = lerMwg(text); if (mw) r.mwg = mw; }
-    if (slot === 'ric' || slot === 'lacre') { const l = lerLacre(text, esperado.lacre); if (l) r.lacre = l; }
+    if (slot === 'lacre') { const l = lerLacre(text, esperado.lacre); if (l) r.lacre = l; }
     return r;
   }
 
@@ -179,8 +204,10 @@
     const t = String(text || '').toUpperCase(); const len = t.replace(/\s+/g, '').length;
     const cont = containersNoTexto(t).length > 0;
     const conta = (re) => (t.match(re) || []).length;
-    const porta = (cont ? 2 : 0) + (/\bTARE\b|\bTARA\b/.test(t) ? 3 : 0) + (/GROSS|MAX\.?\s*G|M\.?\s*G\.?\s*W|PAYLOAD|CU\.?\s*CAP|\bNET\b|\bLB\b/.test(t) ? 3 : 0);
-    const ric = conta(/\bRIC\b|INTERC[AÂ]MBIO|RECIBO|\bEIR\b|INTERCHANGE|AVARIA|TERMINAL|MOTORISTA|ASSINATURA|TRANSPORTADORA|BOOKING|NAVIO|ARMADOR|PLACA|DEPOT|DEP[OÓ]SITO|VISTORIA/g) * 2 + (cont ? 1 : 0) + (len > 220 ? 2 : 0);
+    let porta = (cont ? 2 : 0) + (/\bTARE\b|\bTARA\b/.test(t) ? 3 : 0) + (/GROSS|MAX\.?\s*G|M\.?\s*G\.?\s*W|PAYLOAD|CU\.?\s*CAP|\bNET\b|\bLB\b/.test(t) ? 3 : 0);
+    const docs = conta(/\bRIC\b|INTERC[AÂ]MBIO|RECIBO|\bEIR\b|INTERCHANGE|AVARIA|TERMINAL|MOTORISTA|ASSINATURA|TRANSPORTADORA|BOOKING|NAVIO|ARMADOR|PLACA|DEPOT|DEP[OÓ]SITO|VISTORIA|GATE|TRUCK\s*N|DRIVER|CARRIER|VESSEL|VOYAGE|\bPOL\b|SEAL\s*N|CONTAINER\s*N|REFERENCE|SHIPPING|CUSTOMER|GRADE|SOLICITA|EMBARQUE|AGENDAMENTO/g);
+    const ric = docs * 2 + (cont ? 1 : 0) + (len > 220 ? 2 : 0);
+    if (docs >= 3) porta -= 5; // documento (RIC/ordem) também tem TARE e MAX GROSS, mas não é a porta
     const temLacre = esperado && esperado.lacre ? !!lerLacre(t, esperado.lacre) : /(LACRE|SEAL|SELO)[^A-Z0-9]{0,12}[A-Z]{0,4}\d{5,}/.test(t);
     // folha com container E lacre = RIC; o lacre sozinho (sem nº de container nem pesos) = foto do lacre
     const ricTotal = ric + (/\bRIC\b/.test(t) ? 3 : 0) + (cont && temLacre ? 4 : 0);
@@ -206,7 +233,7 @@
     const url = URL.createObjectURL(blob);
     try {
       const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-      const s = Math.min(2, 2200 / Math.max(img.naturalWidth, img.naturalHeight));
+      const s = Math.min(2, 3200 / Math.max(img.naturalWidth, img.naturalHeight)); // texto pequeno do RIC: ler em alta resolução
       const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
       const g = c.getContext('2d'); g.filter = 'grayscale(1) contrast(1.6)'; g.drawImage(img, 0, 0, c.width, c.height);
       return await new Promise(res => c.toBlob(res, 'image/png'));
@@ -232,7 +259,7 @@
   }
 
   global.OEF = {
-    SLOTS, CAMPO_NOME, put, get, del, comprimir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
+    SLOTS, CAMPO_NOME, put, get, del, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
     digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
     carregarOCR, ocr, montarEML,
   };
