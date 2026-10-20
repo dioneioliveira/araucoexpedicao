@@ -88,8 +88,10 @@
   sem OCR, a foto mais "folha branca" (`papelBranco`) vai para o RIC; o resto vai para f4–f6 e depois às vagas.
   Fotos faltando: chip "n/6 faltam x" (lista e Agendamentos), contagem no cabeçalho da janela de containers,
   KPI "Fotos faltando" e nomes das posições vazias na conferência (`faltandoFotos`). Leitura automática opcional
-  (Tesseract.js via CDN, `OEF.ocr`): nº container com dígito verificador ISO 6346 (corrige letras parecidas), TARE /
-  MAX GROSS em kg, lacre procurado pelo esperado. A foto do RIC (modelo real: comprovante "Gate Out" em inglês sobre a
+  (Tesseract.js via CDN, `OEF.ocr`). **Nunca adivinhar**: só vale o que foi lido exatamente (container = 4 letras +
+  7 dígitos com dígito verificador ISO 6346 certo, sem trocar letras parecidas; lacre igual ao escrito; peso na linha do
+  rótulo ou na seguinte; mais de um nº possível = não escolhe). Campo esperado e não lido com certeza = `ILEGÍVEL`
+  (`OEF.ILEGIVEL`), que não entra na comparação mas impede o "confere" (status `ileg`, chip amarelo "ilegível"). A foto do RIC (modelo real: comprovante "Gate Out" em inglês sobre a
   Solicitação de Embarque Arauco, com o lacre físico na mesma foto) tem os campos container ("Container No"),
   contOrdem ("Número Container" da ordem; OCR lê "Nidmero"), lacre ("Seal No"), lacreFis (código repetido na foto),
   tara ("Tare/Gross Weight", 1º número) e mwg ("Max Gross Weight"). OCR no arquivo original (até 3200 px); imagens

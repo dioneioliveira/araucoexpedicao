@@ -431,7 +431,7 @@ na resolução original.
    ignoradas e as posições preenchidas não mudam. As imagens ficam guardadas **neste computador**; os dados lidos vão para
    o arquivo compartilhado.
 2. **Ler dados das fotos** tenta ler automaticamente (precisa de internet): nº do container (validado pelo
-   dígito verificador), TARE e MAX GROSS em kg e o lacre. Os campos marcados "auto" devem ser conferidos;
+   dígito verificador), TARE e MAX GROSS em kg e o lacre. A leitura **não adivinha**: o que não estiver legível com certeza fica **ILEGÍVEL** (em vermelho) e a conferência fica pendente até alguém ler na foto e digitar. Os campos marcados "auto" devem ser conferidos;
    sem leitura automática, digite os dados nos campos abaixo de cada foto.
 3. A tabela de conferência confronta: **container** (agendado/Controle OT × porta × RIC × ordem na foto),
    **lacre** (Controle OT × RIC × lacre físico × foto do lacre), **tara** e **carga máx.** (Controle OT × RIC ×

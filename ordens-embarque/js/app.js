@@ -1095,16 +1095,19 @@
     const L = s => f.lido[s] || {};
     const sewC = T.sew && T.sew.container ? T.sew.container : '';
     // confere quando há o valor agendado e ao menos uma foto com o dado, todos iguais; qualquer diferença = divergente
+    // ILEGÍVEL não entra na comparação, mas impede o "confere" (alguém precisa ler e digitar)
     const linha = (dado, ref, refNome, vals, igual, extra) => {
-      const fotos = vals.map(v => v.v).filter(Boolean);
+      const ileg = vals.some(v => F.ehIlegivel(v.v));
+      const fotos = vals.map(v => v.v).filter(v => v && !F.ehIlegivel(v));
       const presentes = [ref, ...fotos].filter(Boolean);
       let st = 'falta';
       if (presentes.length >= 2 && presentes.some(v => !igual(v, presentes[0]))) st = 'div';
+      else if (ileg) st = 'ileg';
       else if (ref && fotos.length) st = 'ok';
       return { dado, ref, refNome, vals, st, extra: extra || '' };
     };
     const contEq = (a, b) => F.normCont(a) === F.normCont(b);
-    const avisoCD = [L('porta').container, L('ric').container].filter(c => c && !F.contValido(c)).map(c => `${F.fmtCont(c)}: dígito verificador não confere`).join(' · ');
+    const avisoCD = [L('porta').container, L('ric').container, L('ric').contOrdem].filter(c => c && !F.ehIlegivel(c) && !F.contValido(c)).map(c => `${F.fmtCont(c)}: dígito verificador não confere`).join(' · ');
     const linhas = [
       linha('Nº container', T.ot.container, T.man.container ? 'Controle OT' : 'Agendado', [{ n: 'Porta', v: L('porta').container }, { n: 'RIC', v: L('ric').container }, { n: 'Ordem (papel na foto)', v: L('ric').contOrdem }], contEq,
         [sewC && T.ot.container && !contEq(sewC, T.ot.container) ? `agendamento SEW: ${F.fmtCont(sewC)} (diferente)` : '', avisoCD].filter(Boolean).join(' · ')),
@@ -1121,23 +1124,24 @@
   function fotoChip(T) {
     if (!temContainer(T)) return '';
     const v = validarFotos(T);
-    const cls = v.st === 'div' ? 'alt' : (v.st === 'ok' ? 'imp' : 'grey');
+    const ileg = v.st !== 'div' && v.linhas.some(l => l.st === 'ileg');
+    const cls = v.st === 'div' ? 'alt' : (v.st === 'ok' ? 'imp' : (ileg ? 'warn' : 'grey'));
     const tit = v.st === 'div' ? 'Divergência entre fotos e agendamento: ' + v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', ') : (v.st === 'ok' ? 'Fotos conferidas' : 'Fotos/conferência pendentes');
     const falta = faltandoFotos(T.transporte);
-    return ` <span class="chip ${cls} ft-chip" title="${esc(tit + (falta.length ? '\nFaltam fotos: ' + falta.join(', ') : ''))}"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${v.n}/6${v.st === 'div' ? ' divergente' : (v.st === 'ok' ? ' ok' : (v.n < 6 ? ' faltam ' + (6 - v.n) : ''))}</span>`;
+    return ` <span class="chip ${cls} ft-chip" title="${esc(tit + (falta.length ? '\nFaltam fotos: ' + falta.join(', ') : ''))}"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${v.n}/6${v.st === 'div' ? ' divergente' : (v.st === 'ok' ? ' ok' : (ileg ? ' ilegível' : (v.n < 6 ? ' faltam ' + (6 - v.n) : '')))}</span>`;
   }
-  const fmtVal = (dado, v) => !v ? '' : (dado === 'Nº container' ? F.fmtCont(v) : (/Tara|MWG/.test(dado) ? fmtNum(+String(v).replace(/\D/g, ''), 0) + ' kg' : String(v)));
+  const fmtVal = (dado, v) => !v ? '' : F.ehIlegivel(v) ? F.ILEGIVEL : (dado === 'Nº container' ? F.fmtCont(v) : (/Tara|MWG/.test(dado) ? fmtNum(+String(v).replace(/\D/g, ''), 0) + ' kg' : String(v)));
   function validacaoHTML(T) {
     const v = validarFotos(T);
-    const ST = { ok: '<span class="chip imp">Confere</span>', div: '<span class="chip alt">Divergente</span>', falta: '<span class="chip grey">Falta dado</span>' };
+    const ST = { ok: '<span class="chip imp">Confere</span>', div: '<span class="chip alt">Divergente</span>', ileg: '<span class="chip warn">Ilegível</span>', falta: '<span class="chip grey">Falta dado</span>' };
     const podeFill = ['container', 'lacre', 'tara', 'mwg'].some(k => !T.ot[k] && valorFoto(v.f, k));
-    return `<div class="alert ${v.st === 'div' ? 'err' : (v.st === 'ok' ? 'ok' : 'info')}">${v.st === 'div' ? '<b>Embarque com divergência</b>: os dados das fotos não batem com o agendado. Confira antes de liberar.' : (v.st === 'ok' ? '<b>Embarque conferido</b>: container, lacre, tara e carga máx. batem entre fotos e agendamento.' : `Conferência pendente: ${v.n}/6 fotos${v.n < 6 ? ` — <b>faltam: ${esc(faltandoFotos(T.transporte).join(', '))}</b>` : ''}${v.linhas.some(l => l.st === 'falta') ? ' · faltam dados para confrontar' : ''}.`)}</div>
+    return `<div class="alert ${v.st === 'div' ? 'err' : (v.st === 'ok' ? 'ok' : 'info')}">${v.st === 'div' ? '<b>Embarque com divergência</b>: os dados das fotos não batem com o agendado. Confira antes de liberar.' : (v.st === 'ok' ? '<b>Embarque conferido</b>: container, lacre, tara e carga máx. batem entre fotos e agendamento.' : `Conferência pendente: ${v.n}/6 fotos${v.n < 6 ? ` — <b>faltam: ${esc(faltandoFotos(T.transporte).join(', '))}</b>` : ''}${v.linhas.some(l => l.st === 'ileg') ? ' · <b>dados ilegíveis nas fotos</b>: leia na foto (clique para ampliar) e digite' : ''}${v.linhas.some(l => l.st === 'falta') ? ' · faltam dados para confrontar' : ''}.`)}</div>
       <table class="items ft-val"><thead><tr><th>Dado</th><th>Agendado / Controle OT</th><th>Fotos</th><th>Resultado</th></tr></thead><tbody>
       ${v.linhas.map(l => `<tr class="st-${l.st}"><td><b>${esc(l.dado)}</b></td><td class="mono">${esc(fmtVal(l.dado, l.ref)) || '<span class="muted">—</span>'}<span class="sub">${esc(l.refNome)}</span></td>
         <td>${l.vals.map(x => `<div><span class="muted small">${esc(x.n)}:</span> <span class="mono">${esc(fmtVal(l.dado, x.v)) || '<span class="muted">—</span>'}</span></div>`).join('')}${l.extra ? `<div class="small ft-aviso">${esc(l.extra)}</div>` : ''}</td><td>${ST[l.st]}</td></tr>`).join('')}
       </tbody></table>${podeFill ? '<button class="btn btn-ghost btn-sm" data-ft-fill>Preencher Controle OT vazio com os dados das fotos</button>' : ''}`;
   }
-  const valorFoto = (f, k) => { for (const s of ['ric', 'porta', 'lacre']) { const x = (f.lido[s] || {})[k]; if (x) return x; } return ''; };
+  const valorFoto = (f, k) => { for (const s of ['ric', 'porta', 'lacre']) { const x = (f.lido[s] || {})[k]; if (x && !F.ehIlegivel(x)) return x; } return ''; };
   function fotosHTML(T) {
     const f = state.fotos[T.transporte] || { slots: {}, lido: {}, auto: {} };
     const slots = F.SLOTS.map(s => {
@@ -1146,7 +1150,7 @@
         <div class="ft-img" title="${it ? esc(it.nome) + ' — arraste para trocar de posição' : 'Clique ou arraste a foto aqui'}">${it ? `<img data-fid="${esc(it.id)}" alt="${esc(s.nome)}">` : '<span>+ foto</span>'}
           ${it ? `<button class="ft-del" data-ft-del="${s.k}" title="Remover foto">×</button>` : ''}</div>
         <div class="ft-cap"><b>${esc(s.nome)}</b><small>${esc(s.dica)}</small></div>
-        ${s.campos.map(c => `<label class="ft-f">${esc(F.CAMPO_NOME[c])}${auto[c] ? ' <i title="lido automaticamente — confira">auto</i>' : ''}<input data-ft="${s.k}|${c}" value="${esc(lido[c] == null ? '' : (c === 'container' || c === 'contOrdem' ? F.fmtCont(lido[c]) : lido[c]))}" spellcheck="false"></label>`).join('')}
+        ${s.campos.map(c => `<label class="ft-f">${esc(F.CAMPO_NOME[c])}${auto[c] ? ' <i title="lido automaticamente — confira">auto</i>' : ''}<input data-ft="${s.k}|${c}" class="${F.ehIlegivel(lido[c]) ? 'ileg' : ''}" value="${esc(lido[c] == null ? '' : (F.ehIlegivel(lido[c]) ? F.ILEGIVEL : (c === 'container' || c === 'contOrdem' ? F.fmtCont(lido[c]) : lido[c])))}" spellcheck="false"></label>`).join('')}
       </div>`;
     }).join('');
     return `<div class="section" id="ft-sec">
@@ -1229,7 +1233,7 @@
         if (texto.has(x) && ['porta', 'ric', 'lacre'].includes(k)) {
           const d = F.dadosDoTexto(k, texto.get(x), { container: T.ot.container, lacre: T.ot.lacre });
           const lido = f.lido[k] || (f.lido[k] = {}); const auto = (f.auto = f.auto || {})[k] || (f.auto[k] = {});
-          Object.entries(d).forEach(([c, v]) => { if (!lido[c]) { lido[c] = v; auto[c] = true; } });
+          Object.entries(d).forEach(([c, v]) => { if (!lido[c] || (F.ehIlegivel(lido[c]) && !F.ehIlegivel(v))) { lido[c] = v; auto[c] = true; } });
         }
       }
     } catch (e) { ftStatus(''); toast('Não foi possível guardar as fotos: ' + (e.message || e), 'err'); return; }
@@ -1253,10 +1257,11 @@
         const txt = await F.ocr(blob, p => { if (b) b.textContent = `Lendo ${F.SLOTS.find(s => s.k === k).nome}… ${Math.round(p * 100)}%`; });
         const d = F.dadosDoTexto(k, txt, { container: T.ot.container, lacre: T.ot.lacre });
         const lido = f.lido[k] || (f.lido[k] = {}); const auto = (f.auto = f.auto || {})[k] || (f.auto[k] = {});
-        Object.entries(d).forEach(([c, v]) => { if (!lido[c]) { lido[c] = v; auto[c] = true; achou++; } });
+        Object.entries(d).forEach(([c, v]) => { if (!lido[c] || (F.ehIlegivel(lido[c]) && !F.ehIlegivel(v))) { lido[c] = v; auto[c] = true; if (!F.ehIlegivel(v)) achou++; } });
       }
       save(true); renderAll();
-      toast(achou ? `${achou} dado(s) lido(s) das fotos. Confira os campos marcados "auto".` : 'Não consegui ler os dados nas fotos. Digite-os nos campos abaixo de cada foto.', achou ? 'ok' : 'warn');
+      const ileg = alvo.reduce((a, k) => a + Object.values(f.lido[k] || {}).filter(F.ehIlegivel).length, 0);
+      toast(`${achou} campo(s) preenchido(s) pela leitura das fotos${ileg ? ` · ${ileg} ILEGÍVEL(is): leia na foto e digite` : ''}. Confira os campos marcados "auto".`, ileg ? 'warn' : 'ok');
     } catch (e) {
       toast('Leitura automática indisponível: ' + (e.message || e) + '. Digite os dados nos campos abaixo de cada foto.', 'warn');
       if (b) { b.disabled = false; b.textContent = 'Ler dados das fotos'; }
@@ -1280,7 +1285,8 @@
       const [slot, campo] = k.split('|'); const f = fotosDe(ui.open);
       const lido = f.lido[slot] || (f.lido[slot] = {}); let v = e.target.value.trim();
       if (campo !== 'tara' && campo !== 'mwg') v = v.toUpperCase();
-      if (campo === 'container' || campo === 'contOrdem') v = F.normCont(v);
+      if (F.ehIlegivel(v)) v = F.ILEGIVEL;
+      else if (campo === 'container' || campo === 'contOrdem') v = F.normCont(v);
       if (v) lido[campo] = v; else delete lido[campo];
       if (f.auto && f.auto[slot]) delete f.auto[slot][campo];
       save();

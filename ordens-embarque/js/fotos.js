@@ -76,6 +76,10 @@
     } catch (e) { return 0; } finally { URL.revokeObjectURL(url); }
   }
 
+  // dado que existe na foto mas não dá para ler com certeza
+  const ILEGIVEL = 'ILEGÍVEL';
+  const ehIlegivel = v => /^ILEG[IÍ]VEL$/i.test(String(v || '').trim());
+
   // ---------- nº de container (ISO 6346) ----------
   const ISO_VAL = (() => { const m = {}; let v = 10; for (let c = 65; c <= 90; c++) { if (v % 11 === 0) v++; m[String.fromCharCode(c)] = v++; } return m; })();
   function digitoVerificador(c10) {
@@ -84,37 +88,22 @@
   }
   const normCont = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const contValido = v => { const c = normCont(v); return /^[A-Z]{3}[UJZ]\d{7}$/.test(c) && digitoVerificador(c) === +c[10]; };
-  const DIG = { O: '0', Q: '0', D: '0', I: '1', L: '1', T: '1', Z: '2', S: '5', B: '8', G: '6' };
-  const LET = { 0: 'O', 1: 'I', 5: 'S', 8: 'B', 2: 'Z', 6: 'G' };
-  // letras parecidas no prefixo (O/Q, C/G, I/L…): o dígito verificador decide
-  const PARECIDAS = { O: 'QDC', Q: 'O', D: 'O', C: 'GO', G: 'C', I: 'LT', L: 'I', T: 'I', B: 'RE', R: 'B', E: 'FB', F: 'E', M: 'NH', N: 'MH', H: 'NM', S: 'B', K: 'X', X: 'K', V: 'U', W: 'M' };
-  const COMUNS = new Set(['OQ', 'QO', 'OD', 'DO', 'CG', 'GC', 'IL', 'LI', 'IT', 'TI', 'MN', 'NM', 'VU']);
-  function corrigirPrefixo(c) {
-    if (digitoVerificador(c) === +c[10]) return [{ c, ok: true }];
-    const alts = [];
-    for (let i = 0; i < 3; i++) for (const alt of (PARECIDAS[c[i]] || '')) {
-      const x = c.slice(0, i) + alt + c.slice(i + 1);
-      if (digitoVerificador(x) === +x[10]) alts.push({ c: x, ok: true, corrigido: true, peso: COMUNS.has(c[i] + alt) ? 0 : 1 });
-    }
-    return alts.length ? alts.sort((a, b) => a.peso - b.peso) : [{ c, ok: false }];
-  }
+  // Sem adivinhar: só vale o nº lido exatamente como está escrito (4 letras + 7 dígitos) e com o dígito
+  // verificador certo. Letras/dígitos trocados pela leitura => não aceita (o campo fica ILEGÍVEL).
   function containersNoTexto(text) {
     const t = String(text || '').toUpperCase();
     const out = [];
-    const re = /([A-Z0-9]{3}[UJZ])[\s\-.:]*([0-9OQDILTZSBG]{3})[\s\-.]*([0-9OQDILTZSBG]{3})[\s\-.()\[\]|]*([0-9OQDILTZSBG])/g;
+    const re = /\b([A-Z]{3}[UJZ])[\s\-.:]*(\d{3})[\s\-.]*(\d{3})[\s\-.()\[\]|]*(\d)\b/g;
     let m;
     while ((m = re.exec(t))) {
-      const pre = m[1].split('').map((ch, i) => (i < 3 ? (LET[ch] || ch) : ch)).join('');
-      const num = (m[2] + m[3] + m[4]).split('').map(ch => DIG[ch] || ch).join('');
-      const c = pre + num;
-      if (/^[A-Z]{3}[UJZ]\d{7}$/.test(c)) out.push(...corrigirPrefixo(c));
+      const c = m[1] + m[2] + m[3] + m[4];
+      if (digitoVerificador(c) === +c[10]) out.push({ c, ok: true });
       re.lastIndex = m.index + 1;
     }
-    // únicos, válidos primeiro
     const vistos = new Set();
-    return out.filter(x => !vistos.has(x.c) && vistos.add(x.c)).sort((a, b) => b.ok - a.ok);
+    return out.filter(x => !vistos.has(x.c) && vistos.add(x.c));
   }
-  const fmtCont = c => { const x = normCont(c); const m = x.match(/^([A-Z]{4})(\d{6})(\d)$/); return m ? `${m[1]} ${m[2]}-${m[3]}` : x; };
+  const fmtCont = c => { if (ehIlegivel(c)) return ILEGIVEL; const x = normCont(c); const m = x.match(/^([A-Z]{4})(\d{6})(\d)$/); return m ? `${m[1]} ${m[2]}-${m[3]}` : x; };
 
   // ---------- pesos da placa da porta (TARE / MAX GROSS) ----------
   function kgNum(s) {
@@ -128,7 +117,8 @@
     for (const lab of labels) {
       const re = new RegExp(lab + '[^\\n]{0,4}', 'g'); let m;
       while ((m = re.exec(t))) {
-        const trecho = t.slice(m.index + m[0].length - 4, m.index + 90);
+        const resto = t.slice(m.index + m[0].length - 4).split('\n');
+        const trecho = resto.slice(0, 2).join(' '); // só a linha do rótulo e a seguinte
         // prefere o número seguido de KG; senão o primeiro número de 4–6 dígitos
         const kgm = trecho.match(/(\d{1,3}(?:[.,\s]\d{3})+|\d{4,6})\s*(KGS?|KG\.)/);
         if (kgm) { const v = kgNum(kgm[1]); if (v) return v; }
@@ -143,23 +133,18 @@
 
   // ---------- lacre ----------
   const normLacre = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const lacreOCR = v => normLacre(v).replace(/[OQD]/g, '0').replace(/[IL]/g, '1');
-  // procura o lacre esperado no texto (tolerando O/0, I/1); senão, o código depois de "LACRE"/"SEAL"
+  // lacre: o esperado só conta se aparecer escrito igual; senão, o código logo depois de "LACRE"/"SEAL NO"
+  // (prefixo de letras + dígitos, sem trocar letras por números)
   function lerLacre(text, esperado) {
     const t = String(text || '').toUpperCase();
     const e = normLacre(esperado);
-    if (e && e.length >= 4) {
-      const alvo = lacreOCR(e); const corrido = lacreOCR(t);
-      if (corrido.includes(alvo)) return e;
-      // só os dígitos do lacre (prefixos de letras costumam sair errados)
-      const dig = e.replace(/\D/g, '');
-      if (dig.length >= 5 && corrido.includes(dig)) return e;
-    }
-    const m = t.match(/(?:LACRE|SEAL|SELO)[^A-Z0-9\n]{0,12}(?:N[ºO°0.]*[\s:.\-]*)?([A-Z]{0,4}[\s\-_]?[0-9OIL]{5,14})/);
+    if (e && e.length >= 4 && normLacre(t).includes(e)) return e;
+    const m = t.match(/(?:LACRE|SEAL|SELO)\s*(?:N[ºO°]?\.?)?\s*[:.\-]?\s*([A-Z]{0,4}[\s\-]?\d{5,14})\b/);
     if (m) return normLacre(m[1]);
     return '';
   }
-  const lacreIgual = (a, b) => !!a && !!b && lacreOCR(a) === lacreOCR(b);
+  const ocorrencias = (t, code) => code ? normLacre(t).split(code).length - 1 : 0;
+  const lacreIgual = (a, b) => !!a && !!b && normLacre(a) === normLacre(b);
 
   // container logo depois de um rótulo (ex.: "Container No:" no RIC, "Número Container" na ordem Arauco)
   function contRotulo(text, re) {
@@ -176,26 +161,28 @@
       // a foto do RIC traz o RIC (container, lacre, tara, max gross), a ordem Arauco (container) e o lacre físico
       const t = String(text || '').toUpperCase();
       const cs = containersNoTexto(t).filter(x => x.ok);
-      const alvo = normCont(esperado.container);
-      r.container = contRotulo(t, RE_CONT_RIC) || (cs.find(x => x.c === alvo) || cs[0] || {}).c || '';
-      r.contOrdem = contRotulo(t, RE_CONT_ORDEM) || (cs.find(x => x.c !== r.container) || {}).c || '';
+      r.container = contRotulo(t, RE_CONT_RIC) || (cs.length === 1 ? cs[0].c : '');
+      r.contOrdem = contRotulo(t, RE_CONT_ORDEM) || '';
       // o mesmo nº aparece duas vezes (RIC e ordem) e não achamos o rótulo da ordem: é o da ordem também
-      if (!r.contOrdem && r.container && (lacreOCR(t).split(r.container.slice(4, 10)).length - 1) >= 2) r.contOrdem = r.container;
+      if (!r.contOrdem && r.container && ocorrencias(t, r.container) >= 2) r.contOrdem = r.container;
       const l = lerLacre(t, esperado.lacre); if (l) r.lacre = l;
       // lacre físico: o código do lacre aparece de novo na foto (gravado no lacre)
-      if (l) { const dig = l.replace(/\D/g, ''); if (dig.length >= 5 && lacreOCR(t).split(dig).length - 1 >= 2) r.lacreFis = l; }
+      if (l && ocorrencias(t, l) >= 2) r.lacreFis = l;
       const ta = lerTara(t); if (ta) r.tara = ta; const mw = lerMwg(t); if (mw) r.mwg = mw;
-      Object.keys(r).forEach(k => { if (!r[k]) delete r[k]; });
+      // o que a foto do RIC deveria mostrar e não foi lido com certeza: ILEGÍVEL
+      SLOTS.find(x => x.k === 'ric').campos.forEach(k => { if (!r[k]) r[k] = ILEGIVEL; });
       return r;
     }
     if (slot === 'porta') {
       const cs = containersNoTexto(text);
-      const alvo = normCont(esperado.container);
-      const hit = cs.find(x => x.c === alvo) || cs.find(x => x.ok) || cs[0];
-      if (hit) r.container = hit.c;
+      r.container = cs.length === 1 ? cs[0].c : ILEGIVEL; // nenhum ou mais de um nº diferente: não escolhe
+      r.tara = lerTara(text) || ILEGIVEL; r.mwg = lerMwg(text) || ILEGIVEL;
     }
-    if (slot === 'porta') { const ta = lerTara(text); if (ta) r.tara = ta; const mw = lerMwg(text); if (mw) r.mwg = mw; }
-    if (slot === 'lacre') { const l = lerLacre(text, esperado.lacre); if (l) r.lacre = l; }
+    if (slot === 'lacre') {
+      // foto só do lacre: o único código (letras + dígitos) escrito nela
+      const cods = Array.from(new Set((String(text || '').toUpperCase().match(/\b[A-Z]{0,4}\s?\d{6,14}\b/g) || []).map(normLacre)));
+      r.lacre = lerLacre(text, esperado.lacre) || (cods.length === 1 ? cods[0] : ILEGIVEL);
+    }
     return r;
   }
 
@@ -260,7 +247,7 @@
 
   global.OEF = {
     SLOTS, CAMPO_NOME, put, get, del, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
-    digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
+    ILEGIVEL, ehIlegivel, digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
     carregarOCR, ocr, montarEML,
   };
 })(window);
