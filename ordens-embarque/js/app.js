@@ -1111,14 +1111,15 @@
     const linhas = [
       linha('Nº container', T.ot.container, T.man.container ? 'Controle OT' : 'Agendado', [{ n: 'Porta', v: L('porta').container }, { n: 'RIC', v: L('ric').container }, { n: 'Ordem (papel na foto)', v: L('ric').contOrdem }], contEq,
         [sewC && T.ot.container && !contEq(sewC, T.ot.container) ? `agendamento SEW: ${F.fmtCont(sewC)} (diferente)` : '', avisoCD].filter(Boolean).join(' · ')),
-      linha('Lacre', T.ot.lacre, 'Controle OT', [{ n: 'RIC', v: L('ric').lacre }, { n: 'Lacre físico (foto do RIC)', v: L('ric').lacreFis }, { n: 'Foto do lacre', v: L('lacre').lacre }], F.lacreIgual),
+      linha('Lacre', T.ot.lacre, 'Controle OT', [{ n: 'RIC', v: L('ric').lacre }, { n: 'Lacre físico (foto do RIC)', v: L('ric').lacreFis }], F.lacreIgual),
       linha('Tara', T.ot.tara, 'Controle OT', [{ n: 'RIC', v: L('ric').tara }, { n: 'Porta', v: L('porta').tara }], numIgual),
-      linha('Carga máx. (MWG)', T.ot.mwg, 'Controle OT', [{ n: 'RIC', v: L('ric').mwg }, { n: 'Porta', v: L('porta').mwg }], numIgual),
+      linha('Carga máx. (MWG)', T.ot.mwg, 'Controle OT', [{ n: 'RIC', v: L('ric').mwg }, { n: 'Porta', v: L('porta').mwg }], numIgual,
+        [T.ot.mwg, L('ric').mwg, L('porta').mwg].some(v => v && !F.ehIlegivel(v) && +String(v).replace(/\D/g, '') !== F.PADRAO_MWG) ? `atenção: o padrão é ${fmtNum(F.PADRAO_MWG, 0)} kg` : ''),
     ];
     const n = F.SLOTS.filter(s => f.slots[s.k]).length;
     const st = linhas.some(l => l.st === 'div') ? 'div' : (linhas.every(l => l.st === 'ok') && n === 6 ? 'ok' : 'pend');
     // a foto do RIC precisa mostrar o lacre físico (ou a foto do lacre)
-    if (st === 'ok' && !L('ric').lacreFis && !L('lacre').lacre) return { linhas, n, st: 'pend', f };
+    if (st === 'ok' && !L('ric').lacreFis) return { linhas, n, st: 'pend', f }; // o lacre físico precisa aparecer na foto do RIC
     return { linhas, n, st, f };
   }
   function fotoChip(T) {
@@ -1211,11 +1212,16 @@
       if (pend.length && chaves().length) {
         try {
           ftStatus('Carregando a leitura automática (na 1ª vez pode levar até 1 minuto)…'); await F.carregarOCR(); leu = true;
-          for (let i = 0; i < pend.length; i++) { ftStatus(`Identificando foto ${i + 1} de ${pend.length}…`); texto.set(pend[i], await F.ocr(pend[i])); } // original, em alta resolução
+          for (let i = 0; i < pend.length; i++) { ftStatus(`Identificando foto ${i + 1} de ${pend.length}…`); texto.set(pend[i], [await F.ocr(pend[i])]); } // original, em alta resolução
         } catch (e) { leu = false; }
         if (leu) {
           const esp = { container: T.ot.container, lacre: T.ot.lacre }; const pares = [];
-          pend.forEach(x => { const sc = F.classificar(texto.get(x), esp); chaves().forEach(k => { if (sc[k] >= 3) pares.push({ x, k, v: sc[k] }); }); });
+          // não reconheceu? 2ª leitura com cores invertidas (pintura clara da porta)
+          for (let i = 0; i < pend.length; i++) {
+            const x = pend[i]; const sc = F.classificar(texto.get(x).join('\n'), esp);
+            if (Math.max(sc.porta, sc.ric, sc.lacre) < 3) { ftStatus(`Identificando foto ${i + 1} de ${pend.length} (2ª leitura)…`); try { texto.get(x).push(await F.ocr(x, 'invertido')); } catch (e) { break; } }
+          }
+          pend.forEach(x => { const sc = F.classificar(texto.get(x).join('\n'), esp); chaves().forEach(k => { if (sc[k] >= 3) pares.push({ x, k, v: sc[k] }); }); });
           pares.sort((a, b) => b.v - a.v).forEach(p => { if (!pos.has(p.x) && ![...pos.values()].includes(p.k)) pos.set(p.x, p.k); });
         } else if (chaves().includes('ric')) {
           // sem leitura de texto: a foto mais "folha branca" é o RIC
@@ -1229,18 +1235,24 @@
       const ordem = ['f4', 'f5', 'f6', 'porta', 'ric', 'lacre'];
       pend.forEach(x => { const k = ordem.find(k => !f.slots[k] && ![...pos.values()].includes(k)); if (k) pos.set(x, k); });
       // toda foto que ficou em Porta/RIC/Lacre é lida (também as posicionadas pelo nome do arquivo)
-      const chave = k => ['porta', 'ric', 'lacre'].includes(k);
+      const chave = k => (F.SLOTS.find(s => s.k === k) || {}).campos.length > 0;
       if (F.estadoOCR().st !== 'erro') {
-        const aLer = [...pos].filter(([x, k]) => chave(k) && !texto.has(x));
+        // fotos com dados: 2 leituras (normal e cores invertidas, para pintura clara em porta escura)
+        const aLer = [...pos].filter(([x, k]) => chave(k));
         for (let i = 0; i < aLer.length; i++) {
-          try { ftStatus(i === 0 && F.estadoOCR().st !== 'ok' ? 'Carregando a leitura automática (na 1ª vez pode levar até 1 minuto)…' : `Lendo os dados da foto ${i + 1} de ${aLer.length}…`); texto.set(aLer[i][0], await F.ocr(aLer[i][0])); } catch (e) { break; }
+          const x = aLer[i][0];
+          try {
+            ftStatus(F.estadoOCR().st !== 'ok' ? 'Carregando a leitura automática (na 1ª vez pode levar até 1 minuto)…' : `Lendo os dados da foto ${i + 1} de ${aLer.length}…`);
+            const ts = texto.get(x) || [await F.ocr(x)];
+            if (ts.length < 2) ts.push(await F.ocr(x, 'invertido')); texto.set(x, ts);
+          } catch (e) { break; }
         }
       }
       for (const [x, k] of pos) {
         await gravarFoto(t, k, x, x._blob);
         // aproveita o texto lido para preencher os dados da foto (só campos vazios)
-        if (texto.has(x) && ['porta', 'ric', 'lacre'].includes(k)) {
-          const d = F.dadosDoTexto(k, texto.get(x), { container: T.ot.container, lacre: T.ot.lacre });
+        if (texto.has(x) && chave(k)) {
+          const d = F.dadosJuntos(k, texto.get(x), { container: T.ot.container, lacre: T.ot.lacre });
           const lido = f.lido[k] || (f.lido[k] = {}); const auto = (f.auto = f.auto || {})[k] || (f.auto[k] = {});
           Object.entries(d).forEach(([c, v]) => { if (!lido[c] || (F.ehIlegivel(lido[c]) && !F.ehIlegivel(v))) { lido[c] = v; auto[c] = true; } });
         }
@@ -1253,18 +1265,19 @@
       + (falta.length ? ` Faltam: ${falta.join(', ')}.` : ' As 6 fotos estão completas.')
       + (texto.size ? ' Dados lidos das fotos: confira os campos marcados "auto".' : ` ${F.estadoOCR().st === 'erro' ? F.estadoOCR().msg : 'Nenhum dado lido.'} Confira as posições (arraste para trocar).`), falta.length || !texto.size ? 'warn' : 'ok');
   }
-  const faltandoFotos = t => { const f = state.fotos[t] || { slots: {} }; return F.SLOTS.filter(s => !f.slots[s.k]).map(s => s.k === 'porta' ? 'Porta' : (s.k === 'ric' ? 'RIC' : (s.k === 'lacre' ? 'Lacre' : s.nome))); };
+  const faltandoFotos = t => { const f = state.fotos[t] || { slots: {} }; return F.SLOTS.filter(s => !f.slots[s.k]).map(s => s.nome); };
   async function lerFotos(t) {
     const T = getTransport(t); if (!T) return;
-    const f = fotosDe(t); const alvo = ['porta', 'ric', 'lacre'].filter(k => f.slots[k]);
-    if (!alvo.length) { toast('Inclua as fotos da porta, do RIC e do lacre primeiro.', 'warn'); return; }
+    const f = fotosDe(t); const alvo = F.SLOTS.filter(s => s.campos.length && f.slots[s.k]).map(s => s.k);
+    if (!alvo.length) { toast('Inclua primeiro a foto da porta fechada e a do RIC + lacre.', 'warn'); return; }
     const b = $('#ft-ocr'); if (b) { b.disabled = true; b.textContent = 'Lendo fotos…'; }
     let achou = 0;
     try {
       for (const k of alvo) {
         const blob = await F.get(f.slots[k].id); if (!blob) continue;
-        const txt = await F.ocr(blob, p => { if (b) b.textContent = `Lendo ${F.SLOTS.find(s => s.k === k).nome}… ${Math.round(p * 100)}%`; });
-        const d = F.dadosDoTexto(k, txt, { container: T.ot.container, lacre: T.ot.lacre });
+        if (b) b.textContent = `Lendo ${F.SLOTS.find(s => s.k === k).nome}…`;
+        const txts = [await F.ocr(blob), await F.ocr(blob, 'invertido')];
+        const d = F.dadosJuntos(k, txts, { container: T.ot.container, lacre: T.ot.lacre });
         const lido = f.lido[k] || (f.lido[k] = {}); const auto = (f.auto = f.auto || {})[k] || (f.auto[k] = {});
         Object.entries(d).forEach(([c, v]) => { if (!lido[c] || (F.ehIlegivel(lido[c]) && !F.ehIlegivel(v))) { lido[c] = v; auto[c] = true; if (!F.ehIlegivel(v)) achou++; } });
       }
@@ -1282,7 +1295,55 @@
     ['container', 'lacre', 'tara', 'mwg'].forEach(k => { if (!T.ot[k]) { const v = valorFoto(f, k); if (v) { man[k] = k === 'container' ? F.normCont(v) : String(v); feitos.push(OT_FIELDS.find(x => x[0] === k)[1]); } } });
     save(true); renderAll(); toast(feitos.length ? `Controle OT preenchido: ${feitos.join(', ')}.` : 'Nada a preencher.', 'ok');
   }
+  // ---------- zoom da foto + "Ler área": o usuário marca o retângulo com o nº / pesos / RIC e só essa área é lida
+  const zoomUI = { t: null, slot: null, r: null };
+  async function abrirZoom(t, slot) {
+    const f = fotosDe(t); const it = f.slots[slot]; if (!it) return;
+    const s = F.SLOTS.find(x => x.k === slot); const u = await urlFoto(it.id); if (!u) return;
+    Object.assign(zoomUI, { t, slot, r: null });
+    $('#zm-title').textContent = `${s.nome} · transporte ${t}`;
+    $('#zm-img').src = u; $('#zm-sel').hidden = true; $('#zm-res').innerHTML = ''; $('#zm-zoom').value = 1; $('#zm-img').style.height = '';
+    $('#zm-ler').hidden = !s.campos.length; $('#zm-ler').disabled = true;
+    $('#zm-dica').textContent = s.campos.length ? (slot === 'porta' ? 'Leia em partes: arraste um retângulo só sobre o nº do container e clique em "Ler área"; depois outro sobre os pesos (MAX GROSS, TARE, MAX CARGO).' : 'Arraste um retângulo sobre o RIC (e o lacre) e clique em "Ler área". Se o texto for pequeno, leia em partes.') : 'Foto de registro (sem dados para ler).';
+    $('#zoom-dialog').showModal();
+  }
+  function bindZoom() {
+    const wrap = $('#zm-wrap'), sel = $('#zm-sel'); let ini = null;
+    const pos = e => { const b = $('#zm-img').getBoundingClientRect(); return { x: Math.min(1, Math.max(0, (e.clientX - b.left) / b.width)), y: Math.min(1, Math.max(0, (e.clientY - b.top) / b.height)), b }; };
+    const desenha = (a, c) => {
+      const r = { x: Math.min(a.x, c.x), y: Math.min(a.y, c.y), w: Math.abs(c.x - a.x), h: Math.abs(c.y - a.y) };
+      const b = $('#zm-img').getBoundingClientRect(), wb = wrap.getBoundingClientRect();
+      Object.assign(sel.style, { left: (b.left - wb.left + r.x * b.width + wrap.scrollLeft) + 'px', top: (b.top - wb.top + r.y * b.height + wrap.scrollTop) + 'px', width: r.w * b.width + 'px', height: r.h * b.height + 'px' });
+      sel.hidden = false; return r;
+    };
+    wrap.addEventListener('pointerdown', e => { if (!F.SLOTS.find(x => x.k === zoomUI.slot).campos.length) return; e.preventDefault(); ini = pos(e); wrap.setPointerCapture(e.pointerId); });
+    wrap.addEventListener('pointermove', e => { if (ini) zoomUI.r = desenha(ini, pos(e)); });
+    wrap.addEventListener('pointerup', () => { ini = null; $('#zm-ler').disabled = !(zoomUI.r && zoomUI.r.w > 0.02 && zoomUI.r.h > 0.02); });
+    $('#zm-close').addEventListener('click', () => $('#zoom-dialog').close());
+    // ampliar a foto para marcar textos pequenos (a área marcada é recalculada pela posição na imagem)
+    $('#zm-zoom').addEventListener('input', e => { const z = +e.target.value; $('#zm-img').style.height = z > 1 ? `calc(68vh * ${z})` : ''; $('#zm-img').style.maxHeight = z > 1 ? 'none' : ''; $('#zm-img').style.maxWidth = z > 1 ? 'none' : ''; sel.hidden = true; zoomUI.r = null; $('#zm-ler').disabled = true; });
+    $('#zm-ler').addEventListener('click', async () => {
+      const { t, slot, r } = zoomUI; const T = getTransport(t); const f = fotosDe(t); const it = f.slots[slot]; if (!T || !it || !r) return;
+      const b = $('#zm-ler'); b.disabled = true; const txt0 = b.textContent;
+      try {
+        b.textContent = F.estadoOCR().st !== 'ok' ? 'Carregando a leitura…' : 'Lendo a área…';
+        const crop = await F.recortar(await F.get(it.id), r);
+        const textos = [await F.ocr(crop), await F.ocr(crop, 'invertido')];
+        const d = F.dadosJuntos(slot, textos, { container: T.ot.container, lacre: T.ot.lacre });
+        const lido = f.lido[slot] || (f.lido[slot] = {}); const auto = (f.auto = f.auto || {})[slot] || (f.auto[slot] = {});
+        const novos = [];
+        Object.entries(d).forEach(([c, v]) => {
+          if (F.ehIlegivel(v)) { if (!lido[c]) { lido[c] = v; auto[c] = true; } return; } // não apaga o que já foi lido/digitado
+          if (!lido[c] || F.ehIlegivel(lido[c]) || auto[c]) { lido[c] = v; auto[c] = true; novos.push(`${F.CAMPO_NOME[c]}: ${c === 'container' || c === 'contOrdem' ? F.fmtCont(v) : v}`); }
+        });
+        save(true); renderAll();
+        $('#zm-res').innerHTML = novos.length ? `<div class="alert ok">Lido nesta área: <b>${novos.map(esc).join(' · ')}</b>. Confira na foto.</div>` : '<div class="alert warn">Nada legível com certeza nesta área. Marque só o texto (mais de perto) ou digite os dados.</div>';
+      } catch (e) { $('#zm-res').innerHTML = `<div class="alert err">${esc(F.estadoOCR().msg || e.message || e)}</div>`; }
+      b.textContent = txt0; b.disabled = false;
+    });
+  }
   function bindFotos() {
+    bindZoom();
     const body = $('#d-body');
     body.addEventListener('change', e => {
       const t = ui.open; if (!t) return;
@@ -1310,7 +1371,7 @@
       if (d) { const f = fotosDe(t); const it = f.slots[d.dataset.ftDel]; if (it) { F.del(it.id).catch(() => {}); fotoURL.delete(it.id); delete f.slots[d.dataset.ftDel]; save(true); renderAll(); } return; }
       const im = e.target.closest('.ft-img');
       if (im) { const s = im.closest('.ft-slot'); const it = fotosDe(t).slots[s.dataset.slot];
-        if (it) { const img = $('img', im); if (img && img.src) window.open(img.src, '_blank'); }
+        if (it) abrirZoom(t, s.dataset.slot);
         else { const inp = $('#ft-um'); inp.dataset.slot = s.dataset.slot; inp.click(); } }
     });
     // arrastar: arquivos do Windows para uma posição, ou trocar fotos de posição

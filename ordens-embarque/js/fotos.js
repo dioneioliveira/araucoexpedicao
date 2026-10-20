@@ -6,14 +6,17 @@
   'use strict';
 
   // 6 fotos por carga de container; as 3 primeiras trazem dados que são confrontados
+  // Dados conferidos vêm de 2 fotos: PORTA FECHADA (nº, tara, max gross) e RIC + LACRE (RIC sobre a ordem Arauco,
+  // com o lacre ao lado, foto de perto). As outras 4 são registro do carregamento, sem campos.
   const SLOTS = [
-    { k: 'porta', nome: 'Porta do container', dica: 'nº do container, tara e carga máx.', campos: ['container', 'tara', 'mwg'], re: /porta|door|tara|tare|placa|plate/i },
-    { k: 'ric', nome: 'RIC', dica: 'RIC + ordem + lacre físico: container, lacre, tara, max gross', campos: ['container', 'contOrdem', 'lacre', 'lacreFis', 'tara', 'mwg'], re: /\bric\b|ric[\s_\-.]|^ric|interc[aâ]mbio|eir/i },
-    { k: 'lacre', nome: 'Lacre', dica: 'nº do lacre', campos: ['lacre'], re: /lacre|seal|selo/i },
-    { k: 'f4', nome: 'Foto 4', dica: 'container vazio / interno', campos: [], re: /vazio|empty|interno|inside/i },
-    { k: 'f5', nome: 'Foto 5', dica: 'carga / meia porta', campos: [], re: /meia|carga|carregad|half|load/i },
-    { k: 'f6', nome: 'Foto 6', dica: 'porta fechada e lacrada', campos: [], re: /fechad|closed|lacrad|final/i },
+    { k: 'porta', nome: 'Porta fechada', dica: 'nº do container, tara e max gross', campos: ['container', 'tara', 'mwg'], re: /porta|door|tara|tare|placa|plate|fechad|closed/i },
+    { k: 'ric', nome: 'RIC + lacre', dica: 'RIC sobre a ordem, com o lacre ao lado (de perto)', campos: ['container', 'contOrdem', 'lacre', 'lacreFis', 'tara', 'mwg'], re: /\bric\b|ric[\s_\-.]|^ric|interc[aâ]mbio|eir/i },
+    { k: 'lacre', nome: 'Lacre (detalhe)', dica: 'lacre na porta', campos: [], re: /lacre|seal|selo/i },
+    { k: 'f4', nome: 'Interior vazio', dica: 'container vazio', campos: [], re: /vazio|empty|interno|inside/i },
+    { k: 'f5', nome: 'Carga amarrada', dica: 'carga e amarração', campos: [], re: /meia|carga|carregad|half|load|amarra/i },
+    { k: 'f6', nome: 'Foto 6', dica: 'outra (opcional)', campos: [], re: /aberta|open|extra|outra/i },
   ];
+  const PADRAO_MWG = 32500; // max gross mais comum: valor diferente gera aviso (não é usado para preencher)
   const CAMPO_NOME = { container: 'Nº container', contOrdem: 'Container na ordem (papel)', tara: 'Tara (kg)', mwg: 'Carga máx. / Max gross (kg)', lacre: 'Lacre', lacreFis: 'Lacre físico (na foto)' };
 
   // ---------- IndexedDB das imagens ----------
@@ -93,7 +96,7 @@
   function containersNoTexto(text) {
     const t = String(text || '').toUpperCase();
     const out = [];
-    const re = /\b([A-Z]{3}[UJZ])[\s\-.:]*(\d{3})[\s\-.]*(\d{3})[\s\-.()\[\]|]*(\d)\b/g;
+    const re = /\b([A-Z]{3}[UJZ])[\s\-.:|]*(\d{3})[\s\-.]*(\d{3})[\s\-.()\[\]|]*(?:[iIl!]\s*[|\])]?[\s\-.()\[\]|]*)?(\d)\b/g; // borda da caixa do dígito lida como \"i |\"
     let m;
     while ((m = re.exec(t))) {
       const c = m[1] + m[2] + m[3] + m[4];
@@ -121,10 +124,13 @@
     for (const lab of labels) {
       const re = new RegExp(lab, 'g'); let m;
       while ((m = re.exec(t))) {
-        const linha = t.slice(m.index + m[0].length).split('\n')[0];
-        const nums = linha.matchAll(/(\d{1,3}(?:[.,]\d{3})+|\d{4,6})\s*(KGS?|KG\.|LBS?\.?|CU)?/g);
+        const resto = t.slice(m.index + m[0].length).split('\n');
+        let linha = resto[0];
+        // rótulo sozinho na linha e o número sozinho na linha de baixo (comum no RIC): aceita só nesse formato
+        if (!/\d/.test(linha) && /^\s*[:.]?\s*\d{1,3}(?:[.,]\d{3})+\s*(KGS?\.?)?\s*$|^\s*[:.]?\s*\d{4,6}\s*(KGS?\.?)?\s*$/.test(resto[1] || '')) linha = resto[1];
+        const nums = linha.matchAll(/(\d{1,3}(?:[.,]\d{3})+|\d{4,6})\s*(K[G6C]S?|KG\.|LBS?\.?|CU)?/g);
         for (const n of nums) {
-          if (n[2] && !/^KG/.test(n[2])) continue; // LBS / CU.M: não é o peso em kg
+          if (n[2] && !/^K[G6C]/.test(n[2])) continue; // LBS / CU.M: não é o peso em kg
           const v = kgNum(n[1]);
           return naFaixa(v, faixa) ? v : null;
         }
@@ -132,15 +138,16 @@
     }
     return null;
   }
-  const lerTara = text => pesoApos(text, ['\\bTARE\\b', '\\bTARA\\b'], 'tara');
-  const lerMwg = text => pesoApos(text, ['MAX\\.?\\s*GROSS', 'MAX\\.?\\s*G\\.?\\s*W', '\\bM\\.?\\s*G\\.?\\s*W\\b', 'MAX\\.?\\s*WT', 'MAXIMUM\\s*GROSS', 'PESO\\s*BRUTO\\s*M[AÁ]X'], 'mwg');
-  const lerPayload = text => pesoApos(text, ['PAYLOAD', 'PAY\\s*LOAD', '\\bNET\\b', 'CARGA\\s*[UÚ]TIL'], 'payload');
+  const lerTara = text => pesoApos(text, ['\\bT[AE]R[EA]\\b'], 'tara'); // TARE / TARA / TERE…
+  // rótulo do max gross lido com erros comuns: "Mox Grass Weight", "MAX GR@SS", "MAK.GROSS"…
+  const lerMwg = text => pesoApos(text, ['\\bM[AO0][XKH]\\.?\\s*G[RP][AO0@Q][S5$]{1,2}\\b', 'MAX\\.?\\s*GROSS', 'MAX\\.?\\s*G\\.?\\s*W', '\\bM\\.?\\s*G\\.?\\s*W\\b', 'MAX\\.?\\s*WT', 'MAXIMUM\\s*GROSS', 'PESO\\s*BRUTO\\s*M[AÁ]X'], 'mwg');
+  const lerPayload = text => pesoApos(text, ['M[AO0][XK]\\.?\\s*CARGO', 'PAYLOAD', 'PAY\\s*LOAD', '\\bNET\\b', 'CARGA\\s*[UÚ]TIL'], 'payload');
   // placa da porta: MAX GROSS = TARE + PAYLOAD. Três valores em KG que fecham a soma identificam tara e max gross
   // mesmo se os rótulos saírem separados dos números; leitura que não fecha a soma => ILEGÍVEL.
   function pesosPorta(text) {
     const t = String(text || '').toUpperCase();
     let tara = lerTara(t), mwg = lerMwg(t); const pay = lerPayload(t);
-    const kgs = Array.from(new Set(Array.from(t.matchAll(/(\d{1,3}(?:[.,]\d{3})+|\d{4,6})\s*KG/g)).map(n => kgNum(n[1])).filter(Boolean)));
+    const kgs = Array.from(new Set(Array.from(t.matchAll(/(\d{1,3}(?:[.,]\d{3})+|\d{4,6})\s*K[G6C]/g)).map(n => kgNum(n[1])).filter(Boolean)));
     const triplas = [];
     kgs.forEach(a => kgs.forEach(c => { if (naFaixa(a, 'mwg') && naFaixa(c, 'tara') && kgs.includes(a - c) && naFaixa(a - c, 'payload')) triplas.push({ mwg: a, tara: c }); }));
     const tri = triplas.length === 1 ? triplas[0] : null;
@@ -149,6 +156,8 @@
       mwg = mwg == null ? tri.mwg : (mwg === tri.mwg ? mwg : ILEGIVEL);
     }
     if (typeof tara === 'number' && typeof mwg === 'number' && pay != null && mwg !== tara + pay) { tara = ILEGIVEL; mwg = ILEGIVEL; }
+    // padrão da operação: "32.500 KG" escrito na porta é o max gross (o payload é sempre menor que o max gross)
+    if (mwg == null && kgs.includes(PADRAO_MWG)) mwg = PADRAO_MWG;
     return { tara: tara || ILEGIVEL, mwg: mwg || ILEGIVEL };
   }
 
@@ -160,7 +169,7 @@
     const t = String(text || '').toUpperCase();
     const e = normLacre(esperado);
     if (e && e.length >= 4 && normLacre(t).includes(e)) return e;
-    const m = t.match(/(?:LACRE|SEAL|SELO)\s*(?:N[ºO°]?\.?)?\s*[:.\-]?\s*([A-Z]{0,4}[\s\-]?\d{5,14})\b/);
+    const m = t.match(/(?:LACRE|S[EC][AE][L1I]|SELO)\s*(?:N[ºO°]?\.?)?\s*[:.\-]?\s*([A-Z]{0,4}[\s\-]?\d{5,14})\b/);
     if (m) return normLacre(m[1]);
     return '';
   }
@@ -173,7 +182,7 @@
     while ((m = g.exec(t))) { const c = containersNoTexto(t.slice(m.index + m[0].length, m.index + m[0].length + 40))[0]; if (c) return c.c; }
     return '';
   }
-  const RE_CONT_RIC = /CONTAINER\s*(N[O0º°]\b\.?|NUMBER|#)|CNTR\s*N|EQUIPMENT\s*N/;
+  const RE_CONT_RIC = /C[O0]NT[A4][I1L]NER\s*(N[O0º°]\b\.?|NUMBER|#)|CNTR\s*N|EQUIPMENT\s*N/;
   const RE_CONT_ORDEM = /N\S{0,3}MERO\s*(DO\s*)?CONT[AE]INER|N[º°O]\.?\s*(DO\s*)?CONT[AE]INER/;
   // dados de uma foto a partir do texto lido
   function dadosDoTexto(slot, text, esperado) {
@@ -272,11 +281,53 @@
       return await new Promise(res => c.toBlob(res, 'image/png'));
     } finally { URL.revokeObjectURL(url); }
   }
-  async function ocr(blob, onProgress) {
+  // recorte de uma área da foto (frações 0–1), ampliado para a leitura: texto pequeno passa a ser legível
+  async function recortar(blob, r) {
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+      const sx = r.x * img.naturalWidth, sy = r.y * img.naturalHeight, sw = r.w * img.naturalWidth, sh = r.h * img.naturalHeight;
+      const k = Math.min(4, 2400 / Math.max(sw, sh));
+      const c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+      const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+      return await new Promise(res => c.toBlob(res, 'image/png'));
+    } finally { URL.revokeObjectURL(url); }
+  }
+  async function ocr(blob, modo) {
     const w = await carregarOCR();
-    const img = await prepararOCR(blob);
+    const inv = modo === 'invertido';
+    const img = inv ? await prepararInvertido(blob) : await prepararOCR(blob);
+    await w.setParameters({ tessedit_pageseg_mode: inv ? '11' : '3' }); // 11 = texto espalhado (placas pintadas)
     const r = await w.recognize(img);
     return (r && r.data && r.data.text) || '';
+  }
+  // pintura clara sobre porta escura: canal azul invertido + contraste esticado
+  async function prepararInvertido(blob) {
+    const url = URL.createObjectURL(blob);
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+      const s = Math.min(3, 3200 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0, c.width, c.height);
+      const d = g.getImageData(0, 0, c.width, c.height); const px = d.data; const hist = new Uint32Array(256);
+      for (let i = 0; i < px.length; i += 4) hist[255 - px[i + 2]]++;
+      const n = px.length / 4; let lo = 0, hi = 255, acc = 0;
+      for (; lo < 255 && (acc += hist[lo]) < n * 0.02; lo++); acc = 0;
+      for (; hi > 0 && (acc += hist[hi]) < n * 0.02; hi--);
+      const k = 255 / Math.max(1, hi - lo);
+      for (let i = 0; i < px.length; i += 4) { const v = Math.max(0, Math.min(255, (255 - px[i + 2] - lo) * k)); px[i] = px[i + 1] = px[i + 2] = v; }
+      g.putImageData(d, 0, 0);
+      return await new Promise(res => c.toBlob(res, 'image/png'));
+    } finally { URL.revokeObjectURL(url); }
+  }
+  // dados de várias leituras da mesma foto: vale o valor lido; se duas leituras discordam, ILEGÍVEL
+  function dadosJuntos(slot, textos, esperado) {
+    const rs = textos.map(t => dadosDoTexto(slot, t, esperado)); const out = {};
+    new Set([].concat(...rs.map(Object.keys))).forEach(k => {
+      const vals = Array.from(new Set(rs.map(r => r[k]).filter(v => v != null && v !== '' && !ehIlegivel(v)).map(String)));
+      out[k] = vals.length === 1 ? (typeof rs.find(r => String(r[k]) === vals[0])[k] === 'number' ? +vals[0] : vals[0]) : ILEGIVEL;
+    });
+    return out;
   }
 
   // ---------- e-mail .eml (abre como rascunho no Outlook: X-Unsent) ----------
@@ -293,7 +344,7 @@
 
   global.OEF = {
     SLOTS, CAMPO_NOME, put, get, del, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
-    ILEGIVEL, ehIlegivel, digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
-    carregarOCR, ocr, montarEML, estadoOCR: () => estado,
+    ILEGIVEL, ehIlegivel, PADRAO_MWG, digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
+    carregarOCR, ocr, recortar, dadosJuntos, montarEML, estadoOCR: () => estado,
   };
 })(window);

@@ -105,5 +105,14 @@
   guardadas a 2400 px e reduzidas a 1280 px no e-mail. `validarFotos`: container (Controle OT/agendado × porta × RIC ×
   ordem na foto, aviso se o SEW difere), lacre (Controle OT × RIC × lacre físico × foto do lacre), tara e MWG
   (Controle OT × RIC × porta); confere com o agendado + ao menos uma foto, qualquer diferença = divergente → `fotoChip`.
+  Fotos com dados (decisão do usuário): só **Porta fechada** (container, tara, mwg) e **RIC + lacre** (RIC sobre a
+  ordem, lacre ao lado, foto de perto); "Lacre (detalhe)", "Interior vazio", "Carga amarrada" e "Foto 6" não têm campos.
+  Rótulos tolerantes (`M[AO0][XKH] G[RP][AO0@Q][S5$]` = "Mox Grass", "MAK.GROSS"; `T[AE]R[EA]`; `S[EC][AE]L`; "K6" = KG;
+  rótulo numa linha e número sozinho na de baixo); o número continua exato. `PADRAO_MWG` = 32500: "32.500 KG" na porta é
+  o max gross, e valor diferente gera aviso na conferência. Leitura em 2 passadas (`dadosJuntos`: normal psm 3 + canal
+  azul invertido psm 11 para pintura clara em porta escura; leituras que discordam = ILEGÍVEL). Fotos inteiras de
+  WhatsApp (1600 px) quase não são legíveis: o caminho confiável é **"Ler área"** (`#zoom-dialog`, clique na foto):
+  zoom, retângulo sobre o texto, `OEF.recortar` amplia o recorte (até 4×) e lê só ele; valores lidos substituem
+  vazio/ILEGÍVEL/"auto", nunca o digitado.
   E-mail do container (`#mail-dialog`): EXP, container e lacre em destaque + fotos; `.eml` com `X-Unsent: 1` e imagens
   `cid:` (abre como rascunho no Outlook), ou copiar HTML com as fotos.

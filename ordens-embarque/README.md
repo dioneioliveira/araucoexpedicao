@@ -433,6 +433,11 @@ na resolução original.
 2. **Ler dados das fotos** tenta ler automaticamente (precisa de internet): nº do container (validado pelo
    dígito verificador), TARE e MAX GROSS em kg e o lacre. A leitura **não adivinha**: o que não estiver legível com certeza fica **ILEGÍVEL** (em vermelho; na placa da porta, tara e max gross só valem em KG e conferidos pela conta MAX GROSS = TARE + PAYLOAD) e a conferência fica pendente até alguém ler na foto e digitar. Os campos marcados "auto" devem ser conferidos;
    sem leitura automática, digite os dados nos campos abaixo de cada foto.
+   **Ler área (recomendado):** clique na foto da Porta fechada ou do RIC + lacre, use o zoom, arraste um retângulo
+   só sobre o texto (na porta: primeiro o nº, depois os pesos) e clique **Ler área**. Lendo só o recorte ampliado,
+   a leitura funciona muito melhor do que na foto inteira (fotos que passaram pelo WhatsApp perdem resolução).
+   Rótulos lidos com erro ("Mox Grass Weight", "MAK.GROSS") são aceitos; o número precisa ser lido certo.
+   O max gross padrão é **32.500 kg**: valor diferente aparece como aviso na conferência.
 3. A tabela de conferência confronta: **container** (agendado/Controle OT × porta × RIC × ordem na foto),
    **lacre** (Controle OT × RIC × lacre físico × foto do lacre), **tara** e **carga máx.** (Controle OT × RIC ×
    porta). Qualquer
