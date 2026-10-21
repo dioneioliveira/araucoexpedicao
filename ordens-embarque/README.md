@@ -494,3 +494,10 @@ Os campos que faltam ficam em vermelho, com a mensagem no topo do Controle OT. P
 foi impressa, ao **fechar o painel**, **marcar como faturada** ou **lançar a NF-e**, aparece um aviso com o que falta
 (**Preencher agora** volta ao painel). A lista diária tem a coluna **Container**, o filtro **Container** (com nº / sem) e a
 busca encontra container e lacre.
+
+### Dados EXP terrestre
+
+Em ordens de **exportação terrestre** (cliente ARAUCO MADERAS / MADERAS ARAUCO), o painel mostra o botão
+**Dados EXP terrestre**, que copia num texto único, sem espaços: `EXP-MOTORISTA-CPF-PLACACARRETAUF-PLACACAVALOUF`
+(ex.: `2026EXP0457-MOTORISTAEXEMPLOUM-11111111111-ABC1D23PR-EFG4H56PR`). Se faltar algum dado (EXP, UF da placa…),
+o aviso da cópia diz o que está em branco.

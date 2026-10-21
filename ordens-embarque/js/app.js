@@ -234,6 +234,13 @@
       const row = [P.fmtDateBR(P.todayISO()), P.plate7(e.placaL), o.ticket, o.tara, o.mwg, '', '', '', '', '', o.container, o.lacre, o.nf];
       return { text: row.join('\t'), need: [['ticket', 'Ticket'], ['tara', 'Tara'], ['mwg', 'Peso máx.'], ['nf', 'NF-e']].filter(([k]) => !o[k]).map(x => x[1]) };
     }
+    if (kind === 'expterr') {
+      // exportação terrestre: EXP-MOTORISTA-CPF-CARRETAUF-CAVALOUF, tudo junto, sem espaços
+      const semEsp = v => P.clean(v).replace(/\s+/g, '');
+      const pl = v => P.plate7(v) ? P.plate7(v) + P.plateUF(v) : '';
+      const partes = [o.exp && o.exp !== '-' ? o.exp : '', semEsp(e.motorista).toUpperCase(), P.cpfDigits(e.cpf), pl(e.placaL), isTruck(e) ? '' : pl(e.placaM)].map(semEsp);
+      return { text: partes.filter(Boolean).join('-'), need: [[0, 'EXP'], [1, 'Motorista'], [2, 'CPF'], [3, 'Placa carreta'], [4, 'Placa cavalo']].filter(([i]) => !partes[i] && !(i === 4 && isTruck(e))).map(x => x[1]).concat([3, 4].filter(i => partes[i] && !/[A-Z]{2}$/.test(partes[i])).map(i => i === 3 ? 'UF da carreta' : 'UF do cavalo')) };
+    }
     if (kind === 'placa') {
       // Controle OT!T3:T4 — "0001" e a placa da carreta com UF (ex.: AAA1234PR)
       const pl = P.plate7(e.placaL);
@@ -1834,6 +1841,7 @@
     marcarPendOT(T);
     renderPresencaPainel();
     $('#d-mail').hidden = !temContainer(T);
+    $('#d-expterr').hidden = !isAraucoMaderas(T); // só em exportação terrestre (Arauco Maderas)
     if (temContainer(T)) carregarMiniaturas($('#d-body'));
   }
 
@@ -2048,7 +2056,7 @@
       const { text, need } = copyText(b.dataset.copy, T);
       const ok = await toClipboard(text);
       b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 1200);
-      const nome = { texto: 'Dados de texto (VL02N/texto)', balanca: 'Dados de balança', motorista: 'Dados do motorista (VT02N)', placa: 'Placa p/ nota (VL02N/placa)' }[b.dataset.copy];
+      const nome = { expterr: 'Dados EXP terrestre', texto: 'Dados de texto (VL02N/texto)', balanca: 'Dados de balança', motorista: 'Dados do motorista (VT02N)', placa: 'Placa p/ nota (VL02N/placa)' }[b.dataset.copy];
       toast(`${ok ? 'Copiado' : 'Não foi possível copiar'}: ${nome}${need.length ? ` — em branco: ${need.join(', ')}` : ''}`, ok ? (need.length ? 'warn' : 'ok') : 'err', text);
     }));
 

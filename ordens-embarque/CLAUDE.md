@@ -37,6 +37,8 @@
 - Texto grande da célula A41 (carga), em `destaque()`: cliente ARAUCO MADERAS ou MADERAS ARAUCO => "EXPORTAÇÃO TERRESTRE";
   todos os textos de A41 ficam sobre o desenho da carreta com opacidade 0.7 (30% transparentes); material com "EB/" => "BREAKBULK"; container na janela de mercado interno => "CABOTAGEM"
   (`isCabotagem`, também marca os N/A); janela container => "CONTAINER". Nessa ordem de prioridade.
+- Cópia "Dados EXP terrestre" (`copyText('expterr')`, botão `#d-expterr` só quando `isAraucoMaderas`): `EXP-MOTORISTA-CPF-CARRETAUF-CAVALOUF`,
+  texto único sem espaços (nome sem espaços, CPF só dígitos, placas com UF; truck sem cavalo).
 - Cópia "Placa p/ nota": `0001` + quebra de linha + placa da carreta com UF (Controle OT T3:T4).
 - Tela inicial: 4 botões `data-colar` (ordem | MI | CONTAINER | ots) → `colarPorBotao` lê a área de
   transferência (ou abre `#paste-dialog`) → `processarColagem(text, html, tipo)`; Ctrl+V solto usa tipo null
