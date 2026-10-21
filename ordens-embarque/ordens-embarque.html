@@ -609,6 +609,10 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 .d-presenca{border-left:4px solid #D0CC00}
 .sync-user{margin:6px 0 4px}.sync-user input{width:220px}
 .sync-antigo{margin-top:6px}.sync-antigo summary{cursor:pointer}
+.ms-info{margin:6px 0;font-size:13px}
+.ms-espaco{position:relative;border:1px solid var(--line-soft);border-radius:8px;padding:7px 10px;font-size:12px;overflow:hidden;margin:6px 0}
+.ms-espaco span{position:relative;z-index:1}.ms-espaco i{position:absolute;left:0;top:0;bottom:0;background:var(--turq-soft)}
+.ms-espaco.alto i{background:var(--err-soft)}.ms-espaco.alto{color:var(--err)}
 
 </style>
 </head>
@@ -673,6 +677,7 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       <div class="tb-group">
         <button class="btn btn-ghost btn-sm btn-danger" id="btn-del-selected" disabled title="Excluir da lista diária as linhas selecionadas"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Excluir selecionadas</button>
         <button class="btn btn-ghost btn-sm" id="btn-fat-selected" disabled title="Marcar as linhas selecionadas como faturadas (vão para o fim da lista)"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Marcar faturadas</button>
+        <button class="btn btn-ghost btn-sm" id="btn-mes" title="Relatório mensal em Excel e fechamento do mês"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h3v3H8z"/></svg>Mês</button>
         <button class="btn btn-ghost btn-sm" id="btn-report" title="Relatório dos embarques do dia: Excel, PDF e e-mail"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 15v-3M12 15V9M16 15v-5"/></svg>Relatório do dia</button>
         <button class="btn btn-ghost btn-sm" id="btn-copy-list" title="Copiar a lista do dia (colar no Excel)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>Copiar lista</button>
         <button class="btn btn-ghost btn-sm" id="btn-new-manual"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Transporte manual</button>
@@ -942,6 +947,25 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
       </div>
     </div>
     <div class="rel-preview" id="rel-preview"></div>
+  </div>
+</dialog>
+
+<dialog id="mes-dialog" class="modal modal-sm">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <div><div class="eyebrow">Mês</div><h2>Relatório mensal e fechamento</h2></div>
+      <button class="icon-btn" id="ms-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="cf-body">
+      <p class="muted small">O mesmo app serve para todos os meses. Uma vez por mês, <b>feche o mês anterior</b>: o app baixa o Excel com todos os dados (por transporte, separado por data, com itens, agendamentos, OTs e pesagens) e um backup, e tira o mês do app para ele continuar leve.</p>
+      <label class="field-inline">Mês <input type="month" id="ms-mes"></label>
+      <p class="muted small" id="ms-meses"></p>
+      <div id="ms-resumo"></div>
+      <div class="sync-actions">
+        <button class="btn btn-ghost" id="ms-excel">Baixar relatório mensal (Excel)</button>
+        <button class="btn btn-primary" id="ms-fechar">Fechar o mês…</button>
+      </div>
+    </div>
   </div>
 </dialog>
 
@@ -4537,7 +4561,8 @@ window.ORDEM_TEMPLATES = {
     (state.sew || []).forEach(e => put('sew:' + cfg.sewKey(e), e));
     Object.entries(state.pesos || {}).forEach(([k, v]) => put('peso:' + k, v));
     Object.entries(state.tickets || {}).forEach(([k, v]) => put('tk:' + k, v));
-    Object.entries(state.fotos || {}).forEach(([k, v]) => put('foto:' + k, v)); // só nomes e dados lidos; as imagens ficam no computador
+    Object.entries(state.fotos || {}).forEach(([k, v]) => put('foto:' + k, v));
+    Object.entries(state.histBalanca || {}).forEach(([k, v]) => put('hb:' + k, v)); // só nomes e dados lidos; as imagens ficam no computador
     if (state.fsc && Object.keys(state.fsc).length) put('fsc', state.fsc);
     if (state.fscInfo) put('fscinfo', state.fscInfo);
     return out;
@@ -4560,6 +4585,7 @@ window.ORDEM_TEMPLATES = {
         case 'peso': (s.pesos = s.pesos || {})[id] = v; break;
         case 'tk': (s.tickets = s.tickets || {})[id] = v; break;
         case 'foto': (s.fotos = s.fotos || {})[id] = v; break;
+        case 'hb': (s.histBalanca = s.histBalanca || {})[id] = v; break;
         case 'fsc': s.fsc = v; break;
         case 'fscinfo': s.fscInfo = v; break;
         default: break;
@@ -4760,6 +4786,12 @@ window.ORDEM_TEMPLATES = {
       pasta: () => !!dir && !needsPermission,
       setAberto(t) { if (aberto === (t || null)) return; aberto = t || null; if (dir && !needsPermission) presenca().catch(() => {}); },
       fotos,
+      // grava um arquivo qualquer na pasta compartilhada (ex.: arquivo/ordens-embarque-2026-10.xlsx)
+      async salvarArquivo(sub, nome, blob) {
+        if (!dir || needsPermission) return false;
+        let d = dir; for (const p of sub) d = await d.getDirectoryHandle(p, { create: true });
+        const w = await (await d.getFileHandle(nomeArq(nome), { create: true })).createWritable(); await w.write(blob); await w.close(); return true;
+      },
       async createFile() {
         const h = await global.showSaveFilePicker({ suggestedName: 'ordens-embarque-dados.json', types: [{ description: 'Dados das ordens de embarque', accept: { 'application/json': ['.json'] } }] });
         await attach(h, true);
@@ -5140,7 +5172,7 @@ window.ORDEM_TEMPLATES = {
   }
 
   global.OEF = {
-    SLOTS, CAMPO_NOME, put, get, del, setRemoto, enviarPendentes, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
+    SLOTS, CAMPO_NOME, put, get, del, delLocal, setRemoto, enviarPendentes, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
     ILEGIVEL, ehIlegivel, PADRAO_MWG, digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
     carregarOCR, ocr, recortar, dadosJuntos, montarEML, estadoOCR: () => estado,
   };
@@ -5163,7 +5195,7 @@ window.ORDEM_TEMPLATES = {
 
   // ------------------------------------------------------------------ estado
   const STORE_KEY = 'arauco.ordensEmbarque.v1';
-  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {}, fotos: {} });
+  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {}, fotos: {}, histBalanca: {} });
   let state = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.v === 1) return Object.assign(emptyState(), s); } catch (e) { /* sem storage */ }
@@ -6089,6 +6121,8 @@ window.ORDEM_TEMPLATES = {
           nfItem: nfRef != null ? nfRef * m.qtd : null });
       });
     });
+    // meses fechados: pesagens guardadas no histórico
+    Object.values(state.histBalanca || {}).forEach(l => l.forEach(r => recs.push(Object.assign({}, r))));
     return { recs, semOrdem, semLote };
   }
   function analiseBalanca() {
@@ -6596,6 +6630,128 @@ window.ORDEM_TEMPLATES = {
       window.location.href = `mailto:${para}?${cc ? `cc=${encodeURIComponent(cc)}&` : ''}subject=${encodeURIComponent(m.assunto)}&body=${encodeURIComponent(ok ? '(cole aqui: Ctrl+V)' : '')}`;
       toast(ok ? 'E-mail aberto. O conteúdo com as fotos já está copiado: clique no corpo e pressione Ctrl+V.' : 'E-mail aberto (não foi possível copiar as fotos).', ok ? 'ok' : 'warn');
     });
+  }
+
+  // ------------------------------------------------------------------ relatório mensal e fechamento do mês
+  // O app guarda os dados no navegador (~5 MB). Uma vez por mês: exporta tudo em Excel (por transporte, por data),
+  // guarda um backup e tira o mês do app. Fotos ficam na pasta do servidor; o histórico de pesagens fica no app.
+  const mesDe = T => (T.eff.data || '').slice(0, 7);
+  const dt = v => v ? new Date(v).toLocaleString('pt-BR') : '';
+  function espacoUsado() {
+    let n = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || '').length; } } catch (e) { /* sem storage */ }
+    return { mb: n * 2 / 1048576, pct: Math.min(100, n * 2 / (5 * 1048576) * 100) }; // ~5 MB por site no Chrome
+  }
+  const tipoCarga = T => destaque(T, T.janela === 'CONTAINER') || (T.janela === 'CONTAINER' ? 'CONTAINER' : 'MERCADO INTERNO');
+  function dadosMes(mes) {
+    const list = allTransports().filter(T => mesDe(T) === mes)
+      .sort((a, b) => (a.eff.data || '').localeCompare(b.eff.data || '') || (a.eff.hora || '99').localeCompare(b.eff.hora || '99') || a.transporte.localeCompare(b.transporte));
+    const pesagens = registrosBalanca().recs.filter(r => (r.data || '').slice(0, 7) === mes).concat((state.histBalanca || {})[mes] || []);
+    const pesoTicket = T => String(T.ot.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(k => k && state.tickets[k]).reduce((a, k) => a + (state.tickets[k].liq || 0), 0) || '';
+    const transportes = [['Data', 'Hora', 'Transporte', 'Tipo de carga', 'Cliente', 'Destino', 'Entrega(s)', 'Incoterm', 'Materiais', 'Qtd (pç)', 'Pallets / lotes', 'Carga fracionada', 'Amostra', 'FSC',
+      'Placa carreta/truck', 'Placa cavalo', 'Motorista', 'CPF', 'Treinamento', 'Transportadora', 'OT(s)', 'Doc', 'NF-e', 'EXP', 'Container', 'Lacre', 'Tara (kg)', 'MWG (kg)', 'Ticket balança', 'Peso balança (kg)',
+      'Impressa em', 'Faturada em', 'Status', 'Alterações após impressão', 'Fotos', 'Conferência das fotos', 'Container (porta)', 'Container (RIC)', 'Lacre (RIC)', 'Lacre físico', 'Tara (RIC)', 'Max gross (RIC)']]
+      .concat(list.map(T => {
+        const e = T.eff, f = state.fotos[T.transporte], L = s => (f && f.lido[s]) || {}, v = temContainer(T) ? validarFotos(T) : null;
+        return [P.fmtDateBR(e.data), e.hora, T.transporte, tipoCarga(T), e.cliente, T.solic && T.solic.cidade ? `${T.solic.cidade}/${T.solic.uf}` : '', T.entregas.join(' / '), e.incoterm,
+          T.items.map(i => i.descricao).filter(Boolean).join(' | '), T.items.reduce((a, i) => a + (i.qtd || 0), 0), T.pallets == null ? '' : round(T.pallets, 2), isFracionada(T) ? 'SIM' : '', isAmostra(T) ? 'SIM' : '', T.fsc ? (T.fsc.fsc || 'FSC') : '',
+          e.placaL, isTruck(e) ? '' : e.placaM, e.motorista, P.fmtCPF(e.cpf), e.treinamento, e.transportadora, T.otList.join(' / '), T.ot.doc, T.ot.nf, T.ot.exp, T.ot.container, T.ot.lacre, T.ot.tara, T.ot.mwg, T.ot.ticket, pesoTicket(T),
+          dt(T.printed), dt(T.faturado), statusTexto(T), T.alteracoes.map(a => `${a.campo}: ${a.de || '—'} → ${a.para || '—'}`).join('; '),
+          temContainer(T) ? `${nFotos(T.transporte)}/6` : '', v ? ({ ok: 'Conferido', div: 'DIVERGENTE: ' + v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', '), pend: 'Pendente' }[v.st]) : '',
+          L('porta').container || '', L('ric').container || '', L('ric').lacre || '', L('ric').lacreFis || '', L('ric').tara || '', L('ric').mwg || ''];
+      }));
+    const itens = [['Data', 'Transporte', 'Cliente', 'Pedido', 'Entrega', 'Material', 'Descrição', 'Qtd (pç)', 'Pallets / lotes']]
+      .concat([].concat(...list.map(T => T.items.map(i => [P.fmtDateBR(T.eff.data), T.transporte, T.eff.cliente, i.pedido, i.entrega || T.eff.entrega, i.material, i.descricao, i.qtd, i.pallets == null ? '' : round(i.pallets, 2)]))));
+    const dias = Array.from(new Set(list.map(T => T.eff.data))).sort();
+    const porDia = [['Data', 'Transportes', 'Mercado interno', 'Containers', 'Pallets', 'Impressas', 'Faturadas', 'Peso balança (kg)']]
+      .concat(dias.map(d => { const l = list.filter(T => T.eff.data === d); return [P.fmtDateBR(d), l.length, l.filter(T => T.janela !== 'CONTAINER').length, l.filter(T => T.janela === 'CONTAINER').length, round(l.reduce((a, T) => a + (T.pallets || 0), 0), 1), l.filter(T => T.printed).length, l.filter(T => T.faturado).length, l.reduce((a, T) => a + (+pesoTicket(T) || 0), 0)]; }));
+    const sew = state.sew.filter(e => !e.carregamento && (e.data || '').slice(0, 7) === mes).sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+    const agend = [['Data', 'Hora', 'Janela', 'Senha', 'Status', 'Tipo de veículo', 'Carreta', 'Cavalo', 'CPF', 'Container', 'Transportadora', 'Cliente', 'Volume', 'Removido do agendamento', 'Alterações']]
+      .concat(sew.map(e => [P.fmtDateBR(e.data), e.hora, e.janela === 'CONTAINER' ? 'PIÊN CONTAINERS' : 'PIÊN PAINÉIS', e.senha, e.status, e.tipoVeiculo, e.carreta, e.cavalo, e.cpf, e.container, e.transportadora, e.cliente, e.volume, e.removed ? 'SIM' : '', (e.changes || []).map(c => `${c.campo}: ${c.de || '—'} → ${c.para || '—'}`).join('; ')]));
+    const entregas = new Set([].concat(...list.map(T => T.entregas)));
+    const ots = [['Remessa', 'OT', 'Material', 'Texto', 'Tp. depósito', 'Posição', 'Qtd']]
+      .concat([].concat(...[...entregas].map(en => { const o = state.ots[en]; return o ? ((o.itens && o.itens.length) ? o.itens.map(r => [en, r.ot, r.material, r.texto, r.tpDep, r.posicao, r.qtd]) : (o.ots || []).map(x => [en, x, '', '', '', '', ''])) : []; })));
+    const pes = [['Data', 'Ticket', 'Transporte', 'Cliente', 'Material', 'Descrição', 'Qtd (pç)', 'Lotes', 'Peso balança carga (kg)', 'Peso do item (kg)', 'Rateio', 'kg/lote', 'kg/peça']]
+      .concat(pesagens.map(r => [P.fmtDateBR(r.data), r.ticket, r.transporte, r.cliente, r.material, r.descricao, r.qtd, round(r.lotes, 3), r.pesoCarga, round(r.pesoItem, 1), r.metodo, round(r.kgLote, 1), round(r.kgPc, 4)]));
+    const resumo = [[`Relatório mensal ${nomeMes(mes)} · Expedição Arauco Piên`], [`Gerado em ${new Date().toLocaleString('pt-BR')}`], [],
+      ['Transportes', list.length], ['Mercado interno', list.filter(T => T.janela !== 'CONTAINER').length], ['Containers', list.filter(T => T.janela === 'CONTAINER').length],
+      ['Pallets / lotes', round(list.reduce((a, T) => a + (T.pallets || 0), 0), 1)], ['Ordens impressas', list.filter(T => T.printed).length], ['Faturadas', list.filter(T => T.faturado).length],
+      ['Containers com divergência nas fotos', list.filter(T => temContainer(T) && validarFotos(T).st === 'div').length], ['Agendamentos SEW', sew.length], ['Pesagens (item × carga)', pesagens.length], ['Dias com embarque', dias.length]];
+    return { mes, list, sew, entregas, pesagens, abas: [['Resumo', resumo], ['Transportes', transportes], ['Itens', itens], ['Por dia', porDia], ['Agendamentos', agend], ['OTs', ots], ['Pesagens', pes]] };
+  }
+  function excelMes(M) {
+    const wb = XLSX.utils.book_new();
+    M.abas.forEach(([nome, rows]) => {
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      if (nome !== 'Resumo' && rows.length > 1) {
+        ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length - 1, c: rows[0].length - 1 } }) };
+        ws['!cols'] = rows[0].map((h, c) => ({ wch: Math.min(48, Math.max(String(h).length + 2, ...rows.slice(1, 200).map(r => String(r[c] == null ? '' : r[c]).length + 1))) }));
+      } else ws['!cols'] = [{ wch: 40 }, { wch: 14 }];
+      XLSX.utils.book_append_sheet(wb, ws, nome);
+    });
+    return new Blob([XLSX.write(wb, { type: 'array', bookType: 'xlsx' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  // backup completo só do mês (para restaurar se precisar)
+  function backupMes(M) {
+    const ts = new Set(M.list.map(T => T.transporte)); const pick = o => Object.fromEntries(Object.entries(o || {}).filter(([k]) => ts.has(k)));
+    return { v: 1, app: 'arauco-ordens-embarque', backupDoMes: M.mes, geradoEm: new Date().toISOString(),
+      items: Object.fromEntries(Object.entries(state.items).filter(([, i]) => ts.has(i.transporte))), manual: pick(state.manual), printed: pick(state.printed), snap: pick(state.snap),
+      faturado: pick(state.faturado), fatNf: pick(state.fatNf), fotos: pick(state.fotos), sew: M.sew, ots: Object.fromEntries([...M.entregas].filter(en => state.ots[en]).map(en => [en, state.ots[en]])),
+      tickets: Object.fromEntries(M.pesagens.map(r => [r.ticket, state.tickets[r.ticket]]).filter(([, v]) => v)), pesagens: M.pesagens, fsc: {}, pesos: {} };
+  }
+  function renderMes() {
+    const mes = $('#ms-mes').value; if (!mes) return;
+    const M = dadosMes(mes), E = espacoUsado(), nF = M.list.reduce((a, T) => a + nFotos(T.transporte), 0);
+    $('#ms-resumo').innerHTML = `<div class="ms-info"><b>${M.list.length}</b> transporte(s) em ${esc(nomeMes(mes))} · ${M.abas[2][1].length - 1} item(ns) · ${M.sew.length} agendamento(s) · ${nF} foto(s) · ${M.pesagens.length} pesagem(ns)</div>
+      <div class="ms-espaco ${E.pct > 70 ? 'alto' : ''}"><span>Espaço usado no navegador: <b>${fmtNum(E.mb, 1)} MB</b> de ~5 MB (${fmtNum(E.pct, 0)}%)${E.pct > 70 ? ' — feche o mês anterior para liberar espaço' : ''}</span><i style="width:${E.pct.toFixed(0)}%"></i></div>`;
+    $('#ms-fechar').disabled = !M.list.length && !M.sew.length;
+  }
+  async function salvarNaPasta(nome, blob) { try { return sync && sync.pasta() ? await sync.salvarArquivo(['arquivo'], nome, blob) : false; } catch (e) { return false; } }
+  async function exportarMes(fechar) {
+    const mes = $('#ms-mes').value; if (!mes) return;
+    if (!window.XLSX) { toast('O Excel precisa de internet (biblioteca SheetJS). Conecte e tente de novo; o mês não foi fechado.', 'err'); return; }
+    const M = dadosMes(mes);
+    if (fechar) {
+      const atual = mes >= P.todayISO().slice(0, 7);
+      const ok = await confirmBox(`Fechar ${nomeMes(mes)}`, `<p>Vai baixar o <b>relatório mensal (Excel)</b> e o <b>backup</b> de ${esc(nomeMes(mes))} e depois <b>tirar do app</b>: ${M.list.length} transporte(s), ${M.sew.length} agendamento(s) e as OTs dessas entregas.</p>
+        <p class="muted">O histórico de pesagens e a base de pesos continuam no app. As fotos continuam na pasta do servidor.${sync && sync.pasta() ? ' O Excel e o backup também são gravados na pasta compartilhada (arquivo/). Os colegas recebem o fechamento automaticamente.' : ''}</p>
+        ${atual ? '<p class="txt-alt"><b>Atenção:</b> este é o mês atual (ou futuro). Feche só depois que o mês terminar.</p>' : ''}`, 'Exportar e fechar o mês');
+      if (!ok) return;
+    }
+    const xl = excelMes(M); const nome = `ordens-embarque-${mes}`;
+    baixar(nome + '.xlsx', xl);
+    const naPasta = await salvarNaPasta(nome + '.xlsx', xl);
+    if (!fechar) { toast(`Relatório mensal de ${nomeMes(mes)} baixado (Excel)${naPasta ? ' e gravado na pasta compartilhada' : ''}.`, 'ok'); return; }
+    const bk = new Blob([JSON.stringify(backupMes(M))], { type: 'application/json' });
+    baixar(nome + '-backup.json', bk); await salvarNaPasta(nome + '-backup.json', bk);
+    // histórico de pesagens do mês fica no app (gráfico da balança continua com os meses anteriores)
+    const hist = M.pesagens.map(r => ({ ticket: r.ticket, data: r.data, transporte: r.transporte, via: 'arquivo', cliente: r.cliente, placa: r.placa, material: r.material, descricao: r.descricao, qtd: r.qtd, lotes: r.lotes, pesoCarga: r.pesoCarga, pesoItem: r.pesoItem, metodo: r.metodo, itensCarga: r.itensCarga, kgLote: r.kgLote, kgPc: r.kgPc, nfItem: r.nfItem }));
+    state.histBalanca = state.histBalanca || {}; if (hist.length) state.histBalanca[mes] = ((state.histBalanca[mes] || []).filter(h => !hist.some(x => x.ticket === h.ticket && x.material === h.material))).concat(hist);
+    const ts = new Set(M.list.map(T => T.transporte));
+    Object.values(state.items).forEach(i => { if (ts.has(i.transporte)) delete state.items[i.key]; });
+    ts.forEach(t => { ['manual', 'printed', 'snap', 'faturado', 'fatNf'].forEach(k => { if (state[k]) delete state[k][t]; });
+      const fo = state.fotos[t]; if (fo) { Object.values(fo.slots || {}).forEach(it => window.OEF.delLocal(it.id).catch(() => {})); delete state.fotos[t]; } ui.selected.delete(t); });
+    state.sew = state.sew.filter(e => e.carregamento || (e.data || '').slice(0, 7) !== mes);
+    M.entregas.forEach(en => delete state.ots[en]);
+    new Set(hist.map(h => h.ticket)).forEach(k => delete state.tickets[k]);
+    if (ui.open && ts.has(ui.open)) closeDetail();
+    save(true); ui.date = pickDefaultDate(); $('#date-filter').value = ui.date; renderAll(); renderMes();
+    toast(`${nomeMes(mes)} fechado: Excel e backup baixados${naPasta ? ' e gravados na pasta compartilhada (arquivo/)' : ''}. ${ts.size} transporte(s) saíram do app.`, 'ok');
+  }
+  function bindMes() {
+    $('#btn-mes').addEventListener('click', () => {
+      const ms = Array.from(new Set(allTransports().map(mesDe).filter(Boolean))).sort();
+      const ant = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); })();
+      $('#ms-mes').value = ms.includes(ant) ? ant : (ms[0] || ant);
+      $('#ms-meses').innerHTML = ms.length ? 'Meses com dados no app: ' + ms.map(m => `<a href="#" data-mes="${m}">${esc(nomeMes(m))}</a>`).join(' · ') : 'Nenhum transporte no app.';
+      renderMes(); $('#mes-dialog').showModal();
+    });
+    $('#ms-meses').addEventListener('click', e => { const a = e.target.closest('[data-mes]'); if (a) { e.preventDefault(); $('#ms-mes').value = a.dataset.mes; renderMes(); } });
+    $('#ms-mes').addEventListener('change', renderMes);
+    $('#ms-close').addEventListener('click', () => $('#mes-dialog').close());
+    $('#ms-excel').addEventListener('click', () => exportarMes(false));
+    $('#ms-fechar').addEventListener('click', () => exportarMes(true));
+    // aviso de espaço ao abrir o app
+    setTimeout(() => { const E = espacoUsado(); if (E.pct > 70) toast(`O app está usando ${fmtNum(E.pct, 0)}% do espaço do navegador. Use "Mês" → Fechar mês para liberar.`, 'warn'); }, 1500);
   }
 
   // ------------------------------------------------------------------ guia Agendamentos
@@ -7656,7 +7812,7 @@ window.ORDEM_TEMPLATES = {
     if (!TPL) { document.body.innerHTML = '<p style="padding:40px">Modelos de impressão não encontrados (js/templates.js).</p>'; return; }
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
-    bind(); bindImport(); bindRelatorio(); bindSync();
+    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes();
     setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });

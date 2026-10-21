@@ -43,7 +43,8 @@
     (state.sew || []).forEach(e => put('sew:' + cfg.sewKey(e), e));
     Object.entries(state.pesos || {}).forEach(([k, v]) => put('peso:' + k, v));
     Object.entries(state.tickets || {}).forEach(([k, v]) => put('tk:' + k, v));
-    Object.entries(state.fotos || {}).forEach(([k, v]) => put('foto:' + k, v)); // só nomes e dados lidos; as imagens ficam no computador
+    Object.entries(state.fotos || {}).forEach(([k, v]) => put('foto:' + k, v));
+    Object.entries(state.histBalanca || {}).forEach(([k, v]) => put('hb:' + k, v)); // só nomes e dados lidos; as imagens ficam no computador
     if (state.fsc && Object.keys(state.fsc).length) put('fsc', state.fsc);
     if (state.fscInfo) put('fscinfo', state.fscInfo);
     return out;
@@ -66,6 +67,7 @@
         case 'peso': (s.pesos = s.pesos || {})[id] = v; break;
         case 'tk': (s.tickets = s.tickets || {})[id] = v; break;
         case 'foto': (s.fotos = s.fotos || {})[id] = v; break;
+        case 'hb': (s.histBalanca = s.histBalanca || {})[id] = v; break;
         case 'fsc': s.fsc = v; break;
         case 'fscinfo': s.fscInfo = v; break;
         default: break;
@@ -266,6 +268,12 @@
       pasta: () => !!dir && !needsPermission,
       setAberto(t) { if (aberto === (t || null)) return; aberto = t || null; if (dir && !needsPermission) presenca().catch(() => {}); },
       fotos,
+      // grava um arquivo qualquer na pasta compartilhada (ex.: arquivo/ordens-embarque-2026-10.xlsx)
+      async salvarArquivo(sub, nome, blob) {
+        if (!dir || needsPermission) return false;
+        let d = dir; for (const p of sub) d = await d.getDirectoryHandle(p, { create: true });
+        const w = await (await d.getFileHandle(nomeArq(nome), { create: true })).createWritable(); await w.write(blob); await w.close(); return true;
+      },
       async createFile() {
         const h = await global.showSaveFilePicker({ suggestedName: 'ordens-embarque-dados.json', types: [{ description: 'Dados das ordens de embarque', accept: { 'application/json': ['.json'] } }] });
         await attach(h, true);

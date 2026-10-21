@@ -464,3 +464,17 @@ Para 2 ou 3 pessoas usarem o app ao mesmo tempo (Google Chrome):
    - Quem está digitando não perde o cursor nem o que digitou quando chegam dados dos colegas.
    - Se duas pessoas alterarem o **mesmo campo**, vale a última gravação; campos diferentes nunca se perdem.
 4. Ao abrir o app outro dia, o Chrome pode pedir para liberar a pasta de novo: clique em **Reconectar dados compartilhados** no topo.
+
+### Fechamento mensal
+
+O app é o mesmo todo mês (não precisa de um app novo), mas o navegador guarda no máximo uns 5 MB. Por isso, no começo
+de cada mês, **feche o mês anterior**: botão **Mês** (barra da lista diária) → escolha o mês → **Fechar o mês…**
+
+- Baixa o **relatório mensal em Excel**: Resumo, Transportes (uma linha por transporte, por data e hora, com todos os
+  dados, Controle OT, impressão, faturamento, alterações, fotos e conferência), Itens, Por dia, Agendamentos, OTs e Pesagens.
+- Baixa um **backup** do mês (.json) para restaurar se precisar. Com a pasta compartilhada conectada, os dois arquivos
+  também ficam em `arquivo/` na pasta do servidor.
+- Tira o mês do app (em todos os computadores conectados). O histórico de pesagens (gráfico da balança), a base de pesos
+  e a lista FSC continuam; as fotos continuam na pasta do servidor.
+- **Baixar relatório mensal (Excel)** gera só o Excel, sem tirar nada do app (bom para relatórios no meio do mês).
+- O diálogo mostra o espaço usado; acima de 70% o app avisa ao abrir.

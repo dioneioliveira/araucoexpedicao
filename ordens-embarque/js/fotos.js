@@ -357,7 +357,7 @@
   }
 
   global.OEF = {
-    SLOTS, CAMPO_NOME, put, get, del, setRemoto, enviarPendentes, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
+    SLOTS, CAMPO_NOME, put, get, del, delLocal, setRemoto, enviarPendentes, comprimir, reduzir, blobToDataURL, distribuir, imagens, assinatura, papelBranco, classificar,
     ILEGIVEL, ehIlegivel, PADRAO_MWG, digitoVerificador, contValido, normCont, fmtCont, containersNoTexto, lerTara, lerMwg, lerLacre, normLacre, lacreIgual, dadosDoTexto,
     carregarOCR, ocr, recortar, dadosJuntos, montarEML, estadoOCR: () => estado,
   };

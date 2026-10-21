@@ -125,3 +125,11 @@
   vazio/ILEGÍVEL/"auto", nunca o digitado.
   E-mail do container (`#mail-dialog`): EXP, container e lacre em destaque + fotos; `.eml` com `X-Unsent: 1` e imagens
   `cid:` (abre como rascunho no Outlook), ou copiar HTML com as fotos.
+- Mês (`#btn-mes`, `#mes-dialog`, `dadosMes`/`excelMes`/`exportarMes`): o app é o mesmo todo mês; o localStorage tem ~5 MB
+  (~6 KB por transporte com o registro do sync), então **fecha-se o mês anterior** uma vez por mês. Relatório mensal Excel
+  (SheetJS) com abas Resumo, Transportes (1 linha por transporte, ordenado por data/hora, 42 colunas: dados, Controle OT,
+  impressão/faturamento, alterações, fotos e conferência), Itens, Por dia, Agendamentos, OTs e Pesagens. "Fechar o mês":
+  baixa Excel + backup JSON do mês (e grava ambos em `arquivo/` na pasta compartilhada), guarda as pesagens em
+  `state.histBalanca[mes]` (sync `hb:`; entram em `registrosBalanca`), e remove do app itens/manual/printed/snap/faturado/
+  fatNf/fotos (cópia local; arquivos da pasta ficam), SEW do mês, OTs das entregas e tickets arquivados. Sem SheetJS não fecha.
+  Indicador de espaço usado (`espacoUsado`) no diálogo e aviso ao abrir acima de 70%.
