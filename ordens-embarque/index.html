@@ -67,7 +67,8 @@
           <button data-v="MI">Mercado interno</button>
           <button data-v="CONTAINER">Containers</button>
         </div>
-        <input type="search" id="search" placeholder="Buscar cliente, placa, motorista…">
+        <select id="cont-filter" class="sel-sm" title="Filtrar pelo nº do container"><option value="">Container: todos</option><option value="com">Com nº de container</option><option value="sem">Sem container</option></select>
+        <input type="search" id="search" placeholder="Buscar cliente, placa, container, lacre…">
       </div>
       <div class="tb-group">
         <button class="btn btn-ghost btn-sm btn-danger" id="btn-del-selected" disabled title="Excluir da lista diária as linhas selecionadas"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Excluir selecionadas</button>
@@ -94,7 +95,7 @@
               <th class="c-check"><input type="checkbox" id="check-all" title="Selecionar todas"></th>
               <th>Hora</th><th>Transporte</th><th>Janela</th><th>Cliente</th><th>Entrega</th>
               <th>Material</th><th class="num">Pallets</th><th>Placas</th><th>Motorista</th>
-              <th>Treinamento</th><th>Transportadora</th><th>OT</th><th class="c-status">Status</th><th class="c-act"></th>
+              <th>Treinamento</th><th>Transportadora</th><th>OT</th><th>Container</th><th class="c-status">Status</th><th class="c-act"></th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -453,7 +454,7 @@
     <div class="modal-head"><h2 id="cf-title">Confirmar</h2></div>
     <div id="cf-body" class="cf-body"></div>
     <div class="modal-foot">
-      <button value="cancel" class="btn btn-ghost">Voltar</button>
+      <button value="cancel" class="btn btn-ghost" id="cf-cancel">Voltar</button>
       <button value="ok" class="btn btn-primary" id="cf-ok">Continuar</button>
     </div>
   </form>

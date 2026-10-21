@@ -478,3 +478,19 @@ de cada mês, **feche o mês anterior**: botão **Mês** (barra da lista diária
   e a lista FSC continuam; as fotos continuam na pasta do servidor.
 - **Baixar relatório mensal (Excel)** gera só o Excel, sem tirar nada do app (bom para relatórios no meio do mês).
 - O diálogo mostra o espaço usado; acima de 70% o app avisa ao abrir.
+
+### Controle OT completo antes de faturar
+
+Depois que a **OT** é informada, o painel da ordem pede o Controle OT completo:
+
+| Campo | Mercado interno | Container |
+|---|---|---|
+| Doc | obrigatório, mín. 6 caracteres | obrigatório, mín. 6 |
+| NF-e | obrigatório, mín. 5 | obrigatório, mín. 5 |
+| Ticket balança | obrigatório, mín. 5 | obrigatório, mín. 5 |
+| EXP, Nº container, Lacre, Tara, MWG | vêm com "-" automático | obrigatórios (lacre mín. 5, tara mín. 4); container vem do agendamento; MWG vem com 32.500 |
+
+Os campos que faltam ficam em vermelho, com a mensagem no topo do Controle OT. Por enquanto não bloqueia: se a ordem já
+foi impressa, ao **fechar o painel**, **marcar como faturada** ou **lançar a NF-e**, aparece um aviso com o que falta
+(**Preencher agora** volta ao painel). A lista diária tem a coluna **Container**, o filtro **Container** (com nº / sem) e a
+busca encontra container e lacre.

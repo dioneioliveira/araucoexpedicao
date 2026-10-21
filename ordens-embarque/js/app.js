@@ -31,7 +31,7 @@
   }
   let printing = false;
   let sync = null;
-  const ui = { date: '', janela: 'ALL', q: '', selected: new Set(), open: null, view: 'lista', agMode: 'auto' };
+  const ui = { date: '', janela: 'ALL', cont: '', q: '', selected: new Set(), open: null, view: 'lista', agMode: 'auto' };
 
   // campos do transporte que podem ser corrigidos/preenchidos à mão
   const OVERRIDABLE = ['data', 'hora', 'cliente', 'entrega', 'incoterm', 'motorista', 'cpf', 'transportadora', 'placaL', 'placaM', 'tipoVeiculo', 'treinamento'];
@@ -146,12 +146,17 @@
     if (!ot.container && f.container) ot.container = f.container;
     if (!ot.container && sew && sew.container) ot.container = sew.container;
     const missing = REQUIRED.filter(([k]) => !P.clean(eff[k])).map(([, l]) => l);
-    return {
+    const T = {
       transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (f.janela ? 'Solicitação de Embarque' : (sew ? 'SEW' : 'padrão')),
       solic: f.fonte === 'Solicitação de Embarque' ? f : null,
       fsc, fscAuto, ot, otSrc, otList, entregas, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
       printed: state.printed[t] || null, faturado: state.faturado[t] || null, manualOnly: items.every(i => i.manualOnly),
     };
+    // padrões do Controle OT: mercado interno = "-" em EXP, container, lacre, tara e MWG; container = MWG 32.500
+    T.otPadrao = {};
+    if (T.janela === 'CONTAINER' || isCabotagem(T)) { if (!T.ot.mwg) { T.ot.mwg = '32500'; T.otPadrao.mwg = true; } }
+    else ['exp', 'container', 'lacre', 'tara', 'mwg'].forEach(k => { if (!T.ot[k]) { T.ot[k] = '-'; T.otPadrao[k] = true; } });
+    return T;
   }
   function withAlt(T) { T.alteracoes = T.printed ? alteracoesDesdeImpressao(T) : []; return T; }
   function allTransports() {
@@ -202,7 +207,8 @@
   // Container agendado na janela de MERCADO INTERNO (PIÊN PAINÉIS): nº de container na
   // Solicitação / agendamento / Controle OT, ou tipo de veículo de container.
   const RE_CONT = /CONTAINER|CONTEINER|PORTA.?CONT/;
-  const isCabotagem = T => T.janela !== 'CONTAINER' && (!!P.clean(T.ot.container) ||
+  const semValor = v => { const c = P.clean(v); return !c || c === '-'; };
+  const isCabotagem = T => T.janela !== 'CONTAINER' && (!semValor(T.ot.container) ||
     RE_CONT.test(P.norm(T.eff.tipoVeiculo)) || (!!T.sew && T.sew.janela === 'MI' && (!!P.clean(T.sew.container) || RE_CONT.test(P.norm(T.sew.tipoVeiculo)))));
   function destaque(T, cont) {
     if (isAraucoMaderas(T)) return 'EXPORTAÇÃO TERRESTRE';
@@ -469,7 +475,8 @@
     return allTransports()
       .filter(T => T.eff.data === ui.date)
       .filter(T => ui.janela === 'ALL' || T.janela === ui.janela)
-      .filter(T => !q || P.norm([T.transporte, T.eff.cliente, T.eff.entrega, T.eff.motorista, T.eff.placaL, T.eff.placaM, T.eff.transportadora, T.ot.ot, T.items.map(i => i.descricao + ' ' + i.material).join(' ')].join(' ')).includes(q))
+      .filter(T => !ui.cont || (ui.cont === 'com' ? !semValor(T.ot.container) : semValor(T.ot.container)))
+      .filter(T => !q || P.norm([T.transporte, T.eff.cliente, T.eff.entrega, T.eff.motorista, T.eff.placaL, T.eff.placaM, T.eff.transportadora, T.ot.ot, semValor(T.ot.container) ? '' : T.ot.container + ' ' + fmtContainer(T.ot.container), T.ot.lacre, T.items.map(i => i.descricao + ' ' + i.material).join(' ')].join(' ')).includes(q))
       // por horário; as já faturadas descem para o fim
       .sort((a, b) => (!!a.faturado - !!b.faturado) || (a.eff.hora || '99').localeCompare(b.eff.hora || '99') || a.transporte.localeCompare(b.transporte));
   }
@@ -529,7 +536,8 @@
       <td class="wrap"><span class="sub mono">${esc(e.cpf)}</span></td>
       <td></td>
       <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
-      <td class="mono">${ct && e.container ? esc(e.container) : ''}</td>
+      <td></td>
+      <td class="mono">${ct && e.container ? esc(fmtContainer(e.container)) : ''}</td>
       <td class="c-status"><span class="chip nimp">Não impressa</span></td>
       <td class="c-act"></td>
     </tr>`;
@@ -561,6 +569,7 @@
         <td>${treinoChip(T)}</td>
         <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
+        <td class="mono c-cont">${semValor(T.ot.container) ? '' : esc(fmtContainer(T.ot.container))}</td>
         <td class="c-status">${statusChip(T)}${fotoChip(T)}${quemAbriu(T.transporte).map(n => ` <span class="chip pres" title="${esc(n)} está com esta ordem aberta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>${esc(n.split(' ')[0])}</span>`).join('')}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
@@ -678,6 +687,43 @@
       window.location.href = `mailto:${para}?subject=${encodeURIComponent(r.titulo)}&body=${encodeURIComponent(body)}`;
       toast(ok ? 'E-mail aberto. O relatório completo já está copiado: clique no corpo do e-mail e pressione Ctrl+V. Para anexar a planilha, use "Baixar Excel".' : 'E-mail aberto (não foi possível copiar o relatório).', ok ? 'ok' : 'warn');
     });
+  }
+
+  // ------------------------------------------------------------------ Controle OT: preenchimento obrigatório depois da OT
+  // Com OT: Doc (mín. 6), NF-e (mín. 5) e Ticket (mín. 5) sempre; container também EXP, Nº container, Lacre (mín. 5),
+  // Tara (mín. 4) e MWG (padrão 32.500). Mercado interno: EXP, container, lacre, tara e MWG vêm com "-".
+  const OT_MIN = { doc: 6, nf: 5, ticket: 5, tara: 4, lacre: 5 };
+  function pendenciasOT(T) {
+    if (!T || !T.otList.length) return [];
+    const ct = T.janela === 'CONTAINER' || isCabotagem(T);
+    const campos = ct ? ['doc', 'nf', 'tara', 'mwg', 'exp', 'container', 'lacre', 'ticket'] : ['doc', 'nf', 'ticket', 'exp', 'container', 'lacre', 'tara', 'mwg'];
+    const out = [];
+    campos.forEach(k => {
+      const v = P.clean(T.ot[k]); const nome = (OT_FIELDS.find(f => f[0] === k) || [k, k])[1].replace(/ \(.*\)$/, '');
+      if (!v) return out.push({ k, nome, motivo: 'em branco' });
+      if (v === '-') { if (ct) out.push({ k, nome, motivo: 'obrigatório em container' }); return; }
+      const n = v.replace(/[^A-Za-z0-9]/g, '').length;
+      if (OT_MIN[k] && n < OT_MIN[k]) out.push({ k, nome, motivo: `mín. ${OT_MIN[k]} caracteres` });
+    });
+    return out;
+  }
+  const textoPend = p => p.map(x => `${x.nome} (${x.motivo})`).join(', ');
+  // destaca no painel os campos que faltam (só depois que a OT foi informada)
+  function marcarPendOT(T) {
+    const p = pendenciasOT(T), ks = new Set(p.map(x => x.k));
+    $$('[data-ot]', $('#d-body')).forEach(inp => { const f = inp.closest('.f'); if (f) f.classList.toggle('ot-falta', ks.has(inp.dataset.ot)); });
+    const box = $('#ot-pend'); if (!box) return p;
+    box.hidden = !p.length;
+    box.innerHTML = p.length ? `<b>Complete os dados do Controle OT:</b> ${esc(textoPend(p))}.` : '';
+    return p;
+  }
+  // aviso (sem bloquear) ao fechar a ordem ou ao faturar: ordem com OT e já impressa precisa do Controle OT completo
+  async function avisoPendOT(T, acao) {
+    const p = pendenciasOT(T);
+    if (!p.length || !T.printed) return true;
+    return confirmBox('Controle OT incompleto', `<p class="txt-alt"><b>Transporte ${esc(T.transporte)}: preencha os dados do Controle OT.</b></p>
+      <ul>${p.map(x => `<li><b>${esc(x.nome)}</b> — ${esc(x.motivo)}</li>`).join('')}</ul>
+      <p class="muted">Os campos que faltam estão destacados em vermelho no painel.</p>`, acao, 'Preencher agora');
   }
 
   // ------------------------------------------------------------------ faturamento / exclusão
@@ -1137,7 +1183,7 @@
   function validacaoHTML(T) {
     const v = validarFotos(T);
     const ST = { ok: '<span class="chip imp">Confere</span>', div: '<span class="chip alt">Divergente</span>', ileg: '<span class="chip warn">Ilegível</span>', falta: '<span class="chip grey">Falta dado</span>' };
-    const podeFill = ['container', 'lacre', 'tara', 'mwg'].some(k => !T.ot[k] && valorFoto(v.f, k));
+    const podeFill = ['container', 'lacre', 'tara', 'mwg'].some(k => (!T.ot[k] || T.otPadrao[k]) && valorFoto(v.f, k) && String(valorFoto(v.f, k)) !== String(T.ot[k]));
     return `<div class="alert ${v.st === 'div' ? 'err' : (v.st === 'ok' ? 'ok' : 'info')}">${v.st === 'div' ? '<b>Embarque com divergência</b>: os dados das fotos não batem com o agendado. Confira antes de liberar.' : (v.st === 'ok' ? '<b>Embarque conferido</b>: container, lacre, tara e carga máx. batem entre fotos e agendamento.' : `Conferência pendente: ${v.n}/6 fotos${v.n < 6 ? ` — <b>faltam: ${esc(faltandoFotos(T.transporte).join(', '))}</b>` : ''}${v.linhas.some(l => l.st === 'ileg') ? ' · <b>dados ilegíveis nas fotos</b>: leia na foto (clique para ampliar) e digite' : ''}${v.linhas.some(l => l.st === 'falta') ? ' · faltam dados para confrontar' : ''}.`)}</div>
       <table class="items ft-val"><thead><tr><th>Dado</th><th>Agendado / Controle OT</th><th>Fotos</th><th>Resultado</th></tr></thead><tbody>
       ${v.linhas.map(l => `<tr class="st-${l.st}"><td><b>${esc(l.dado)}</b></td><td class="mono">${esc(fmtVal(l.dado, l.ref)) || '<span class="muted">—</span>'}<span class="sub">${esc(l.refNome)}</span></td>
@@ -1294,7 +1340,7 @@
   function preencherOTdasFotos(t) {
     const T = getTransport(t); const f = fotosDe(t); const man = state.manual[t] || (state.manual[t] = {});
     const feitos = [];
-    ['container', 'lacre', 'tara', 'mwg'].forEach(k => { if (!T.ot[k]) { const v = valorFoto(f, k); if (v) { man[k] = k === 'container' ? F.normCont(v) : String(v); feitos.push(OT_FIELDS.find(x => x[0] === k)[1]); } } });
+    ['container', 'lacre', 'tara', 'mwg'].forEach(k => { if (!T.ot[k] || T.otPadrao[k]) { const v = valorFoto(f, k); if (v) { man[k] = k === 'container' ? F.normCont(v) : String(v); feitos.push(OT_FIELDS.find(x => x[0] === k)[1]); } } });
     save(true); renderAll(); toast(feitos.length ? `Controle OT preenchido: ${feitos.join(', ')}.` : 'Nada a preencher.', 'ok');
   }
   // ---------- zoom da foto + "Ler área": o usuário marca o retângulo com o nº / pesos / RIC e só essa área é lida
@@ -1770,9 +1816,10 @@
         </div>
       </div>
       <div class="section">
-        <h3>Controle OT <span class="h-note">campos manuais</span></h3>
+        <h3>Controle OT <span class="h-note">${T.otList.length ? 'com OT: preencha todos os campos' : 'campos manuais'}</span></h3>
+        <div class="alert err" id="ot-pend" hidden></div>
         <div class="fgrid three">
-          ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'ot' && T.otList.length > 1 ? ` (${T.otList.length})` : ''}${k === 'container' && !T.man.container && T.ot.container ? ' <span class="src">SEW</span>' : ''}${k === 'ot' && T.otSrc === 'LT22' ? ' <span class="src">tela de OTs</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
+          ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'ot' && T.otList.length > 1 ? ` (${T.otList.length})` : ''}${k === 'container' && !T.man.container && T.ot.container && !T.otPadrao.container ? ' <span class="src">SEW</span>' : ''}${T.otPadrao[k] ? ' <span class="src">padrão</span>' : ''}${k === 'ot' && T.otSrc === 'LT22' ? ' <span class="src">tela de OTs</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
         </div>
       </div>
       ${temContainer(T) ? fotosHTML(T) : ''}
@@ -1784,6 +1831,7 @@
         </div>
       </div>`;
     renderThumbs(T);
+    marcarPendOT(T);
     renderPresencaPainel();
     $('#d-mail').hidden = !temContainer(T);
     if (temContainer(T)) carregarMiniaturas($('#d-body'));
@@ -1865,6 +1913,7 @@
     $$('#janela-filter button').forEach(b => b.addEventListener('click', () => {
       $$('#janela-filter button').forEach(x => x.classList.toggle('active', x === b)); ui.janela = b.dataset.v; renderList();
     }));
+    $('#cont-filter').addEventListener('change', e => { ui.cont = e.target.value; renderList(); });
     let st; $('#search').addEventListener('input', e => { clearTimeout(st); st = setTimeout(() => { ui.q = e.target.value; renderAll(); }, 120); });
 
     $('#daily-table tbody').addEventListener('click', e => {
@@ -1901,7 +1950,7 @@
     $$('#ag-mode button').forEach(b => b.addEventListener('click', () => { $$('#ag-mode button').forEach(x => x.classList.toggle('active', x === b)); ui.agMode = b.dataset.v; }));
     $('#btn-del-selected').addEventListener('click', () => excluirTransportes(visibleTransports().filter(T => ui.selected.has(T.transporte)).map(T => T.transporte)));
     $('#btn-fat-selected').addEventListener('click', () => { const ts = Array.from(ui.selected); setFat(ts, true); ui.selected.clear(); renderAll(); toast(`${ts.length} ordem(ns) marcada(s) como faturada(s).`, 'ok'); });
-    $('#d-fat').addEventListener('click', () => { const T = getTransport(ui.open); if (!T) return; setFat([T.transporte], !T.faturado); renderAll(); toast(T.faturado ? `Transporte ${T.transporte}: faturamento desmarcado.` : `Transporte ${T.transporte} marcado como faturado.`, 'ok'); });
+    $('#d-fat').addEventListener('click', async () => { const T = getTransport(ui.open); if (!T) return; if (!T.faturado && !(await avisoPendOT(T, 'Faturar assim mesmo'))) { marcarPendOT(T); return; } setFat([T.transporte], !T.faturado); renderAll(); toast(T.faturado ? `Transporte ${T.transporte}: faturamento desmarcado.` : `Transporte ${T.transporte} marcado como faturado.`, 'ok'); });
     $('#check-all').addEventListener('change', e => {
       visibleTransports().forEach(T => e.target.checked ? ui.selected.add(T.transporte) : ui.selected.delete(T.transporte)); renderList();
     });
@@ -1929,10 +1978,12 @@
       toast('Digite o número do transporte no campo "Transporte" e pressione Abrir.', 'warn');
     });
 
-    $('#d-close').addEventListener('click', closeDetail);
-    $('#scrim').addEventListener('click', closeDetail);
+    const fecharComAviso = async () => { const T = getTransport(ui.open); if (T && !(await avisoPendOT(T, 'Fechar assim mesmo'))) { marcarPendOT(T); return; } closeDetail(); };
+    $('#d-close').addEventListener('click', fecharComAviso);
+    $('#scrim').addEventListener('click', fecharComAviso);
+    ui.fecharComAviso = fecharComAviso;
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && ui.open && !document.querySelector('dialog[open]')) closeDetail();
+      if (e.key === 'Escape' && ui.open && !document.querySelector('dialog[open]')) ui.fecharComAviso();
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p' && ui.open && !document.querySelector('dialog[open]')) {
         e.preventDefault(); const T = getTransport(ui.open); if (T) printTransports([T]);
       }
@@ -1958,7 +2009,12 @@
     $('#d-body').addEventListener('change', e => {
       const t = ui.open; if (!t) return;
       const man = state.manual[t] || (state.manual[t] = {});
-      if (e.target.dataset.ot === 'nf') { aplicarNF(t, e.target.value); softRefresh(); return; }
+      if (e.target.dataset.ot === 'nf') {
+        aplicarNF(t, e.target.value); softRefresh();
+        // NF lançada = ordem faturada: avisa se ainda falta algum dado do Controle OT
+        if (P.clean(e.target.value)) { const T = getTransport(t); if (T && pendenciasOT(T).length) avisoPendOT(T, 'Entendi').then(() => marcarPendOT(getTransport(t))); }
+        return;
+      }
       if (e.target.id === 'f-fsc') { if (e.target.value) man.fscSel = e.target.value; else delete man.fscSel; save(); renderAll(); return; }
       if (e.target.id === 'f-janela') { if (e.target.value) man.janela = e.target.value; else delete man.janela; save(); renderAll(); return; }
       if (e.target.dataset.ov === 'cpf' && man.cpf) { man.cpf = P.fmtCPF(man.cpf); e.target.value = man.cpf; }
@@ -2139,6 +2195,7 @@
         f.classList.toggle('override', T.man[k] != null && String(T.man[k]) !== String(T.base[k] || ''));
       });
       renderThumbs(T);
+      marcarPendOT(T);
       renderList();
     }, 180);
   }
@@ -2513,9 +2570,9 @@
     $('#toasts').appendChild(el);
     setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 320); }, detail ? 5200 : 3200);
   }
-  function confirmBox(title, html, okLabel = 'Continuar') {
+  function confirmBox(title, html, okLabel = 'Continuar', cancelLabel = 'Voltar') {
     const dlg = $('#confirm-dialog');
-    $('#cf-title').textContent = title; $('#cf-body').innerHTML = html; $('#cf-ok').textContent = okLabel;
+    $('#cf-title').textContent = title; $('#cf-body').innerHTML = html; $('#cf-ok').textContent = okLabel; $('#cf-cancel').textContent = cancelLabel;
     dlg.returnValue = '';
     dlg.showModal();
     return new Promise(res => dlg.addEventListener('close', () => res(dlg.returnValue === 'ok'), { once: true }));

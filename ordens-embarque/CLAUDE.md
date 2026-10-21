@@ -133,3 +133,10 @@
   `state.histBalanca[mes]` (sync `hb:`; entram em `registrosBalanca`), e remove do app itens/manual/printed/snap/faturado/
   fatNf/fotos (cópia local; arquivos da pasta ficam), SEW do mês, OTs das entregas e tickets arquivados. Sem SheetJS não fecha.
   Indicador de espaço usado (`espacoUsado`) no diálogo e aviso ao abrir acima de 70%.
+- Controle OT depois da OT (`pendenciasOT`, `OT_MIN`): com OT informada, Doc (mín. 6), NF-e (mín. 5) e Ticket (mín. 5)
+  sempre; container/cabotagem também EXP, Nº container, Lacre (mín. 5), Tara (mín. 4) e MWG. Padrões calculados em
+  `makeTransport` (`T.otPadrao`, não gravados): mercado interno "-" em EXP, container, lacre, tara e MWG; container MWG
+  32500. `semValor` ("-" = vazio) em `isCabotagem`. Painel: aviso vermelho `#ot-pend` e campos `.f.ot-falta`. Não bloqueia:
+  ordem já impressa com pendências mostra popup (`avisoPendOT`) ao fechar o painel (X, fundo, Esc), ao "Marcar como
+  faturada" e ao lançar a NF-e ("Preencher agora" mantém o painel aberto).
+- Lista diária: coluna Container (após OT), filtro `#cont-filter` (todos / com nº / sem) e busca por container e lacre.
