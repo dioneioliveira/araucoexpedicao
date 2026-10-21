@@ -498,6 +498,6 @@ busca encontra container e lacre.
 ### Dados EXP terrestre
 
 Em ordens de **exportação terrestre** (cliente ARAUCO MADERAS / MADERAS ARAUCO), o painel mostra o botão
-**Dados EXP terrestre**, que copia num texto único, sem espaços: `EXP-MOTORISTA-CPF-PLACACARRETAUF-PLACACAVALOUF`
-(ex.: `2026EXP0457-MOTORISTAEXEMPLOUM-11111111111-ABC1D23PR-EFG4H56PR`). Se faltar algum dado (EXP, UF da placa…),
+**Dados EXP terrestre**, que copia num texto único no formato
+`EXP 1000000123-Motorista JOSE DA SILVA-CPF 123456789-89- Placas AAA1234PR/BBB7894PR` (placa da carreta / placa do cavalo, com UF). Se faltar algum dado (EXP, UF da placa…),
 o aviso da cópia diz o que está em branco.

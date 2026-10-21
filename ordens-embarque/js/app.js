@@ -235,11 +235,15 @@
       return { text: row.join('\t'), need: [['ticket', 'Ticket'], ['tara', 'Tara'], ['mwg', 'Peso máx.'], ['nf', 'NF-e']].filter(([k]) => !o[k]).map(x => x[1]) };
     }
     if (kind === 'expterr') {
-      // exportação terrestre: EXP-MOTORISTA-CPF-CARRETAUF-CAVALOUF, tudo junto, sem espaços
-      const semEsp = v => P.clean(v).replace(/\s+/g, '');
+      // exportação terrestre, no formato pedido: "EXP 1000000123-Motorista NOME-CPF 123456789-89- Placas AAA1234PR/BBB7894PR"
       const pl = v => P.plate7(v) ? P.plate7(v) + P.plateUF(v) : '';
-      const partes = [o.exp && o.exp !== '-' ? o.exp : '', semEsp(e.motorista).toUpperCase(), P.cpfDigits(e.cpf), pl(e.placaL), isTruck(e) ? '' : pl(e.placaM)].map(semEsp);
-      return { text: partes.filter(Boolean).join('-'), need: [[0, 'EXP'], [1, 'Motorista'], [2, 'CPF'], [3, 'Placa carreta'], [4, 'Placa cavalo']].filter(([i]) => !partes[i] && !(i === 4 && isTruck(e))).map(x => x[1]).concat([3, 4].filter(i => partes[i] && !/[A-Z]{2}$/.test(partes[i])).map(i => i === 3 ? 'UF da carreta' : 'UF do cavalo')) };
+      const cpf = P.cpfDigits(e.cpf); const cpfTxt = cpf.length === 11 ? `${cpf.slice(0, 9)}-${cpf.slice(9)}` : cpf;
+      const exp = o.exp && o.exp !== '-' ? P.clean(o.exp) : '';
+      const placas = [pl(e.placaL), isTruck(e) ? '' : pl(e.placaM)].filter(Boolean).join('/');
+      const text = `EXP ${exp}-Motorista ${P.clean(e.motorista)}-CPF ${cpfTxt}- Placas ${placas}`;
+      const need = [!exp && 'EXP', !P.clean(e.motorista) && 'Motorista', cpf.length !== 11 && 'CPF', !pl(e.placaL) && 'Placa carreta', !isTruck(e) && !pl(e.placaM) && 'Placa cavalo',
+        pl(e.placaL) && !P.plateUF(e.placaL) && 'UF da carreta', !isTruck(e) && pl(e.placaM) && !P.plateUF(e.placaM) && 'UF do cavalo'].filter(Boolean);
+      return { text, need };
     }
     if (kind === 'placa') {
       // Controle OT!T3:T4 — "0001" e a placa da carreta com UF (ex.: AAA1234PR)

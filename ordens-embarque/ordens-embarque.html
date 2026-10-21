@@ -818,7 +818,7 @@ td.c-cont{white-space:nowrap}
         </div>
         <div class="da-group">
           <div class="da-title">Copiar para SAP / planilhas</div>
-          <button class="btn btn-copy da-btn" data-copy="expterr" id="d-expterr" hidden title="EXP-motorista-CPF-placa carreta com UF-placa cavalo com UF, sem espaços"><svg viewBox="0 0 24 24"><path d="M1.5 15.5h21M2 15.5v-3h12.5v3"/><path d="M14.5 15.5V8.5h4.2l3.3 3.6v3.4"/><circle cx="5" cy="17.8" r="1.7"/><circle cx="18.6" cy="17.8" r="1.7"/></svg><span>Dados EXP terrestre<small>EXP-motorista-CPF-placas</small></span></button>
+          <button class="btn btn-copy da-btn" data-copy="expterr" id="d-expterr" hidden title="EXP 1000000123-Motorista NOME-CPF 123456789-89- Placas AAA1234PR/BBB7894PR"><svg viewBox="0 0 24 24"><path d="M1.5 15.5h21M2 15.5v-3h12.5v3"/><path d="M14.5 15.5V8.5h4.2l3.3 3.6v3.4"/><circle cx="5" cy="17.8" r="1.7"/><circle cx="18.6" cy="17.8" r="1.7"/></svg><span>Dados EXP terrestre<small>EXP-motorista-CPF-placas</small></span></button>
           <button class="btn btn-copy da-btn" data-copy="texto"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Dados de texto<small>VL02N / texto</small></span></button>
           <button class="btn btn-copy da-btn" data-copy="placa" title="0001 e a placa da carreta com UF, em duas linhas"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h10"/></svg><span>Placa p/ nota<small>VL02N / placa</small></span></button>
           <button class="btn btn-copy da-btn" data-copy="motorista"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg><span>Dados do motorista<small>VT02N</small></span></button>
@@ -5424,11 +5424,15 @@ window.ORDEM_TEMPLATES = {
       return { text: row.join('\t'), need: [['ticket', 'Ticket'], ['tara', 'Tara'], ['mwg', 'Peso máx.'], ['nf', 'NF-e']].filter(([k]) => !o[k]).map(x => x[1]) };
     }
     if (kind === 'expterr') {
-      // exportação terrestre: EXP-MOTORISTA-CPF-CARRETAUF-CAVALOUF, tudo junto, sem espaços
-      const semEsp = v => P.clean(v).replace(/\s+/g, '');
+      // exportação terrestre, no formato pedido: "EXP 1000000123-Motorista NOME-CPF 123456789-89- Placas AAA1234PR/BBB7894PR"
       const pl = v => P.plate7(v) ? P.plate7(v) + P.plateUF(v) : '';
-      const partes = [o.exp && o.exp !== '-' ? o.exp : '', semEsp(e.motorista).toUpperCase(), P.cpfDigits(e.cpf), pl(e.placaL), isTruck(e) ? '' : pl(e.placaM)].map(semEsp);
-      return { text: partes.filter(Boolean).join('-'), need: [[0, 'EXP'], [1, 'Motorista'], [2, 'CPF'], [3, 'Placa carreta'], [4, 'Placa cavalo']].filter(([i]) => !partes[i] && !(i === 4 && isTruck(e))).map(x => x[1]).concat([3, 4].filter(i => partes[i] && !/[A-Z]{2}$/.test(partes[i])).map(i => i === 3 ? 'UF da carreta' : 'UF do cavalo')) };
+      const cpf = P.cpfDigits(e.cpf); const cpfTxt = cpf.length === 11 ? `${cpf.slice(0, 9)}-${cpf.slice(9)}` : cpf;
+      const exp = o.exp && o.exp !== '-' ? P.clean(o.exp) : '';
+      const placas = [pl(e.placaL), isTruck(e) ? '' : pl(e.placaM)].filter(Boolean).join('/');
+      const text = `EXP ${exp}-Motorista ${P.clean(e.motorista)}-CPF ${cpfTxt}- Placas ${placas}`;
+      const need = [!exp && 'EXP', !P.clean(e.motorista) && 'Motorista', cpf.length !== 11 && 'CPF', !pl(e.placaL) && 'Placa carreta', !isTruck(e) && !pl(e.placaM) && 'Placa cavalo',
+        pl(e.placaL) && !P.plateUF(e.placaL) && 'UF da carreta', !isTruck(e) && pl(e.placaM) && !P.plateUF(e.placaM) && 'UF do cavalo'].filter(Boolean);
+      return { text, need };
     }
     if (kind === 'placa') {
       // Controle OT!T3:T4 — "0001" e a placa da carreta com UF (ex.: AAA1234PR)
