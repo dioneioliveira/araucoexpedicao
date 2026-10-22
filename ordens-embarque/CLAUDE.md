@@ -158,3 +158,9 @@
   ordem já impressa com pendências mostra popup (`avisoPendOT`) ao fechar o painel (X, fundo, Esc), ao "Marcar como
   faturada" e ao lançar a NF-e ("Preencher agora" mantém o painel aberto).
 - Lista diária: coluna Container (após OT), filtro `#cont-filter` (todos / com nº / sem) e busca por container e lacre.
+- Redução de carga (bloco Materiais do painel, `#red-flag`): `manual.reducao` = { ativo, qtd: {itemKey: qtd nova}, motivo,
+  em, por }. `makeTransport` aplica: `qtd` = nova, `qtdOriginal`, `palletsOriginal`, `reduzido`; pallets e peso = total
+  antigo ÷ qtd antiga × qtd nova (`regra3`). Vale para lista, check-list (ordem impressa antes vira "Com alterações"),
+  relatórios, Excel semanal (coluna "Redução de carga") e análise de peso da balança. Quantidade nova maior que a da ordem
+  é recusada. "E-mail da redução" (`htmlReducao`/`emailReducao`): copia HTML ("Prezados, segue informação de redução de
+  carga." + Motivo + dados da carga + tabela antes → nova) e abre o e-mail.

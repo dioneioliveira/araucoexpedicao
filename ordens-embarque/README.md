@@ -520,3 +520,12 @@ ticket ao **Ticket balança** informado no Controle OT da ordem (com ou sem zero
 cada material e o peso por lote. **Só entram cargas com uma entrega e um único material** (sem mistura de itens); as outras ficam fora da
 análise e aparecem nas pendências com o motivo.
 Os tickets do Guardian que não estão em nenhuma ordem (outras pesagens da portaria) só aparecem como contagem.
+
+### Redução de carga
+
+No painel da ordem, bloco **Materiais**, marque **Redução de carga**: cada item ganha o campo da **quantidade nova**.
+Pallets/lotes e peso são recalculados pelo padrão **total antigo ÷ quantidade antiga × quantidade nova** (ex.: 3.264 pç em
+16 pallets → 2.448 pç = 12 pallets). A carga reduzida passa a valer no check-list, na lista, nos relatórios e na avaliação de
+peso da balança (se a ordem já tinha sido impressa, ela fica "Com alterações" para imprimir de novo). Escreva o **Motivo** e
+use **E-mail da redução**: o app copia a mensagem ("Prezados, segue informação de redução de carga. Motivo: …" e a tabela
+com o que era e para quanto vai) e abre o e-mail; é só colar (Ctrl+V). Desmarcar a opção volta às quantidades originais.

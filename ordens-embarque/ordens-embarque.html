@@ -623,6 +623,16 @@ td.c-cont{white-space:nowrap}
 .sync-perfil{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 2px}
 .sync-perfil select{height:36px;border:1px solid var(--line);border-radius:10px;padding:0 10px;font:inherit;min-width:200px;background:#fff}
 .sync-perfil select:disabled{background:var(--turq-ghost);color:var(--ink);font-weight:700}
+.red-flag{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--ink-dim);border:1px solid var(--line);border-radius:999px;padding:3px 10px;cursor:pointer;background:#fff}
+.red-flag.on{background:rgba(208,204,0,.22);border-color:#D0CC00;color:#5c5a00}
+.section h3:has(.red-flag){display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+td.red-q{white-space:nowrap}
+td.red-q .red-in{width:86px;margin-left:6px;padding:4px 6px;border:1px solid #D0CC00;border-radius:6px;font:inherit;font-family:var(--f-mono);text-align:right;background:#fffef0}
+tr.reduzido td{background:rgba(208,204,0,.08)}
+.red-novo{color:#5c5a00}
+.red-box{margin-top:10px;border:1px dashed #D0CC00;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:#fffef6}
+.red-box textarea{width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 8px;resize:vertical}
+.red-acoes{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 
 </style>
 </head>
@@ -5377,11 +5387,17 @@ window.ORDEM_TEMPLATES = {
     const eff = Object.assign({}, base);
     OVERRIDABLE.forEach(k => { if (man[k] != null && man[k] !== '') eff[k] = man[k]; });
     let pallets = 0, palletsOk = true;
+    // redução de carga (manual.reducao): quantidade nova por item; pallets/peso = total antigo ÷ qtd antiga × qtd nova
+    const red = man.reducao && man.reducao.ativo ? man.reducao : null;
     const mats = items.map(it => {
       const mi = P.matInfo(it.descricao);
-      const pal = (it.qtd != null && mi.pecasPallet) ? it.qtd / mi.pecasPallet : null;
+      const pal0 = (it.qtd != null && mi.pecasPallet) ? it.qtd / mi.pecasPallet : null;
+      const qn = red && red.qtd && red.qtd[it.key] != null && red.qtd[it.key] !== '' ? +red.qtd[it.key] : null;
+      const reduzido = qn != null && isFinite(qn) && it.qtd != null && qn !== it.qtd;
+      const qtd = reduzido ? qn : it.qtd;
+      const pal = pal0 == null ? null : (reduzido ? (it.qtd ? pal0 / it.qtd * qtd : 0) : pal0);
       if (pal == null) palletsOk = false; else pallets += pal;
-      return Object.assign({}, it, { mi, pallets: pal });
+      return Object.assign({}, it, { mi, pallets: pal, qtd, qtdOriginal: it.qtd, palletsOriginal: pal0, reduzido });
     });
     const sew = sewMatch(eff);
     const janelaAuto = f.janela || (sew ? sew.janela : 'MI'); // Origem da Solicitação de Embarque tem prioridade
@@ -5403,6 +5419,7 @@ window.ORDEM_TEMPLATES = {
       transporte: t, items: mats, base, eff, man, sew, janela, janelaSrc: man.janela ? 'manual' : (f.janela ? 'Solicitação de Embarque' : (sew ? 'SEW' : 'padrão')),
       solic: f.fonte === 'Solicitação de Embarque' ? f : null,
       fsc, fscAuto, ot, otSrc, otList, entregas, pallets: mats.length && palletsOk ? pallets : (pallets || null), missing, treino: treino(eff),
+      reducao: red, reduzido: mats.some(i => i.reduzido),
       printed: state.printed[t] || null, faturado: state.faturado[t] || null, manualOnly: items.every(i => i.manualOnly),
     };
     // padrões do Controle OT: mercado interno = "-" em EXP, container, lacre, tara e MWG; container = MWG 32.500
@@ -5951,6 +5968,44 @@ window.ORDEM_TEMPLATES = {
       window.location.href = `mailto:${para}?subject=${encodeURIComponent(r.titulo)}&body=${encodeURIComponent(body)}`;
       toast(ok ? 'E-mail aberto. O relatório completo já está copiado: clique no corpo do e-mail e pressione Ctrl+V. Para anexar a planilha, use "Baixar Excel".' : 'E-mail aberto (não foi possível copiar o relatório).', ok ? 'ok' : 'warn');
     });
+  }
+
+  // ------------------------------------------------------------------ redução de carga
+  const regra3 = (total, q0, q1) => total == null || !q0 ? null : total / q0 * q1; // total antigo ÷ qtd antiga × qtd nova
+  function resumoReducao(T) {
+    const q0 = T.items.reduce((a, i) => a + (i.qtdOriginal || 0), 0), q1 = T.items.reduce((a, i) => a + (i.qtd || 0), 0);
+    return `${fmtNum(q0, 0)} → ${fmtNum(q1, 0)} pç (−${fmtNum(q0 - q1, 0)})`;
+  }
+  function htmlReducao(T) {
+    const td = 'border:1px solid #D9D9D9;padding:5px 8px;font:12px Arial,sans-serif;color:#4A4A4A;vertical-align:top';
+    const th = td + ';background:#B7D9D8;color:#2f4f4e;font-weight:bold;text-align:left;white-space:nowrap';
+    const n = (v, d = 0) => v == null ? '—' : fmtNum(v, d);
+    const its = T.items.filter(i => i.reduzido);
+    const q0 = T.items.reduce((a, i) => a + (i.qtdOriginal || 0), 0), q1 = T.items.reduce((a, i) => a + (i.qtd || 0), 0);
+    const p0 = T.items.reduce((a, i) => a + (i.palletsOriginal || 0), 0), p1 = T.pallets;
+    const peso0 = T.solic && T.solic.peso ? T.solic.peso : null, peso1 = regra3(peso0, q0, q1);
+    const motivo = P.clean(T.reducao && T.reducao.motivo) || '(descrever)';
+    const cab = [['Transporte', T.transporte], ['Data', P.fmtDateBR(T.eff.data) + (T.eff.hora ? ' ' + T.eff.hora : '')], ['Cliente', T.eff.cliente], ['Entrega', T.entregas.join(' / ')],
+      ['OT', T.otList.join(' / ')], ['Placa', T.eff.placaL + (isTruck(T.eff) ? '' : ' / ' + T.eff.placaM)], ['Transportadora', T.eff.transportadora]].filter(([, v]) => P.clean(v));
+    return `<div style="font:13px Arial,sans-serif;color:#4A4A4A">
+      <p style="margin:0 0 4px">Prezados, segue informação de redução de carga.</p>
+      <p style="margin:0 0 12px"><b>Motivo:</b> ${esc(motivo)}</p>
+      <table style="border-collapse:collapse;margin-bottom:10px">${cab.map(([l, v]) => `<tr><td style="${td};background:#F8F8F8;font-weight:bold">${esc(l)}</td><td style="${td}">${esc(v)}</td></tr>`).join('')}</table>
+      <table style="border-collapse:collapse"><thead><tr>${['Material', 'Descrição', 'Qtd antes (pç)', 'Qtd nova (pç)', 'Redução (pç)', 'Pallets antes', 'Pallets novo'].map(h => `<th style="${th}">${h}</th>`).join('')}</tr></thead>
+      <tbody>${its.map(i => `<tr><td style="${td}">${esc(i.material)}</td><td style="${td}">${esc(i.descricao)}</td><td style="${td};text-align:right">${n(i.qtdOriginal)}</td><td style="${td};text-align:right;font-weight:bold">${n(i.qtd)}</td><td style="${td};text-align:right;color:#B4473B">−${n(i.qtdOriginal - i.qtd)}</td><td style="${td};text-align:right">${n(i.palletsOriginal, 2)}</td><td style="${td};text-align:right;font-weight:bold">${n(i.pallets, 2)}</td></tr>`).join('')}
+      <tr><td style="${td};font-weight:bold" colspan="2">Total da carga</td><td style="${td};text-align:right">${n(q0)}</td><td style="${td};text-align:right;font-weight:bold">${n(q1)}</td><td style="${td};text-align:right;color:#B4473B">−${n(q0 - q1)}</td><td style="${td};text-align:right">${n(p0, 2)}</td><td style="${td};text-align:right;font-weight:bold">${n(p1, 2)}</td></tr></tbody></table>
+      ${peso0 ? `<p style="margin:10px 0 0">Peso da carga: ${n(peso0)} kg → <b>${n(peso1)} kg</b></p>` : ''}
+      <p style="font-size:11px;color:#7A7A7A;margin-top:12px">Arauco · Expedição Piên</p></div>`;
+  }
+  const textoReducao = T => `Prezados, segue informação de redução de carga.\nMotivo: ${P.clean(T.reducao && T.reducao.motivo) || '(descrever)'}\n\nTransporte ${T.transporte} · ${T.eff.cliente}\n` +
+    T.items.filter(i => i.reduzido).map(i => `${i.material} ${i.descricao}: ${fmtNum(i.qtdOriginal, 0)} → ${fmtNum(i.qtd, 0)} pç (pallets ${fmtNum(i.palletsOriginal, 2)} → ${fmtNum(i.pallets, 2)})`).join('\n');
+  async function emailReducao(t) {
+    const T = getTransport(t); if (!T || !T.reduzido) return;
+    const ok = await copiarHTML(htmlReducao(T), textoReducao(T));
+    let para = ''; try { para = localStorage.getItem('arauco.ordensEmbarque.emailReducao') || ''; } catch (e) { /* sem storage */ }
+    const dest = para.split(/[;,\s]+/).filter(x => /^[^@\s]+@[^@\s]+$/.test(x)).join(',');
+    window.location.href = `mailto:${dest}?subject=${encodeURIComponent(`Redução de carga · Transporte ${T.transporte} · ${T.eff.cliente}`)}&body=${encodeURIComponent(ok ? '(cole aqui: Ctrl+V)' : textoReducao(T))}`;
+    toast(ok ? 'E-mail aberto. A mensagem com a tabela da redução já está copiada: clique no corpo do e-mail e pressione Ctrl+V.' : 'E-mail aberto com o texto da redução.', 'ok');
   }
 
   // ------------------------------------------------------------------ Controle OT: preenchimento obrigatório depois da OT
@@ -6660,8 +6715,42 @@ window.ORDEM_TEMPLATES = {
       b.textContent = txt0; b.disabled = false;
     });
   }
+  function bindReducao() {
+    const body = $('#d-body');
+    body.addEventListener('change', async e => {
+      const t = ui.open; if (!t) return;
+      const man = state.manual[t] || (state.manual[t] = {});
+      if (e.target.id === 'red-flag') {
+        if (e.target.checked) man.reducao = { ativo: true, qtd: {}, motivo: '', em: new Date().toISOString(), por: usuario() };
+        else {
+          const T = getTransport(t);
+          if (T && T.reduzido && !(await confirmBox('Cancelar a redução de carga', '<p>Voltar às quantidades originais da ordem?</p>', 'Cancelar a redução'))) { e.target.checked = true; return; }
+          delete man.reducao;
+        }
+        save(true); renderSemAtrapalhar(); return;
+      }
+      const k = e.target.dataset.redQtd;
+      if (k && man.reducao) {
+        const T = getTransport(t); const it = T && T.items.find(i => i.key === k);
+        let v = e.target.value === '' ? '' : Math.max(0, Math.round(+e.target.value));
+        if (v !== '' && it && v > it.qtdOriginal) { toast(`A quantidade nova (${fmtNum(v, 0)}) é maior que a da ordem (${fmtNum(it.qtdOriginal, 0)}). Redução só diminui.`, 'warn'); v = ''; e.target.value = ''; }
+        man.reducao.qtd = man.reducao.qtd || {};
+        if (v === '') delete man.reducao.qtd[k]; else man.reducao.qtd[k] = v;
+        man.reducao.em = new Date().toISOString(); man.reducao.por = usuario();
+        man.reducao = Object.assign({}, man.reducao); // novo objeto: o sync grava o campo alterado
+        save(true); renderSemAtrapalhar();
+      }
+    });
+    body.addEventListener('input', e => {
+      const t = ui.open; if (!t || e.target.id !== 'red-motivo') return;
+      const man = state.manual[t] || (state.manual[t] = {}); if (!man.reducao) return;
+      man.reducao = Object.assign({}, man.reducao, { motivo: e.target.value }); save();
+    });
+    body.addEventListener('keydown', e => { if (e.target.dataset && e.target.dataset.redQtd && e.key === 'Enter') e.target.blur(); });
+    body.addEventListener('click', e => { if (e.target.closest('#red-mail') && ui.open) emailReducao(ui.open); });
+  }
   function bindFotos() {
-    bindZoom();
+    bindZoom(); bindReducao();
     const body = $('#d-body');
     body.addEventListener('change', e => {
       const t = ui.open; if (!t) return;
@@ -6797,13 +6886,13 @@ window.ORDEM_TEMPLATES = {
       .sort((a, b) => (a.eff.data || '').localeCompare(b.eff.data || '') || (a.eff.hora || '99').localeCompare(b.eff.hora || '99') || a.transporte.localeCompare(b.transporte));
     const pesagens = registrosBalanca().recs.filter(r => r.via !== 'arquivo' && no(r.data));
     const pesoTicket = T => String(T.ot.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(k => k && state.tickets[k]).reduce((a, k) => a + (state.tickets[k].liq || 0), 0) || '';
-    const transportes = [['Data', 'Hora', 'Transporte', 'Tipo de carga', 'Cliente', 'Destino', 'Entrega(s)', 'Incoterm', 'Materiais', 'Qtd (pç)', 'Pallets / lotes', 'Carga fracionada', 'Amostra', 'FSC',
+    const transportes = [['Data', 'Hora', 'Transporte', 'Tipo de carga', 'Cliente', 'Destino', 'Entrega(s)', 'Incoterm', 'Materiais', 'Qtd (pç)', 'Pallets / lotes', 'Redução de carga', 'Carga fracionada', 'Amostra', 'FSC',
       'Placa carreta/truck', 'Placa cavalo', 'Motorista', 'CPF', 'Treinamento', 'Transportadora', 'OT(s)', 'Doc', 'NF-e', 'EXP', 'Container', 'Lacre', 'Tara (kg)', 'MWG (kg)', 'Ticket balança', 'Peso balança (kg)',
       'Impressa em', 'Faturada em', 'Status', 'Alterações após impressão', 'Fotos', 'Conferência das fotos', 'Container (porta)', 'Container (RIC)', 'Lacre (RIC)', 'Lacre físico', 'Tara (RIC)', 'Max gross (RIC)']]
       .concat(list.map(T => {
         const e = T.eff, f = state.fotos[T.transporte], L = s => (f && f.lido[s]) || {}, v = temContainer(T) ? validarFotos(T) : null;
         return [P.fmtDateBR(e.data), e.hora, T.transporte, tipoCarga(T), e.cliente, T.solic && T.solic.cidade ? `${T.solic.cidade}/${T.solic.uf}` : '', T.entregas.join(' / '), e.incoterm,
-          T.items.map(i => i.descricao).filter(Boolean).join(' | '), T.items.reduce((a, i) => a + (i.qtd || 0), 0), T.pallets == null ? '' : round(T.pallets, 2), isFracionada(T) ? 'SIM' : '', isAmostra(T) ? 'SIM' : '', T.fsc ? (T.fsc.fsc || 'FSC') : '',
+          T.items.map(i => i.descricao).filter(Boolean).join(' | '), T.items.reduce((a, i) => a + (i.qtd || 0), 0), T.pallets == null ? '' : round(T.pallets, 2), T.reduzido ? `${resumoReducao(T)}${T.reducao.motivo ? ' · motivo: ' + T.reducao.motivo : ''}` : '', isFracionada(T) ? 'SIM' : '', isAmostra(T) ? 'SIM' : '', T.fsc ? (T.fsc.fsc || 'FSC') : '',
           e.placaL, isTruck(e) ? '' : e.placaM, e.motorista, P.fmtCPF(e.cpf), e.treinamento, e.transportadora, T.otList.join(' / '), T.ot.doc, T.ot.nf, T.ot.exp, T.ot.container, T.ot.lacre, T.ot.tara, T.ot.mwg, T.ot.ticket, pesoTicket(T),
           dt(T.printed), dt(T.faturado), statusTexto(T), T.alteracoes.map(a => `${a.campo}: ${a.de || '—'} → ${a.para || '—'}`).join('; '),
           temContainer(T) ? `${nFotos(T.transporte)}/6` : '', v ? ({ ok: 'Conferido', div: 'DIVERGENTE: ' + v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', '), pend: 'Pendente' }[v.st]) : '',
@@ -7086,17 +7175,26 @@ window.ORDEM_TEMPLATES = {
       if (m.comp) tags.push(`<span class="tag">${m.comp}×${m.larg}</span>`);
       if (m.mercado) tags.push(`<span class="tag ${m.mercado === 'Exportação' ? 'e' : 'i'}">${esc(m.mercado)}${m.embalagem ? ' · ' + esc(m.embalagem) : ''}</span>`);
       if (m.pecasPallet) tags.push(`<span class="tag">${m.pecasPallet} pç/pallet</span>`);
-      return `<tr><td class="mono">${esc(i.material)}<span class="sub">${esc(i.pedido)}</span></td><td>${esc(i.descricao)}<div class="mat-tags">${tags.join('')}</div></td><td class="num">${fmtNum(i.qtd, 0)}</td><td class="num">${fmtNum(i.pallets, 2)}</td></tr>`;
+      const qCel = T.reducao
+        ? `<td class="num red-q">${i.reduzido ? `<s class="muted">${fmtNum(i.qtdOriginal, 0)}</s>` : `<span class="muted small">${fmtNum(i.qtdOriginal, 0)}</span>`}<input class="red-in" type="number" min="0" step="1" data-red-qtd="${esc(i.key)}" value="${T.reducao.qtd && T.reducao.qtd[i.key] != null ? esc(T.reducao.qtd[i.key]) : ''}" placeholder="nova"></td>`
+        : `<td class="num">${fmtNum(i.qtd, 0)}</td>`;
+      const pCel = i.reduzido ? `<td class="num"><s class="muted">${fmtNum(i.palletsOriginal, 2)}</s><br><b class="red-novo">${fmtNum(i.pallets, 2)}</b></td>` : `<td class="num">${fmtNum(i.pallets, 2)}</td>`;
+      return `<tr class="${i.reduzido ? 'reduzido' : ''}"><td class="mono">${esc(i.material)}<span class="sub">${esc(i.pedido)}</span></td><td>${esc(i.descricao)}<div class="mat-tags">${tags.join('')}</div></td>${qCel}${pCel}</tr>`;
     }).join('');
 
     $('#d-body').innerHTML = `
       <div class="alert info d-presenca" id="d-presenca" hidden></div>
       ${alerts.join('')}
       <div class="section">
-        <h3>Materiais <span class="h-note">${esc(e.cliente)} · entrega ${esc(e.entrega)} · ${esc(e.incoterm)}</span></h3>
-        <table class="items"><thead><tr><th>Material</th><th>Descrição / características</th><th class="num">Qtd</th><th class="num">Pallets</th></tr></thead>
+        <h3>Materiais <span class="h-note">${esc(e.cliente)} · entrega ${esc(e.entrega)} · ${esc(e.incoterm)}</span>
+          <label class="red-flag ${T.reducao ? 'on' : ''}" title="Reduzir a quantidade carregada (pallets e peso recalculados)"><input type="checkbox" id="red-flag" ${T.reducao ? 'checked' : ''}> Redução de carga</label></h3>
+        <table class="items"><thead><tr><th>Material</th><th>Descrição / características</th><th class="num">${T.reducao ? 'Qtd (antes → nova)' : 'Qtd'}</th><th class="num">Pallets</th></tr></thead>
         <tbody>${itemsHTML || '<tr><td colspan="4" class="muted">Sem itens (transporte manual)</td></tr>'}</tbody>
-        <tfoot><tr><td></td><td class="muted">${T.items.length} item(ns)${printData(T).fracionada ? ' · <b>carga fracionada</b>' : ''}</td><td class="num"><b>${fmtNum(tot, 0)}</b></td><td class="num"><b>${fmtNum(T.pallets, 2)}</b></td></tr></tfoot></table>
+        <tfoot><tr><td></td><td class="muted">${T.items.length} item(ns)${printData(T).fracionada ? ' · <b>carga fracionada</b>' : ''}</td><td class="num"><b>${fmtNum(tot, 0)}</b>${T.reduzido ? `<span class="sub">antes ${fmtNum(T.items.reduce((a, i) => a + (i.qtdOriginal || 0), 0), 0)}</span>` : ''}</td><td class="num"><b>${fmtNum(T.pallets, 2)}</b>${T.reduzido ? `<span class="sub">antes ${fmtNum(T.items.reduce((a, i) => a + (i.palletsOriginal || 0), 0), 2)}</span>` : ''}</td></tr></tfoot></table>
+        ${T.reducao ? `<div class="red-box">
+          <label class="f">Motivo da redução<textarea id="red-motivo" rows="2" placeholder="descrever o motivo">${esc(T.reducao.motivo || '')}</textarea></label>
+          <div class="red-acoes"><span class="muted small">${T.reduzido ? `Carga reduzida: ${esc(resumoReducao(T))}. Pallets e peso recalculados (total antigo ÷ qtd antiga × qtd nova).` : 'Digite a quantidade nova nos itens que serão reduzidos.'}</span>
+          <button class="btn btn-primary btn-sm" id="red-mail" ${T.reduzido ? '' : 'disabled'}>E-mail da redução</button></div></div>` : ''}
       </div>
       <div class="section">
         <h3>Dados do transporte <span class="h-note">obrigatórios para impressão *</span></h3>
