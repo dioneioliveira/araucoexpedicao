@@ -620,6 +620,9 @@ table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px
 td.c-cont{white-space:nowrap}
 .aviso-pasta{background:var(--err);color:#fff;padding:9px 20px;font-size:13px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;position:sticky;top:0;z-index:30}
 .aviso-pasta .btn{background:#fff;color:var(--err);border:0}
+.sync-perfil{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 2px}
+.sync-perfil select{height:36px;border:1px solid var(--line);border-radius:10px;padding:0 10px;font:inherit;min-width:200px;background:#fff}
+.sync-perfil select:disabled{background:var(--turq-ghost);color:var(--ink);font-weight:700}
 
 </style>
 </head>
@@ -1038,10 +1041,15 @@ td.c-cont{white-space:nowrap}
     </div>
     <div class="cf-body">
       <p id="sync-info" class="muted"></p>
-      <p>Para <b>2 ou 3 pessoas usarem ao mesmo tempo</b>, o app grava numa <b>pasta do servidor</b> (ex.: <code>\\servidor\expedicao\ordens-embarque</code>): os dados, as <b>fotos dos containers</b> e quem está usando. As alterações de um aparecem para os outros em cerca de 4 segundos.</p>
-      <label class="field-inline sync-user">Seu nome <input type="text" id="sync-user" placeholder="ex.: Dionei" spellcheck="false" maxlength="40"></label>
+      <p>Para a equipe usar ao mesmo tempo, o app grava na <b>pasta oficial do servidor</b> (ex.: <code>\\servidor\expedicao\ordens-embarque</code>): o <b>arquivo mãe</b> (<code>ordens-embarque-dados.json</code>, com todos os dados) e os arquivos fixos dos perfis <b>Faturamento ADM</b>, <b>Faturamento EXP</b>, <b>Controladores</b> e <b>ADM</b>, além das fotos dos containers e dos relatórios. As alterações de um aparecem para os outros em cerca de 4 segundos.</p>
+      <div class="sync-perfil">
+        <label class="field-inline sync-user">Perfil deste computador
+          <select id="sync-user"><option value="">— escolha —</option><option>Faturamento ADM</option><option>Faturamento EXP</option><option>Controladores</option><option>ADM</option></select></label>
+        <button type="button" class="btn btn-ghost btn-sm" id="sync-trocar" hidden>Trocar perfil…</button>
+      </div>
+      <p class="muted small" id="sync-perfil-info">Não se criam usuários: cada computador usa um dos 4 perfis fixos. Sem perfil escolhido, o computador não grava nada na pasta oficial.</p>
       <ol class="sync-steps">
-        <li>Em <b>cada computador</b>: digite seu nome, clique em <i>Conectar à pasta oficial</i> e escolha <b>a pasta oficial da expedição</b><span id="sync-oficial"></span>. O Chrome pede para permitir: clique em <b>Editar arquivos</b>.</li>
+        <li>Em <b>cada computador</b>: escolha o <b>perfil</b> (fica fixo no computador), clique em <i>Conectar à pasta oficial</i> e escolha <b>a pasta oficial da expedição</b><span id="sync-oficial"></span>. O Chrome pede para permitir: clique em <b>Editar arquivos</b>.</li>
         <li>O app só aceita a pasta oficial: se escolher outra pasta (ou uma pasta nova), ele avisa e não grava nada nela. Os dados vêm sempre da pasta oficial, não do computador.</li>
       </ol>
       <div class="sync-actions">
@@ -4532,6 +4540,9 @@ window.ORDEM_TEMPLATES = {
   'use strict';
 
   const DB = 'arauco-ordens-embarque', STORE = 'kv', HANDLE_KEY = 'sharedFile', DIR_KEY = 'sharedDir';
+  // perfis fixos (não se criam usuários): cada computador usa um deles; cada perfil tem um arquivo fixo na pasta oficial
+  const PERFIS = ['Faturamento ADM', 'Faturamento EXP', 'Controladores', 'ADM'];
+  const arqPerfil = p => p + '.json';
   const ARQ = 'ordens-embarque-dados.json', MARCA = 'ordens-embarque-pasta.json', META_IDB = 'syncMeta';
   const nomeArq = s => String(s || '').replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 120); // nome válido no Windows
   const TOMB_DAYS = 45;
@@ -4626,6 +4637,7 @@ window.ORDEM_TEMPLATES = {
     let marca = null, adotar = false;   // pasta oficial (arquivo de identificação) / próxima leitura: vale a pasta
     let handle = null, dir = null, needsPermission = false, lastModified = 0, timer = null, poll = null, busy = false, pending = false;
     const me = () => (cfg.user && cfg.user()) || '';
+    const logado = () => PERFIS.includes(me());
     // presença: cada usuário grava presenca/<nome>.json com a ordem aberta; os outros leem a cada verificação
     let aberto = null, presencaEm = 0, presencaTxt = '';
     let status = { mode: 'local', name: '', at: null, error: '' };
@@ -4691,7 +4703,7 @@ window.ORDEM_TEMPLATES = {
           adotar = false;
           doc = { entities: remote.entities, tomb: remote.tomb, epoca: remote.epoca || novaEpoca() }; saveMeta();
           cfg.setState(unflatten(flatOf(doc), cfg.empty)); cfg.onRemoteChange({ deOutros: [], adotado: true });
-          if (!remote.epoca) await writeRemote(doc); else lastModified = mtime;
+          if (!remote.epoca && logado()) await writeRemote(doc); else lastModified = mtime;
           setStatus({ mode: 'shared', at: new Date(), error: '' });
           return;
         }
@@ -4705,6 +4717,7 @@ window.ORDEM_TEMPLATES = {
         const localFlat = flatten(cfg.getState(), cfg);
         doc = merged; saveMeta();
         if (!sameFlat(mergedFlat, localFlat)) { cfg.setState(unflatten(mergedFlat, cfg.empty)); cfg.onRemoteChange({ deOutros }); }
+        if (!logado()) { lastModified = mtime; setStatus({ mode: 'shared', at: new Date(), error: '' }); return; } // sem perfil: só lê
         if (forceWrite || !sameFlat(mergedFlat, flatOf(remote)) || Object.keys(merged.tomb).length !== Object.keys(remote.tomb).length) {
           // alguém gravou entre a leitura e agora? junta de novo antes de gravar (não apaga a gravação do colega)
           const agora = (await handle.getFile()).lastModified;
@@ -4727,19 +4740,30 @@ window.ORDEM_TEMPLATES = {
       try { const f = await handle.getFile(); if (f.lastModified !== lastModified) await syncNow(); } catch (e) { setStatus({ error: e.message || String(e) }); }
       if (dir) presenca().catch(() => {});
     }
+    // presença e último acesso ficam no arquivo fixo do perfil (Faturamento ADM.json…): só atualiza o que já existe
     async function presenca() {
-      const pd = await dir.getDirectoryHandle('presenca', { create: true });
-      const meu = JSON.stringify({ nome: me(), aberto, em: Date.now() });
-      if (me() && (meu.replace(/"em":\d+/, '') !== presencaTxt || Date.now() - presencaEm > 10000)) {
-        const w = await (await pd.getFileHandle(nomeArq(me()) + '.json', { create: true })).createWritable(); await w.write(meu); await w.close();
-        presencaTxt = meu.replace(/"em":\d+/, ''); presencaEm = Date.now();
+      const meu = JSON.stringify({ perfil: me(), nome: me(), aberto, em: Date.now() });
+      if (me() && PERFIS.includes(me()) && (meu.replace(/"em":\d+/, '') !== presencaTxt || Date.now() - presencaEm > 10000)) {
+        try {
+          const w = await (await dir.getFileHandle(arqPerfil(me()))).createWritable(); await w.write(meu); await w.close();
+          presencaTxt = meu.replace(/"em":\d+/, ''); presencaEm = Date.now();
+          if (status.erroPerfil) setStatus({ erroPerfil: '' });
+        } catch (e) { if (e && e.name === 'NotFoundError') setStatus({ erroPerfil: `o arquivo "${arqPerfil(me())}" não existe na pasta oficial` }); }
       }
       const outros = [];
-      for await (const [nome, h] of pd.entries()) {
-        if (h.kind !== 'file' || nome === nomeArq(me()) + '.json') continue;
-        try { const j = JSON.parse(await (await h.getFile()).text()); if (j && j.nome && Date.now() - j.em < 30000) outros.push(j); } catch (e) { /* arquivo sendo gravado */ }
+      for (const p of PERFIS) {
+        if (p === me()) continue;
+        try { const j = JSON.parse(await (await (await dir.getFileHandle(arqPerfil(p))).getFile()).text()); if (j && j.em && Date.now() - j.em < 30000) outros.push({ nome: p, aberto: j.aberto, em: j.em }); } catch (e) { /* perfil sem arquivo ou ainda sem uso */ }
       }
       if (cfg.onPresence) cfg.onPresence(outros);
+    }
+    // arquivos fixos: criados uma única vez, na configuração da pasta oficial (ou numa pasta oficial antiga sem eles)
+    async function garantirPerfis(d) {
+      for (const p of PERFIS) {
+        try { await d.getFileHandle(arqPerfil(p)); } catch (e) {
+          const w = await (await d.getFileHandle(arqPerfil(p), { create: true })).createWritable(); await w.write(JSON.stringify({ perfil: p, nome: p, aberto: null, em: 0 })); await w.close();
+        }
+      }
     }
     let visBind = false;
     function startPolling() {
@@ -4748,7 +4772,7 @@ window.ORDEM_TEMPLATES = {
     }
     // fotos na pasta compartilhada (fotos/<id>.jpg): todos veem as mesmas fotos
     const fotos = {
-      async put(id, blob) { if (!dir || needsPermission) return false; const fd = await dir.getDirectoryHandle('fotos', { create: true }); const w = await (await fd.getFileHandle(nomeArq(id) + '.jpg', { create: true })).createWritable(); await w.write(blob); await w.close(); return true; },
+      async put(id, blob) { if (!dir || needsPermission || !logado()) return false; const fd = await dir.getDirectoryHandle('fotos', { create: true }); const w = await (await fd.getFileHandle(nomeArq(id) + '.jpg', { create: true })).createWritable(); await w.write(blob); await w.close(); return true; },
       async get(id) { if (!dir || needsPermission) return null; try { const fd = await dir.getDirectoryHandle('fotos'); return await (await fd.getFileHandle(nomeArq(id) + '.jpg')).getFile(); } catch (e) { return null; } },
       async del(id) { if (!dir || needsPermission) return; try { const fd = await dir.getDirectoryHandle('fotos'); await fd.removeEntry(nomeArq(id) + '.jpg'); } catch (e) { /* já não existe */ } },
     };
@@ -4760,6 +4784,7 @@ window.ORDEM_TEMPLATES = {
       marca = await lerMarca(d);
       if (!marca) marca = await gravarMarca(d, { app: 'arauco-ordens-embarque', id: novaEpoca(), criadaEm: new Date().toISOString(), criadaPor: me(), caminho: (opt && opt.caminho) || '' }); // pasta antiga (já tinha dados) ganha a identificação
       adotar = !(opt && opt.nova); // computador conectando: vale o que está na pasta
+      await garantirPerfis(d);
       dir = d; handle = await d.getFileHandle(ARQ, { create: true }); needsPermission = false;
       try { await idbSet(DIR_KEY, d); await idbDel(HANDLE_KEY); } catch (e) { /* reconectar manualmente na próxima vez */ }
       setStatus({ mode: 'shared', name: d.name, pasta: true, marca, error: '' });
@@ -4820,11 +4845,12 @@ window.ORDEM_TEMPLATES = {
       conectarPasta: (d, opt) => attachDir(d, opt),
       async openFolder() { const d = await global.showDirectoryPicker({ id: 'oe-pasta', mode: 'readwrite' }); await attachDir(d); },
       marca: () => marca,
+      logado: () => logado(),
       // fechamento semanal: o estado atual (já zerado) vira a nova época; quem estiver conectado passa a usar este arquivo
       async resetar() {
         const now = Date.now(); const flat = flatten(cfg.getState(), cfg);
         doc = { entities: Object.fromEntries(Object.entries(flat).map(([k, v]) => [k, { v, ts: now, by: me() }])), tomb: {}, epoca: novaEpoca() }; saveMeta();
-        if (handle && !needsPermission) { await writeRemote(doc); setStatus({ at: new Date() }); return true; }
+        if (handle && !needsPermission && logado()) { await writeRemote(doc); setStatus({ at: new Date() }); return true; }
         return false;
       },
       pasta: () => !!dir && !needsPermission,
@@ -4832,7 +4858,7 @@ window.ORDEM_TEMPLATES = {
       fotos,
       // grava um arquivo qualquer na pasta compartilhada (ex.: arquivo/ordens-embarque-2026-10.xlsx)
       async salvarArquivo(sub, nome, blob) {
-        if (!dir || needsPermission) return false;
+        if (!dir || needsPermission || !logado()) return false;
         let d = dir; for (const p of sub) d = await d.getDirectoryHandle(p, { create: true });
         const w = await (await d.getFileHandle(nomeArq(nome), { create: true })).createWritable(); await w.write(blob); await w.close(); return true;
       },
@@ -4852,7 +4878,7 @@ window.ORDEM_TEMPLATES = {
     };
   }
 
-  global.OESync = { create, flatten, unflatten, mergeDocs };
+  global.OESync = { create, flatten, unflatten, mergeDocs, PERFIS };
 })(window);
 
 </script>
@@ -5807,7 +5833,7 @@ window.ORDEM_TEMPLATES = {
         <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
         <td class="mono c-cont">${semValor(T.ot.container) ? '' : esc(fmtContainer(T.ot.container))}</td>
-        <td class="c-status">${statusChip(T)}${fotoChip(T)}${quemAbriu(T.transporte).map(n => ` <span class="chip pres" title="${esc(n)} está com esta ordem aberta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>${esc(n.split(' ')[0])}</span>`).join('')}</td>
+        <td class="c-status">${statusChip(T)}${fotoChip(T)}${quemAbriu(T.transporte).map(n => ` <span class="chip pres" title="${esc(n)} está com esta ordem aberta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>${esc(n)}</span>`).join('')}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
     })(L.T)).join('');
@@ -7881,15 +7907,23 @@ window.ORDEM_TEMPLATES = {
   // aviso fixo em vermelho quando este computador não está gravando na pasta oficial
   function avisoPasta(st) {
     const el = $('#aviso-pasta'); if (!el) return;
-    const ok = st.mode === 'shared' && st.pasta && !st.error;
+    const ok = st.mode === 'shared' && st.pasta && !st.error && !!usuario() && !st.erroPerfil;
     const p = pastaOficial();
     el.hidden = ok;
     el.innerHTML = ok ? '' : st.mode === 'permission'
       ? `<b>Pasta oficial desconectada.</b> O Chrome pede para liberar o acesso de novo. <button class="btn btn-sm" data-aviso="reconectar">Reconectar</button>`
       : st.mode === 'shared' && st.error ? `<b>Erro ao gravar na pasta oficial:</b> ${esc(st.error)}. As alterações ficam pendentes até a pasta voltar.`
+      : st.mode === 'shared' && !usuario() ? `<b>Escolha o perfil deste computador</b> (Faturamento ADM, Faturamento EXP, Controladores ou ADM). Sem perfil, nada é gravado na pasta oficial. <button class="btn btn-sm" data-aviso="conectar">Escolher perfil</button>`
+      : st.mode === 'shared' && st.erroPerfil ? `<b>Perfil sem arquivo:</b> ${esc(st.erroPerfil)}. Peça ao ADM para conferir a pasta oficial.`
       : `<b>Este computador não está conectado à pasta oficial da expedição${p && p.caminho ? ` (${esc(p.caminho)})` : ''}.</b> O que for digitado aqui não vai para a equipe. <button class="btn btn-sm" data-aviso="conectar">Conectar</button>`;
   }
-  function usuario() { try { return (localStorage.getItem(USER_KEY) || '').trim(); } catch (e) { return ''; } }
+  // perfil fixo do computador (Faturamento ADM, Faturamento EXP, Controladores ou ADM); nome livre antigo não vale
+  function usuario() { try { const u = (localStorage.getItem(USER_KEY) || '').trim(); return window.OESync.PERFIS.includes(u) ? u : ''; } catch (e) { return ''; } }
+  function mostrarPerfil() {
+    const u = usuario(), sel = $('#sync-user');
+    sel.value = u; sel.disabled = !!u; $('#sync-trocar').hidden = !u;
+    $('#sync-perfil-info').innerHTML = u ? `Este computador usa o perfil <b>${esc(u)}</b> (fixo). As alterações são gravadas como <b>${esc(u)}</b>.` : 'Não se criam usuários: cada computador usa um dos 4 perfis fixos. <b>Sem perfil escolhido, o computador não grava nada na pasta oficial.</b>';
+  }
   const idsFotos = () => [].concat(...Object.values(state.fotos || {}).map(f => Object.values(f.slots || {}).map(x => x.id)));
   // transporte de cada registro alterado (chaves do sync: item:, man:t|campo, printed:t, foto:t…)
   function transporteDoRegistro(k, v) {
@@ -7956,10 +7990,19 @@ window.ORDEM_TEMPLATES = {
       $('#sync-dialog').showModal();
     });
 
-    try { $('#sync-user').value = usuario(); } catch (e) { /* sem storage */ }
-    $('#sync-user').addEventListener('change', e => { try { localStorage.setItem(USER_KEY, e.target.value.trim()); } catch (er) { /* sem storage */ } });
+    mostrarPerfil();
+    $('#sync-user').addEventListener('change', e => {
+      try { localStorage.setItem(USER_KEY, e.target.value); } catch (er) { /* sem storage */ }
+      mostrarPerfil(); avisoPasta(sync.status()); if (e.target.value) { sync.syncNow(); toast(`Perfil deste computador: ${e.target.value}.`, 'ok'); }
+    });
+    $('#sync-trocar').addEventListener('click', async () => {
+      const ok = await confirmBox('Trocar o perfil deste computador', `<p>O perfil é fixo por computador. Trocar de <b>${esc(usuario())}</b> para outro perfil?</p><p class="muted">As próximas alterações deste computador ficam registradas com o novo perfil.</p>`, 'Trocar perfil');
+      if (!ok) return;
+      try { localStorage.removeItem(USER_KEY); } catch (e) { /* sem storage */ }
+      mostrarPerfil(); $('#sync-dialog').showModal(); $('#sync-user').focus();
+    });
     $('#sync-folder').addEventListener('click', () => {
-      if (!usuario()) { toast('Digite primeiro o seu nome (aparece para os colegas).', 'warn'); $('#sync-user').focus(); return; }
+      if (!usuario()) { toast('Escolha primeiro o perfil deste computador.', 'warn'); $('#sync-user').focus(); return; }
       run(async () => {
         const r = await sync.escolherPasta(); const conhecida = pastaOficial();
         const cancelar = () => { const e = new Error('cancelado'); e.name = 'AbortError'; throw e; };

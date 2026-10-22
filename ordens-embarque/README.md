@@ -503,3 +503,11 @@ Em ordens de **exportação terrestre** (cliente ARAUCO MADERAS / MADERAS ARAUCO
 **Dados EXP terrestre**, que copia num texto único no formato
 `EXP 1000000123-Motorista JOSE DA SILVA-CPF 123456789-89- Placas AAA1234PR/BBB7894PR` (placa da carreta / placa do cavalo, com UF). Se faltar algum dado (EXP, UF da placa…),
 o aviso da cópia diz o que está em branco.
+
+### Perfis fixos da pasta oficial
+
+Não se criam usuários. Na pasta oficial ficam o **arquivo mãe** (`ordens-embarque-dados.json`, com todos os dados) e os
+arquivos fixos dos 4 perfis: **Faturamento ADM**, **Faturamento EXP**, **Controladores** e **ADM**. Cada computador escolhe
+um desses perfis uma vez (fica fixo; "Trocar perfil…" pede confirmação). O app só atualiza esses arquivos que já existem:
+o arquivo mãe com os dados e o arquivo do perfil com quem está usando e qual ordem está aberta. Sem perfil escolhido, o
+computador vê os dados mas não grava nada na pasta. A pasta antiga `presenca\` não é mais usada e pode ser apagada.

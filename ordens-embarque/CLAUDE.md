@@ -53,9 +53,13 @@
   (`tomb`); `mergeDocs` = mais recente vence. Dados reais ficam nesse arquivo da rede, nunca no repositório.
 - Uso simultâneo (2–3 pessoas, Chrome, pasta no servidor): modo **pasta** (`openFolder` → `showDirectoryPicker`, atalho
   `sharedDir` no IndexedDB). Na pasta: `ordens-embarque-dados.json` (mesmo formato), `fotos/<id>.jpg` (fotos dos
-  containers; `OEF.setRemoto(sync.fotos)`: grava local + pasta, busca na pasta o que não tem) e `presenca/<nome>.json`
-  (nome + ordem aberta, a cada ≤10 s; vale por 30 s). Verificação a cada 4 s. Cada registro guarda `by` (nome do usuário,
-  `arauco.ordensEmbarque.usuario`): alterações de outros geram aviso "Fulano atualizou o transporte X". Antes de gravar,
+  containers; `OEF.setRemoto(sync.fotos)`: grava local + pasta, busca na pasta o que não tem). **Perfis fixos** (não se criam
+  usuários): `OESync.PERFIS` = Faturamento ADM, Faturamento EXP, Controladores, ADM; um por computador
+  (`arauco.ordensEmbarque.usuario`, select `#sync-user`, "Trocar perfil…" com confirmação). Cada perfil tem um arquivo fixo
+  na pasta (`Faturamento ADM.json`…) com a presença (ordem aberta, a cada ≤10 s; vale por 30 s): o app **só atualiza** esses
+  arquivos (criados uma única vez em `garantirPerfis` ao configurar/conectar a pasta oficial; não existe mais `presenca/`).
+  Sem perfil (`logado()` falso) o computador só lê: não grava arquivo mãe, fotos nem relatórios. Verificação a cada 4 s.
+  Cada registro guarda `by` (o perfil): alterações de outros geram aviso "Fulano atualizou o transporte X". Antes de gravar,
   confere se o arquivo mudou desde a leitura e junta de novo (não apaga a gravação do colega). `renderSemAtrapalhar`
   redesenha com os dados dos colegas mantendo foco, cursor e rolagem de quem digita (o digitado já está no estado).
   Presença: chip amarelo com o nome na lista, aviso no painel (`#d-presenca`) e "n online" no topo.

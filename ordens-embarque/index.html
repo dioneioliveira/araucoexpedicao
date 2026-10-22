@@ -426,10 +426,15 @@
     </div>
     <div class="cf-body">
       <p id="sync-info" class="muted"></p>
-      <p>Para <b>2 ou 3 pessoas usarem ao mesmo tempo</b>, o app grava numa <b>pasta do servidor</b> (ex.: <code>\\servidor\expedicao\ordens-embarque</code>): os dados, as <b>fotos dos containers</b> e quem está usando. As alterações de um aparecem para os outros em cerca de 4 segundos.</p>
-      <label class="field-inline sync-user">Seu nome <input type="text" id="sync-user" placeholder="ex.: Dionei" spellcheck="false" maxlength="40"></label>
+      <p>Para a equipe usar ao mesmo tempo, o app grava na <b>pasta oficial do servidor</b> (ex.: <code>\\servidor\expedicao\ordens-embarque</code>): o <b>arquivo mãe</b> (<code>ordens-embarque-dados.json</code>, com todos os dados) e os arquivos fixos dos perfis <b>Faturamento ADM</b>, <b>Faturamento EXP</b>, <b>Controladores</b> e <b>ADM</b>, além das fotos dos containers e dos relatórios. As alterações de um aparecem para os outros em cerca de 4 segundos.</p>
+      <div class="sync-perfil">
+        <label class="field-inline sync-user">Perfil deste computador
+          <select id="sync-user"><option value="">— escolha —</option><option>Faturamento ADM</option><option>Faturamento EXP</option><option>Controladores</option><option>ADM</option></select></label>
+        <button type="button" class="btn btn-ghost btn-sm" id="sync-trocar" hidden>Trocar perfil…</button>
+      </div>
+      <p class="muted small" id="sync-perfil-info">Não se criam usuários: cada computador usa um dos 4 perfis fixos. Sem perfil escolhido, o computador não grava nada na pasta oficial.</p>
       <ol class="sync-steps">
-        <li>Em <b>cada computador</b>: digite seu nome, clique em <i>Conectar à pasta oficial</i> e escolha <b>a pasta oficial da expedição</b><span id="sync-oficial"></span>. O Chrome pede para permitir: clique em <b>Editar arquivos</b>.</li>
+        <li>Em <b>cada computador</b>: escolha o <b>perfil</b> (fica fixo no computador), clique em <i>Conectar à pasta oficial</i> e escolha <b>a pasta oficial da expedição</b><span id="sync-oficial"></span>. O Chrome pede para permitir: clique em <b>Editar arquivos</b>.</li>
         <li>O app só aceita a pasta oficial: se escolher outra pasta (ou uma pasta nova), ele avisa e não grava nada nela. Os dados vêm sempre da pasta oficial, não do computador.</li>
       </ol>
       <div class="sync-actions">

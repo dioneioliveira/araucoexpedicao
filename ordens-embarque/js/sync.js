@@ -11,6 +11,9 @@
   'use strict';
 
   const DB = 'arauco-ordens-embarque', STORE = 'kv', HANDLE_KEY = 'sharedFile', DIR_KEY = 'sharedDir';
+  // perfis fixos (não se criam usuários): cada computador usa um deles; cada perfil tem um arquivo fixo na pasta oficial
+  const PERFIS = ['Faturamento ADM', 'Faturamento EXP', 'Controladores', 'ADM'];
+  const arqPerfil = p => p + '.json';
   const ARQ = 'ordens-embarque-dados.json', MARCA = 'ordens-embarque-pasta.json', META_IDB = 'syncMeta';
   const nomeArq = s => String(s || '').replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 120); // nome válido no Windows
   const TOMB_DAYS = 45;
@@ -105,6 +108,7 @@
     let marca = null, adotar = false;   // pasta oficial (arquivo de identificação) / próxima leitura: vale a pasta
     let handle = null, dir = null, needsPermission = false, lastModified = 0, timer = null, poll = null, busy = false, pending = false;
     const me = () => (cfg.user && cfg.user()) || '';
+    const logado = () => PERFIS.includes(me());
     // presença: cada usuário grava presenca/<nome>.json com a ordem aberta; os outros leem a cada verificação
     let aberto = null, presencaEm = 0, presencaTxt = '';
     let status = { mode: 'local', name: '', at: null, error: '' };
@@ -170,7 +174,7 @@
           adotar = false;
           doc = { entities: remote.entities, tomb: remote.tomb, epoca: remote.epoca || novaEpoca() }; saveMeta();
           cfg.setState(unflatten(flatOf(doc), cfg.empty)); cfg.onRemoteChange({ deOutros: [], adotado: true });
-          if (!remote.epoca) await writeRemote(doc); else lastModified = mtime;
+          if (!remote.epoca && logado()) await writeRemote(doc); else lastModified = mtime;
           setStatus({ mode: 'shared', at: new Date(), error: '' });
           return;
         }
@@ -184,6 +188,7 @@
         const localFlat = flatten(cfg.getState(), cfg);
         doc = merged; saveMeta();
         if (!sameFlat(mergedFlat, localFlat)) { cfg.setState(unflatten(mergedFlat, cfg.empty)); cfg.onRemoteChange({ deOutros }); }
+        if (!logado()) { lastModified = mtime; setStatus({ mode: 'shared', at: new Date(), error: '' }); return; } // sem perfil: só lê
         if (forceWrite || !sameFlat(mergedFlat, flatOf(remote)) || Object.keys(merged.tomb).length !== Object.keys(remote.tomb).length) {
           // alguém gravou entre a leitura e agora? junta de novo antes de gravar (não apaga a gravação do colega)
           const agora = (await handle.getFile()).lastModified;
@@ -206,19 +211,30 @@
       try { const f = await handle.getFile(); if (f.lastModified !== lastModified) await syncNow(); } catch (e) { setStatus({ error: e.message || String(e) }); }
       if (dir) presenca().catch(() => {});
     }
+    // presença e último acesso ficam no arquivo fixo do perfil (Faturamento ADM.json…): só atualiza o que já existe
     async function presenca() {
-      const pd = await dir.getDirectoryHandle('presenca', { create: true });
-      const meu = JSON.stringify({ nome: me(), aberto, em: Date.now() });
-      if (me() && (meu.replace(/"em":\d+/, '') !== presencaTxt || Date.now() - presencaEm > 10000)) {
-        const w = await (await pd.getFileHandle(nomeArq(me()) + '.json', { create: true })).createWritable(); await w.write(meu); await w.close();
-        presencaTxt = meu.replace(/"em":\d+/, ''); presencaEm = Date.now();
+      const meu = JSON.stringify({ perfil: me(), nome: me(), aberto, em: Date.now() });
+      if (me() && PERFIS.includes(me()) && (meu.replace(/"em":\d+/, '') !== presencaTxt || Date.now() - presencaEm > 10000)) {
+        try {
+          const w = await (await dir.getFileHandle(arqPerfil(me()))).createWritable(); await w.write(meu); await w.close();
+          presencaTxt = meu.replace(/"em":\d+/, ''); presencaEm = Date.now();
+          if (status.erroPerfil) setStatus({ erroPerfil: '' });
+        } catch (e) { if (e && e.name === 'NotFoundError') setStatus({ erroPerfil: `o arquivo "${arqPerfil(me())}" não existe na pasta oficial` }); }
       }
       const outros = [];
-      for await (const [nome, h] of pd.entries()) {
-        if (h.kind !== 'file' || nome === nomeArq(me()) + '.json') continue;
-        try { const j = JSON.parse(await (await h.getFile()).text()); if (j && j.nome && Date.now() - j.em < 30000) outros.push(j); } catch (e) { /* arquivo sendo gravado */ }
+      for (const p of PERFIS) {
+        if (p === me()) continue;
+        try { const j = JSON.parse(await (await (await dir.getFileHandle(arqPerfil(p))).getFile()).text()); if (j && j.em && Date.now() - j.em < 30000) outros.push({ nome: p, aberto: j.aberto, em: j.em }); } catch (e) { /* perfil sem arquivo ou ainda sem uso */ }
       }
       if (cfg.onPresence) cfg.onPresence(outros);
+    }
+    // arquivos fixos: criados uma única vez, na configuração da pasta oficial (ou numa pasta oficial antiga sem eles)
+    async function garantirPerfis(d) {
+      for (const p of PERFIS) {
+        try { await d.getFileHandle(arqPerfil(p)); } catch (e) {
+          const w = await (await d.getFileHandle(arqPerfil(p), { create: true })).createWritable(); await w.write(JSON.stringify({ perfil: p, nome: p, aberto: null, em: 0 })); await w.close();
+        }
+      }
     }
     let visBind = false;
     function startPolling() {
@@ -227,7 +243,7 @@
     }
     // fotos na pasta compartilhada (fotos/<id>.jpg): todos veem as mesmas fotos
     const fotos = {
-      async put(id, blob) { if (!dir || needsPermission) return false; const fd = await dir.getDirectoryHandle('fotos', { create: true }); const w = await (await fd.getFileHandle(nomeArq(id) + '.jpg', { create: true })).createWritable(); await w.write(blob); await w.close(); return true; },
+      async put(id, blob) { if (!dir || needsPermission || !logado()) return false; const fd = await dir.getDirectoryHandle('fotos', { create: true }); const w = await (await fd.getFileHandle(nomeArq(id) + '.jpg', { create: true })).createWritable(); await w.write(blob); await w.close(); return true; },
       async get(id) { if (!dir || needsPermission) return null; try { const fd = await dir.getDirectoryHandle('fotos'); return await (await fd.getFileHandle(nomeArq(id) + '.jpg')).getFile(); } catch (e) { return null; } },
       async del(id) { if (!dir || needsPermission) return; try { const fd = await dir.getDirectoryHandle('fotos'); await fd.removeEntry(nomeArq(id) + '.jpg'); } catch (e) { /* já não existe */ } },
     };
@@ -239,6 +255,7 @@
       marca = await lerMarca(d);
       if (!marca) marca = await gravarMarca(d, { app: 'arauco-ordens-embarque', id: novaEpoca(), criadaEm: new Date().toISOString(), criadaPor: me(), caminho: (opt && opt.caminho) || '' }); // pasta antiga (já tinha dados) ganha a identificação
       adotar = !(opt && opt.nova); // computador conectando: vale o que está na pasta
+      await garantirPerfis(d);
       dir = d; handle = await d.getFileHandle(ARQ, { create: true }); needsPermission = false;
       try { await idbSet(DIR_KEY, d); await idbDel(HANDLE_KEY); } catch (e) { /* reconectar manualmente na próxima vez */ }
       setStatus({ mode: 'shared', name: d.name, pasta: true, marca, error: '' });
@@ -299,11 +316,12 @@
       conectarPasta: (d, opt) => attachDir(d, opt),
       async openFolder() { const d = await global.showDirectoryPicker({ id: 'oe-pasta', mode: 'readwrite' }); await attachDir(d); },
       marca: () => marca,
+      logado: () => logado(),
       // fechamento semanal: o estado atual (já zerado) vira a nova época; quem estiver conectado passa a usar este arquivo
       async resetar() {
         const now = Date.now(); const flat = flatten(cfg.getState(), cfg);
         doc = { entities: Object.fromEntries(Object.entries(flat).map(([k, v]) => [k, { v, ts: now, by: me() }])), tomb: {}, epoca: novaEpoca() }; saveMeta();
-        if (handle && !needsPermission) { await writeRemote(doc); setStatus({ at: new Date() }); return true; }
+        if (handle && !needsPermission && logado()) { await writeRemote(doc); setStatus({ at: new Date() }); return true; }
         return false;
       },
       pasta: () => !!dir && !needsPermission,
@@ -311,7 +329,7 @@
       fotos,
       // grava um arquivo qualquer na pasta compartilhada (ex.: arquivo/ordens-embarque-2026-10.xlsx)
       async salvarArquivo(sub, nome, blob) {
-        if (!dir || needsPermission) return false;
+        if (!dir || needsPermission || !logado()) return false;
         let d = dir; for (const p of sub) d = await d.getDirectoryHandle(p, { create: true });
         const w = await (await d.getFileHandle(nomeArq(nome), { create: true })).createWritable(); await w.write(blob); await w.close(); return true;
       },
@@ -331,5 +349,5 @@
     };
   }
 
-  global.OESync = { create, flatten, unflatten, mergeDocs };
+  global.OESync = { create, flatten, unflatten, mergeDocs, PERFIS };
 })(window);

@@ -581,7 +581,7 @@
         <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
         <td class="mono c-cont">${semValor(T.ot.container) ? '' : esc(fmtContainer(T.ot.container))}</td>
-        <td class="c-status">${statusChip(T)}${fotoChip(T)}${quemAbriu(T.transporte).map(n => ` <span class="chip pres" title="${esc(n)} está com esta ordem aberta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>${esc(n.split(' ')[0])}</span>`).join('')}</td>
+        <td class="c-status">${statusChip(T)}${fotoChip(T)}${quemAbriu(T.transporte).map(n => ` <span class="chip pres" title="${esc(n)} está com esta ordem aberta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>${esc(n)}</span>`).join('')}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
     })(L.T)).join('');
@@ -2655,15 +2655,23 @@
   // aviso fixo em vermelho quando este computador não está gravando na pasta oficial
   function avisoPasta(st) {
     const el = $('#aviso-pasta'); if (!el) return;
-    const ok = st.mode === 'shared' && st.pasta && !st.error;
+    const ok = st.mode === 'shared' && st.pasta && !st.error && !!usuario() && !st.erroPerfil;
     const p = pastaOficial();
     el.hidden = ok;
     el.innerHTML = ok ? '' : st.mode === 'permission'
       ? `<b>Pasta oficial desconectada.</b> O Chrome pede para liberar o acesso de novo. <button class="btn btn-sm" data-aviso="reconectar">Reconectar</button>`
       : st.mode === 'shared' && st.error ? `<b>Erro ao gravar na pasta oficial:</b> ${esc(st.error)}. As alterações ficam pendentes até a pasta voltar.`
+      : st.mode === 'shared' && !usuario() ? `<b>Escolha o perfil deste computador</b> (Faturamento ADM, Faturamento EXP, Controladores ou ADM). Sem perfil, nada é gravado na pasta oficial. <button class="btn btn-sm" data-aviso="conectar">Escolher perfil</button>`
+      : st.mode === 'shared' && st.erroPerfil ? `<b>Perfil sem arquivo:</b> ${esc(st.erroPerfil)}. Peça ao ADM para conferir a pasta oficial.`
       : `<b>Este computador não está conectado à pasta oficial da expedição${p && p.caminho ? ` (${esc(p.caminho)})` : ''}.</b> O que for digitado aqui não vai para a equipe. <button class="btn btn-sm" data-aviso="conectar">Conectar</button>`;
   }
-  function usuario() { try { return (localStorage.getItem(USER_KEY) || '').trim(); } catch (e) { return ''; } }
+  // perfil fixo do computador (Faturamento ADM, Faturamento EXP, Controladores ou ADM); nome livre antigo não vale
+  function usuario() { try { const u = (localStorage.getItem(USER_KEY) || '').trim(); return window.OESync.PERFIS.includes(u) ? u : ''; } catch (e) { return ''; } }
+  function mostrarPerfil() {
+    const u = usuario(), sel = $('#sync-user');
+    sel.value = u; sel.disabled = !!u; $('#sync-trocar').hidden = !u;
+    $('#sync-perfil-info').innerHTML = u ? `Este computador usa o perfil <b>${esc(u)}</b> (fixo). As alterações são gravadas como <b>${esc(u)}</b>.` : 'Não se criam usuários: cada computador usa um dos 4 perfis fixos. <b>Sem perfil escolhido, o computador não grava nada na pasta oficial.</b>';
+  }
   const idsFotos = () => [].concat(...Object.values(state.fotos || {}).map(f => Object.values(f.slots || {}).map(x => x.id)));
   // transporte de cada registro alterado (chaves do sync: item:, man:t|campo, printed:t, foto:t…)
   function transporteDoRegistro(k, v) {
@@ -2730,10 +2738,19 @@
       $('#sync-dialog').showModal();
     });
 
-    try { $('#sync-user').value = usuario(); } catch (e) { /* sem storage */ }
-    $('#sync-user').addEventListener('change', e => { try { localStorage.setItem(USER_KEY, e.target.value.trim()); } catch (er) { /* sem storage */ } });
+    mostrarPerfil();
+    $('#sync-user').addEventListener('change', e => {
+      try { localStorage.setItem(USER_KEY, e.target.value); } catch (er) { /* sem storage */ }
+      mostrarPerfil(); avisoPasta(sync.status()); if (e.target.value) { sync.syncNow(); toast(`Perfil deste computador: ${e.target.value}.`, 'ok'); }
+    });
+    $('#sync-trocar').addEventListener('click', async () => {
+      const ok = await confirmBox('Trocar o perfil deste computador', `<p>O perfil é fixo por computador. Trocar de <b>${esc(usuario())}</b> para outro perfil?</p><p class="muted">As próximas alterações deste computador ficam registradas com o novo perfil.</p>`, 'Trocar perfil');
+      if (!ok) return;
+      try { localStorage.removeItem(USER_KEY); } catch (e) { /* sem storage */ }
+      mostrarPerfil(); $('#sync-dialog').showModal(); $('#sync-user').focus();
+    });
     $('#sync-folder').addEventListener('click', () => {
-      if (!usuario()) { toast('Digite primeiro o seu nome (aparece para os colegas).', 'warn'); $('#sync-user').focus(); return; }
+      if (!usuario()) { toast('Escolha primeiro o perfil deste computador.', 'warn'); $('#sync-user').focus(); return; }
       run(async () => {
         const r = await sync.escolherPasta(); const conhecida = pastaOficial();
         const cancelar = () => { const e = new Error('cancelado'); e.name = 'AbortError'; throw e; };
