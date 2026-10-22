@@ -30,6 +30,7 @@
     </div>
   </header>
 
+  <div class="aviso-pasta" id="aviso-pasta" hidden></div>
   <main id="main">
     <section class="home-hero card">
       <form class="transporte-hero" id="transporte-form" autocomplete="off">
@@ -73,7 +74,7 @@
       <div class="tb-group">
         <button class="btn btn-ghost btn-sm btn-danger" id="btn-del-selected" disabled title="Excluir da lista diária as linhas selecionadas"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Excluir selecionadas</button>
         <button class="btn btn-ghost btn-sm" id="btn-fat-selected" disabled title="Marcar as linhas selecionadas como faturadas (vão para o fim da lista)"><svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>Marcar faturadas</button>
-        <button class="btn btn-ghost btn-sm" id="btn-mes" title="Relatório mensal em Excel e fechamento do mês"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h3v3H8z"/></svg>Mês</button>
+        <button class="btn btn-ghost btn-sm" id="btn-mes" title="Relatório semanal em Excel e fechamento da semana (automático todo domingo às 22:40)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 14h10"/></svg>Semana</button>
         <button class="btn btn-ghost btn-sm" id="btn-report" title="Relatório dos embarques do dia: Excel, PDF e e-mail"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 15v-3M12 15V9M16 15v-5"/></svg>Relatório do dia</button>
         <button class="btn btn-ghost btn-sm" id="btn-copy-list" title="Copiar a lista do dia (colar no Excel)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>Copiar lista</button>
         <button class="btn btn-ghost btn-sm" id="btn-new-manual"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Transporte manual</button>
@@ -350,17 +351,15 @@
 <dialog id="mes-dialog" class="modal modal-sm">
   <div class="modal-inner">
     <div class="modal-head">
-      <div><div class="eyebrow">Mês</div><h2>Relatório mensal e fechamento</h2></div>
+      <div><div class="eyebrow">Semana</div><h2>Relatório semanal e fechamento</h2></div>
       <button class="icon-btn" id="ms-close" title="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="cf-body">
-      <p class="muted small">O mesmo app serve para todos os meses. Uma vez por mês, <b>feche o mês anterior</b>: o app baixa o Excel com todos os dados (por transporte, separado por data, com itens, agendamentos, OTs e pesagens) e um backup, e tira o mês do app para ele continuar leve.</p>
-      <label class="field-inline">Mês <input type="month" id="ms-mes"></label>
-      <p class="muted small" id="ms-meses"></p>
+      <p class="muted small">Para o app não ficar sem espaço, <b>todo domingo às 22:40</b> ele fecha a semana sozinho: grava o <b>Excel</b> (por transporte, separado por data, com itens, agendamentos, OTs e pesagens) e o <b>backup</b> na pasta oficial, em <code>arquivo/</code>, baixa uma cópia e <b>começa a semana zerado</b>. Se nenhum computador estiver aberto nesse horário, o fechamento acontece assim que alguém abrir o app.</p>
       <div id="ms-resumo"></div>
       <div class="sync-actions">
-        <button class="btn btn-ghost" id="ms-excel">Baixar relatório mensal (Excel)</button>
-        <button class="btn btn-primary" id="ms-fechar">Fechar o mês…</button>
+        <button class="btn btn-ghost" id="ms-excel">Baixar relatório da semana (Excel)</button>
+        <button class="btn btn-primary" id="ms-fechar">Fechar a semana agora…</button>
       </div>
     </div>
   </div>
@@ -430,21 +429,16 @@
       <p>Para <b>2 ou 3 pessoas usarem ao mesmo tempo</b>, o app grava numa <b>pasta do servidor</b> (ex.: <code>\\servidor\expedicao\ordens-embarque</code>): os dados, as <b>fotos dos containers</b> e quem está usando. As alterações de um aparecem para os outros em cerca de 4 segundos.</p>
       <label class="field-inline sync-user">Seu nome <input type="text" id="sync-user" placeholder="ex.: Dionei" spellcheck="false" maxlength="40"></label>
       <ol class="sync-steps">
-        <li>Crie (uma vez) uma pasta no servidor, por exemplo <code>ordens-embarque</code>, com acesso de leitura e gravação para a equipe.</li>
-        <li>Em <b>cada computador</b>: digite seu nome, clique em <i>Escolher pasta compartilhada</i> e escolha essa mesma pasta. O Chrome pede para permitir: clique em <b>Permitir</b>/<b>Editar arquivos</b>.</li>
+        <li>Em <b>cada computador</b>: digite seu nome, clique em <i>Conectar à pasta oficial</i> e escolha <b>a pasta oficial da expedição</b><span id="sync-oficial"></span>. O Chrome pede para permitir: clique em <b>Editar arquivos</b>.</li>
+        <li>O app só aceita a pasta oficial: se escolher outra pasta (ou uma pasta nova), ele avisa e não grava nada nela. Os dados vêm sempre da pasta oficial, não do computador.</li>
       </ol>
       <div class="sync-actions">
-        <button class="btn btn-primary" id="sync-folder">Escolher pasta compartilhada</button>
+        <button class="btn btn-primary" id="sync-folder">Conectar à pasta oficial</button>
         <button class="btn btn-ghost" id="sync-reconnect" hidden>Reconectar</button>
         <button class="btn btn-ghost" id="sync-now">Sincronizar agora</button>
         <button class="btn btn-danger" id="sync-disconnect" hidden>Desconectar</button>
       </div>
-      <details class="sync-antigo"><summary class="muted small">Modo antigo: um arquivo .json (sem fotos e sem "quem está usando")</summary>
-        <div class="sync-actions">
-          <button class="btn btn-ghost btn-sm" id="sync-open">Conectar a arquivo existente</button>
-          <button class="btn btn-ghost btn-sm" id="sync-create">Criar arquivo compartilhado</button>
-        </div>
-      </details>
+
       <p class="muted small">Use o Google Chrome. Ao abrir o app, o Chrome pode pedir para liberar o acesso de novo: clique no aviso <b>Reconectar dados compartilhados</b> no topo.</p>
     </div>
   </div>

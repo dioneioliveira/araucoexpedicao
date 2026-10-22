@@ -1507,20 +1507,36 @@
     });
   }
 
-  // ------------------------------------------------------------------ relatório mensal e fechamento do mês
-  // O app guarda os dados no navegador (~5 MB). Uma vez por mês: exporta tudo em Excel (por transporte, por data),
-  // guarda um backup e tira o mês do app. Fotos ficam na pasta do servidor; o histórico de pesagens fica no app.
-  const mesDe = T => (T.eff.data || '').slice(0, 7);
+  // ------------------------------------------------------------------ relatório e fechamento semanal
+  // Todo domingo às 22:40 (ou na primeira vez que o app abrir depois disso): grava o Excel da semana e o backup na
+  // pasta oficial (arquivo/), baixa uma cópia e começa a semana zerada. Ficam: cargas com data depois do domingo,
+  // lista FSC e histórico de pesagens. Fotos continuam na pasta do servidor.
+  const FECHA_DIA = 0, FECHA_HORA = 22, FECHA_MIN = 40; // domingo 22:40
+  const isoDia = d => `${d.getFullYear()}-${P.pad(d.getMonth() + 1)}-${P.pad(d.getDate())}`;
+  // último horário de fechamento já passado (domingo 22:40 mais recente)
+  function ultimoCorte(agora = new Date()) {
+    const c = new Date(agora); c.setHours(FECHA_HORA, FECHA_MIN, 0, 0);
+    c.setDate(c.getDate() - ((c.getDay() - FECHA_DIA + 7) % 7));
+    if (c > agora) c.setDate(c.getDate() - 7);
+    return c;
+  }
+  const proximoCorte = (agora = new Date()) => { const c = ultimoCorte(agora); c.setDate(c.getDate() + 7); return c; };
+  // semana do fechamento: segunda a domingo (o domingo do corte)
+  function semanaDoCorte(c) { const dom = isoDia(c); const seg = new Date(c); seg.setDate(seg.getDate() - 6); return { ini: isoDia(seg), fim: dom }; }
+  const fmtCurto = iso => iso ? iso.split('-').reverse().slice(0, 2).join('/') : '';
   const dt = v => v ? new Date(v).toLocaleString('pt-BR') : '';
   function espacoUsado() {
     let n = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || '').length; } } catch (e) { /* sem storage */ }
     return { mb: n * 2 / 1048576, pct: Math.min(100, n * 2 / (5 * 1048576) * 100) }; // ~5 MB por site no Chrome
   }
   const tipoCarga = T => destaque(T, T.janela === 'CONTAINER') || (T.janela === 'CONTAINER' ? 'CONTAINER' : 'MERCADO INTERNO');
-  function dadosMes(mes) {
-    const list = allTransports().filter(T => mesDe(T) === mes)
+  // dados de um período (datas ISO, inclusivas; ini vazio = tudo até o fim)
+  function dadosPeriodo(ini, fim, iniTitulo) {
+    const no = d => !!d && (!ini || d >= ini) && d <= fim;
+    const mes = `${ini || '…'}_a_${fim}`;
+    const list = allTransports().filter(T => no(T.eff.data) || (!T.eff.data))
       .sort((a, b) => (a.eff.data || '').localeCompare(b.eff.data || '') || (a.eff.hora || '99').localeCompare(b.eff.hora || '99') || a.transporte.localeCompare(b.transporte));
-    const pesagens = registrosBalanca().recs.filter(r => (r.data || '').slice(0, 7) === mes).concat((state.histBalanca || {})[mes] || []);
+    const pesagens = registrosBalanca().recs.filter(r => r.via !== 'arquivo' && no(r.data));
     const pesoTicket = T => String(T.ot.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(k => k && state.tickets[k]).reduce((a, k) => a + (state.tickets[k].liq || 0), 0) || '';
     const transportes = [['Data', 'Hora', 'Transporte', 'Tipo de carga', 'Cliente', 'Destino', 'Entrega(s)', 'Incoterm', 'Materiais', 'Qtd (pç)', 'Pallets / lotes', 'Carga fracionada', 'Amostra', 'FSC',
       'Placa carreta/truck', 'Placa cavalo', 'Motorista', 'CPF', 'Treinamento', 'Transportadora', 'OT(s)', 'Doc', 'NF-e', 'EXP', 'Container', 'Lacre', 'Tara (kg)', 'MWG (kg)', 'Ticket balança', 'Peso balança (kg)',
@@ -1539,7 +1555,7 @@
     const dias = Array.from(new Set(list.map(T => T.eff.data))).sort();
     const porDia = [['Data', 'Transportes', 'Mercado interno', 'Containers', 'Pallets', 'Impressas', 'Faturadas', 'Peso balança (kg)']]
       .concat(dias.map(d => { const l = list.filter(T => T.eff.data === d); return [P.fmtDateBR(d), l.length, l.filter(T => T.janela !== 'CONTAINER').length, l.filter(T => T.janela === 'CONTAINER').length, round(l.reduce((a, T) => a + (T.pallets || 0), 0), 1), l.filter(T => T.printed).length, l.filter(T => T.faturado).length, l.reduce((a, T) => a + (+pesoTicket(T) || 0), 0)]; }));
-    const sew = state.sew.filter(e => !e.carregamento && (e.data || '').slice(0, 7) === mes).sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+    const sew = state.sew.filter(e => !e.carregamento && no(e.data)).sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
     const agend = [['Data', 'Hora', 'Janela', 'Senha', 'Status', 'Tipo de veículo', 'Carreta', 'Cavalo', 'CPF', 'Container', 'Transportadora', 'Cliente', 'Volume', 'Removido do agendamento', 'Alterações']]
       .concat(sew.map(e => [P.fmtDateBR(e.data), e.hora, e.janela === 'CONTAINER' ? 'PIÊN CONTAINERS' : 'PIÊN PAINÉIS', e.senha, e.status, e.tipoVeiculo, e.carreta, e.cavalo, e.cpf, e.container, e.transportadora, e.cliente, e.volume, e.removed ? 'SIM' : '', (e.changes || []).map(c => `${c.campo}: ${c.de || '—'} → ${c.para || '—'}`).join('; ')]));
     const entregas = new Set([].concat(...list.map(T => T.entregas)));
@@ -1547,11 +1563,11 @@
       .concat([].concat(...[...entregas].map(en => { const o = state.ots[en]; return o ? ((o.itens && o.itens.length) ? o.itens.map(r => [en, r.ot, r.material, r.texto, r.tpDep, r.posicao, r.qtd]) : (o.ots || []).map(x => [en, x, '', '', '', '', ''])) : []; })));
     const pes = [['Data', 'Ticket', 'Transporte', 'Cliente', 'Material', 'Descrição', 'Qtd (pç)', 'Lotes', 'Peso balança carga (kg)', 'Peso do item (kg)', 'Rateio', 'kg/lote', 'kg/peça']]
       .concat(pesagens.map(r => [P.fmtDateBR(r.data), r.ticket, r.transporte, r.cliente, r.material, r.descricao, r.qtd, round(r.lotes, 3), r.pesoCarga, round(r.pesoItem, 1), r.metodo, round(r.kgLote, 1), round(r.kgPc, 4)]));
-    const resumo = [[`Relatório mensal ${nomeMes(mes)} · Expedição Arauco Piên`], [`Gerado em ${new Date().toLocaleString('pt-BR')}`], [],
+    const resumo = [[`Relatório semanal ${(iniTitulo || ini) ? P.fmtDateBR(iniTitulo || ini) + ' a ' : 'até '}${P.fmtDateBR(fim)} · Expedição Arauco Piên`], [`Gerado em ${new Date().toLocaleString('pt-BR')}`], [],
       ['Transportes', list.length], ['Mercado interno', list.filter(T => T.janela !== 'CONTAINER').length], ['Containers', list.filter(T => T.janela === 'CONTAINER').length],
       ['Pallets / lotes', round(list.reduce((a, T) => a + (T.pallets || 0), 0), 1)], ['Ordens impressas', list.filter(T => T.printed).length], ['Faturadas', list.filter(T => T.faturado).length],
       ['Containers com divergência nas fotos', list.filter(T => temContainer(T) && validarFotos(T).st === 'div').length], ['Agendamentos SEW', sew.length], ['Pesagens (item × carga)', pesagens.length], ['Dias com embarque', dias.length]];
-    return { mes, list, sew, entregas, pesagens, abas: [['Resumo', resumo], ['Transportes', transportes], ['Itens', itens], ['Por dia', porDia], ['Agendamentos', agend], ['OTs', ots], ['Pesagens', pes]] };
+    return { mes, ini, fim, list, sew, entregas, pesagens, abas: [['Resumo', resumo], ['Transportes', transportes], ['Itens', itens], ['Por dia', porDia], ['Agendamentos', agend], ['OTs', ots], ['Pesagens', pes]] };
   }
   function excelMes(M) {
     const wb = XLSX.utils.book_new();
@@ -1568,65 +1584,89 @@
   // backup completo só do mês (para restaurar se precisar)
   function backupMes(M) {
     const ts = new Set(M.list.map(T => T.transporte)); const pick = o => Object.fromEntries(Object.entries(o || {}).filter(([k]) => ts.has(k)));
-    return { v: 1, app: 'arauco-ordens-embarque', backupDoMes: M.mes, geradoEm: new Date().toISOString(),
+    return { v: 1, app: 'arauco-ordens-embarque', backupDoPeriodo: { ini: M.ini, fim: M.fim }, geradoEm: new Date().toISOString(),
       items: Object.fromEntries(Object.entries(state.items).filter(([, i]) => ts.has(i.transporte))), manual: pick(state.manual), printed: pick(state.printed), snap: pick(state.snap),
       faturado: pick(state.faturado), fatNf: pick(state.fatNf), fotos: pick(state.fotos), sew: M.sew, ots: Object.fromEntries([...M.entregas].filter(en => state.ots[en]).map(en => [en, state.ots[en]])),
       tickets: Object.fromEntries(M.pesagens.map(r => [r.ticket, state.tickets[r.ticket]]).filter(([, v]) => v)), pesagens: M.pesagens, fsc: {}, pesos: {} };
   }
-  function renderMes() {
-    const mes = $('#ms-mes').value; if (!mes) return;
-    const M = dadosMes(mes), E = espacoUsado(), nF = M.list.reduce((a, T) => a + nFotos(T.transporte), 0);
-    $('#ms-resumo').innerHTML = `<div class="ms-info"><b>${M.list.length}</b> transporte(s) em ${esc(nomeMes(mes))} · ${M.abas[2][1].length - 1} item(ns) · ${M.sew.length} agendamento(s) · ${nF} foto(s) · ${M.pesagens.length} pesagem(ns)</div>
-      <div class="ms-espaco ${E.pct > 70 ? 'alto' : ''}"><span>Espaço usado no navegador: <b>${fmtNum(E.mb, 1)} MB</b> de ~5 MB (${fmtNum(E.pct, 0)}%)${E.pct > 70 ? ' — feche o mês anterior para liberar espaço' : ''}</span><i style="width:${E.pct.toFixed(0)}%"></i></div>`;
-    $('#ms-fechar').disabled = !M.list.length && !M.sew.length;
-  }
   async function salvarNaPasta(nome, blob) { try { return sync && sync.pasta() ? await sync.salvarArquivo(['arquivo'], nome, blob) : false; } catch (e) { return false; } }
-  async function exportarMes(fechar) {
-    const mes = $('#ms-mes').value; if (!mes) return;
-    if (!window.XLSX) { toast('O Excel precisa de internet (biblioteca SheetJS). Conecte e tente de novo; o mês não foi fechado.', 'err'); return; }
-    const M = dadosMes(mes);
-    if (fechar) {
-      const atual = mes >= P.todayISO().slice(0, 7);
-      const ok = await confirmBox(`Fechar ${nomeMes(mes)}`, `<p>Vai baixar o <b>relatório mensal (Excel)</b> e o <b>backup</b> de ${esc(nomeMes(mes))} e depois <b>tirar do app</b>: ${M.list.length} transporte(s), ${M.sew.length} agendamento(s) e as OTs dessas entregas.</p>
-        <p class="muted">O histórico de pesagens e a base de pesos continuam no app. As fotos continuam na pasta do servidor.${sync && sync.pasta() ? ' O Excel e o backup também são gravados na pasta compartilhada (arquivo/). Os colegas recebem o fechamento automaticamente.' : ''}</p>
-        ${atual ? '<p class="txt-alt"><b>Atenção:</b> este é o mês atual (ou futuro). Feche só depois que o mês terminar.</p>' : ''}`, 'Exportar e fechar o mês');
-      if (!ok) return;
-    }
-    const xl = excelMes(M); const nome = `ordens-embarque-${mes}`;
-    baixar(nome + '.xlsx', xl);
-    const naPasta = await salvarNaPasta(nome + '.xlsx', xl);
-    if (!fechar) { toast(`Relatório mensal de ${nomeMes(mes)} baixado (Excel)${naPasta ? ' e gravado na pasta compartilhada' : ''}.`, 'ok'); return; }
-    const bk = new Blob([JSON.stringify(backupMes(M))], { type: 'application/json' });
-    baixar(nome + '-backup.json', bk); await salvarNaPasta(nome + '-backup.json', bk);
-    // histórico de pesagens do mês fica no app (gráfico da balança continua com os meses anteriores)
-    const hist = M.pesagens.map(r => ({ ticket: r.ticket, data: r.data, transporte: r.transporte, via: 'arquivo', cliente: r.cliente, placa: r.placa, material: r.material, descricao: r.descricao, qtd: r.qtd, lotes: r.lotes, pesoCarga: r.pesoCarga, pesoItem: r.pesoItem, metodo: r.metodo, itensCarga: r.itensCarga, kgLote: r.kgLote, kgPc: r.kgPc, nfItem: r.nfItem }));
-    state.histBalanca = state.histBalanca || {}; if (hist.length) state.histBalanca[mes] = ((state.histBalanca[mes] || []).filter(h => !hist.some(x => x.ticket === h.ticket && x.material === h.material))).concat(hist);
-    const ts = new Set(M.list.map(T => T.transporte));
-    Object.values(state.items).forEach(i => { if (ts.has(i.transporte)) delete state.items[i.key]; });
-    ts.forEach(t => { ['manual', 'printed', 'snap', 'faturado', 'fatNf'].forEach(k => { if (state[k]) delete state[k][t]; });
-      const fo = state.fotos[t]; if (fo) { Object.values(fo.slots || {}).forEach(it => window.OEF.delLocal(it.id).catch(() => {})); delete state.fotos[t]; } ui.selected.delete(t); });
-    state.sew = state.sew.filter(e => e.carregamento || (e.data || '').slice(0, 7) !== mes);
-    M.entregas.forEach(en => delete state.ots[en]);
-    new Set(hist.map(h => h.ticket)).forEach(k => delete state.tickets[k]);
-    if (ui.open && ts.has(ui.open)) closeDetail();
-    save(true); ui.date = pickDefaultDate(); $('#date-filter').value = ui.date; renderAll(); renderMes();
-    toast(`${nomeMes(mes)} fechado: Excel e backup baixados${naPasta ? ' e gravados na pasta compartilhada (arquivo/)' : ''}. ${ts.size} transporte(s) saíram do app.`, 'ok');
+  function renderSemana() {
+    const E = espacoUsado(), f = state.fechamentos || {}, prox = proximoCorte(), sem = semanaDoCorte(prox);
+    const M = dadosPeriodo('', isoDia(new Date()));
+    $('#ms-resumo').innerHTML = `<div class="ms-info">No app agora: <b>${M.list.length}</b> transporte(s) · ${M.sew.length} agendamento(s) · ${M.pesagens.length} pesagem(ns)</div>
+      <div class="ms-info">Próximo fechamento automático: <b>domingo ${esc(prox.toLocaleDateString('pt-BR'))} às 22:40</b> (semana ${esc(fmtCurto(sem.ini))} a ${esc(fmtCurto(sem.fim))}).</div>
+      <div class="ms-info muted">${f.ultimo ? `Último fechamento: ${esc(new Date(f.em || f.ultimo).toLocaleString('pt-BR'))}${f.por ? ' por ' + esc(f.por) : ''}${f.arquivo ? ` · <code>arquivo/${esc(f.arquivo)}</code>` : ''}` : 'Nenhum fechamento feito ainda.'}</div>
+      ${sync && sync.pasta() ? '' : '<div class="alert err">Este computador não está conectado à pasta oficial: o fechamento automático só acontece num computador conectado.</div>'}
+      <div class="ms-espaco ${E.pct > 70 ? 'alto' : ''}"><span>Espaço usado no navegador: <b>${fmtNum(E.mb, 1)} MB</b> de ~5 MB (${fmtNum(E.pct, 0)}%)</span><i style="width:${E.pct.toFixed(0)}%"></i></div>`;
+  }
+  let fechando = false;
+  // fecha tudo com data até "fim" (domingo): Excel + backup na pasta (e baixados), histórico de pesagens, e app zerado
+  async function fecharSemana(corte, manual) {
+    if (fechando) return false;
+    const { ini, fim } = semanaDoCorte(corte);
+    if (!window.XLSX) { if (manual) toast('O Excel precisa de internet (biblioteca SheetJS). Conecte e tente de novo; a semana não foi fechada.', 'err'); return false; }
+    fechando = true;
+    try {
+      if (sync && sync.pasta()) await sync.syncNow(); // pega o que os colegas gravaram por último
+      if ((state.fechamentos || {}).ultimo >= corte.toISOString() && !manual) return false; // outro computador já fechou
+      const M = dadosPeriodo('', fim, ini); // tudo até o domingo (inclui sobras de semanas anteriores)
+      const nome = `ordens-embarque-semana-${ini}-a-${fim}`;
+      const xl = excelMes(M), bk = new Blob([JSON.stringify(backupMes(M))], { type: 'application/json' });
+      const okX = await salvarNaPasta(nome + '.xlsx', xl), okB = await salvarNaPasta(nome + '-backup.json', bk);
+      if (sync && sync.pasta() && !(okX && okB)) { toast('Não foi possível gravar o relatório na pasta oficial. A semana não foi fechada; tente de novo.', 'err'); return false; }
+      baixar(nome + '.xlsx', xl); if (!sync || !sync.pasta()) baixar(nome + '-backup.json', bk);
+      // estado novo: só o que tem data depois do domingo, FSC e histórico de pesagens
+      const ficaT = new Set(allTransports().filter(T => T.eff.data && T.eff.data > fim).map(T => T.transporte));
+      const sai = M.list.map(T => T.transporte).filter(t => !ficaT.has(t));
+      const hist = Object.assign({}, state.histBalanca || {});
+      M.pesagens.forEach(r => { const k = (r.data || fim).slice(0, 7); (hist[k] = hist[k] || []).push({ ticket: r.ticket, data: r.data, transporte: r.transporte, via: 'arquivo', cliente: r.cliente, placa: r.placa, material: r.material, descricao: r.descricao, qtd: r.qtd, lotes: r.lotes, pesoCarga: r.pesoCarga, pesoItem: r.pesoItem, metodo: r.metodo, itensCarga: r.itensCarga, kgLote: r.kgLote, kgPc: r.kgPc, nfItem: r.nfItem }); });
+      const pick = o => Object.fromEntries(Object.entries(o || {}).filter(([k]) => ficaT.has(k)));
+      sai.forEach(t => { const fo = state.fotos[t]; if (fo) Object.values(fo.slots || {}).forEach(it => window.OEF.delLocal(it.id).catch(() => {})); }); // fotos: só a cópia local
+      const novo = Object.assign(emptyState(), {
+        items: Object.fromEntries(Object.entries(state.items).filter(([, i]) => ficaT.has(i.transporte))),
+        manual: pick(state.manual), printed: pick(state.printed), snap: pick(state.snap), faturado: pick(state.faturado), fatNf: pick(state.fatNf), fotos: pick(state.fotos),
+        sew: state.sew.filter(e => e.data && e.data > fim), ots: Object.fromEntries(Object.entries(state.ots).filter(([en]) => !M.entregas.has(en))),
+        tickets: Object.fromEntries(Object.entries(state.tickets).filter(([, t]) => t.data && t.data > fim)),
+        fsc: state.fsc, fscInfo: state.fscInfo, histBalanca: hist, pesos: {},
+        fechamentos: { ultimo: corte.toISOString(), em: new Date().toISOString(), por: usuario() || 'automático', arquivo: nome + '.xlsx', semana: { ini, fim } },
+      });
+      state = novo;
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* cheio */ }
+      if (sync) await sync.resetar();
+      if (ui.open && !ficaT.has(ui.open)) closeDetail();
+      ui.date = pickDefaultDate(); $('#date-filter').value = ui.date; renderAll(); if ($('#mes-dialog').open) renderSemana();
+      toast(`Semana ${fmtCurto(ini)} a ${fmtCurto(fim)} fechada: relatório${okX ? ' gravado na pasta oficial (arquivo/) e' : ''} baixado. O app começou zerado.`, 'ok');
+      return true;
+    } catch (e) { toast('Falha no fechamento semanal: ' + (e.message || e), 'err'); return false; }
+    finally { fechando = false; }
+  }
+  // verificação automática (a cada 30 s): passou de domingo 22:40 e a semana ainda não foi fechada?
+  function verificarFechamento() {
+    if (!sync || !sync.pasta() || !sync.status().at) return; // só com a pasta oficial conectada e sincronizada
+    const corte = ultimoCorte(), f = state.fechamentos;
+    // primeira vez: começa a contar daqui (não fecha uma semana antiga sem ninguém ter pedido)
+    if (!f || !f.ultimo) { state.fechamentos = { ultimo: corte.toISOString(), em: '', por: '', inicio: true }; save(true); return; }
+    if (f.ultimo < corte.toISOString()) fecharSemana(corte, false);
   }
   function bindMes() {
-    $('#btn-mes').addEventListener('click', () => {
-      const ms = Array.from(new Set(allTransports().map(mesDe).filter(Boolean))).sort();
-      const ant = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); })();
-      $('#ms-mes').value = ms.includes(ant) ? ant : (ms[0] || ant);
-      $('#ms-meses').innerHTML = ms.length ? 'Meses com dados no app: ' + ms.map(m => `<a href="#" data-mes="${m}">${esc(nomeMes(m))}</a>`).join(' · ') : 'Nenhum transporte no app.';
-      renderMes(); $('#mes-dialog').showModal();
-    });
-    $('#ms-meses').addEventListener('click', e => { const a = e.target.closest('[data-mes]'); if (a) { e.preventDefault(); $('#ms-mes').value = a.dataset.mes; renderMes(); } });
-    $('#ms-mes').addEventListener('change', renderMes);
+    $('#btn-mes').addEventListener('click', () => { renderSemana(); $('#mes-dialog').showModal(); });
     $('#ms-close').addEventListener('click', () => $('#mes-dialog').close());
-    $('#ms-excel').addEventListener('click', () => exportarMes(false));
-    $('#ms-fechar').addEventListener('click', () => exportarMes(true));
-    // aviso de espaço ao abrir o app
-    setTimeout(() => { const E = espacoUsado(); if (E.pct > 70) toast(`O app está usando ${fmtNum(E.pct, 0)}% do espaço do navegador. Use "Mês" → Fechar mês para liberar.`, 'warn'); }, 1500);
+    // relatório da semana em andamento (segunda até hoje), sem zerar
+    $('#ms-excel').addEventListener('click', async () => {
+      if (!window.XLSX) { toast('O Excel precisa de internet (biblioteca SheetJS).', 'err'); return; }
+      const hoje = new Date(); const seg = new Date(hoje); seg.setDate(seg.getDate() - ((seg.getDay() + 6) % 7));
+      const M = dadosPeriodo(isoDia(seg), isoDia(hoje)); const nome = `ordens-embarque-semana-${isoDia(seg)}-a-${isoDia(hoje)}-parcial`;
+      const xl = excelMes(M); baixar(nome + '.xlsx', xl);
+      toast(`Relatório da semana (${fmtCurto(isoDia(seg))} a ${fmtCurto(isoDia(hoje))}) baixado.`, 'ok');
+    });
+    $('#ms-fechar').addEventListener('click', async () => {
+      const corte = new Date(); const { fim } = semanaDoCorte(corte);
+      const ok = await confirmBox('Fechar a semana agora', `<p>Vai gravar o <b>relatório (Excel)</b> e o <b>backup</b> de tudo com data até <b>${esc(P.fmtDateBR(fim))}</b>${sync && sync.pasta() ? ' na pasta oficial (arquivo/)' : ''}, baixar uma cópia e <b>zerar o app</b> para todos.</p>
+        <p class="muted">Ficam: cargas com data depois de hoje, lista FSC e histórico de pesagens. Isso já acontece sozinho todo domingo às 22:40.</p>`, 'Fechar a semana');
+      if (ok) await fecharSemana(corte, true);
+    });
+    setInterval(verificarFechamento, 30000); setTimeout(verificarFechamento, 8000);
+    setTimeout(() => { const E = espacoUsado(); if (E.pct > 70) toast(`O app está usando ${fmtNum(E.pct, 0)}% do espaço do navegador. Use "Semana" → Fechar a semana agora.`, 'warn'); }, 1500);
   }
 
   // ------------------------------------------------------------------ guia Agendamentos
@@ -2609,7 +2649,20 @@
     $('#sync-disconnect').hidden = !(st.mode === 'shared' || st.mode === 'permission');
   }
   // ---------- uso simultâneo (pasta no servidor) ----------
-  const USER_KEY = 'arauco.ordensEmbarque.usuario';
+  const USER_KEY = 'arauco.ordensEmbarque.usuario', PASTA_KEY = 'arauco.ordensEmbarque.pastaOficial';
+  function pastaOficial() { try { return JSON.parse(localStorage.getItem(PASTA_KEY)) || null; } catch (e) { return null; } }
+  function guardarPastaOficial() { const m = sync && sync.marca(); if (m) try { localStorage.setItem(PASTA_KEY, JSON.stringify({ id: m.id, caminho: m.caminho || '', nome: sync.status().name, criadaEm: m.criadaEm })); } catch (e) { /* sem storage */ } }
+  // aviso fixo em vermelho quando este computador não está gravando na pasta oficial
+  function avisoPasta(st) {
+    const el = $('#aviso-pasta'); if (!el) return;
+    const ok = st.mode === 'shared' && st.pasta && !st.error;
+    const p = pastaOficial();
+    el.hidden = ok;
+    el.innerHTML = ok ? '' : st.mode === 'permission'
+      ? `<b>Pasta oficial desconectada.</b> O Chrome pede para liberar o acesso de novo. <button class="btn btn-sm" data-aviso="reconectar">Reconectar</button>`
+      : st.mode === 'shared' && st.error ? `<b>Erro ao gravar na pasta oficial:</b> ${esc(st.error)}. As alterações ficam pendentes até a pasta voltar.`
+      : `<b>Este computador não está conectado à pasta oficial da expedição${p && p.caminho ? ` (${esc(p.caminho)})` : ''}.</b> O que for digitado aqui não vai para a equipe. <button class="btn btn-sm" data-aviso="conectar">Conectar</button>`;
+  }
   function usuario() { try { return (localStorage.getItem(USER_KEY) || '').trim(); } catch (e) { return ''; } }
   const idsFotos = () => [].concat(...Object.values(state.fotos || {}).map(f => Object.values(f.slots || {}).map(x => x.id)));
   // transporte de cada registro alterado (chaves do sync: item:, man:t|campo, printed:t, foto:t…)
@@ -2652,7 +2705,7 @@
       setState: s => { state = Object.assign(emptyState(), s); try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* cheio */ } },
       empty: emptyState,
       sewKey,
-      onStatus: syncPill,
+      onStatus: st => { syncPill(st); avisoPasta(st); if (st.marca) guardarPastaOficial(); },
       user: usuario,
       onRemoteChange: ({ deOutros } = {}) => {
         // chegaram dados de outro usuário: se a data aberta está vazia, vai para a data com cargas
@@ -2676,22 +2729,51 @@
       if (sync.status().mode === 'permission') { const ok = await sync.reconnect(); toast(ok ? 'Dados compartilhados reconectados.' : 'Acesso não liberado.', ok ? 'ok' : 'warn'); return; }
       $('#sync-dialog').showModal();
     });
-    $('#sync-create').addEventListener('click', () => run(() => sync.createFile(), 'Arquivo compartilhado criado. Os outros computadores devem usar "Conectar a arquivo existente" e escolher este mesmo arquivo.'));
-    $('#sync-open').addEventListener('click', () => run(() => sync.openFile(), 'Conectado ao arquivo compartilhado. Os dados da equipe foram carregados.'));
+
     try { $('#sync-user').value = usuario(); } catch (e) { /* sem storage */ }
     $('#sync-user').addEventListener('change', e => { try { localStorage.setItem(USER_KEY, e.target.value.trim()); } catch (er) { /* sem storage */ } });
     $('#sync-folder').addEventListener('click', () => {
       if (!usuario()) { toast('Digite primeiro o seu nome (aparece para os colegas).', 'warn'); $('#sync-user').focus(); return; }
-      run(async () => { await sync.openFolder(); const n = await window.OEF.enviarPendentes(idsFotos()); renderAll(); if (n) toast(`${n} foto(s) deste computador enviadas para a pasta.`, 'ok'); },
-        'Conectado à pasta compartilhada: dados, fotos e quem está usando são compartilhados (atualiza a cada 4 segundos).');
+      run(async () => {
+        const r = await sync.escolherPasta(); const conhecida = pastaOficial();
+        const cancelar = () => { const e = new Error('cancelado'); e.name = 'AbortError'; throw e; };
+        if (!r.marca && !r.temDados) {
+          // pasta vazia ou de outro lugar: não é a oficial. Só o responsável cria a oficial, uma única vez.
+          const criar = await confirmBox('Esta não é a pasta oficial', `<p class="txt-alt"><b>A pasta "${esc(r.dir.name)}" não é a pasta oficial da expedição</b> (não tem os dados do app). Nada foi gravado nela.</p>
+            ${conhecida ? `<p>Escolha a pasta oficial: <b>${esc(conhecida.caminho || conhecida.nome)}</b>.</p>` : '<p>Peça ao responsável o caminho da pasta oficial no servidor.</p>'}
+            <details><summary class="muted small">Primeira configuração da equipe (só o responsável, uma única vez)</summary>
+            <p class="small">Caminho no servidor, para orientar os colegas:<br><input id="cf-caminho" style="width:100%" placeholder="\\\\servidor\\expedicao\\ordens-embarque"></p>
+            <p class="small"><label><input type="checkbox" id="cf-criar"> Criar a pasta oficial nesta pasta</label></p></details>`, 'Continuar', 'Escolher outra pasta');
+          if (!criar || !$('#cf-criar') || !$('#cf-criar').checked) { if (criar) toast('Pasta não conectada: escolha a pasta oficial da expedição.', 'warn'); cancelar(); }
+          await sync.conectarPasta(r.dir, { nova: true, caminho: ($('#cf-caminho').value || '').trim() });
+        } else {
+          if (conhecida && r.marca && r.marca.id !== conhecida.id) {
+            const trocar = await confirmBox('Outra pasta oficial', `<p class="txt-alt"><b>Esta pasta é diferente da pasta oficial que este computador usava</b>${conhecida.caminho ? ` (${esc(conhecida.caminho)})` : ''}.</p><p>Pasta escolhida: <b>${esc(r.marca.caminho || r.dir.name)}</b>, criada em ${esc(new Date(r.marca.criadaEm).toLocaleString('pt-BR'))}${r.marca.criadaPor ? ' por ' + esc(r.marca.criadaPor) : ''}.</p>`, 'Usar esta pasta', 'Escolher outra pasta');
+            if (!trocar) cancelar();
+          }
+          await sync.conectarPasta(r.dir);
+        }
+        guardarPastaOficial();
+        const n = await window.OEF.enviarPendentes(idsFotos()); renderAll(); if (n) toast(`${n} foto(s) deste computador enviadas para a pasta.`, 'ok');
+      }, 'Conectado à pasta oficial: os dados vêm da pasta (não deste computador); fotos e quem está usando são compartilhados.');
     });
     $('#sync-reconnect').addEventListener('click', () => run(async () => { if (!(await sync.reconnect())) throw new Error('acesso não liberado'); }, 'Dados compartilhados reconectados.'));
     $('#sync-disconnect').addEventListener('click', () => run(() => sync.disconnect(), 'Desconectado. Os dados continuam neste computador.'));
     $('#sync-now').addEventListener('click', () => run(() => sync.syncNow(), null));
     $('#sync-close').addEventListener('click', () => $('#sync-dialog').close());
-    if (!sync.supported()) { $('#sync-create').disabled = true; $('#sync-open').disabled = true; }
+    if (!sync.supported()) $('#sync-folder').disabled = true;
     window.__oeSync = sync; // usado nos testes automáticos
-    sync.init().catch(e => syncPill({ mode: 'local', error: e.message }));
+    $('#aviso-pasta').addEventListener('click', async e => {
+      const b = e.target.closest('[data-aviso]'); if (!b) return;
+      if (b.dataset.aviso === 'reconectar') { const ok = await sync.reconnect(); toast(ok ? 'Pasta oficial reconectada.' : 'Acesso não liberado.', ok ? 'ok' : 'warn'); }
+      else $('#sync-dialog').showModal();
+    });
+    { const p = pastaOficial(); if (p && p.caminho) $('#sync-oficial').textContent = ` (${p.caminho})`; }
+    sync.init().then(() => {
+      // sem pasta configurada ou sem nome: abre a configuração (a fonte dos dados é a pasta oficial, não o computador)
+      const st = sync.status();
+      if ((st.mode === 'local' || !usuario()) && st.mode !== 'unsupported') $('#sync-dialog').showModal();
+    }).catch(e => { syncPill({ mode: 'local', error: e.message }); avisoPasta({ mode: 'local' }); });
   }
 
   // ------------------------------------------------------------------ início

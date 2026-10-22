@@ -454,9 +454,12 @@ na resolução original.
 
 Para 2 ou 3 pessoas usarem o app ao mesmo tempo (Google Chrome):
 
-1. Crie uma vez uma pasta no servidor (ex.: `\\servidor\expedicao\ordens-embarque`) com leitura e gravação para a equipe.
-2. Em cada computador: clique no aviso do topo (**Dados só neste computador**), digite **seu nome**, clique em
-   **Escolher pasta compartilhada** e escolha essa pasta. O Chrome pede permissão: clique em **Editar arquivos**.
+1. O responsável cria uma vez a pasta no servidor (ex.: `\\servidor\expedicao\ordens-embarque`, leitura e gravação para
+   a equipe) e, no app, em **Conectar à pasta oficial** → "Primeira configuração", marca **Criar a pasta oficial nesta pasta**.
+2. Em cada computador: digite **seu nome**, clique em **Conectar à pasta oficial** e escolha essa pasta. O Chrome pede
+   permissão: clique em **Editar arquivos**. O app **só aceita a pasta oficial**: pasta nova ou errada é recusada e nada é
+   gravado nela. Ao conectar, os dados vêm da pasta (o que estava só no computador é descartado).
+   Enquanto um computador não estiver gravando na pasta oficial, aparece uma faixa vermelha no topo.
 3. Pronto: os dados, as **fotos dos containers** e quem está usando ficam na pasta. As alterações de um aparecem para os
    outros em cerca de 4 segundos, com o aviso "Fulano atualizou o transporte X".
    - O nome de quem está com uma ordem aberta aparece em amarelo na lista e no painel da ordem; o topo mostra quantos
@@ -465,19 +468,18 @@ Para 2 ou 3 pessoas usarem o app ao mesmo tempo (Google Chrome):
    - Se duas pessoas alterarem o **mesmo campo**, vale a última gravação; campos diferentes nunca se perdem.
 4. Ao abrir o app outro dia, o Chrome pode pedir para liberar a pasta de novo: clique em **Reconectar dados compartilhados** no topo.
 
-### Fechamento mensal
+### Fechamento semanal (automático, domingo 22:40)
 
-O app é o mesmo todo mês (não precisa de um app novo), mas o navegador guarda no máximo uns 5 MB. Por isso, no começo
-de cada mês, **feche o mês anterior**: botão **Mês** (barra da lista diária) → escolha o mês → **Fechar o mês…**
+Para o app não ficar sem espaço, **todo domingo às 22:40** ele fecha a semana sozinho (se nenhum computador estiver aberto
+nesse horário, fecha assim que o primeiro abrir, conectado à pasta oficial):
 
-- Baixa o **relatório mensal em Excel**: Resumo, Transportes (uma linha por transporte, por data e hora, com todos os
-  dados, Controle OT, impressão, faturamento, alterações, fotos e conferência), Itens, Por dia, Agendamentos, OTs e Pesagens.
-- Baixa um **backup** do mês (.json) para restaurar se precisar. Com a pasta compartilhada conectada, os dois arquivos
-  também ficam em `arquivo/` na pasta do servidor.
-- Tira o mês do app (em todos os computadores conectados). O histórico de pesagens (gráfico da balança), a base de pesos
-  e a lista FSC continuam; as fotos continuam na pasta do servidor.
-- **Baixar relatório mensal (Excel)** gera só o Excel, sem tirar nada do app (bom para relatórios no meio do mês).
-- O diálogo mostra o espaço usado; acima de 70% o app avisa ao abrir.
+- grava o **Excel** da semana (Resumo, Transportes por data, Itens, Por dia, Agendamentos, OTs e Pesagens) e o **backup**
+  em `arquivo/` na pasta oficial do servidor, e baixa uma cópia do Excel;
+- **começa a semana zerado** em todos os computadores. Ficam só as cargas com data depois do domingo, a lista FSC e o
+  histórico de pesagens (gráfico da balança). As fotos continuam na pasta do servidor.
+
+No botão **Semana** (barra da lista): próximo e último fechamento, **Baixar relatório da semana** (semana em andamento, sem
+zerar) e **Fechar a semana agora…**. Sem internet o Excel não é gerado e a semana não é fechada (tenta de novo depois).
 
 ### Controle OT completo antes de faturar
 

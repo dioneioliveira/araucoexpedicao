@@ -11,7 +11,7 @@
   'use strict';
 
   const DB = 'arauco-ordens-embarque', STORE = 'kv', HANDLE_KEY = 'sharedFile', DIR_KEY = 'sharedDir';
-  const ARQ = 'ordens-embarque-dados.json';
+  const ARQ = 'ordens-embarque-dados.json', MARCA = 'ordens-embarque-pasta.json', META_IDB = 'syncMeta';
   const nomeArq = s => String(s || '').replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 120); // nome válido no Windows
   const TOMB_DAYS = 45;
 
@@ -44,7 +44,8 @@
     Object.entries(state.pesos || {}).forEach(([k, v]) => put('peso:' + k, v));
     Object.entries(state.tickets || {}).forEach(([k, v]) => put('tk:' + k, v));
     Object.entries(state.fotos || {}).forEach(([k, v]) => put('foto:' + k, v));
-    Object.entries(state.histBalanca || {}).forEach(([k, v]) => put('hb:' + k, v)); // só nomes e dados lidos; as imagens ficam no computador
+    Object.entries(state.histBalanca || {}).forEach(([k, v]) => put('hb:' + k, v));
+    if (state.fechamentos) put('fech', state.fechamentos); // só nomes e dados lidos; as imagens ficam no computador
     if (state.fsc && Object.keys(state.fsc).length) put('fsc', state.fsc);
     if (state.fscInfo) put('fscinfo', state.fscInfo);
     return out;
@@ -68,6 +69,7 @@
         case 'tk': (s.tickets = s.tickets || {})[id] = v; break;
         case 'foto': (s.fotos = s.fotos || {})[id] = v; break;
         case 'hb': (s.histBalanca = s.histBalanca || {})[id] = v; break;
+        case 'fech': s.fechamentos = v; break;
         case 'fsc': s.fsc = v; break;
         case 'fscinfo': s.fscInfo = v; break;
         default: break;
@@ -92,33 +94,41 @@
     return { entities: ent, tomb };
   }
   const flatOf = doc => Object.fromEntries(Object.entries(doc.entities).map(([k, e]) => [k, e.v]));
+  const novaEpoca = () => new Date().toISOString() + '-' + Math.random().toString(36).slice(2, 7);
   const sameFlat = (x, y) => { const kx = Object.keys(x), ky = Object.keys(y); return kx.length === ky.length && kx.every(k => x[k] === y[k]); };
 
   // ---------- sincronizador ----------
   function create(cfg) {
     // cfg: { getState, setState(state), empty(), sewKey, onStatus(info), onRemoteChange(), metaKey }
     const META_KEY = cfg.metaKey || 'arauco.ordensEmbarque.syncMeta';
-    let doc = loadMeta();           // registros com horário (cópia local)
+    let doc = null, metaPronta = false; // registros com horário (cópia local, no IndexedDB)
+    let marca = null, adotar = false;   // pasta oficial (arquivo de identificação) / próxima leitura: vale a pasta
     let handle = null, dir = null, needsPermission = false, lastModified = 0, timer = null, poll = null, busy = false, pending = false;
     const me = () => (cfg.user && cfg.user()) || '';
     // presença: cada usuário grava presenca/<nome>.json com a ordem aberta; os outros leem a cada verificação
     let aberto = null, presencaEm = 0, presencaTxt = '';
     let status = { mode: 'local', name: '', at: null, error: '' };
 
-    function loadMeta() {
-      try { const m = JSON.parse(localStorage.getItem(META_KEY)); if (m && m.entities) return m; } catch (e) { /* vazio */ }
-      return null;
+    // a cópia de controle do sync ficava no localStorage (dobrava o uso dos ~5 MB): agora fica no IndexedDB
+    async function loadMeta() {
+      let m = null;
+      try { m = await idbGet(META_IDB); } catch (e) { m = null; }
+      if (!m) { try { const j = JSON.parse(localStorage.getItem(META_KEY)); if (j && j.entities) { m = j; await idbSet(META_IDB, m); } } catch (e) { /* vazio */ } }
+      try { localStorage.removeItem(META_KEY); } catch (e) { /* sem storage */ }
+      doc = m && m.entities ? m : null; metaPronta = true;
     }
-    function saveMeta() { try { localStorage.setItem(META_KEY, JSON.stringify(doc)); } catch (e) { /* cheio */ } }
+    let metaT = null;
+    function saveMeta() { clearTimeout(metaT); const d = doc; metaT = setTimeout(() => idbSet(META_IDB, d).catch(() => {}), 200); }
     const setStatus = patch => { Object.assign(status, patch); cfg.onStatus(Object.assign({}, status)); };
 
     // registra no doc local o que mudou no estado desde a última vez
     function stamp() {
+      if (!metaPronta) return false;
       const now = Date.now();
       const flat = flatten(cfg.getState(), cfg);
       // primeira vez neste computador: o que já existia aqui entra como "antigo" (ts=1),
       // para não sobrescrever o que outros usuários já gravaram no arquivo compartilhado
-      if (!doc) { doc = { entities: {}, tomb: {} }; Object.entries(flat).forEach(([k, v]) => { doc.entities[k] = { v, ts: 1 }; }); saveMeta(); return; }
+      if (!doc) { doc = { entities: {}, tomb: {}, epoca: '' }; Object.entries(flat).forEach(([k, v]) => { doc.entities[k] = { v, ts: 1 }; }); saveMeta(); return; }
       let changed = false;
       Object.entries(flat).forEach(([k, v]) => { const e = doc.entities[k]; if (!e || e.v !== v) { doc.entities[k] = { v, ts: now, by: me() }; delete doc.tomb[k]; changed = true; } });
       Object.keys(doc.entities).forEach(k => { if (!(k in flat)) { delete doc.entities[k]; doc.tomb[k] = now; changed = true; } });
@@ -129,10 +139,10 @@
     async function readRemote() {
       const f = await handle.getFile();
       const txt = await f.text();
-      let remote = { entities: {}, tomb: {} };
+      let remote = { entities: {}, tomb: {}, epoca: '', vazio: !txt.trim() };
       if (txt.trim()) {
         const j = JSON.parse(txt);
-        if (j && j.entities) remote = { entities: j.entities, tomb: j.tomb || {} };
+        if (j && j.entities) remote = { entities: j.entities, tomb: j.tomb || {}, epoca: j.epoca || '' };
         else if (j && j.v === 1 && j.items) { // backup antigo (estado inteiro): vira registros
           const now = Date.now(); Object.entries(flatten(Object.assign(cfg.empty(), j), cfg)).forEach(([k, v]) => { remote.entities[k] = { v, ts: now - 1 }; });
         }
@@ -141,7 +151,7 @@
     }
     async function writeRemote(d) {
       const w = await handle.createWritable();
-      await w.write(JSON.stringify({ app: 'arauco-ordens-embarque', formato: 1, gravadoEm: new Date().toISOString(), entities: d.entities, tomb: d.tomb }));
+      await w.write(JSON.stringify({ app: 'arauco-ordens-embarque', formato: 1, gravadoEm: new Date().toISOString(), epoca: d.epoca || '', entities: d.entities, tomb: d.tomb }));
       await w.close();
       try { lastModified = (await handle.getFile()).lastModified; } catch (e) { /* ok */ }
     }
@@ -154,10 +164,22 @@
       try {
         stamp();
         const { remote, mtime } = await readRemote();
+        // a pasta é a fonte dos dados: ao conectar este computador, ou depois do fechamento semanal (época nova),
+        // o que vale é o arquivo da pasta, não o que estava guardado neste navegador
+        if (!remote.vazio && ((adotar) || (remote.epoca && doc.epoca !== remote.epoca))) {
+          adotar = false;
+          doc = { entities: remote.entities, tomb: remote.tomb, epoca: remote.epoca || novaEpoca() }; saveMeta();
+          cfg.setState(unflatten(flatOf(doc), cfg.empty)); cfg.onRemoteChange({ deOutros: [], adotado: true });
+          if (!remote.epoca) await writeRemote(doc); else lastModified = mtime;
+          setStatus({ mode: 'shared', at: new Date(), error: '' });
+          return;
+        }
+        adotar = false;
+        if (!doc.epoca) doc.epoca = remote.epoca || novaEpoca();
         // o que outro usuário alterou desde a última vez (para avisar quem está usando)
         const deOutros = [];
         Object.entries(remote.entities).forEach(([k, re]) => { const le = doc.entities[k]; if ((!le || re.ts > le.ts) && re.by && re.by !== me()) deOutros.push({ k, by: re.by, v: re.v }); });
-        const merged = mergeDocs(doc, remote);
+        const merged = mergeDocs(doc, remote); merged.epoca = doc.epoca;
         const mergedFlat = flatOf(merged);
         const localFlat = flatten(cfg.getState(), cfg);
         doc = merged; saveMeta();
@@ -165,7 +187,7 @@
         if (forceWrite || !sameFlat(mergedFlat, flatOf(remote)) || Object.keys(merged.tomb).length !== Object.keys(remote.tomb).length) {
           // alguém gravou entre a leitura e agora? junta de novo antes de gravar (não apaga a gravação do colega)
           const agora = (await handle.getFile()).lastModified;
-          if (agora !== mtime) { const { remote: r2 } = await readRemote(); doc = mergeDocs(doc, r2); saveMeta(); const f2 = flatOf(doc); if (!sameFlat(f2, flatten(cfg.getState(), cfg))) { cfg.setState(unflatten(f2, cfg.empty)); cfg.onRemoteChange({ deOutros: [] }); } }
+          if (agora !== mtime) { const { remote: r2 } = await readRemote(); const ep = doc.epoca; doc = mergeDocs(doc, r2); doc.epoca = ep; saveMeta(); const f2 = flatOf(doc); if (!sameFlat(f2, flatten(cfg.getState(), cfg))) { cfg.setState(unflatten(f2, cfg.empty)); cfg.onRemoteChange({ deOutros: [] }); } }
           await writeRemote(doc);
         }
         else lastModified = mtime;
@@ -209,10 +231,17 @@
       async get(id) { if (!dir || needsPermission) return null; try { const fd = await dir.getDirectoryHandle('fotos'); return await (await fd.getFileHandle(nomeArq(id) + '.jpg')).getFile(); } catch (e) { return null; } },
       async del(id) { if (!dir || needsPermission) return; try { const fd = await dir.getDirectoryHandle('fotos'); await fd.removeEntry(nomeArq(id) + '.jpg'); } catch (e) { /* já não existe */ } },
     };
-    async function attachDir(d) {
+    async function lerMarca(d) { try { return JSON.parse(await (await (await d.getFileHandle(MARCA)).getFile()).text()); } catch (e) { return null; } }
+    async function temDados(d) { try { await d.getFileHandle(ARQ); return true; } catch (e) { return false; } }
+    async function gravarMarca(d, m) { const w = await (await d.getFileHandle(MARCA, { create: true })).createWritable(); await w.write(JSON.stringify(m, null, 1)); await w.close(); return m; }
+    async function attachDir(d, opt) {
+      if (!(await temDados(d)) && !(await lerMarca(d)) && !(opt && opt.nova)) { const e = new Error('esta pasta não é a pasta oficial da expedição'); e.code = 'PASTA_NAO_OFICIAL'; throw e; }
+      marca = await lerMarca(d);
+      if (!marca) marca = await gravarMarca(d, { app: 'arauco-ordens-embarque', id: novaEpoca(), criadaEm: new Date().toISOString(), criadaPor: me(), caminho: (opt && opt.caminho) || '' }); // pasta antiga (já tinha dados) ganha a identificação
+      adotar = !(opt && opt.nova); // computador conectando: vale o que está na pasta
       dir = d; handle = await d.getFileHandle(ARQ, { create: true }); needsPermission = false;
       try { await idbSet(DIR_KEY, d); await idbDel(HANDLE_KEY); } catch (e) { /* reconectar manualmente na próxima vez */ }
-      setStatus({ mode: 'shared', name: d.name, pasta: true, error: '' });
+      setStatus({ mode: 'shared', name: d.name, pasta: true, marca, error: '' });
       const vazio = !(await (await handle.getFile()).text()).trim();
       await syncNow(vazio);
       startPolling(); presenca().catch(() => {});
@@ -236,12 +265,13 @@
         clearTimeout(timer); timer = setTimeout(() => syncNow(), 700);
       },
       async init() {
+        await loadMeta();
         stamp();
         if (!this.supported()) { setStatus({ mode: 'unsupported' }); return; }
         let d = null; try { d = await idbGet(DIR_KEY); } catch (e) { d = null; }
         if (d) {
           dir = d; setStatus({ name: d.name, pasta: true });
-          if ((await d.queryPermission({ mode: 'readwrite' })) === 'granted') { handle = await d.getFileHandle(ARQ, { create: true }); await syncNow(); startPolling(); presenca().catch(() => {}); }
+          if ((await d.queryPermission({ mode: 'readwrite' })) === 'granted') { marca = await lerMarca(d); setStatus({ marca }); handle = await d.getFileHandle(ARQ, { create: true }); await syncNow(); startPolling(); presenca().catch(() => {}); }
           else { needsPermission = true; setStatus({ mode: 'permission' }); }
           return;
         }
@@ -256,7 +286,7 @@
       async reconnect() {
         if (dir) {
           if ((await dir.requestPermission({ mode: 'readwrite' })) !== 'granted') return false;
-          needsPermission = false; handle = await dir.getFileHandle(ARQ, { create: true }); await syncNow(); startPolling(); presenca().catch(() => {}); return true;
+          needsPermission = false; marca = await lerMarca(dir); setStatus({ marca }); handle = await dir.getFileHandle(ARQ, { create: true }); await syncNow(); startPolling(); presenca().catch(() => {}); return true;
         }
         if (!handle) return false;
         const p = await handle.requestPermission({ mode: 'readwrite' });
@@ -264,7 +294,18 @@
         needsPermission = false; await syncNow(); startPolling(); return true;
       },
       // pasta compartilhada no servidor: dados + fotos + quem está usando
+      // 1) escolher a pasta e ver se é a oficial; 2) conectar (o app decide o que perguntar entre os dois passos)
+      async escolherPasta() { const d = await global.showDirectoryPicker({ id: 'oe-pasta', mode: 'readwrite' }); return { dir: d, marca: await lerMarca(d), temDados: await temDados(d) }; },
+      conectarPasta: (d, opt) => attachDir(d, opt),
       async openFolder() { const d = await global.showDirectoryPicker({ id: 'oe-pasta', mode: 'readwrite' }); await attachDir(d); },
+      marca: () => marca,
+      // fechamento semanal: o estado atual (já zerado) vira a nova época; quem estiver conectado passa a usar este arquivo
+      async resetar() {
+        const now = Date.now(); const flat = flatten(cfg.getState(), cfg);
+        doc = { entities: Object.fromEntries(Object.entries(flat).map(([k, v]) => [k, { v, ts: now, by: me() }])), tomb: {}, epoca: novaEpoca() }; saveMeta();
+        if (handle && !needsPermission) { await writeRemote(doc); setStatus({ at: new Date() }); return true; }
+        return false;
+      },
       pasta: () => !!dir && !needsPermission,
       setAberto(t) { if (aberto === (t || null)) return; aberto = t || null; if (dir && !needsPermission) presenca().catch(() => {}); },
       fotos,
@@ -286,7 +327,7 @@
       syncNow: () => syncNow(),
       // para testes
       _attachForTest: (h) => attach(h, false),
-      _attachDirForTest: (d) => attachDir(d),
+      _attachDirForTest: (d, opt) => attachDir(d, opt),
     };
   }
 

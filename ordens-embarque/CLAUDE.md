@@ -58,8 +58,14 @@
   `arauco.ordensEmbarque.usuario`): alterações de outros geram aviso "Fulano atualizou o transporte X". Antes de gravar,
   confere se o arquivo mudou desde a leitura e junta de novo (não apaga a gravação do colega). `renderSemAtrapalhar`
   redesenha com os dados dos colegas mantendo foco, cursor e rolagem de quem digita (o digitado já está no estado).
-  Presença: chip amarelo com o nome na lista, aviso no painel (`#d-presenca`) e "n online" no topo. Modo arquivo antigo
-  continua disponível (sem fotos/presença).
+  Presença: chip amarelo com o nome na lista, aviso no painel (`#d-presenca`) e "n online" no topo.
+- **Pasta oficial** (a fonte dos dados é a pasta, não o computador): identificação `ordens-embarque-pasta.json` (id, caminho,
+  quem criou). `escolherPasta` → `conectarPasta`: pasta sem identificação e sem dados é recusada (`PASTA_NAO_OFICIAL`, nada é
+  gravado nela); criar a oficial só pelo detalhe "Primeira configuração" (opção `nova`); pasta antiga com dados ganha a
+  identificação; pasta oficial diferente da que o computador usava pede confirmação (`PASTA_KEY`). Ao conectar, vale o que
+  está na pasta (`adotar`: os dados locais são descartados). Época no arquivo (`epoca`): mudou → o computador adota a pasta.
+  A cópia de controle do sync fica no IndexedDB (`syncMeta`), não no localStorage. Aviso vermelho fixo `#aviso-pasta` quando
+  não está gravando na pasta oficial; a configuração abre sozinha sem pasta ou sem nome. Modo arquivo solto removido da tela.
 - FSC (célula V23:X23, ao lado da OT): planilha FSC importada (`parseFSC`, arquivo via SheetJS ou colagem) →
   `state.fsc` + `state.fscInfo` (sincronizados), salvos na hora ao ler o arquivo/colagem (`salvarFSC`, sem botão Importar). `fscOf` relaciona pelo nome do cliente (exato → `nomeChave`
   sem acentos/pontuação/LTDA/S.A. → prefixo 12+ → 85% das palavras); exclusão sem reingresso = inativo.
@@ -127,14 +133,14 @@
   vazio/ILEGÍVEL/"auto", nunca o digitado.
   E-mail do container (`#mail-dialog`): EXP, container e lacre em destaque + fotos; `.eml` com `X-Unsent: 1` e imagens
   `cid:` (abre como rascunho no Outlook), ou copiar HTML com as fotos.
-- Mês (`#btn-mes`, `#mes-dialog`, `dadosMes`/`excelMes`/`exportarMes`): o app é o mesmo todo mês; o localStorage tem ~5 MB
-  (~6 KB por transporte com o registro do sync), então **fecha-se o mês anterior** uma vez por mês. Relatório mensal Excel
-  (SheetJS) com abas Resumo, Transportes (1 linha por transporte, ordenado por data/hora, 42 colunas: dados, Controle OT,
-  impressão/faturamento, alterações, fotos e conferência), Itens, Por dia, Agendamentos, OTs e Pesagens. "Fechar o mês":
-  baixa Excel + backup JSON do mês (e grava ambos em `arquivo/` na pasta compartilhada), guarda as pesagens em
-  `state.histBalanca[mes]` (sync `hb:`; entram em `registrosBalanca`), e remove do app itens/manual/printed/snap/faturado/
-  fatNf/fotos (cópia local; arquivos da pasta ficam), SEW do mês, OTs das entregas e tickets arquivados. Sem SheetJS não fecha.
-  Indicador de espaço usado (`espacoUsado`) no diálogo e aviso ao abrir acima de 70%.
+- Semana (`#btn-mes` "Semana", `#mes-dialog`, `dadosPeriodo`/`excelMes`/`fecharSemana`/`verificarFechamento`): **fechamento
+  semanal automático todo domingo às 22:40** (`ultimoCorte`; se nenhum computador estiver aberto, no primeiro que abrir depois,
+  com a pasta oficial conectada e sincronizada). Fecha tudo com data até o domingo: grava Excel (abas Resumo, Transportes,
+  Itens, Por dia, Agendamentos, OTs, Pesagens) e backup JSON em `arquivo/` da pasta oficial (sem gravar na pasta = não fecha),
+  baixa o Excel, guarda as pesagens em `state.histBalanca` e zera o app (ficam cargas/agendamentos/tickets com data depois do
+  domingo, FSC e histórico; base de pesos sai). `state.fechamentos` (sync `fech`) registra o último corte; na primeira vez só
+  marca o corte atual. `sync.resetar()` grava o estado novo com **época** nova; os outros computadores adotam a época sem
+  tombstones. Botões: relatório da semana em andamento (sem zerar) e "Fechar a semana agora". Sem SheetJS não fecha.
 - Controle OT depois da OT (`pendenciasOT`, `OT_MIN`): com OT informada, Doc (mín. 6), NF-e (mín. 5) e Ticket (mín. 5)
   sempre; container/cabotagem também EXP, Nº container, Lacre (mín. 5), Tara (mín. 4) e MWG. Padrões calculados em
   `makeTransport` (`T.otPadrao`, não gravados): mercado interno "-" em EXP, container, lacre, tara e MWG; container MWG
