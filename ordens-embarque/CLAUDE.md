@@ -43,6 +43,9 @@
 - Tela inicial: 4 botões `data-colar` (ordem | MI | CONTAINER | ots) → `colarPorBotao` lê a área de
   transferência (ou abre `#paste-dialog`) → `processarColagem(text, html, tipo)`; Ctrl+V solto usa tipo null
   (detecção). Solicitação de Embarque sempre vira "ordem".
+- Peças por pallet só do padrão da descrição (`matInfo`: P/xx/NNN); **sem fallback** (antes pegava os 3 últimos caracteres:
+  "HC1144" → 144, "14,5" → 4). Item sem o padrão: `pallets` nulo, `T.verificarQtd`, total de lotes não calculado; chip
+  "verificar quantidade" no painel/lista, aviso no painel e "VERIFICAR QUANTIDADE" (tarja) na C23 do check-list.
 - "carga fracionada" (`isFracionada`): qtd ÷ peças por lote quebrado em qualquer item (moldura ou outro) ou no total;
   sai na C23 em tarja preta com letras brancas (`.tarja`), também no total da separação.
 - "amostra" na carga (`isAmostra`: descrição, texto comercial ou observação) => "Amostra-conferir cliente"

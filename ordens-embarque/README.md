@@ -529,3 +529,9 @@ Pallets/lotes e peso são recalculados pelo padrão **total antigo ÷ quantidade
 peso da balança (se a ordem já tinha sido impressa, ela fica "Com alterações" para imprimir de novo). Escreva o **Motivo** e
 use **E-mail da redução**: o app copia a mensagem ("Prezados, segue informação de redução de carga. Motivo: …" e a tabela
 com o que era e para quanto vai) e abre o e-mail; é só colar (Ctrl+V). Desmarcar a opção volta às quantidades originais.
+
+### Verificar quantidade (peças por pallet)
+
+Os lotes/pallets só são calculados quando a descrição do material traz as peças por pallet no padrão de embalagem
+(**P/xx/NNN**, ex.: `P/IF/280`). Se algum item não tiver (ex.: molduras `…/HC1144`), o app **não adivinha**: mostra
+**verificar quantidade** no painel e na lista, e a ordem impressa sai com **VERIFICAR QUANTIDADE** ao lado dos lotes.

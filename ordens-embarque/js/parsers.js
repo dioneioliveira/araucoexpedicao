@@ -84,7 +84,7 @@
     const dims = d.match(/(\d{3,4})\s*X\s*(\d{3,4})\s*X\s*(\d{1,3}(?:[,.]\d+)?)/);
     const pack = d.match(/P\/([A-Z])([A-Z0-9]?)\/(\d{1,4})\s*$/) || d.match(/\/([A-Z])([A-Z0-9]?)\/(\d{1,4})\s*$/);
     let pecas = pack ? +pack[3] : NaN;
-    if (!pecas) { const r = parseInt(d.slice(-3), 10); if (r > 0) pecas = r; }
+    // sem o padrão de embalagem (P/xx/NNN) não se adivinha: "HC1144", "14,5" etc. não são peças por pallet
     return {
       familia: tk[0] || '', linha: tk[1] || '', acabamento: tk[2] || '',
       comp: dims ? +dims[1] : null, larg: dims ? +dims[2] : null,
