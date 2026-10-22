@@ -517,5 +517,6 @@ computador vê os dados mas não grava nada na pasta. A pasta antiga `presenca\`
 Na guia **Pesos**, **Importar arquivo** aceita a planilha do Guardian (Relatório de Permanências) do jeito que ela sai:
 o app lê o **Ticket** e o **peso Líquido** de cada pesagem (o título repetido antes de cada linha é ignorado) e liga cada
 ticket ao **Ticket balança** informado no Controle OT da ordem (com ou sem zero à esquerda). Assim sai o peso líquido de
-cada material e o peso por lote. **Transportes com mais de uma entrega ficam fora da análise** (aparecem nas pendências).
+cada material e o peso por lote. **Só entram cargas com uma entrega e um único material** (sem mistura de itens); as outras ficam fora da
+análise e aparecem nas pendências com o motivo.
 Os tickets do Guardian que não estão em nenhuma ordem (outras pesagens da portaria) só aparecem como contagem.

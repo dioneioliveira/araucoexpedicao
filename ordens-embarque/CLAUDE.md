@@ -106,8 +106,8 @@
   Cod., Data/Hora, Bruto, Tara, Líquido, Permanência; ticket com zero à esquerda e espaços): lida por `parseTickets`
   (Carreta = placa, Veículo = cavalo; títulos repetidos são ignorados). "Importar arquivo"/colar na guia Pesos tenta
   primeiro a tabela da balança e só depois a base de pesos por NF. Ligação pelo ticket informado na ordem; placa+data
-  só com uma única ordem possível e sem ticket. **Transporte com mais de uma entrega fica fora da análise**
-  (`variasEntregas`, listado nas pendências).
+  só com uma única ordem possível e sem ticket. **Só entram cargas com uma entrega e um único material**
+  (sem mistura de itens; as demais vão para `variasEntregas`, listadas nas pendências com o motivo).
 - Fotos do container (`js/fotos.js` = `OEF`; UI em `fotosHTML`/`bindFotos`): carga com container (`temContainer` = janela
   CONTAINER ou cabotagem) tem 6 posições (`OEF.SLOTS`: porta, ric, lacre, f4–f6). Imagens comprimidas (JPEG) no
   IndexedDB `arauco-ordens-fotos` deste computador; em `state.fotos[t]` (sync `foto:`) só nomes e dados lidos

@@ -6223,12 +6223,14 @@ window.ORDEM_TEMPLATES = {
         : (T ? T.items.map(i => ({ material: i.material, descricao: i.descricao, qtd: i.qtd })) : []);
       if (!fonte.length) { semOrdem.push(tk); return; }
       // transporte com mais de uma entrega: não dá para saber o peso de cada material — fica fora da análise
-      if (T && !tk.itens.length && T.entregas.length > 1) { variasEntregas.push({ tk, T }); return; }
+      if (T && !tk.itens.length && T.entregas.length > 1) { variasEntregas.push({ tk, T, motivo: `${T.entregas.length} entregas` }); return; }
       const g = new Map();
       fonte.forEach(i => { const k = i.material || i.descricao; const a = g.get(k) || { material: i.material || '(sem material)', descricao: i.descricao, qtd: 0, lotes: 0, lotesOk: true }; a.qtd += i.qtd || 0;
         const mi = P.matInfo(i.descricao); if (i.qtd && mi.pecasPallet) a.lotes += i.qtd / mi.pecasPallet; else a.lotesOk = false; a.mi = mi; g.set(k, a); });
       const mats = Array.from(g.values()).filter(m => m.qtd > 0);
       if (!mats.length) { semLote.push(tk); return; }
+      // só cargas de um único material (sem mistura de itens): o peso líquido da balança é todo daquele material
+      if (mats.length > 1) { variasEntregas.push({ tk, T, motivo: `${mats.length} materiais` }); return; }
       const nfs = T ? String(T.ot.nf || '').split(/[\/,;\s]+/).map(P.nfNorm).filter(Boolean) : [];
       if (tk.nf) nfs.push(tk.nf);
       const refNF = m => { for (const nf of nfs) { const a = ref.porNfMat.get(nf + '|' + m.material); if (a && a.q) return a.p / a.q; } return null; };
@@ -6346,7 +6348,7 @@ window.ORDEM_TEMPLATES = {
       : (A.itens.length ? `<table class="grid ps-grid"><thead><tr><th>Material</th><th>Descrição</th><th class="num">Cargas</th><th class="num">Média ${esc(unidade)}</th><th class="num">Mín.</th><th class="num">Máx.</th><th class="num">Amplitude</th><th class="num">Dispersão</th><th class="num">Maior diferença numa carga (kg)</th><th class="num">Fora da faixa</th></tr></thead>
         <tbody>${A.itens.map(i => `<tr class="ps-item" data-blmat="${esc(i.material)}"><td class="mono"><b>${esc(i.material)}</b></td><td class="wrap">${esc(i.desc)}</td><td class="num">${i.cargas}</td><td class="num"><b>${kg(i.media, dec)}</b></td><td class="num">${kg(i.min, dec)}</td><td class="num">${kg(i.max, dec)}</td><td class="num">${i.min == null ? '—' : kg(i.max - i.min, dec)}</td><td class="num">${i.cv == null ? '—' : fmtNum(i.cv * 100, 1) + '%'}</td><td class="num ${i.maiorDif >= 1000 ? 'ps-alerta' : ''}">${i.maiorDif == null ? '—' : fmtNum(i.maiorDif, 0)}</td><td class="num">${i.fora ? `<span class="chip alt">${i.fora}</span>` : '<span class="muted">0</span>'}</td></tr>`).join('')}</tbody></table>` : '');
     const tkOrdem = ticketParaTransporte(), semPesagem = Array.from(tkOrdem).filter(([tk]) => !state.tickets[tk]);
-    $('#bl-pend').innerHTML = (A.variasEntregas.length ? `<details><summary><b>${A.variasEntregas.length}</b> carga(s) desconsiderada(s): transporte com mais de uma entrega</summary><p class="small">${A.variasEntregas.map(x => `<a href="#" data-pt="${esc(x.T.transporte)}">${esc(x.T.transporte)}</a> (ticket ${esc(x.tk.ticket)}, ${x.T.entregas.length} entregas)`).join(' · ')}</p></details>` : '')
+    $('#bl-pend').innerHTML = (A.variasEntregas.length ? `<details><summary><b>${A.variasEntregas.length}</b> carga(s) desconsiderada(s): mais de uma entrega ou mais de um material</summary><p class="small">${A.variasEntregas.map(x => x.T ? `<a href="#" data-pt="${esc(x.T.transporte)}">${esc(x.T.transporte)}</a> (ticket ${esc(x.tk.ticket)}, ${esc(x.motivo)})` : `ticket ${esc(x.tk.ticket)} (${esc(x.motivo)})`).join(' · ')}</p><p class="muted small">A análise usa só cargas com uma entrega e um único material, para o peso líquido da balança ser todo daquele material.</p></details>` : '')
       + (A.semOrdem.length ? `<details><summary><b>${A.semOrdem.length}</b> ticket(s) da balança sem ordem no app</summary><p class="mono small">${A.semOrdem.slice(0, 60).map(t => esc(t.ticket + (t.placa ? ' (' + t.placa + ')' : ''))).join(' · ')}${A.semOrdem.length > 60 ? ` … e mais ${A.semOrdem.length - 60}` : ''}</p><p class="muted small">É normal na planilha do Guardian (ela traz todas as pesagens da portaria).</p><p class="muted small">Informe o ticket no campo "Ticket balança" do Controle OT da ordem para ligar.</p></details>` : '')
       + (semPesagem.length ? `<details><summary><b>${semPesagem.length}</b> ordem(ns) com ticket informado, mas ainda sem pesagem colada</summary><p class="small">${semPesagem.map(([tk, t]) => `<a href="#" data-pt="${esc(t)}">${esc(t)}</a> (ticket ${esc(tk)})`).join(' · ')}</p></details>` : '')
       + (A.recs.some(r => r.lotes == null) ? `<details><summary>Cargas sem o nº de peças por lote no texto do material</summary><p class="muted small">Nelas só o kg/peça é calculado (o texto do material precisa terminar com as peças por lote, ex.: P/EF/208).</p></details>` : '');
