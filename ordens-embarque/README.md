@@ -511,3 +511,11 @@ arquivos fixos dos 4 perfis: **Faturamento ADM**, **Faturamento EXP**, **Control
 um desses perfis uma vez (fica fixo; "Trocar perfil…" pede confirmação). O app só atualiza esses arquivos que já existem:
 o arquivo mãe com os dados e o arquivo do perfil com quem está usando e qual ordem está aberta. Sem perfil escolhido, o
 computador vê os dados mas não grava nada na pasta. A pasta antiga `presenca\` não é mais usada e pode ser apagada.
+
+### Planilha do Guardian (peso líquido por ticket)
+
+Na guia **Pesos**, **Importar arquivo** aceita a planilha do Guardian (Relatório de Permanências) do jeito que ela sai:
+o app lê o **Ticket** e o **peso Líquido** de cada pesagem (o título repetido antes de cada linha é ignorado) e liga cada
+ticket ao **Ticket balança** informado no Controle OT da ordem (com ou sem zero à esquerda). Assim sai o peso líquido de
+cada material e o peso por lote. **Transportes com mais de uma entrega ficam fora da análise** (aparecem nas pendências).
+Os tickets do Guardian que não estão em nenhuma ordem (outras pesagens da portaria) só aparecem como contagem.

@@ -620,7 +620,8 @@
   const TK_SYN = {
     ticket: [/^(N[O]?\.? ?)?(DO )?TICKET|TICKET|BOLETIM|^(N[O]? )?SEQ(UENCIAL|UENCIA)?\.?$|^(N[O]? )?(DA )?PESAGEM$|^PESAGEM N/],
     data: [/^DATA( (DA )?(PESAGEM|SAIDA|ENTRADA|EMISSAO))?$|^DT\.?( |$)|^DATA/],
-    placa: [/PLACA/],
+    placa: [/^CARRETA|PLACA (DA )?CARRETA/, /PLACA/], // Guardian: "Carreta" (placa da carreta) e "Veículo" (cavalo)
+    cavalo: [/^VEICULO|CAVALO/],
     pe: [/PESO ?(DE )?ENTRADA|PESO INICIAL|^1A?\.? ?PESAGEM|PRIMEIRA PESAGEM|^ENTRADA( KG)?$|^P\.? ?ENTRADA|^TARA( KG)?$|PESO TARA|PESO VAZIO/],
     ps: [/PESO ?(DE )?SAIDA|PESO FINAL|^2A?\.? ?PESAGEM|SEGUNDA PESAGEM|^SAIDA( KG)?$|^P\.? ?SAIDA|PESO CHEIO/],
     liq: [/PESO ?LIQ|LIQUIDO|^LIQ|PESO TOTAL|PESO (DA )?CARGA|PESO NETO|^NETO$|^PESO$/],
@@ -632,7 +633,7 @@
     qtd: [/^(QTD|QTDE|QUANTIDADE)( PECAS| PC)?$|^PECAS$|^PCS$/],
     cliente: [/^(CLIENTE|NOME (DO )?CLIENTE|DESTINATARIO)$/],
   };
-  const TK_LABEL = { ticket: 'Ticket', data: 'Data', placa: 'Placa', pe: 'Peso entrada', ps: 'Peso saída', liq: 'Peso líquido', bruto: 'Peso bruto', transporte: 'Transporte', nf: 'NF-e', material: 'Material', descricao: 'Descrição', qtd: 'Quantidade', cliente: 'Cliente' };
+  const TK_LABEL = { ticket: 'Ticket', data: 'Data', placa: 'Placa carreta', cavalo: 'Placa cavalo', pe: 'Peso entrada', ps: 'Peso saída', liq: 'Peso líquido', bruto: 'Peso bruto', transporte: 'Transporte', nf: 'NF-e', material: 'Material', descricao: 'Descrição', qtd: 'Quantidade', cliente: 'Cliente' };
   const ticketNorm = v => intStr(v).replace(/\D/g, '').replace(/^0+(?=\d)/, '');
   function parseTickets(grid) {
     const H = r => r.map(c => norm(c).replace(/[º°]/g, 'O').replace(/[^A-Z0-9 .\-]/g, ' ').replace(/\s+/g, ' ').trim());
@@ -641,7 +642,7 @@
     if (hr < 0) return { rows: [], map: {}, erro: 'Não encontrei a linha de títulos com o Ticket e algum peso (entrada, saída ou líquido).' };
     const h = H(grid[hr]); const map = {};
     // ordem: colunas mais específicas primeiro (peso de entrada/saída antes do "peso" genérico)
-    ['ticket', 'pe', 'ps', 'bruto', 'liq', 'transporte', 'nf', 'material', 'qtd', 'descricao', 'cliente', 'placa', 'data'].forEach(k => {
+    ['ticket', 'pe', 'ps', 'bruto', 'liq', 'transporte', 'nf', 'material', 'qtd', 'descricao', 'cliente', 'placa', 'cavalo', 'data'].forEach(k => {
       for (const re of TK_SYN[k]) { const i = h.findIndex((x, j) => re.test(x) && !Object.values(map).includes(j)); if (i >= 0) { map[k] = i; break; } }
     });
     const kgOf = v => { const n = toNum(v); if (!isFinite(n) || n === 0) return null; return Math.abs(n) < 100 ? n * 1000 : n; }; // em toneladas => kg
@@ -649,7 +650,7 @@
     grid.slice(hr + 1).forEach(r => {
       const get = k => (map[k] != null ? r[map[k]] : '');
       const ticket = ticketNorm(get('ticket')); if (!ticket || ticket.length < 2) return;
-      const row = { ticket, data: toISODate(get('data')), placa: normPlate(get('placa')), pe: kgOf(get('pe')), ps: kgOf(get('ps')), liq: kgOf(get('liq')), bruto: kgOf(get('bruto')),
+      const row = { ticket, data: toISODate(get('data')), placa: normPlate(get('placa')), cavalo: normPlate(get('cavalo')), pe: kgOf(get('pe')), ps: kgOf(get('ps')), liq: kgOf(get('liq')), bruto: kgOf(get('bruto')),
         transporte: intStr(get('transporte')).replace(/\D/g, ''), nf: nfNorm(get('nf')), material: intStr(get('material')).replace(/^0+(?=\d)/, ''), descricao: clean(get('descricao')),
         qtd: toNum(get('qtd')), cliente: clean(get('cliente')) };
       if (!isFinite(row.qtd)) row.qtd = null;

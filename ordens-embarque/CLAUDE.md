@@ -102,6 +102,12 @@
   rateio do peso por NF da carga → média da base de pesos → volume da chapa → quantidade (`registrosBalanca`).
   Cada carga de um item é um ponto do gráfico SVG (`svgBalanca`): kg/lote (ou kg/peça) no tempo, média, faixa ±tol,
   pontos fora em vermelho com a diferença na carga inteira em kg (desvio × lotes).
+  Planilha do **Guardian** (Relatório de Permanências: título repetido antes de cada pesagem — Veículo, Carreta, Ticket,
+  Cod., Data/Hora, Bruto, Tara, Líquido, Permanência; ticket com zero à esquerda e espaços): lida por `parseTickets`
+  (Carreta = placa, Veículo = cavalo; títulos repetidos são ignorados). "Importar arquivo"/colar na guia Pesos tenta
+  primeiro a tabela da balança e só depois a base de pesos por NF. Ligação pelo ticket informado na ordem; placa+data
+  só com uma única ordem possível e sem ticket. **Transporte com mais de uma entrega fica fora da análise**
+  (`variasEntregas`, listado nas pendências).
 - Fotos do container (`js/fotos.js` = `OEF`; UI em `fotosHTML`/`bindFotos`): carga com container (`temContainer` = janela
   CONTAINER ou cabotagem) tem 6 posições (`OEF.SLOTS`: porta, ric, lacre, f4–f6). Imagens comprimidas (JPEG) no
   IndexedDB `arauco-ordens-fotos` deste computador; em `state.fotos[t]` (sync `foto:`) só nomes e dados lidos

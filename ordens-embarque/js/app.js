@@ -902,7 +902,7 @@
   const round = (v, d) => v == null || !isFinite(v) ? '' : Math.round(v * 10 ** d) / 10 ** d;
   function importarPesosGrid(grid, origem) {
     const r = P.parsePesos(grid);
-    if (!r.rows.length) { toast(r.erro || 'Nenhuma linha com NF e peso reconhecida na base.', 'err'); return false; }
+    if (!r.rows.length) { toast((r.erro || 'Nenhuma linha com NF e peso reconhecida na base.') + ' Para a planilha da balança (Guardian), ela precisa ter as colunas Ticket e Líquido.', 'err'); return false; }
     const res = mergePesos(r.rows); save(true);
     const cols = Object.keys(r.map).map(k => P.PESO_LABEL[k]).join(', ');
     const meses = Array.from(new Set(r.rows.map(x => (x.data || '').slice(0, 7)).filter(Boolean))).sort();
@@ -944,7 +944,8 @@
     if (tk.transporte && idx.ts.has(tk.transporte)) return { t: tk.transporte, via: 'transporte' };
     if (tk.nf && idx.nf.has(tk.nf)) return { t: idx.nf.get(tk.nf), via: 'NF' };
     const p7 = P.plate7(tk.placa);
-    if (p7 && tk.data) { const T = idx.all.find(T => T.eff.data === tk.data && P.plate7(T.eff.placaL) === p7); if (T) return { t: T.transporte, via: 'placa + data' }; }
+    // sem ticket na ordem: placa da carreta + data, só se houver uma única ordem possível (e ela ainda sem ticket)
+    if (p7 && tk.data) { const c = idx.all.filter(T => T.eff.data === tk.data && P.plate7(T.eff.placaL) === p7); if (c.length === 1 && !P.clean(c[0].ot.ticket)) return { t: c[0].transporte, via: 'placa + data' }; }
     return null;
   }
   // kg/peça de referência do material: NF da carga (peso bruto ÷ qtd) → média da base → volume da chapa
@@ -960,7 +961,7 @@
   function registrosBalanca() {
     const all = allTransports();
     const idx = { tk: ticketParaTransporte(), ts: new Set(all.map(T => T.transporte)), nf: nfParaTransporte(), all };
-    const ref = refPesos(); const recs = [], semOrdem = [], semLote = [];
+    const ref = refPesos(); const recs = [], semOrdem = [], semLote = [], variasEntregas = [];
     Object.values(state.tickets).forEach(tk => {
       const peso = tk.liq != null ? tk.liq : null; if (peso == null) return;
       const lig = transporteDoTicket(tk, idx); const T = lig ? all.find(x => x.transporte === lig.t) : null;
@@ -968,6 +969,8 @@
       const fonte = tk.itens.length ? tk.itens.map(i => ({ material: i.material, descricao: i.descricao || ((T && T.items.find(x => x.material === i.material)) || {}).descricao || '', qtd: i.qtd }))
         : (T ? T.items.map(i => ({ material: i.material, descricao: i.descricao, qtd: i.qtd })) : []);
       if (!fonte.length) { semOrdem.push(tk); return; }
+      // transporte com mais de uma entrega: não dá para saber o peso de cada material — fica fora da análise
+      if (T && !tk.itens.length && T.entregas.length > 1) { variasEntregas.push({ tk, T }); return; }
       const g = new Map();
       fonte.forEach(i => { const k = i.material || i.descricao; const a = g.get(k) || { material: i.material || '(sem material)', descricao: i.descricao, qtd: 0, lotes: 0, lotesOk: true }; a.qtd += i.qtd || 0;
         const mi = P.matInfo(i.descricao); if (i.qtd && mi.pecasPallet) a.lotes += i.qtd / mi.pecasPallet; else a.lotesOk = false; a.mi = mi; g.set(k, a); });
@@ -998,7 +1001,7 @@
     });
     // meses fechados: pesagens guardadas no histórico
     Object.values(state.histBalanca || {}).forEach(l => l.forEach(r => recs.push(Object.assign({}, r))));
-    return { recs, semOrdem, semLote };
+    return { recs, semOrdem, semLote, variasEntregas };
   }
   function analiseBalanca() {
     const B = registrosBalanca();
@@ -1090,7 +1093,8 @@
       : (A.itens.length ? `<table class="grid ps-grid"><thead><tr><th>Material</th><th>Descrição</th><th class="num">Cargas</th><th class="num">Média ${esc(unidade)}</th><th class="num">Mín.</th><th class="num">Máx.</th><th class="num">Amplitude</th><th class="num">Dispersão</th><th class="num">Maior diferença numa carga (kg)</th><th class="num">Fora da faixa</th></tr></thead>
         <tbody>${A.itens.map(i => `<tr class="ps-item" data-blmat="${esc(i.material)}"><td class="mono"><b>${esc(i.material)}</b></td><td class="wrap">${esc(i.desc)}</td><td class="num">${i.cargas}</td><td class="num"><b>${kg(i.media, dec)}</b></td><td class="num">${kg(i.min, dec)}</td><td class="num">${kg(i.max, dec)}</td><td class="num">${i.min == null ? '—' : kg(i.max - i.min, dec)}</td><td class="num">${i.cv == null ? '—' : fmtNum(i.cv * 100, 1) + '%'}</td><td class="num ${i.maiorDif >= 1000 ? 'ps-alerta' : ''}">${i.maiorDif == null ? '—' : fmtNum(i.maiorDif, 0)}</td><td class="num">${i.fora ? `<span class="chip alt">${i.fora}</span>` : '<span class="muted">0</span>'}</td></tr>`).join('')}</tbody></table>` : '');
     const tkOrdem = ticketParaTransporte(), semPesagem = Array.from(tkOrdem).filter(([tk]) => !state.tickets[tk]);
-    $('#bl-pend').innerHTML = (A.semOrdem.length ? `<details><summary><b>${A.semOrdem.length}</b> ticket(s) da balança sem ordem no app</summary><p class="mono small">${A.semOrdem.map(t => esc(t.ticket + (t.placa ? ' (' + t.placa + ')' : ''))).join(' · ')}</p><p class="muted small">Informe o ticket no campo "Ticket balança" do Controle OT da ordem para ligar.</p></details>` : '')
+    $('#bl-pend').innerHTML = (A.variasEntregas.length ? `<details><summary><b>${A.variasEntregas.length}</b> carga(s) desconsiderada(s): transporte com mais de uma entrega</summary><p class="small">${A.variasEntregas.map(x => `<a href="#" data-pt="${esc(x.T.transporte)}">${esc(x.T.transporte)}</a> (ticket ${esc(x.tk.ticket)}, ${x.T.entregas.length} entregas)`).join(' · ')}</p></details>` : '')
+      + (A.semOrdem.length ? `<details><summary><b>${A.semOrdem.length}</b> ticket(s) da balança sem ordem no app</summary><p class="mono small">${A.semOrdem.slice(0, 60).map(t => esc(t.ticket + (t.placa ? ' (' + t.placa + ')' : ''))).join(' · ')}${A.semOrdem.length > 60 ? ` … e mais ${A.semOrdem.length - 60}` : ''}</p><p class="muted small">É normal na planilha do Guardian (ela traz todas as pesagens da portaria).</p><p class="muted small">Informe o ticket no campo "Ticket balança" do Controle OT da ordem para ligar.</p></details>` : '')
       + (semPesagem.length ? `<details><summary><b>${semPesagem.length}</b> ordem(ns) com ticket informado, mas ainda sem pesagem colada</summary><p class="small">${semPesagem.map(([tk, t]) => `<a href="#" data-pt="${esc(t)}">${esc(t)}</a> (ticket ${esc(tk)})`).join(' · ')}</p></details>` : '')
       + (A.recs.some(r => r.lotes == null) ? `<details><summary>Cargas sem o nº de peças por lote no texto do material</summary><p class="muted small">Nelas só o kg/peça é calculado (o texto do material precisa terminar com as peças por lote, ex.: P/EF/208).</p></details>` : '');
   }
@@ -1128,7 +1132,7 @@
     if (!r.rows.length) return false;
     const res = mergeTickets(r.rows); save(true);
     if (ui.view !== 'pesos') setView('pesos'); else renderAll();
-    const idx = ticketParaTransporte(); const lig = Object.values(state.tickets).filter(t => r.rows.some(x => x.ticket === t.ticket) && idx.has(t.ticket)).length;
+    const idx = ticketParaTransporte(); const novosTk = new Set(r.rows.map(x => x.ticket)); const lig = [...idx.keys()].filter(k => novosTk.has(k)).length;
     const cols = Object.keys(r.map).map(k => P.TK_LABEL[k]).join(', ');
     toast(`Balança (${origem}): ${res.tickets} ticket(s), ${res.novos} novo(s) · ${lig} ligado(s) a ordem pelo ticket. Colunas reconhecidas: ${cols}.`, 'ok');
     setTimeout(() => $('#bl') && $('#bl').scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
@@ -1988,7 +1992,9 @@
         let grid;
         if (/\.(csv|txt)$/i.test(f.name)) grid = P.trimGrid(P.parseTSV((await f.text()).replace(/;/g, '\t')));
         else { if (!window.XLSX) throw new Error('a leitura de Excel precisa de internet. Salve como CSV ou copie e cole.'); const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' }); grid = P.trimGrid(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' })); }
-        importarPesosGrid(grid, f.name);
+        // planilha da balança (Guardian: Ticket + Líquido) ou base de pesos por NF
+        if (P.parseTickets(grid).rows.length) importarTicketsGrid(grid, f.name);
+        else importarPesosGrid(grid, f.name);
       } catch (er) { toast('Não foi possível ler o arquivo: ' + (er.message || er), 'err'); }
     });
     $('#pesos').addEventListener('click', e => {
