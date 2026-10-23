@@ -20,6 +20,12 @@ Com *Análise detalhada* ligada (padrão), além da foto inteira o app recorta a
 
 Áreas não avaliáveis aparecem como badge numerado (⊘1) sobre a foto, com o motivo na lateral, sem texto cobrindo o material.
 
+## Contagem de fitas e calços
+
+Na análise geral o modelo conta, lote a lote, as fitas e os calços do vão abaixo. O app compara os lotes entre si: lote sem fita ou com 2 fitas a menos que o normal vira *fita faltando*; lote apoiado direto (sem calços) ou com 2 calços a menos vira *calço faltando*. Cada ponto mostra os números usados, para conferir ou descartar.
+
+Lotes só com stretch e calços (sem papelão) são embalagem válida e não geram alerta.
+
 ## O que é verificado
 
 Calço/barrote faltando em relação ao padrão da pilha, **furo de garfo (sempre crítico: gravidade mínima 80 e nota máxima 35)**, filme stretch aberto ou solto, etiquetas rasgadas/caídas/rasuradas, fitas soltas, danos e batidas (marcas escuras), empilhamento/posicionamento e embalagem fora do padrão.
