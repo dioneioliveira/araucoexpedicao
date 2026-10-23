@@ -182,6 +182,7 @@ const TIPOS = {
   furo_garfo:'Furo de garfo (crítico)',
   dano:'Dano / batida / quebra',
   empilhamento:'Empilhamento / posicionamento',
+  fita_faltando:'Fita faltando',
   fita_solta:'Fita solta ou rompida',
   outro:'Outro'
 };
@@ -498,14 +499,17 @@ $('remove').onclick = () => {
 };
 
 /* ---------- análise por IA ---------- */
-const GUIDE = `- calco_faltando: falta de barrote/calço em relação ao PADRÃO da pilha. Os barrotes são blocos de madeira entre um lote e outro (e sob o primeiro lote, junto ao piso), alinhados em colunas verticais com espaçamento regular, normalmente casados com as fitas verticais. Entre cada par de lotes sobrepostos há um vão escuro; percorra TODOS os vãos, do primeiro ao último, e compare: um ponto do vão sem bloco onde as demais fileiras têm barrote, ou espaçamento irregular, indica barrote faltando. O barrote faltando aparece como um espaço vazio (escuro/vazado, sem bloco de madeira), com a largura de um bloco, alinhado à coluna dos demais barrotes. Marque o vão onde o barrote deveria estar e classifique como calco_faltando, nunca como "dano".
+const GUIDE = `- calco_faltando: falta de barrote/calço em relação ao PADRÃO da pilha. Os barrotes são blocos de madeira entre um lote e outro (e sob o primeiro lote, junto ao piso), alinhados em colunas verticais com espaçamento regular, normalmente casados com as fitas verticais. Entre cada par de lotes sobrepostos há um vão escuro; percorra TODOS os vãos, do primeiro ao último, e compare: um ponto do vão sem bloco onde as demais fileiras têm barrote, ou espaçamento irregular, indica barrote faltando. O barrote faltando aparece como um espaço vazio (escuro/vazado, sem bloco de madeira), com a largura de um bloco, alinhado à coluna dos demais barrotes. Também é calço faltando um lote apoiado direto sobre o lote de baixo (ou sobre o piso), sem o vão e os blocos de madeira que os demais lotes da pilha têm. Marque o vão onde o barrote deveria estar e classifique como calco_faltando, nunca como "dano".
 - furo_garfo: furos, rasgos, lascas ou quebras causados pelo garfo da empilhadeira. Em fotos de pilha vista de frente aparecem como pequenas rupturas: borda do lote com lasca, dente, buraco ou trecho escuro/amassado, fibra exposta, principalmente nas extremidades (esquerda/direita) dos lotes, na linha de junção entre dois lotes e na base junto ao piso. São pequenos: examine as bordas com atenção. Marcas escuras irregulares, pontos pretos, entalhes ou bordas desfiadas na linha de vão entre dois lotes ou nas extremidades dos lotes (formato irregular, não retangular) são furo de garfo, mesmo quando pequenas: nunca as classifique como "dano" de gravidade baixa. É problema CRÍTICO: use gravidade 80 a 100.
 - etiqueta: etiquetas rasgadas, penduradas, caindo, rasuradas ou ilegíveis, ou ausentes onde deveriam existir. As etiquetas seguem posição e orientação padrão (mesmo canto e na horizontal em cada lote): etiqueta fora de posição, torta, na vertical, descolada ou pendurada está caindo.
 - filme_stretch: se os lotes da carga usam stretch, todos precisam estar plastificados; aberturas, rasgos ou plástico pendurado/solto = má embalagem. Se nenhum lote da carga usa stretch, não reporte a ausência.
 - dano: batidas e amassados na FACE do lote (marcas de batida aparecem como áreas escuras/pretas na face). Qualquer marca irregular na borda ou na junção entre lotes é furo_garfo ou calco_faltando, não dano.
+- fita_faltando: cada lote leva fitas verdes verticais ao redor, em posições regulares e em número parecido com os lotes vizinhos do mesmo tipo. Lote sem nenhuma fita, ou com menos fitas que os vizinhos (trecho largo sem fita onde os outros têm), está com fita faltando. Marque o lote ou o trecho sem fita.
 - fita_solta: fitas/cintas DO PRÓPRIO LOTE frouxas, soltas ou rompidas.
 - empilhamento: pilhas desalinhadas, torres inclinadas, lotes mal posicionados ou salientes, carga mal assentada sobre o veículo.
-- embalagem_fora_padrao: embalagem diferente do padrão dos lotes vizinhos ou incompleta.`;
+- embalagem_fora_padrao: embalagem incompleta ou danificada em relação ao tipo de embalagem do próprio lote (ver regra abaixo).
+
+Embalagens variam conforme o material: há lotes com capa de papelão (impressa Arauco) e há lotes SOMENTE com filme stretch e calços, sem papelão. Os dois são padrão válido: NUNCA reporte ausência de papelão, nem "embalagem fora do padrão" só porque um lote não tem papelão e o vizinho tem. Compare cada lote apenas com lotes do mesmo tipo de embalagem. Papelão rasgado, solto ou amassado numa capa existente é defeito (dano).`;
 
 function ignoreRules(){
   const l = [];
