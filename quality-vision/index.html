@@ -68,6 +68,8 @@
   .it .t{font-weight:600;font-size:13px}
   .it .d{color:var(--dim);font-size:12px}
   .it .a{color:var(--accent);font-size:12px;margin-top:2px}
+  .nao{display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:12px;color:var(--dim)}
+  .nao b{flex:none;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#c9d3dd;color:#0a0e13;font-size:11px}
   .rec{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
   .rec:first-of-type{border-top:0}
   .rec .d{color:var(--dim);font-size:12px}
@@ -96,6 +98,7 @@
       <button id="demo">Exemplo</button>
       <span id="status" class="status" role="status"></span>
     </div>
+    <label class="tog" style="margin:-4px 0 12px"><input type="checkbox" id="detalhe" checked> Análise detalhada: varre a foto em partes ampliadas para achar furos e falhas pequenas (demora mais)</label>
     <div class="chips" id="coverage"></div>
     <div class="stage" id="stage">
       <div class="empty" id="empty"><b>Envie as duas laterais da carga</b>Veículo carregado ou área de separação. Fotos extras (traseira, outro ângulo) ajudam quando algo está encoberto. O mapa de calor aparece sobre a própria foto.</div>
@@ -127,6 +130,10 @@
     <div class="card" id="recCard" hidden>
       <h2>Fotos recomendadas</h2>
       <div id="recs"></div>
+    </div>
+    <div class="card" id="naoCard" hidden>
+      <h2>Áreas não avaliáveis</h2>
+      <div class="list" id="naoList"></div>
     </div>
     <div class="card" id="listCard" hidden>
       <h2>Pontos de atenção (<span id="cnt">0</span>)</h2>
@@ -166,7 +173,7 @@
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const MAX_SIDE = 1568, MAX_PHOTOS = 6;
+const MAX_SIDE = 2400, ANALYSIS_SIDE = 1568, MAX_PHOTOS = 6;
 const TIPOS = {
   calco_faltando:'Calço/barrote faltando',
   embalagem_fora_padrao:'Embalagem fora do padrão',
@@ -182,6 +189,7 @@ const LADOS = { esq:'Lateral esquerda', dir:'Lateral direita', tras:'Traseira', 
 const HAS_CLAUDE = !!(window.claude && window.claude.use);
 
 const state = { photos:[], cur:-1, pending:null, busy:false };
+if (/[?&]debug\b/.test(location.search)) window.__qv = state;
 const cv = $('cv'), ctx = cv.getContext('2d');
 const cur = () => state.photos[state.cur] || null;
 let uid = 0;
@@ -199,7 +207,7 @@ $('endpoint').value = store.get('endpoint') || '';
 $('key').onchange = () => store.set('key', $('key').value.trim());
 $('model').onchange = () => store.set('model', $('model').value);
 $('endpoint').onchange = () => store.set('endpoint', $('endpoint').value.trim());
-['ignCintas','ignReguas'].forEach(id => {
+['ignCintas','ignReguas','detalhe'].forEach(id => {
   const v = store.get(id); if (v !== null) $(id).checked = v === '1';
   $(id).onchange = () => store.set(id, $(id).checked ? '1' : '0');
 });
@@ -309,17 +317,15 @@ function render(){
     ctx.restore();
   }
   if ($('tNao').checked) {
-    r.nao_avaliaveis.forEach(n => {
+    r.nao_avaliaveis.forEach((n, i) => {
       const x = n.box.x * W, y = n.box.y * H, w = n.box.w * W, h = n.box.h * H;
-      ctx.fillStyle = 'rgba(15,20,26,.4)'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(15,20,26,.35)'; ctx.fillRect(x, y, w, h);
       ctx.fillStyle = hatchPattern(); ctx.fillRect(x, y, w, h);
       ctx.lineWidth = lw; ctx.strokeStyle = 'rgba(220,228,236,.8)'; ctx.setLineDash([lw * 4, lw * 3]); ctx.strokeRect(x, y, w, h); ctx.setLineDash([]);
-      const f = fs * .8, txt = n.motivo || 'Não avaliável';
-      ctx.font = `600 ${f}px system-ui,sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      const tw = Math.min(w - 8, ctx.measureText(txt).width + 12);
-      ctx.fillStyle = 'rgba(10,14,19,.85)'; ctx.fillRect(x + 4, y + 4, tw, f + 8);
-      ctx.fillStyle = '#e8edf3'; ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 4, tw, f + 8); ctx.clip();
-      ctx.fillText(txt, x + 10, y + 8); ctx.restore();
+      ctx.fillStyle = '#c9d3dd'; ctx.beginPath(); ctx.arc(x + fs, y + fs, fs * .75, 0, 7); ctx.fill();
+      ctx.lineWidth = lw; ctx.strokeStyle = '#0a0e13'; ctx.stroke();
+      ctx.fillStyle = '#0a0e13'; ctx.font = `700 ${fs * .85}px system-ui,sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('⊘' + (i + 1), x + fs, y + fs + 1);
     });
   }
   if ($('tMark').checked) {
@@ -398,6 +404,14 @@ function updateSummary(){
 
 function updateList(){
   const p = cur(), r = p && p.result, list = $('list'); list.textContent = '';
+  const nl = $('naoList'); nl.textContent = '';
+  $('naoCard').hidden = !r || !r.nao_avaliaveis.length;
+  if (r) r.nao_avaliaveis.forEach((n, i) => {
+    const row = document.createElement('div'); row.className = 'nao';
+    const b = document.createElement('b'); b.textContent = '⊘' + (i + 1);
+    const t = document.createElement('div'); t.textContent = n.motivo || 'Não avaliável';
+    row.append(b, t); nl.appendChild(row);
+  });
   $('listCard').hidden = !r || !r.defeitos.length;
   if (!r) return;
   $('cnt').textContent = r.defeitos.filter(d => !d.off).length;
@@ -440,6 +454,15 @@ function shrink(im, max){
   c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
   return c;
 }
+// ajusta para o envio à IA: reduz fotos grandes e amplia trechos pequenos (lado maior entre 1000 e ANALYSIS_SIDE)
+function fitForAI(c){
+  const long = Math.max(c.width, c.height);
+  const s = long < 1000 ? 1000 / long : Math.min(1, ANALYSIS_SIDE / long);
+  if (s === 1) return c;
+  const o = document.createElement('canvas'); o.width = Math.round(c.width * s); o.height = Math.round(c.height * s);
+  const g = o.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, o.width, o.height);
+  return o;
+}
 function defaultLado(){
   if (state.pending) { const l = state.pending; state.pending = null; return l; }
   if (!state.photos.some(p => p.lado === 'esq')) return 'esq';
@@ -475,33 +498,94 @@ $('remove').onclick = () => {
 };
 
 /* ---------- análise por IA ---------- */
+const GUIDE = `- calco_faltando: falta de barrote/calço em relação ao PADRÃO da pilha. Os barrotes são blocos de madeira entre um lote e outro (e sob o primeiro lote, junto ao piso), alinhados em colunas verticais com espaçamento regular, normalmente casados com as fitas verticais. Entre cada par de lotes sobrepostos há um vão escuro; percorra TODOS os vãos, do primeiro ao último, e compare: um ponto do vão sem bloco onde as demais fileiras têm barrote, ou espaçamento irregular, indica barrote faltando. O barrote faltando aparece como um espaço vazio (escuro/vazado, sem bloco de madeira), com a largura de um bloco, alinhado à coluna dos demais barrotes. Marque o vão onde o barrote deveria estar e classifique como calco_faltando, nunca como "dano".
+- furo_garfo: furos, rasgos, lascas ou quebras causados pelo garfo da empilhadeira. Em fotos de pilha vista de frente aparecem como pequenas rupturas: borda do lote com lasca, dente, buraco ou trecho escuro/amassado, fibra exposta, principalmente nas extremidades (esquerda/direita) dos lotes, na linha de junção entre dois lotes e na base junto ao piso. São pequenos: examine as bordas com atenção. Marcas escuras irregulares, pontos pretos, entalhes ou bordas desfiadas na linha de vão entre dois lotes ou nas extremidades dos lotes (formato irregular, não retangular) são furo de garfo, mesmo quando pequenas: nunca as classifique como "dano" de gravidade baixa. É problema CRÍTICO: use gravidade 80 a 100.
+- etiqueta: etiquetas rasgadas, penduradas, caindo, rasuradas ou ilegíveis, ou ausentes onde deveriam existir. As etiquetas seguem posição e orientação padrão (mesmo canto e na horizontal em cada lote): etiqueta fora de posição, torta, na vertical, descolada ou pendurada está caindo.
+- filme_stretch: se os lotes da carga usam stretch, todos precisam estar plastificados; aberturas, rasgos ou plástico pendurado/solto = má embalagem. Se nenhum lote da carga usa stretch, não reporte a ausência.
+- dano: batidas e amassados na FACE do lote (marcas de batida aparecem como áreas escuras/pretas na face). Qualquer marca irregular na borda ou na junção entre lotes é furo_garfo ou calco_faltando, não dano.
+- fita_solta: fitas/cintas DO PRÓPRIO LOTE frouxas, soltas ou rompidas.
+- empilhamento: pilhas desalinhadas, torres inclinadas, lotes mal posicionados ou salientes, carga mal assentada sobre o veículo.
+- embalagem_fora_padrao: embalagem diferente do padrão dos lotes vizinhos ou incompleta.`;
+
+function ignoreRules(){
+  const l = [];
+  if ($('ignCintas').checked) l.push('- Cintas/cintos de amarração do veículo (pendurados, soltos, caídos ou esticados) NÃO são defeito: serão usados para amarrar a carga depois. Ignore-os por completo, inclusive como "fita_solta".');
+  if ($('ignReguas').checked) l.push('- Réguas, ripas ou travessas de madeira já posicionadas sobre a carga fazem parte da arrumação: não conte como defeito nem como calço faltando.');
+  l.push('- Pilhas, lotes e materiais ao fundo ou nas laterais que não pertencem à carga inspecionada, a lona/cortina do sider, a estrutura do veículo, o piso, rodas e o ambiente.');
+  return l.join('\n');
+}
+const BOX_FMT = '{"x":0,"y":0,"w":0,"h":0}';
+const DEF_FMT = `{"tipo":"${Object.keys(TIPOS).join('|')}","gravidade":1-100,"descricao":"...","acao":"ação recomendada curta","box":${BOX_FMT}}`;
+
 function buildPrompt(p){
-  const ignore = [];
-  if ($('ignCintas').checked) ignore.push('- Cintas/cintos de amarração do veículo (pendurados, soltos, caídos ou esticados) NÃO são defeito: serão usados para amarrar a carga depois. Ignore-os por completo, inclusive como "fita_solta".');
-  if ($('ignReguas').checked) ignore.push('- Réguas, ripas ou travessas de madeira já posicionadas sobre a carga fazem parte da arrumação: não conte como defeito nem como calço faltando.');
   return `Você é inspetor de qualidade de expedição de painéis de madeira (chapas MDF/MDP em lotes) da Arauco. Analise a foto de uma carga (sobre veículo ou em área de separação) e avalie a qualidade visual do material carregado.
 
 Esta foto mostra: ${LADOS[p.lado]} da carga.
 
 Cada material tem embalagem própria, mas os insumos do lote (calços/barrotes, fitas, etiquetas, filme stretch) devem estar perfeitamente dispostos. Procure:
-- calco_faltando: falta de barrote/calço em relação ao PADRÃO da pilha. Os barrotes são blocos de madeira entre um lote e outro (e na base), alinhados em colunas verticais e com espaçamento regular, normalmente casados com as fitas verticais. Compare as fileiras entre si: um vão sem bloco numa coluna onde as demais fileiras têm barrote, ou espaçamento irregular, indica barrote faltando (ex.: lote com 5 barrotes mostrando só 4 posições regulares). Marque o vão onde o barrote deveria estar.
-- furo_garfo: furos, rasgos, lascas ou quebras causados pelo garfo da empilhadeira nas bordas, quinas e laterais dos lotes, principalmente na base e nas junções entre lotes (borda esfarelada, entalhe, fibra exposta, linha escura de ruptura). É problema CRÍTICO: use sempre gravidade 80 a 100.
-- filme_stretch: se os lotes da carga usam stretch, todos precisam estar plastificados; aberturas, rasgos ou plástico pendurado/solto = má embalagem. Se nenhum lote da carga usa stretch, não reporte a ausência.
-- etiqueta: etiquetas rasgadas, penduradas, caindo, rasuradas ou ilegíveis, ou ausentes onde deveriam existir. As etiquetas seguem posição e orientação padrão (mesmo canto e na horizontal em cada lote): etiqueta fora de posição, torta, na vertical, descolada ou pendurada está caindo.
-- dano: partes danificadas, amassadas ou batidas (que não sejam furo de garfo); marcas de batida aparecem como áreas escuras/pretas nos lotes.
-- fita_solta: fitas/cintas DO PRÓPRIO LOTE frouxas, soltas ou rompidas.
-- empilhamento: pilhas desalinhadas, torres inclinadas, lotes mal posicionados ou salientes, carga mal assentada sobre o veículo.
-- embalagem_fora_padrao: embalagem diferente do padrão dos lotes vizinhos ou incompleta.
+${GUIDE}
 
 NÃO considere defeito, e não avalie:
-${ignore.join('\n')}
-- Pilhas, lotes e materiais ao fundo ou nas laterais que não pertencem à carga inspecionada: marque como "nao_avaliaveis" (ex.: "Outras pilhas ao fundo").
-- A lona/cortina do sider, a estrutura do veículo, o piso, rodas e o ambiente. Onde a lona, a estrutura ou qualquer objeto encobre a carga e não dá para ver o material, NÃO invente defeitos nem lotes: marque a região em "nao_avaliaveis" com um motivo curto (ex.: "Lona do sider encobre a carga").
+${ignoreRules()}
 
-Regras: reporte apenas o que é visível; não invente defeitos. Se a imagem não permitir avaliar (muito escura, longe, desfocada), diga no resumo e use gravidade baixa. Caixas em coordenadas normalizadas 0–1 ((x,y) = canto superior esquerdo). Liste TODOS os lotes visíveis e avaliáveis em "lotes" com sua qualidade. Se parte da carga ficou encoberta ou falta um ângulo para concluir, peça fotos em "fotos_adicionais" (lado: esq, dir, tras, front, topo ou outra) com o motivo.
+Áreas não avaliáveis ("nao_avaliaveis"): use SOMENTE para (a) pilhas/objetos que não pertencem à carga e (b) partes da carga realmente encobertas pela lona ou por outro objeto. NUNCA marque como não avaliável uma parte da própria carga só porque está escura, distante ou pouco nítida: nesse caso avalie, e reporte suspeitas com gravidade moderada. Mantenha cada motivo curto (até 6 palavras).
+
+Regras: reporte apenas o que é visível; não invente defeitos. Caixas em coordenadas normalizadas 0–1 ((x,y) = canto superior esquerdo). Liste TODOS os lotes visíveis e avaliáveis em "lotes" com sua qualidade. Se parte da carga ficou encoberta ou falta um ângulo para concluir, peça fotos em "fotos_adicionais" (lado: esq, dir, tras, front, topo ou outra) com o motivo.
 
 Responda SOMENTE com um JSON (sem texto extra, sem markdown) neste formato:
-{"nota_geral":0-100,"resumo":"1-3 frases em português","lotes":[{"box":{"x":0,"y":0,"w":0,"h":0},"qualidade":0-100}],"defeitos":[{"tipo":"${Object.keys(TIPOS).join('|')}","gravidade":1-100,"descricao":"...","acao":"ação recomendada curta","box":{"x":0,"y":0,"w":0,"h":0}}],"nao_avaliaveis":[{"box":{"x":0,"y":0,"w":0,"h":0},"motivo":"..."}],"fotos_adicionais":[{"lado":"esq|dir|tras|front|topo|outra","motivo":"..."}]}`;
+{"nota_geral":0-100,"resumo":"1-3 frases em português","lotes":[{"box":${BOX_FMT},"qualidade":0-100}],"defeitos":[${DEF_FMT}],"nao_avaliaveis":[{"box":${BOX_FMT},"motivo":"..."}],"fotos_adicionais":[{"lado":"esq|dir|tras|front|topo|outra","motivo":"..."}]}`;
+}
+
+function buildTilePrompt(p, t){
+  return `Você é inspetor de qualidade de expedição de painéis de madeira (chapas MDF/MDP em lotes) da Arauco. Esta imagem é um TRECHO AMPLIADO (coluna ${t.c + 1} de ${t.C}, linha ${t.r + 1} de ${t.R}) da foto da ${LADOS[p.lado]} de uma carga. Inspecione o trecho com atenção a detalhes pequenos e liste SOMENTE defeitos que você vê neste trecho:
+${GUIDE}
+
+NÃO considere defeito, e não avalie:
+${ignoreRules()}
+
+Regras: reporte apenas o que é visível, sem inventar. Se algo é suspeito mas pouco nítido, reporte com gravidade moderada em vez de ignorar. Defeitos cortados pela borda do trecho podem ser reportados mesmo assim. Caixas em coordenadas normalizadas 0–1 relativas a ESTE trecho ((x,y) = canto superior esquerdo).
+
+Responda SOMENTE com um JSON (sem texto extra, sem markdown), com lista vazia se não houver nada:
+{"defeitos":[${DEF_FMT}]}`;
+}
+
+/* ---------- análise detalhada em trechos ---------- */
+function tileGrid(w, h){
+  const asp = w / h, C = asp >= 1.6 ? 3 : asp >= .8 ? 2 : 2, R = asp <= .8 ? 3 : 2, ov = .15, tiles = [];
+  const tw = w / (C - (C - 1) * ov), th = h / (R - (R - 1) * ov);
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++)
+    tiles.push({ c, r, C, R, x: c * tw * (1 - ov), y: r * th * (1 - ov), w: tw, h: th });
+  return tiles;
+}
+function cropTile(img, t){
+  const x = Math.round(Math.min(t.x, img.width - 1)), y = Math.round(Math.min(t.y, img.height - 1));
+  const w = Math.round(Math.min(t.w, img.width - x)), h = Math.round(Math.min(t.h, img.height - y));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(img, x, y, w, h, 0, 0, w, h);
+  return fitForAI(c);
+}
+const iou = (a, b) => {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  if (w <= 0 || h <= 0) return 0;
+  return w * h / (a.w * a.h + b.w * b.h - w * h);
+};
+const inside = (px, py, b) => px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h;
+function mergeDefects(base, extra, naos){
+  const list = base.slice();
+  for (const e of extra) {
+    const cx = e.box.x + e.box.w / 2, cy = e.box.y + e.box.h / 2;
+    if (naos.some(n => inside(cx, cy, n.box))) continue;
+    const dup = list.find(d => iou(d.box, e.box) > .2 || inside(cx, cy, d.box) || inside(d.box.x + d.box.w / 2, d.box.y + d.box.h / 2, e.box));
+    if (dup) {
+      if (e.tipo === 'furo_garfo' && dup.tipo !== 'furo_garfo') { dup.tipo = e.tipo; dup.descricao = e.descricao; dup.acao = e.acao; }
+      dup.gravidade = Math.max(dup.gravidade, e.gravidade);
+    } else list.push(e);
+  }
+  return list;
+}
+async function pool(items, n, fn){
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
 }
 
 function ladoKey(s){
@@ -551,11 +635,32 @@ async function callModel(blob, prompt){
   return parseJSON((data.content || []).filter(c => c.type === 'text').map(c => c.text).join(''));
 }
 
-async function inspect(p){
-  const blob = await new Promise(ok => p.img.toBlob(ok, 'image/jpeg', .9));
-  const raw = await callModel(blob, buildPrompt(p));
-  p.result = sanitize(typeof raw === 'string' ? parseJSON(raw) : raw);
-  p._heat = buildHeat(p.result, p.img.width / p.img.height); p.sel = -1;
+const toJpeg = c => new Promise(ok => c.toBlob(ok, 'image/jpeg', .9));
+const asObj = raw => typeof raw === 'string' ? parseJSON(raw) : raw;
+
+async function inspect(p, onStep){
+  const res = sanitize(asObj(await callModel(await toJpeg(fitForAI(p.img)), buildPrompt(p))));
+  res.detalhe = null;
+  if ($('detalhe').checked) {
+    const tiles = tileGrid(p.img.width, p.img.height), found = [];
+    let done = 0, fail = 0, lastErr = null;
+    await pool(tiles, 3, async t => {
+      try {
+        const raw = asObj(await callModel(await toJpeg(cropTile(p.img, t)), buildTilePrompt(p, t)));
+        sanitize({ defeitos: raw.defeitos }).defeitos.forEach(d => {
+          const b = d.box;
+          d.box = normBox({ x: (t.x + b.x * t.w) / p.img.width, y: (t.y + b.y * t.h) / p.img.height, w: b.w * t.w / p.img.width, h: b.h * t.h / p.img.height });
+          if (d.box) found.push(d);
+        });
+      } catch(e){ fail++; lastErr = e; }
+      onStep && onStep(++done, tiles.length);
+    });
+    res.defeitos = mergeDefects(res.defeitos, found, res.nao_avaliaveis);
+    res.detalhe = { total: tiles.length, fail, err: lastErr && (lastErr.message || String(lastErr)) };
+  }
+  // a nota nunca fica mais alta do que os defeitos encontrados permitem
+  res.nota_geral = Math.min(res.nota_geral, Math.max(res.defeitos.length ? 5 : 0, 100 - penalty(res.defeitos) * .9));
+  p.result = res; p._heat = buildHeat(res, p.img.width / p.img.height); p.sel = -1;
 }
 
 async function analyze(){
@@ -563,14 +668,16 @@ async function analyze(){
   let todo = state.photos.filter(p => !p.result);
   if (!todo.length) todo = [cur()];
   state.busy = true; refreshControls();
-  let ok = 0;
+  let ok = 0, warn = '';
   try {
     for (const [i, p] of todo.entries()) {
-      setStatus(`Analisando ${i + 1}/${todo.length} (${LADOS[p.lado]})…`, false, true);
-      await inspect(p); ok++;
+      const head = `Analisando foto ${i + 1}/${todo.length} (${LADOS[p.lado]})`;
+      setStatus(head + '…', false, true);
+      await inspect(p, (d, n) => setStatus(`${head} · trecho ${d}/${n}`, false, true)); ok++;
+      if (p.result.detalhe && p.result.detalhe.fail) warn += ` ${p.result.detalhe.fail} de ${p.result.detalhe.total} trechos falharam (${p.result.detalhe.err}).`;
       state.cur = state.photos.indexOf(p); refresh();
     }
-    setStatus('Análise concluída.');
+    setStatus('Análise concluída.' + warn, !!warn);
   } catch(err){ setStatus((ok ? `${ok} foto(s) analisada(s). ` : '') + (err.message || String(err)), true); }
   state.busy = false; refreshControls();
 }
