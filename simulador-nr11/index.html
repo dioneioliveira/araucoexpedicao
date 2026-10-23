@@ -122,9 +122,55 @@ input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:#E3E
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;border-radius:50%;background:#B7D9D8;border:2px solid #fff;box-shadow:0 0 0 1px #7fbfbc,0 2px 4px rgba(70,80,80,.25)}
 input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#B7D9D8;border:2px solid #fff;box-shadow:0 0 0 1px #7fbfbc}
 input[type=range]:hover::-webkit-slider-thumb{background:#D0CC00}
+
+/* ===== faixa lateral e pop-up ===== */
+body{display:block}
+#shell{display:flex;height:100vh;min-height:0}
+#content{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+#rail{flex:0 0 58px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 0;background:rgba(255,255,255,.88);backdrop-filter:blur(8px);border-right:1px solid var(--line);box-shadow:2px 0 14px rgba(60,70,70,.06);position:relative}
+#rail::after{content:"";position:absolute;right:-1px;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#B7D9D8,#D0CC00)}
+#logoBox{width:44px;height:44px;border-radius:12px;border:1.5px dashed #B7D9D8;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff;overflow:hidden;font-size:10px;line-height:1.1;color:#7A7A7A;text-align:center;flex:0 0 auto}
+#logoBox:hover{border-color:#D0CC00}
+#logoBox img{width:100%;height:100%;object-fit:contain;padding:3px}
+#logoBox.has{border:1px solid #ECEEEE;box-shadow:0 2px 8px rgba(70,80,80,.1)}
+#railName{gap:.9em;writing-mode:vertical-rl;transform:rotate(180deg);flex:1;display:flex;align-items:center;justify-content:center;letter-spacing:.22em;font-size:12px;font-weight:600;color:#7A7A7A;white-space:nowrap}
+#railName b{color:#9a9700;font-weight:700;margin-bottom:.6em}
+#railFoot{font-size:10px;font-weight:700;color:#7A7A7A;letter-spacing:.1em;padding:3px 6px;border-radius:6px;background:#EEF5F5}
+.chip{cursor:pointer}
+#modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(60,70,70,.38);backdrop-filter:blur(3px)}
+#modal[hidden]{display:none}
+.mbox{width:min(680px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(40,50,50,.35);border-top:7px solid var(--mc,#d6303a);animation:pop .22s ease-out}
+@keyframes pop{from{transform:translateY(10px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+.mhead{display:flex;gap:14px;align-items:flex-start;padding:18px 20px 8px}
+.mico{flex:0 0 44px;height:44px;border-radius:50%;background:var(--mc,#d6303a);color:#fff;font-weight:800;font-size:24px;display:flex;align-items:center;justify-content:center}
+.mtitle{flex:1}.mtitle h3{margin:0;font-size:19px;color:#4A4A4A}.mtitle p{margin:3px 0 0;color:#7A7A7A;font-size:13.5px}
+#mClose{border:none;background:transparent;font-size:26px;line-height:1;color:#9a9a9a;box-shadow:none;cursor:pointer}
+.mbody{padding:4px 20px 6px}.mbody section{margin:10px 0}
+.mbody h4{margin:0 0 5px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#7A7A7A}
+.mbody p,.mbody li{font-size:14px;line-height:1.5;color:#4A4A4A}
+.mbody ol,.mbody ul{margin:0;padding-left:20px}.mbody li{margin:4px 0}
+.mbody li b{color:#2f2f2f}.gain{display:inline-block;margin-left:6px;padding:0 7px;border-radius:99px;background:#EEF5F5;color:#3f8f8c;font-size:11.5px;font-weight:700}
+.mfoot{display:flex;gap:10px;justify-content:flex-end;padding:10px 20px 18px}
+.mfoot button{padding:9px 16px;font-size:14px;border-radius:10px}
+.mfoot .pri{background:#D0CC00;border-color:#b3af00;color:#3d3b00;font-weight:700}
+#mSee svg{width:100%;height:auto;max-height:190px;display:block;background:#F8F9F9;border:1px solid #ECEEEE;border-radius:12px}
+@media (max-width:1100px){
+  #shell{flex-direction:column;height:auto}
+  #rail{flex:0 0 auto;flex-direction:row;width:100%;padding:6px 10px;border-right:none;border-bottom:1px solid var(--line)}
+  #rail::after{right:0;left:0;top:auto;bottom:-1px;width:auto;height:3px;background:linear-gradient(90deg,#B7D9D8,#D0CC00)}
+  #railName{gap:.9em;writing-mode:horizontal-tb;transform:none;justify-content:flex-start;flex:1}
+  #railName b{margin:0 0 0 .5em}
+}
 </style>
 </head>
 <body>
+<div id="shell">
+<aside id="rail">
+  <label id="logoBox" title="Clique para enviar o logo da Padilha Treinamentos"><img id="logoImg" alt="Padilha Treinamentos" hidden><span id="logoHint">+<br>logo</span><input type="file" id="logoFile" accept="image/*" hidden></label>
+  <div id="railName"><span>PADILHA</span><b>TREINAMENTOS</b></div>
+  <div id="railFoot">NR-11</div>
+</aside>
+<div id="content">
 <header>
   <h1>Simulador NR-11 · Estabilidade de empilhadeira<small>Centro de carga, capacidade residual e triângulo de estabilidade — uso didático</small></h1>
   <div class="hdr-ctl">
@@ -192,6 +238,20 @@ input[type=range]:hover::-webkit-slider-thumb{background:#D0CC00}
     </section>
   </div>
 </main>
+</div>
+</div>
+
+<div id="modal" hidden>
+  <div class="mbox" id="mbox" role="dialog" aria-modal="true">
+    <div class="mhead"><div class="mico" id="mIco">!</div><div class="mtitle"><h3 id="mTitle"></h3><p id="mSub"></p></div><button id="mClose" aria-label="Fechar">×</button></div>
+    <div class="mbody">
+      <section><h4>O que está acontecendo</h4><p id="mWhat"></p><div id="mSee"></div></section>
+      <section><h4>O que mais pesa nessa situação</h4><ol id="mCauses"></ol></section>
+      <section><h4>Como corrigir</h4><ul id="mFix"></ul></section>
+    </div>
+    <div class="mfoot"><button id="mApply" class="pri">Aplicar correção sugerida</button><button id="mOk">Entendi</button></div>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -251,17 +311,18 @@ function analyseBodies(Tr,mass,lx,ly,lz,dyn){
   const crit = res.reduce((a,b)=>b.fs<a.fs||(b.fs===a.fs&&b.d<a.d)?b:a);
   return {bodies,M,cg,edges:res,crit,fs:crit.fs,front:res[0],lat:res[1].d<res[2].d?res[1]:res[2]};
 }
-function dynamics(){
-  const v = st.speed/3.6, ay = st.turn*(v*v)/Math.max(1,st.radius);
-  return {phi:Math.atan(st.slope/100), brake:st.brake, ay};
+function dynamics(P=st){
+  const v = P.speed/3.6, ay = P.turn*(v*v)/Math.max(1,P.radius);
+  return {phi:Math.atan(P.slope/100), brake:P.brake, ay};
 }
-function analyse(){
-  const g = geom(cur.lift,cur.tilt);
-  const u = T.a+st.s+st.Lc/2+st.cgx, v = g.vf+st.Hc/2;
+function analyse(o={}){
+  const P = o.p ? {...st,...o.p} : st, lift = o.lift!=null?o.lift:cur.lift, tilt = o.tilt!=null?o.tilt:cur.tilt;
+  const g = geom(lift,tilt);
+  const u = T.a+P.s+P.Lc/2+P.cgx, v = g.vf+P.Hc/2;
   const [lx,lz] = g.map(u,v);
-  const A = analyseBodies(T,st.mass,lx,st.yl+st.cgy,lz,dynamics());
-  A.g=g; A.load={x:lx,y:st.yl+st.cgy,z:lz};
-  A.c = st.s+st.Lc/2+st.cgx;
+  const A = analyseBodies(T,P.mass,lx,P.yl+P.cgy,lz,dynamics(P));
+  A.g=g; A.load={x:lx,y:P.yl+P.cgy,z:lz};
+  A.c = P.s+P.Lc/2+P.cgx;
   A.forkZ = g.map(T.a,g.vf)[1];
   return A;
 }
@@ -410,15 +471,25 @@ function setupCanvas(cv){
 function worldTransform(ox,oy,sc){ V.sc=sc; V.ctx.setTransform(sc,0,0,-sc,ox,oy); }
 
 /* ---------------- peças ---------------- */
+function lg(x0,z0,x1,z1,stops){const g=V.ctx.createLinearGradient(x0,z0,x1,z1);stops.forEach(([o,c])=>g.addColorStop(o,c));return g;}
+const PAINT=(zb,zt)=>lg(0,zt,0,zb,[[0,'#EDEA6A'],[0.35,'#D0CC00'],[0.8,'#aeab00'],[1,'#8c8900']]);
+const STEEL=(x0,x1)=>lg(x0,0,x1,0,[[0,'#e4e8ec'],[0.45,'#b4bcc6'],[1,'#7d8791']]);
+const DARK=(x0,x1)=>lg(x0,0,x1,0,[[0,'#59616c'],[0.5,'#3c444f'],[1,'#252a31']]);
 function drawWheel(x,z,R,rot){
   const c=V.ctx; c.save(); c.translate(x,z);
-  circ(0,0,R,'#15181c','#000',1);
+  circ(0,0,R,'#16181c','#000',1.2);                                   // pneu
   c.save(); c.rotate(rot);
-  c.strokeStyle='#23282e'; lw(1.2); for(let i=0;i<28;i++){c.rotate(Math.PI*2/28); c.beginPath(); c.moveTo(R*0.82,0); c.lineTo(R*0.98,0); c.stroke();}
-  circ(0,0,R*0.62,'#b9c0c8','#5b636c',1.2);
-  circ(0,0,R*0.38,'#8b939c','#4c545c',1);
-  for(let i=0;i<5;i++){const a=i*Math.PI*2/5; circ(Math.cos(a)*R*0.22,Math.sin(a)*R*0.22,R*0.045,'#30363d');}
-  c.restore(); circ(0,0,R*0.08,'#2c3238'); c.restore();
+  c.fillStyle='#0c0d0f'; const n=22;                                   // blocos de banda de rodagem
+  for(let i=0;i<n;i++){c.rotate(Math.PI*2/n); c.beginPath(); c.rect(R*0.9,-R*0.075,R*0.11,R*0.15); c.fill();}
+  c.restore();
+  circ(0,0,R*0.86,null,'#2c3036',1);                                   // ombro
+  circ(0,0,R*0.74,'#23272c','#3a3f46',1.2);                            // flanco
+  c.save(); c.rotate(rot);
+  circ(0,0,R*0.56,lg(-R*0.5,R*0.5,R*0.5,-R*0.5,[[0,'#eef1f4'],[0.5,'#aeb6bf'],[1,'#6f7882']]),'#4d545c',1.2); // aro
+  circ(0,0,R*0.36,'#8a929c','#4a5058',1);
+  for(let i=0;i<8;i++){const a=i*Math.PI/4; circ(Math.cos(a)*R*0.27,Math.sin(a)*R*0.27,R*0.04,'#2b3036');}
+  circ(0,0,R*0.12,'#d5dae0','#4a5058',1);
+  c.restore(); c.restore();
 }
 function drawGoods(u0,vf,L,H,mass){
   const ph=0.15;
@@ -462,51 +533,92 @@ function drawSide(A,dt){
   rect(-30,-3,60,0.04,'#aab3b3'); ctx.restore();
   const off=cur.odo%1;
   for(let k=-14;k<=14;k++){const x=k-off; line(x,0,x-0.18,-0.18,'#cdd5d5',1);}
-  // ---- rodas ----
-  const rotF=-cur.odo/T.Rf, rotR=-cur.odo/T.Rr;
-  drawWheel(0,T.Rf,T.Rf,rotF); drawWheel(-T.L,T.Rr,T.Rr,rotR);
-  // ---- chassi / contrapeso ----
-  const L=T.L, dz=T.dz;
+  const L=T.L, dz=T.dz, G0=T.guard-dz, rotF=-cur.odo/T.Rf, rotR=-cur.odo/T.Rr;
+  const ctxp=(f)=>{ctx.beginPath();f();};
+  // ---- quadro e contrapeso ----
   ctx.save(); ctx.translate(0,dz);
-  poly([[-L-0.55,0.30],[-L-0.63,0.65],[-L-0.56,1.02],[-L-0.30,1.10],[-L+0.45,1.10],[-L+0.55,0.90],[-0.55,0.90],[-0.55,0.72],[-0.30,0.72],[-0.30,0.98],[-0.06,1.02],[0.02,0.80],[0.14,0.62],[0.14,0.44],[-0.30,0.33],[-L+0.3,0.32]],'#D0CC00','#7d7a00',1.6);
-  rect(-L-0.64,0.34,0.06,0.5,'#1c1f24',null,0,0.02); // para-choque traseiro
-  rect(-L-0.2,0.4,1.0,0.07,'#a8a500'); // faixa
-  poly([[0.14,0.62],[0.14,0.44],[-0.1,0.40],[-0.1,0.62]],'#2b2f36'); // frente baixa
-  // faixa de segurança
-  ctx.save(); ctx.beginPath(); ctx.rect(-L-0.64,0.5,0.1,0.28); ctx.clip();
-  for(let i=-3;i<8;i++) line(-L-0.64+i*0.06,0.5,-L-0.64+i*0.06+0.28,0.78,'#111',3);
+  rect(-L-0.35,0.26,L+0.5,0.30,DARK(-L,0),'#14171b',1.2,0.03);                 // chassi
+  // carroceria (contrapeso + capô + painel)
+  ctxp(()=>{
+    ctx.moveTo(-L-0.50,0.30); ctx.lineTo(-0.12,0.30); ctx.quadraticCurveTo(0.17,0.30,0.18,0.52);
+    ctx.lineTo(0.18,0.70); ctx.quadraticCurveTo(0.15,0.80,0.06,0.88); ctx.lineTo(-0.03,1.04);
+    ctx.quadraticCurveTo(-0.12,1.08,-0.30,1.07); ctx.lineTo(-0.34,0.78); ctx.lineTo(-0.56,0.78);
+    ctx.quadraticCurveTo(-0.60,0.94,-0.70,0.94); ctx.lineTo(-L+0.60,0.94); ctx.quadraticCurveTo(-L+0.50,1.14,-L+0.30,1.16);
+    ctx.lineTo(-L-0.36,1.16); ctx.quadraticCurveTo(-L-0.62,1.12,-L-0.65,0.90); ctx.lineTo(-L-0.66,0.56);
+    ctx.quadraticCurveTo(-L-0.66,0.34,-L-0.50,0.30); ctx.closePath();
+    ctx.fillStyle=PAINT(0.30,1.16); ctx.fill(); ctx.strokeStyle='#6f6d00'; lw(1.6); ctx.stroke();
+  });
+  // brilho e vincos
+  line(-L-0.55,1.10,-L+0.30,1.12,'rgba(255,255,255,.55)',1.4); line(-L+0.60,0.93,-0.62,0.93,'rgba(255,255,255,.45)',1.2);
+  line(-L-0.20,0.40,-L-0.20,1.04,'rgba(90,88,0,.55)',1.2); line(-L+0.55,0.96,-L+0.55,0.56,'rgba(90,88,0,.45)',1.2);
+  for(let i=0;i<5;i++) line(-1.02+i*0.06,0.64,-1.02+i*0.06,0.84,'rgba(70,68,0,.55)',2);  // venezianas do capô
+  rect(-L-0.69,0.36,0.07,0.52,'#1a1c20','#000',1,0.025);                          // para-choque
+  rect(-L-0.69,0.82,0.05,0.10,'#e23b3b','#7a1010',1,0.02);                        // lanterna
+  circ(-L-0.62,0.52,0.035,'#25282d','#000',1);                                    // pino de reboque
+  rect(-L-0.08,0.64,0.46,0.21,'#1d2025','#000',1,0.02);                           // placa de capacidade
+  txt(`${(T.Q/1000).toString().replace('.',',')} t`,-L+0.15,0.745,{align:'center',size:12,color:'#D0CC00',w:800});
+  ctx.save(); ctx.beginPath(); ctx.rect(-L-0.69,0.36,0.07,0.34); ctx.clip();      // faixas de segurança
+  for(let i=-2;i<8;i++) line(-L-0.69+i*0.06,0.36,-L-0.69+i*0.06+0.34,0.70,'#d6303a',3);
   ctx.restore();
+  // painel frontal: farol, grade e degrau
+  rect(0.10,0.58,0.07,0.12,'#fffbe0','#8a7a2a',1,0.02);
+  rect(0.17,0.40,0.02,0.14,'#14171b'); rect(-0.58,0.66,0.2,0.05,'#1d2025','#000',1,0.01);
+  for(let i=0;i<3;i++) line(-0.56+i*0.07,0.66,-0.56+i*0.07,0.71,'#8f98a2',1);
   // assento
-  rect(-0.98,0.90,0.40,0.08,'#17191d','#000',1,0.02);
-  poly([[-0.98,0.98],[-0.88,0.98],[-0.80,1.48],[-0.92,1.50]],'#1c1f24','#000',1);
-  // volante
-  line(-0.14,0.98,-0.40,1.32,'#25282d',6);
-  ctx.save(); ctx.translate(-0.42,1.34); ctx.rotate(-0.55); ctx.scale(1,0.3); circ(0,0,0.18,null,'#111',4); ctx.restore();
-  // protetor de cabeça
-  line(-1.15,1.10,-1.13,(T.guard-dz),'#1b1e23',5); line(-0.06,1.02,-0.02,(T.guard-dz),'#1b1e23',5);
-  rect(-1.28,(T.guard-dz)-0.03,1.34,0.05,'#2a2e35','#000',1);
-  for(let i=0;i<9;i++) line(-1.25+i*0.15,(T.guard-dz)-0.03,-1.25+i*0.15,(T.guard-dz)+0.02,'#0c0e11',2);
-  // luz rotativa
-  rect(-0.65,(T.guard-dz)+0.02,0.08,0.07,'#ff9500','#7a4300',1,0.02);
+  ctxp(()=>{ctx.moveTo(-1.00,0.94);ctx.lineTo(-0.62,0.94);ctx.quadraticCurveTo(-0.56,1.02,-0.64,1.05);ctx.lineTo(-0.98,1.05);ctx.closePath();ctx.fillStyle=lg(0,1.05,0,0.94,[[0,'#3a3f46'],[1,'#17191d']]);ctx.fill();ctx.strokeStyle='#000';lw(1);ctx.stroke();});
+  ctxp(()=>{ctx.moveTo(-1.02,1.03);ctx.lineTo(-0.90,1.03);ctx.quadraticCurveTo(-0.84,1.26,-0.86,1.52);ctx.lineTo(-1.00,1.52);ctx.quadraticCurveTo(-1.08,1.28,-1.02,1.03);ctx.closePath();ctx.fillStyle=lg(-1.05,0,-0.84,0,[[0,'#2a2e34'],[1,'#4a5058']]);ctx.fill();ctx.strokeStyle='#000';lw(1);ctx.stroke();});
+  rect(-1.0,1.52,0.14,0.14,'#2a2e34','#000',1,0.04);                              // encosto de cabeça
+  line(-0.80,1.12,-0.52,1.12,'#1c1f24',5);                                        // apoio de braço
+  // coluna, volante e alavancas
+  line(-0.16,1.00,-0.40,1.34,'#25282d',7);
+  ctx.save(); ctx.translate(-0.42,1.36); ctx.rotate(-0.55); ctx.scale(1,0.32);
+  circ(0,0,0.19,null,'#15171a',5); line(-0.19,0,0.19,0,'#15171a',3); line(0,-0.19,0,0.19,'#15171a',3); circ(0,0,0.035,'#3a3f46'); ctx.restore();
+  for(let i=0;i<3;i++){const x=-0.24+i*0.045; line(x,1.07,x-0.03,1.30,'#1c1f24',2.2); circ(x-0.03,1.31,0.022,'#d6303a','#000',1);}
+  rect(-0.30,1.07,0.17,0.07,'#1d2025','#000',1,0.015);                            // painel de instrumentos
+  // protetor de cabeça (tubos, teto com nervuras e luz)
+  const tube=(x0,z0,x1,z1)=>{line(x0,z0,x1,z1,'#0f1114',7); line(x0-0.008,z0,x1-0.008,z1,'#59616c',2.2);};
+  tube(-1.12,1.10,-1.16,G0); tube(-0.05,1.04,0.02,G0); tube(-0.62,1.12,-0.60,G0-0.02);
+  rect(-1.32,G0-0.045,1.44,0.075,lg(0,G0+0.03,0,G0-0.045,[[0,'#59616c'],[1,'#1d2025']]),'#0f1114',1,0.02);
+  for(let i=0;i<10;i++) line(-1.28+i*0.14,G0-0.04,-1.28+i*0.14,G0+0.025,'#0c0e11',2.2);
+  ctxp(()=>{ctx.arc(-0.66,G0+0.03,0.055,Math.PI,0);ctx.closePath();ctx.fillStyle='#ffa31a';ctx.fill();ctx.strokeStyle='#7a4300';lw(1);ctx.stroke();});
+  rect(-0.72,G0+0.02,0.12,0.02,'#2a2e35');
   ctx.restore();
+  // ---- rodas e para-lamas ----
+  drawWheel(0,T.Rf,T.Rf,rotF); drawWheel(-L,T.Rr,T.Rr,rotR);
+  for(const [wx,R] of [[0,T.Rf],[-L,T.Rr]]){
+    ctx.beginPath(); ctx.arc(wx,R,R+0.045,Math.PI*0.10,Math.PI*0.90); ctx.strokeStyle=lg(0,2*R+0.05,0,R,[[0,'#cfcb00'],[1,'#7d7a00']]); lw(7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(wx,R,R+0.085,Math.PI*0.12,Math.PI*0.88); ctx.strokeStyle='rgba(60,58,0,.5)'; lw(1.2); ctx.stroke();
+  }
+  // cilindro de inclinação: corpo (escuro) + haste (cromada)
+  const tp=g.map(0.04,1.0-g.Pz), ax=-0.18, az=0.66+dz, mx=ax+(tp[0]-ax)*0.5, mz=az+(tp[1]-az)*0.5;
+  line(ax,az,mx,mz,'#2b3037',9); line(mx,mz,tp[0],tp[1],'#cfd5db',5); circ(ax,az,0.03,'#9aa3ad','#14171b',1); circ(tp[0],tp[1],0.03,'#9aa3ad','#14171b',1);
   // ---- mastro (rotaciona com a inclinação) ----
   ctx.save(); ctx.translate(0,g.Pz); ctx.rotate(g.th);
   const mastTop=T.mastH-g.Pz, ext=Math.max(0,cur.lift-1.0), bot=0.12-g.Pz;
-  // cilindros de inclinação (referência)
-  rect(0.02,bot,0.12,mastTop-bot,'#3c444f','#15191e',1);
-  rect(0.14,bot+0.15,0.075,mastTop-bot+ext/2-0.15,'#505a67','#15191e',1);
-  rect(0.215,bot+0.3,0.075,mastTop-bot+ext-0.3,'#677382','#15191e',1);
-  rect(0.0,bot+0.45,0.32,0.05,'#2d333b');
+  const rail=(u0,u1,v0,v1,fill)=>{rect(u0,v0,u1-u0,v1-v0,fill,'#12151a',1.1); line(u0+(u1-u0)*0.28,v0,u0+(u1-u0)*0.28,v1,'rgba(255,255,255,.28)',1); line(u0+(u1-u0)*0.78,v0,u0+(u1-u0)*0.78,v1,'rgba(0,0,0,.35)',1);};
+  rail(0.02,0.14,bot,mastTop,DARK(0.02,0.14));
+  rail(0.14,0.215,bot+0.15,mastTop+ext/2,DARK(0.14,0.215));
+  rail(0.215,0.29,bot+0.3,mastTop+ext,STEEL(0.215,0.29));
+  for(let v=bot+0.4;v<mastTop;v+=0.55) rect(0.02,v,0.12,0.03,'#1a1e23');                // travessas
+  rect(0.0,bot-0.02,0.32,0.07,'#1a1e23','#000',1,0.01);
+  rect(0.015,mastTop-0.02,0.13,0.05,'#2b3037','#000',1,0.01);
+  // cilindro hidráulico de elevação (haste)
+  rect(0.055,bot+0.1,0.045,mastTop-bot-0.1+ext/2,STEEL(0.055,0.1),'#4d545c',0.8);
   // correntes
-  line(0.18,mastTop+ext/2-0.02,0.30,g.vf+0.2,'#9aa4b0',1.2);
-  // carro porta-garfos
-  rect(0.26,g.vf-0.30,T.a-0.26-0.04,0.58,'#4a535f','#1b1f24',1.2);
-  for(let i=0;i<4;i++) rect(0.28,g.vf-0.26+i*0.13,T.a-0.34,0.03,'#2d333b');
-  // espaldar (encosto da carga)
-  rect(T.a-0.08,g.vf,0.06,1.08,'#2b3038','#0e1115',1);
-  for(let i=1;i<7;i++) line(T.a-0.08,g.vf+i*0.15,T.a-0.02,g.vf+i*0.15,'#0e1115',1.5);
-  // garfo
-  poly([[T.a-0.07,g.vf+0.30],[T.a,g.vf+0.30],[T.a,g.vf],[T.a+T.fork,g.vf],[T.a+T.fork+0.01,g.vf-0.025],[T.a+T.fork-0.25,g.vf-0.043],[T.a,g.vf-0.05],[T.a-0.07,g.vf-0.05]],'#b4bcc6','#2d333b',1.3);
+  ctx.setLineDash([0.022,0.012]); line(0.255,mastTop+ext/2+0.02,0.285,g.vf+0.28,'#2a2e34',3); nodash();
+  circ(0.255,mastTop+ext/2+0.03,0.03,'#9aa3ad','#2a2e34',1);                             // polia
+  // carro porta-garfos com roletes
+  rect(0.27,g.vf-0.32,T.a-0.27-0.05,0.62,DARK(0.27,T.a),'#12151a',1.2,0.01);
+  for(const v of [g.vf-0.22,g.vf+0.18]) circ(0.25,v,0.028,'#9aa3ad','#2a2e34',1);
+  for(let i=0;i<3;i++) rect(0.29,g.vf-0.24+i*0.2,T.a-0.37,0.025,'#14171b');
+  rect(0.27,g.vf+0.26,T.a-0.27-0.05,0.05,STEEL(0.27,T.a),'#2a2e34',1);                   // barra superior
+  // espaldar (grade de encosto)
+  rect(T.a-0.095,g.vf,0.065,1.1,DARK(T.a-0.095,T.a-0.03),'#0e1115',1);
+  for(let i=1;i<8;i++) line(T.a-0.095,g.vf+i*0.135,T.a-0.03,g.vf+i*0.135,'#0b0d10',1.6);
+  rect(T.a-0.11,g.vf+1.08,0.095,0.04,STEEL(T.a-0.11,T.a),'#2a2e34',1);
+  // garfo (com talão chanfrado e ponta cônica)
+  ctxp(()=>{ctx.moveTo(T.a-0.075,g.vf+0.32);ctx.lineTo(T.a-0.005,g.vf+0.32);ctx.lineTo(T.a-0.005,g.vf+0.012);ctx.lineTo(T.a+T.fork-0.03,g.vf+0.012);ctx.quadraticCurveTo(T.a+T.fork+0.012,g.vf+0.006,T.a+T.fork+0.012,g.vf-0.022);ctx.lineTo(T.a+T.fork-0.30,g.vf-0.042);ctx.lineTo(T.a+0.01,g.vf-0.058);ctx.quadraticCurveTo(T.a-0.075,g.vf-0.06,T.a-0.075,g.vf-0.02);ctx.closePath();ctx.fillStyle=lg(0,g.vf+0.02,0,g.vf-0.06,[[0,'#eef1f4'],[0.4,'#b4bcc6'],[1,'#6f7882']]);ctx.fill();ctx.strokeStyle='#1d2126';lw(1.2);ctx.stroke();});
+  line(T.a+0.02,g.vf+0.004,T.a+T.fork-0.04,g.vf+0.004,'rgba(255,255,255,.75)',1);
   // carga
   if(st.mass>0){
     drawGoods(T.a+st.s,g.vf,st.Lc,st.Hc,st.mass);
@@ -795,7 +907,7 @@ function updateMetrics(A,capN){
   $('#momPct').textContent=`${Math.round(mom*100)}%`;
   $('#momBar').style.width=clamp(mom*100,0,100)+'%'; $('#momBar').style.background=mom>=1?'#d6303a':mom>0.85?'#d98a00':'#5BA8A5';
   const chip=$('#chip'); chip.style.color=stt.c; $('#chipTxt').textContent=stt.t+(isFinite(A.fs)?` · FS ${f(A.fs,2)}`:'');
-  coach(A,capN,pct);
+  coach(A,capN,pct); checkPopup(A,capN,stt);
   // tabela: células
   document.querySelectorAll('#capTable td').forEach(td=>{
     const v=+td.textContent; td.className=st.mass>0?(v>=st.mass?'okc':'badc'):'';
@@ -805,6 +917,96 @@ function updateMetrics(A,capN){
   let bi=0; rowsH.forEach((h,i)=>{if(Math.abs(h-cur.lift)<Math.abs(rowsH[bi]-cur.lift)) bi=i;});
   let bj=0; colsC.forEach((c,j)=>{if(Math.abs(c-A.c*1000)<Math.abs(colsC[bj]-A.c*1000)) bj=j;});
   const cell=document.querySelector(`#capTable td[data-i="${bi}"][data-j="${bj}"]`); if(cell) cell.classList.add('now');
+}
+
+
+/* ---------------- logo (faixa lateral) ---------------- */
+(function(){
+  const img=$('#logoImg'), box=$('#logoBox'), hint=$('#logoHint');
+  const show=src=>{img.src=src; img.hidden=false; hint.hidden=true; box.classList.add('has');};
+  let saved=null; try{saved=localStorage.getItem('padilhaLogo');}catch(e){}
+  if(saved) show(saved);
+  else if(/^https?:/.test(location.protocol)){ const t=new Image(); t.onload=()=>show(t.src); t.src='logo-padilha.png'; }   // se o arquivo estiver ao lado do HTML
+  $('#logoFile').onchange=e=>{
+    const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+    r.onload=()=>{ show(r.result); try{localStorage.setItem('padilhaLogo',r.result);}catch(err){} };
+    r.readAsDataURL(f);
+  };
+})();
+
+/* ---------------- pop-up didático de perigo / tombamento ---------------- */
+const fmt1=(v,d=0)=>v.toFixed(d).replace('.',',');
+let modalOpen=false, modalDismissed=false, dangerSince=0, lastFixes=[];
+function explain(A,capN){
+  const stt=statusOf(A.fs), c=A.crit, side=c.n==='left'?'esquerda':'direita';
+  const base=Math.min(isFinite(A.fs)?A.fs:9,9);
+  const tryIt=(o)=>Math.min(analyse(o).fs,9)-base;
+  const items=[];
+  const P=st, safeMass=Math.max(0,Math.floor(Math.min(capN,P.mass)/10)*10);
+  if(P.mass>capN){ const gain=tryIt({p:{mass:safeMass}}); items.push({gain,txt:`<b>Peso acima da capacidade.</b> Com C = ${Math.round(A.c*1000)} mm e garfo a ${fmt1(cur.lift,2)} m a placa permite ${capN} kg e a carga tem ${P.mass} kg. Reduza para até ${safeMass} kg.`,fix:{mass:safeMass},how:`Reduza a carga para ${safeMass} kg ou menos.`}); }
+  if(P.s>0.02){ const gain=tryIt({p:{s:0}}); items.push({gain,txt:`<b>Carga afastada do talão.</b> Ela está ${Math.round(P.s*1000)} mm para a ponta dos garfos: o braço de alavanca cresce e a carga “pesa” mais no eixo dianteiro.`,fix:{s:0},how:'Encoste a carga no talão (encosto) dos garfos.'}); }
+  if(Math.abs(P.yl)+Math.abs(P.cgy)>0.04){ const gain=tryIt({p:{yl:0,cgy:0}}); items.push({gain,txt:`<b>Carga fora do centro.</b> O CG da carga está ${Math.round(Math.abs(P.yl+P.cgy)*1000)} mm para a ${P.yl+P.cgy>0?'esquerda':'direita'}, o que “puxa” o CG para a lateral do triângulo.`,fix:{yl:0,cgy:0},how:'Centralize a carga nos garfos e redistribua o peso.'}); }
+  if(cur.lift>0.45){ const gain=tryIt({lift:0.2}); items.push({gain,txt:`<b>Garfo muito alto (${fmt1(cur.lift,2)} m).</b> Quanto mais alta a carga, mais alto fica o CG combinado; qualquer inclinação, curva ou freada joga a projeção para fora do triângulo.`,fix:{lift:0.2},how:'Baixe os garfos a ~20 cm do piso antes de se deslocar.'}); }
+  if(cur.tilt<5){ const gain=tryIt({tilt:6}); items.push({gain,txt:`<b>Mastro ${cur.tilt<-0.5?'inclinado à frente':'sem inclinação para trás'} (${fmt1(cur.tilt,1)}°).</b> Inclinar para trás encosta a carga no espaldar e puxa o CG para dentro da base.`,fix:{tilt:6},how:'Incline o mastro alguns graus para trás ao transportar.'}); }
+  if(P.slope!==0){ const gain=tryIt({p:{slope:0}}); items.push({gain,txt:`<b>Rampa de ${Math.abs(P.slope)}% ${P.slope<0?'descendo de frente':'subindo'}.</b> ${P.slope<0?'Na descida o peso escorrega para a ponta dos garfos e a base de apoio fica “inclinada” para frente.':'Subir de frente é o correto, mas em rampa a margem diminui.'}`,fix:{slope:0},how:P.slope<0?'Com carga, desça a rampa de ré (carga do lado de cima).':'Evite manobras e curvas em rampa.'}); }
+  if(P.brake>0.5){ const gain=tryIt({p:{brake:0}}); items.push({gain,txt:`<b>Frenagem de ${fmt1(P.brake,1)} m/s².</b> A inércia empurra o CG para a frente, na direção do eixo dianteiro.`,fix:{brake:0},how:'Freie suavemente, com antecedência.'}); }
+  const ay=Math.abs(dynamics().ay)/G;
+  if(ay>0.03){ const gain=tryIt({p:{speed:Math.min(P.speed,2)}}); items.push({gain,txt:`<b>Curva em ${fmt1(P.speed,1)} km/h (raio ${fmt1(P.radius,1)} m).</b> Gera ${fmt1(ay,2)} g de aceleração lateral — uma força para fora da curva que desloca o CG ${Math.round(Math.abs(A.cg.py-A.cg.y)*1000)} mm.`,fix:{speed:Math.min(P.speed,2)},how:'Reduza a velocidade antes da curva, principalmente com carga elevada.'}); }
+  items.sort((a,b)=>b.gain-a.gain);
+  const useful=items.filter(i=>i.gain>0.02);
+  let what, title, sub;
+  const dist=Math.abs(c.d)*1000;
+  if(c.n==='front'){
+    what=`Pense numa <b>gangorra</b> apoiada no eixo dianteiro. De um lado, o peso da carga (ponta dos garfos) tenta virar a máquina para a frente; do outro, o peso da empilhadeira, com o contrapeso lá atrás, tenta segurá-la. Agora o lado da carga vence: o centro de gravidade combinado ${c.d<0?`ficou ${Math.round(dist)} mm <b>à frente</b> do eixo dianteiro`:`está a apenas ${Math.round(dist)} mm do eixo dianteiro`}, fora da base de apoio. Resultado: as rodas de trás tendem a levantar e a empilhadeira <b>tomba para a frente</b>.`;
+  } else {
+    what=`A empilhadeira se apoia num <b>triângulo</b> (as duas rodas da frente e o centro do eixo traseiro). Seu centro de gravidade combinado ${c.d<0?`saiu ${Math.round(dist)} mm pela <b>lateral ${side}</b> desse triângulo`:`está a apenas ${Math.round(dist)} mm da <b>lateral ${side}</b>`}. Como o eixo traseiro oscila, a máquina não tem apoio de ${side} e tende a <b>tombar de lado</b>, com a carga alta e a curva/inclinação piorando muito.`;
+  }
+  if(stt.k==='tip'){ title='Tombamento! A empilhadeira vai virar'; sub=`Fator de segurança ${fmt1(A.fs,2)} (abaixo de 1,00 o momento que derruba é maior que o que segura).`; }
+  else { title='Perigo: quase tombando'; sub=`Fator de segurança ${fmt1(A.fs,2)} — o mínimo seguro é 1,25 e abaixo de 1,05 qualquer vibração pode virar a máquina.`; }
+  return {stt,what,title,sub,useful,items,crit:c};
+}
+function seesawSVG(A,crit){
+  const r=crit.r, o=crit.o, tot=Math.max(1e-6,r+o), ang=Math.max(-14,Math.min(14,(o-r)/tot*24));
+  const front=crit.n==='front';
+  const lblL=front?'Empilhadeira (segura)':'Lado seguro', lblR=front?'Carga (derruba)':`Lado que vira (${crit.n==='left'?'esq.':'dir.'})`;
+  const f=v=>Math.round(v).toLocaleString('pt-BR');
+  return `<svg viewBox="0 0 640 190" role="img" aria-label="Gangorra de momentos">
+    <g transform="translate(320 130)"><polygon points="0,0 -26,44 26,44" fill="#B7D9D8" stroke="#5BA8A5" stroke-width="2"/>
+    <g transform="rotate(${ang.toFixed(1)})"><rect x="-270" y="-12" width="540" height="12" rx="6" fill="#7A7A7A"/>
+      <g transform="translate(-190 -12)"><rect x="-44" y="-52" width="88" height="52" rx="8" fill="#D0CC00" stroke="#8d8a00" stroke-width="2"/><text y="-22" text-anchor="middle" font-size="15" font-weight="700" fill="#4A4A4A">${f(r)}</text><text y="-8" text-anchor="middle" font-size="10" fill="#4A4A4A">kgf·m</text></g>
+      <g transform="translate(190 -12)"><rect x="-44" y="-${30+Math.min(40,o/tot*60)}" width="88" height="${30+Math.min(40,o/tot*60)}" rx="8" fill="#e9b872" stroke="#b8620a" stroke-width="2"/><text y="-${12+Math.min(40,o/tot*60)}" text-anchor="middle" font-size="15" font-weight="700" fill="#4A4A4A">${f(o)}</text><text y="-${Math.min(40,o/tot*60)}" text-anchor="middle" font-size="10" fill="#4A4A4A">kgf·m</text></g>
+    </g></g>
+    <text x="130" y="178" text-anchor="middle" font-size="13" fill="#4A4A4A" font-weight="600">${lblL}</text>
+    <text x="510" y="178" text-anchor="middle" font-size="13" fill="#4A4A4A" font-weight="600">${lblR}</text>
+    <text x="320" y="22" text-anchor="middle" font-size="12" fill="#7A7A7A">${front?'apoio: eixo dianteiro':'apoio: aresta lateral do triângulo'} · o lado mais pesado desce</text>
+  </svg>`;
+}
+function openModal(A,capN,manual){
+  const e=explain(A,capN); lastFixes=e.useful;
+  const box=$('#mbox'); const col=e.stt.k==='tip'?'#d6303a':e.stt.k==='bad'?'#e8590c':e.stt.k==='warn'?'#d98a00':'#2e9e6b';
+  box.style.setProperty('--mc',col);
+  if(e.stt.k==='ok'||e.stt.k==='warn'){
+    $('#mIco').textContent=e.stt.k==='ok'?'✓':'!'; $('#mTitle').textContent=e.stt.k==='ok'?'Situação estável':'Atenção: margem reduzida';
+    $('#mSub').textContent=`Fator de segurança ${isFinite(A.fs)?fmt1(A.fs,2):'—'}. ${e.stt.k==='ok'?'O CG combinado está dentro do triângulo de estabilidade.':'Ainda estável, mas perto do limite (mínimo recomendado 1,25).'}`;
+  } else { $('#mIco').textContent='!'; $('#mTitle').textContent=e.title; $('#mSub').textContent=e.sub; }
+  $('#mWhat').innerHTML=e.what;
+  $('#mSee').innerHTML=seesawSVG(A,e.crit);
+  $('#mCauses').innerHTML=e.useful.length?e.useful.slice(0,4).map(i=>`<li>${i.txt}<span class="gain">+${fmt1(i.gain,2)} de FS se corrigido</span></li>`).join(''):'<li>Nenhum fator isolado resolve sozinho: combine reduzir peso, baixar o garfo e diminuir a velocidade.</li>';
+  $('#mFix').innerHTML=e.useful.length?e.useful.slice(0,4).map(i=>`<li>${i.how}</li>`).join('')+'<li>Regra de ouro: <b>carga baixa, encostada no talão, mastro para trás e velocidade baixa</b>.</li>':'<li>Pare, baixe a carga ao piso e reposicione antes de continuar.</li>';
+  $('#mApply').hidden=!e.useful.length;
+  $('#modal').hidden=false; modalOpen=true; $('#mOk').focus();
+}
+function closeModal(){ $('#modal').hidden=true; modalOpen=false; modalDismissed=true; }
+$('#mClose').onclick=$('#mOk').onclick=closeModal;
+$('#modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&modalOpen) closeModal(); });
+$('#mApply').onclick=()=>{ const o={}; lastFixes.forEach(f=>Object.assign(o,f.fix)); applyState(o); closeModal(); modalDismissed=false; };
+$('#chip').title='Clique para ver a explicação'; $('#chip').onclick=()=>openModal(A_,capNow(),true);
+function checkPopup(A,capN,stt){
+  const danger=stt.k==='tip'||stt.k==='bad', now=performance.now();
+  if(!danger){ dangerSince=0; if(stt.k==='ok'||stt.k==='warn') modalDismissed=false; return; }
+  if(!dangerSince) dangerSince=now;
+  if(!modalOpen && !modalDismissed && now-dangerSince>350) openModal(A,capN,false);
 }
 
 /* ---------------- loop ---------------- */
