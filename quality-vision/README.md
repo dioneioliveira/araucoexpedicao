@@ -2,8 +2,8 @@
 
 Verificador visual da qualidade da carga a partir de uma foto (veículo carregado ou área de separação). Devolve **a mesma foto** com:
 
-- **mapa de calor** verde → vermelho sobre os lotes (verde = perfeito, vermelho = crítico);
-- **pontos de atenção** numerados, com tipo, gravidade (1–100) e ação recomendada;
+- **pontos de atenção destacados** sobre a foto: cantos em mira na cor da gravidade (leve, moderado, alto, crítico), rótulo curto com o tipo e o resto da foto escurecido para dar foco;
+- **lista detalhada** com miniatura ampliada de cada ponto, gravidade, descrição e ação recomendada (clique para destacar na foto; *Descartar* remove a marcação);
 - **nota geral** (0–100) e classificação (Aprovado / Atenção / Reprovar / Crítico);
 - botão para baixar o PNG com o resultado.
 
@@ -32,7 +32,7 @@ Calço/barrote faltando em relação ao padrão da pilha, **furo de garfo (sempr
 
 ## Como funciona
 
-HTML estático, sem build. A foto é reduzida (até 1568 px) e enviada à API de mensagens da Anthropic (visão), que devolve JSON com lotes, defeitos, áreas não avaliáveis e fotos adicionais pedidas (caixas normalizadas e gravidade). O mapa de calor é desenhado no navegador: risco base por lote (100 − qualidade) somado a manchas gaussianas em cada defeito.
+HTML estático, sem build. A foto é reduzida (até 1568 px) e enviada à API de mensagens da Anthropic (visão), que devolve JSON com lotes, defeitos, áreas não avaliáveis e fotos adicionais pedidas (caixas normalizadas e gravidade). As marcações são desenhadas no navegador sobre a própria foto.
 
 ## Rodar
 
