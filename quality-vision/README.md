@@ -11,7 +11,7 @@ Verificador visual da qualidade da carga a partir de uma foto (veículo carregad
 
 - Aceita até 6 fotos por inspeção, cada uma rotulada (lateral esquerda, lateral direita, traseira, frontal, superior, outra). O app pede as **duas laterais** e sugere fotos extras quando a IA vê parte da carga encoberta. A nota geral combina as fotos (pior foto pesa mais).
 - **Cintas de amarração** e **réguas já sobrepostas** na carga não são defeito (podem ser desligadas em *Não avaliar*).
-- **Lona do sider** e qualquer área encoberta viram *área não avaliável*: hachurada, sem cor no mapa de calor e fora da nota.
+- **Lona do sider** e qualquer área encoberta viram *área não avaliável*: hachurada, sem pontos de atenção e fora da nota.
 - Cada ponto de atenção pode ser **descartado** (ou restaurado); o mapa e a nota se ajustam.
 
 ## Análise detalhada
