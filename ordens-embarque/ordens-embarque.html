@@ -3949,13 +3949,16 @@ window.ORDEM_TEMPLATES = {
     const dims = d.match(/(\d{3,4})\s*X\s*(\d{3,4})\s*X\s*(\d{1,3}(?:[,.]\d+)?)/);
     const pack = d.match(/P\/([A-Z])([A-Z0-9]?)\/(\d{1,4})\s*$/) || d.match(/\/([A-Z])([A-Z0-9]?)\/(\d{1,4})\s*$/);
     let pecas = pack ? +pack[3] : NaN;
-    // sem o padrão de embalagem (P/xx/NNN) não se adivinha: "HC1144", "14,5" etc. não são peças por pallet
+    // moldura: "/HC1144" = 1.144 chapas por lote (HC + número no fim da descrição)
+    const hc = !pack && d.match(/\/HC\s*(\d{1,5})\s*$/);
+    if (hc) pecas = +hc[1];
+    // fora desses dois padrões não se adivinha ("…/HC" sem número, "14,5" etc.): fica "verificar quantidade"
     return {
       familia: tk[0] || '', linha: tk[1] || '', acabamento: tk[2] || '',
       comp: dims ? +dims[1] : null, larg: dims ? +dims[2] : null,
       esp: dims ? parseFloat(dims[3].replace(',', '.')) : null,
       mercado: pack ? ({ E: 'Exportação', I: 'Interno' }[pack[1]] || pack[1]) : '',
-      embalagem: pack ? pack[1] + pack[2] : '',
+      embalagem: pack ? pack[1] + pack[2] : (hc ? 'HC' : ''),
       pecasPallet: pecas || null,
     };
   }
