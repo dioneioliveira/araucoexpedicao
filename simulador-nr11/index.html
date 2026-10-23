@@ -535,6 +535,45 @@ function drawSide(A,dt){
   for(let k=-14;k<=14;k++){const x=k-off; line(x,0,x-0.18,-0.18,'#cdd5d5',1);}
   const L=T.L, dz=T.dz, G0=T.guard-dz, rotF=-cur.odo/T.Rf, rotR=-cur.odo/T.Rr;
   const ctxp=(f)=>{ctx.beginPath();f();};
+  // cilindro de inclinação: corpo (escuro) + haste (cromada)
+  const tp=g.map(0.04,1.0-g.Pz), ax=-0.18, az=0.66+dz, mx=ax+(tp[0]-ax)*0.5, mz=az+(tp[1]-az)*0.5;
+  line(ax,az,mx,mz,'#2b3037',9); line(mx,mz,tp[0],tp[1],'#cfd5db',5); circ(ax,az,0.03,'#9aa3ad','#14171b',1); circ(tp[0],tp[1],0.03,'#9aa3ad','#14171b',1);
+  // ---- mastro (rotaciona com a inclinação) ----
+  ctx.save(); ctx.translate(0,g.Pz); ctx.rotate(g.th);
+  const mastTop=T.mastH-g.Pz, ext=Math.max(0,cur.lift-1.0), bot=0.12-g.Pz;
+  const rail=(u0,u1,v0,v1,fill)=>{rect(u0,v0,u1-u0,v1-v0,fill,'#12151a',1.1); line(u0+(u1-u0)*0.28,v0,u0+(u1-u0)*0.28,v1,'rgba(255,255,255,.28)',1); line(u0+(u1-u0)*0.78,v0,u0+(u1-u0)*0.78,v1,'rgba(0,0,0,.35)',1);};
+  rail(0.02,0.14,bot,mastTop,DARK(0.02,0.14));
+  rail(0.14,0.215,bot+0.15,mastTop+ext/2,DARK(0.14,0.215));
+  rail(0.215,0.29,bot+0.3,mastTop+ext,STEEL(0.215,0.29));
+  for(let v=bot+0.4;v<mastTop;v+=0.55) rect(0.02,v,0.12,0.03,'#1a1e23');                // travessas
+  rect(0.015,mastTop-0.02,0.13,0.05,'#2b3037','#000',1,0.01);
+  // cilindro hidráulico de elevação (haste)
+  rect(0.055,bot+0.1,0.045,mastTop-bot-0.1+ext/2,STEEL(0.055,0.1),'#4d545c',0.8);
+  // correntes
+  ctx.setLineDash([0.022,0.012]); line(0.255,mastTop+ext/2+0.02,0.285,g.vf+0.28,'#4a5058',2); nodash();
+  circ(0.255,mastTop+ext/2+0.03,0.03,'#9aa3ad','#2a2e34',1);                             // polia
+  // carro porta-garfos com roletes
+  rect(0.27,g.vf-0.07,T.a-0.27-0.05,0.40,DARK(0.27,T.a),'#12151a',1.2,0.01);
+  for(const v of [g.vf+0.0,g.vf+0.24]) circ(0.25,v,0.028,'#9aa3ad','#2a2e34',1);
+  for(let i=0;i<2;i++) rect(0.29,g.vf+0.03+i*0.11,T.a-0.37,0.022,'#14171b');
+  rect(0.27,g.vf+0.26,T.a-0.27-0.05,0.05,STEEL(0.27,T.a),'#2a2e34',1);                   // barra superior
+  // espaldar (grade de encosto)
+  rect(T.a-0.095,g.vf,0.065,1.1,DARK(T.a-0.095,T.a-0.03),'#0e1115',1);
+  for(let i=1;i<8;i++) line(T.a-0.095,g.vf+i*0.135,T.a-0.03,g.vf+i*0.135,'#0b0d10',1.6);
+  rect(T.a-0.11,g.vf+1.08,0.095,0.04,STEEL(T.a-0.11,T.a),'#2a2e34',1);
+  // garfo (com talão chanfrado e ponta cônica)
+  ctxp(()=>{ctx.moveTo(T.a-0.075,g.vf+0.32);ctx.lineTo(T.a-0.005,g.vf+0.32);ctx.lineTo(T.a-0.005,g.vf+0.012);ctx.lineTo(T.a+T.fork-0.03,g.vf+0.012);ctx.quadraticCurveTo(T.a+T.fork+0.012,g.vf+0.006,T.a+T.fork+0.012,g.vf-0.022);ctx.lineTo(T.a+T.fork-0.30,g.vf-0.042);ctx.lineTo(T.a+0.01,g.vf-0.058);ctx.quadraticCurveTo(T.a-0.075,g.vf-0.06,T.a-0.075,g.vf-0.02);ctx.closePath();ctx.fillStyle=lg(0,g.vf+0.02,0,g.vf-0.06,[[0,'#eef1f4'],[0.4,'#b4bcc6'],[1,'#6f7882']]);ctx.fill();ctx.strokeStyle='#1d2126';lw(1.2);ctx.stroke();});
+  line(T.a+0.02,g.vf+0.004,T.a+T.fork-0.04,g.vf+0.004,'rgba(255,255,255,.75)',1);
+  // carga
+  if(st.mass>0){
+    drawGoods(T.a+st.s,g.vf,st.Lc,st.Hc,st.mass);
+    if(dims){
+      const zc=g.vf+st.Hc+0.16, uc=T.a+A.c;
+      dimH(T.a,uc,zc,`C = ${Math.round(A.c*1000)} mm (nominal ${Math.round(T.D*1000)})`,A.c>T.D+0.001?'#d98a00':'#2e9e6b');
+      dash(5,4); line(T.a+T.D,g.vf,T.a+T.D,zc+0.05,'rgba(46,158,107,.7)',1.2); nodash();
+    }
+  }
+  ctx.restore();
   // ---- quadro e contrapeso ----
   ctx.save(); ctx.translate(0,dz);
   rect(-L-0.35,0.26,L+0.5,0.30,DARK(-L,0),'#14171b',1.2,0.03);                 // chassi
@@ -589,46 +628,6 @@ function drawSide(A,dt){
     ctx.beginPath(); ctx.arc(wx,R,R+0.045,Math.PI*0.10,Math.PI*0.90); ctx.strokeStyle=lg(0,2*R+0.05,0,R,[[0,'#cfcb00'],[1,'#7d7a00']]); lw(7); ctx.stroke();
     ctx.beginPath(); ctx.arc(wx,R,R+0.085,Math.PI*0.12,Math.PI*0.88); ctx.strokeStyle='rgba(60,58,0,.5)'; lw(1.2); ctx.stroke();
   }
-  // cilindro de inclinação: corpo (escuro) + haste (cromada)
-  const tp=g.map(0.04,1.0-g.Pz), ax=-0.18, az=0.66+dz, mx=ax+(tp[0]-ax)*0.5, mz=az+(tp[1]-az)*0.5;
-  line(ax,az,mx,mz,'#2b3037',9); line(mx,mz,tp[0],tp[1],'#cfd5db',5); circ(ax,az,0.03,'#9aa3ad','#14171b',1); circ(tp[0],tp[1],0.03,'#9aa3ad','#14171b',1);
-  // ---- mastro (rotaciona com a inclinação) ----
-  ctx.save(); ctx.translate(0,g.Pz); ctx.rotate(g.th);
-  const mastTop=T.mastH-g.Pz, ext=Math.max(0,cur.lift-1.0), bot=0.12-g.Pz;
-  const rail=(u0,u1,v0,v1,fill)=>{rect(u0,v0,u1-u0,v1-v0,fill,'#12151a',1.1); line(u0+(u1-u0)*0.28,v0,u0+(u1-u0)*0.28,v1,'rgba(255,255,255,.28)',1); line(u0+(u1-u0)*0.78,v0,u0+(u1-u0)*0.78,v1,'rgba(0,0,0,.35)',1);};
-  rail(0.02,0.14,bot,mastTop,DARK(0.02,0.14));
-  rail(0.14,0.215,bot+0.15,mastTop+ext/2,DARK(0.14,0.215));
-  rail(0.215,0.29,bot+0.3,mastTop+ext,STEEL(0.215,0.29));
-  for(let v=bot+0.4;v<mastTop;v+=0.55) rect(0.02,v,0.12,0.03,'#1a1e23');                // travessas
-  rect(0.0,bot-0.02,0.32,0.07,'#1a1e23','#000',1,0.01);
-  rect(0.015,mastTop-0.02,0.13,0.05,'#2b3037','#000',1,0.01);
-  // cilindro hidráulico de elevação (haste)
-  rect(0.055,bot+0.1,0.045,mastTop-bot-0.1+ext/2,STEEL(0.055,0.1),'#4d545c',0.8);
-  // correntes
-  ctx.setLineDash([0.022,0.012]); line(0.255,mastTop+ext/2+0.02,0.285,g.vf+0.28,'#2a2e34',3); nodash();
-  circ(0.255,mastTop+ext/2+0.03,0.03,'#9aa3ad','#2a2e34',1);                             // polia
-  // carro porta-garfos com roletes
-  rect(0.27,g.vf-0.32,T.a-0.27-0.05,0.62,DARK(0.27,T.a),'#12151a',1.2,0.01);
-  for(const v of [g.vf-0.22,g.vf+0.18]) circ(0.25,v,0.028,'#9aa3ad','#2a2e34',1);
-  for(let i=0;i<3;i++) rect(0.29,g.vf-0.24+i*0.2,T.a-0.37,0.025,'#14171b');
-  rect(0.27,g.vf+0.26,T.a-0.27-0.05,0.05,STEEL(0.27,T.a),'#2a2e34',1);                   // barra superior
-  // espaldar (grade de encosto)
-  rect(T.a-0.095,g.vf,0.065,1.1,DARK(T.a-0.095,T.a-0.03),'#0e1115',1);
-  for(let i=1;i<8;i++) line(T.a-0.095,g.vf+i*0.135,T.a-0.03,g.vf+i*0.135,'#0b0d10',1.6);
-  rect(T.a-0.11,g.vf+1.08,0.095,0.04,STEEL(T.a-0.11,T.a),'#2a2e34',1);
-  // garfo (com talão chanfrado e ponta cônica)
-  ctxp(()=>{ctx.moveTo(T.a-0.075,g.vf+0.32);ctx.lineTo(T.a-0.005,g.vf+0.32);ctx.lineTo(T.a-0.005,g.vf+0.012);ctx.lineTo(T.a+T.fork-0.03,g.vf+0.012);ctx.quadraticCurveTo(T.a+T.fork+0.012,g.vf+0.006,T.a+T.fork+0.012,g.vf-0.022);ctx.lineTo(T.a+T.fork-0.30,g.vf-0.042);ctx.lineTo(T.a+0.01,g.vf-0.058);ctx.quadraticCurveTo(T.a-0.075,g.vf-0.06,T.a-0.075,g.vf-0.02);ctx.closePath();ctx.fillStyle=lg(0,g.vf+0.02,0,g.vf-0.06,[[0,'#eef1f4'],[0.4,'#b4bcc6'],[1,'#6f7882']]);ctx.fill();ctx.strokeStyle='#1d2126';lw(1.2);ctx.stroke();});
-  line(T.a+0.02,g.vf+0.004,T.a+T.fork-0.04,g.vf+0.004,'rgba(255,255,255,.75)',1);
-  // carga
-  if(st.mass>0){
-    drawGoods(T.a+st.s,g.vf,st.Lc,st.Hc,st.mass);
-    if(dims){
-      const zc=g.vf+st.Hc+0.16, uc=T.a+A.c;
-      dimH(T.a,uc,zc,`C = ${Math.round(A.c*1000)} mm (nominal ${Math.round(T.D*1000)})`,A.c>T.D+0.001?'#d98a00':'#2e9e6b');
-      dash(5,4); line(T.a+T.D,g.vf,T.a+T.D,zc+0.05,'rgba(46,158,107,.7)',1.2); nodash();
-    }
-  }
-  ctx.restore();
   // ---- pivô de tombamento e base de apoio ----
   line(-L,0.015,0,0.015,'#5BA8A5',5);
   poly([[0,0.0],[-0.07,-0.16],[0.07,-0.16]],'#d6303a','#fff',1);
