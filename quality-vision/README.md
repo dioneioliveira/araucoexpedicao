@@ -7,13 +7,20 @@ Verificador visual da qualidade da carga a partir de uma foto (veículo carregad
 - **nota geral** (0–100) e classificação (Aprovado / Atenção / Reprovar / Crítico);
 - botão para baixar o PNG com o resultado.
 
+## Várias fotos e o que é ignorado
+
+- Aceita até 6 fotos por inspeção, cada uma rotulada (lateral esquerda, lateral direita, traseira, frontal, superior, outra). O app pede as **duas laterais** e sugere fotos extras quando a IA vê parte da carga encoberta. A nota geral combina as fotos (pior foto pesa mais).
+- **Cintas de amarração** e **réguas já sobrepostas** na carga não são defeito (podem ser desligadas em *Não avaliar*).
+- **Lona do sider** e qualquer área encoberta viram *área não avaliável*: hachurada, sem cor no mapa de calor e fora da nota.
+- Cada ponto de atenção pode ser **descartado** (ou restaurado); o mapa e a nota se ajustam.
+
 ## O que é verificado
 
 Calço/barrote faltando (desalinhamento da distribuição), filme stretch aberto ou solto, etiquetas rasgadas/caídas/rasuradas, fitas soltas, danos e batidas (marcas escuras), empilhamento/posicionamento e embalagem fora do padrão.
 
 ## Como funciona
 
-HTML estático, sem build. A foto é reduzida (até 1568 px) e enviada à API de mensagens da Anthropic (visão), que devolve lotes e defeitos com caixas normalizadas e gravidade via *tool use* (JSON estruturado). O mapa de calor é desenhado no navegador: risco base por lote (100 − qualidade) somado a manchas gaussianas em cada defeito.
+HTML estático, sem build. A foto é reduzida (até 1568 px) e enviada à API de mensagens da Anthropic (visão), que devolve JSON com lotes, defeitos, áreas não avaliáveis e fotos adicionais pedidas (caixas normalizadas e gravidade). O mapa de calor é desenhado no navegador: risco base por lote (100 − qualidade) somado a manchas gaussianas em cada defeito.
 
 ## Rodar
 
