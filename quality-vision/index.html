@@ -577,7 +577,7 @@ function mergeDefects(base, extra, naos){
     if (naos.some(n => inside(cx, cy, n.box))) continue;
     const dup = list.find(d => iou(d.box, e.box) > .2 || inside(cx, cy, d.box) || inside(d.box.x + d.box.w / 2, d.box.y + d.box.h / 2, e.box));
     if (dup) {
-      if (e.tipo === 'furo_garfo' && dup.tipo !== 'furo_garfo') { dup.tipo = e.tipo; dup.descricao = e.descricao; dup.acao = e.acao; }
+      if (e.tipo !== dup.tipo && dup.tipo === 'dano') { dup.tipo = e.tipo; dup.descricao = e.descricao; dup.acao = e.acao; }
       dup.gravidade = Math.max(dup.gravidade, e.gravidade);
     } else list.push(e);
   }

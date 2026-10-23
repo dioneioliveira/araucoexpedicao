@@ -14,6 +14,12 @@ Verificador visual da qualidade da carga a partir de uma foto (veículo carregad
 - **Lona do sider** e qualquer área encoberta viram *área não avaliável*: hachurada, sem cor no mapa de calor e fora da nota.
 - Cada ponto de atenção pode ser **descartado** (ou restaurado); o mapa e a nota se ajustam.
 
+## Análise detalhada
+
+Com *Análise detalhada* ligada (padrão), além da foto inteira o app recorta a foto em 4 a 6 trechos com sobreposição, amplia cada um e pede ao modelo só os defeitos pequenos (furos de garfo, barrote faltando, etiqueta caindo). Os resultados são mesclados sem duplicar e descartados se caírem numa área não avaliável. Custa de 5 a 7 chamadas por foto.
+
+Áreas não avaliáveis aparecem como badge numerado (⊘1) sobre a foto, com o motivo na lateral, sem texto cobrindo o material.
+
 ## O que é verificado
 
 Calço/barrote faltando em relação ao padrão da pilha, **furo de garfo (sempre crítico: gravidade mínima 80 e nota máxima 35)**, filme stretch aberto ou solto, etiquetas rasgadas/caídas/rasuradas, fitas soltas, danos e batidas (marcas escuras), empilhamento/posicionamento e embalagem fora do padrão.
