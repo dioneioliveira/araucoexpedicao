@@ -16,7 +16,7 @@ Verificador visual da qualidade da carga a partir de uma foto (veículo carregad
 
 ## O que é verificado
 
-Calço/barrote faltando (desalinhamento da distribuição), filme stretch aberto ou solto, etiquetas rasgadas/caídas/rasuradas, fitas soltas, danos e batidas (marcas escuras), empilhamento/posicionamento e embalagem fora do padrão.
+Calço/barrote faltando em relação ao padrão da pilha, **furo de garfo (sempre crítico: gravidade mínima 80 e nota máxima 35)**, filme stretch aberto ou solto, etiquetas rasgadas/caídas/rasuradas, fitas soltas, danos e batidas (marcas escuras), empilhamento/posicionamento e embalagem fora do padrão.
 
 ## Como funciona
 

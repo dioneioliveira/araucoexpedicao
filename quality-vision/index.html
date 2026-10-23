@@ -172,6 +172,7 @@ const TIPOS = {
   embalagem_fora_padrao:'Embalagem fora do padrão',
   filme_stretch:'Filme stretch aberto/solto',
   etiqueta:'Etiqueta rasurada/caída',
+  furo_garfo:'Furo de garfo (crítico)',
   dano:'Dano / batida / quebra',
   empilhamento:'Empilhamento / posicionamento',
   fita_solta:'Fita solta ou rompida',
@@ -276,8 +277,10 @@ function buildHeat(r, aspect){
 const penalty = list => list.map(d => d.gravidade).sort((a, b) => b - a).reduce((s, g, i) => s + g / 2 ** i, 0);
 function notaPhoto(p){
   const r = p.result, act = r.defeitos.filter(d => !d.off);
-  if (act.length === r.defeitos.length) return r.nota_geral;
-  return Math.min(100, r.nota_geral + (penalty(r.defeitos) - penalty(act)) * .6);
+  let n = r.nota_geral;
+  if (act.length !== r.defeitos.length) n = Math.min(100, n + (penalty(r.defeitos) - penalty(act)) * .6);
+  // furo de garfo é problema crítico: nunca passa de "Crítico"
+  return act.some(d => d.tipo === 'furo_garfo') ? Math.min(n, 35) : n;
 }
 function classify(n){ return n >= 85 ? 'Aprovado' : n >= 65 ? 'Atenção' : n >= 40 ? 'Reprovar / retrabalhar' : 'Crítico'; }
 
@@ -481,16 +484,18 @@ function buildPrompt(p){
 Esta foto mostra: ${LADOS[p.lado]} da carga.
 
 Cada material tem embalagem própria, mas os insumos do lote (calços/barrotes, fitas, etiquetas, filme stretch) devem estar perfeitamente dispostos. Procure:
-- calco_faltando: barrotes/calços com espaçamento irregular ou ausentes (a falta se nota pelo desalinhamento da distribuição; ex.: lote com 5 barrotes mostrando só 4 posições regulares).
+- calco_faltando: falta de barrote/calço em relação ao PADRÃO da pilha. Os barrotes são blocos de madeira entre um lote e outro (e na base), alinhados em colunas verticais e com espaçamento regular, normalmente casados com as fitas verticais. Compare as fileiras entre si: um vão sem bloco numa coluna onde as demais fileiras têm barrote, ou espaçamento irregular, indica barrote faltando (ex.: lote com 5 barrotes mostrando só 4 posições regulares). Marque o vão onde o barrote deveria estar.
+- furo_garfo: furos, rasgos, lascas ou quebras causados pelo garfo da empilhadeira nas bordas, quinas e laterais dos lotes, principalmente na base e nas junções entre lotes (borda esfarelada, entalhe, fibra exposta, linha escura de ruptura). É problema CRÍTICO: use sempre gravidade 80 a 100.
 - filme_stretch: se os lotes da carga usam stretch, todos precisam estar plastificados; aberturas, rasgos ou plástico pendurado/solto = má embalagem. Se nenhum lote da carga usa stretch, não reporte a ausência.
-- etiqueta: etiquetas rasgadas, penduradas, caídas, rasuradas ou ilegíveis, ou ausentes onde deveriam existir.
-- dano: partes danificadas, quebradas, batidas; marcas de batida aparecem como áreas escuras/pretas nos lotes.
+- etiqueta: etiquetas rasgadas, penduradas, caindo, rasuradas ou ilegíveis, ou ausentes onde deveriam existir. As etiquetas seguem posição e orientação padrão (mesmo canto e na horizontal em cada lote): etiqueta fora de posição, torta, na vertical, descolada ou pendurada está caindo.
+- dano: partes danificadas, amassadas ou batidas (que não sejam furo de garfo); marcas de batida aparecem como áreas escuras/pretas nos lotes.
 - fita_solta: fitas/cintas DO PRÓPRIO LOTE frouxas, soltas ou rompidas.
 - empilhamento: pilhas desalinhadas, torres inclinadas, lotes mal posicionados ou salientes, carga mal assentada sobre o veículo.
 - embalagem_fora_padrao: embalagem diferente do padrão dos lotes vizinhos ou incompleta.
 
 NÃO considere defeito, e não avalie:
 ${ignore.join('\n')}
+- Pilhas, lotes e materiais ao fundo ou nas laterais que não pertencem à carga inspecionada: marque como "nao_avaliaveis" (ex.: "Outras pilhas ao fundo").
 - A lona/cortina do sider, a estrutura do veículo, o piso, rodas e o ambiente. Onde a lona, a estrutura ou qualquer objeto encobre a carga e não dá para ver o material, NÃO invente defeitos nem lotes: marque a região em "nao_avaliaveis" com um motivo curto (ex.: "Lona do sider encobre a carga").
 
 Regras: reporte apenas o que é visível; não invente defeitos. Se a imagem não permitir avaliar (muito escura, longe, desfocada), diga no resumo e use gravidade baixa. Caixas em coordenadas normalizadas 0–1 ((x,y) = canto superior esquerdo). Liste TODOS os lotes visíveis e avaliáveis em "lotes" com sua qualidade. Se parte da carga ficou encoberta ou falta um ângulo para concluir, peça fotos em "fotos_adicionais" (lado: esq, dir, tras, front, topo ou outra) com o motivo.
@@ -510,7 +515,7 @@ function sanitize(raw){
   const num = (v, a, b, d) => { v = +v; return isFinite(v) ? Math.min(b, Math.max(a, v)) : d; };
   const lotes = (raw.lotes || []).map(l => ({ box: normBox(l.box), qualidade: num(l.qualidade, 0, 100, 100) })).filter(l => l.box);
   const defeitos = (raw.defeitos || []).map(d => ({
-    tipo: TIPOS[d.tipo] ? d.tipo : 'outro', gravidade: num(d.gravidade, 1, 100, 50),
+    tipo: TIPOS[d.tipo] ? d.tipo : 'outro', gravidade: d.tipo === 'furo_garfo' ? num(d.gravidade, 80, 100, 90) : num(d.gravidade, 1, 100, 50),
     descricao: String(d.descricao || ''), acao: String(d.acao || ''), box: normBox(d.box), off: false
   })).filter(d => d.box);
   const nao_avaliaveis = (raw.nao_avaliaveis || []).map(n => ({ box: normBox(n.box), motivo: String(n.motivo || '') })).filter(n => n.box);
