@@ -128,13 +128,15 @@
     const red = man.reducao && man.reducao.ativo ? man.reducao : null;
     const mats = items.map(it => {
       const mi = P.matInfo(it.descricao);
-      const pal0 = (it.qtd != null && mi.pecasPallet) ? it.qtd / mi.pecasPallet : null;
+      // peças por lote da descrição; sem elas, lotes digitados no painel (manual.lotes[item])
+      const lotesMan = man.lotes && man.lotes[it.key] != null && man.lotes[it.key] !== '' ? +man.lotes[it.key] : null;
+      const pal0 = (it.qtd != null && mi.pecasPallet) ? it.qtd / mi.pecasPallet : (lotesMan != null && isFinite(lotesMan) ? lotesMan : null);
       const qn = red && red.qtd && red.qtd[it.key] != null && red.qtd[it.key] !== '' ? +red.qtd[it.key] : null;
       const reduzido = qn != null && isFinite(qn) && it.qtd != null && qn !== it.qtd;
       const qtd = reduzido ? qn : it.qtd;
       const pal = pal0 == null ? null : (reduzido ? (it.qtd ? pal0 / it.qtd * qtd : 0) : pal0);
       if (pal == null) palletsOk = false; else pallets += pal;
-      return Object.assign({}, it, { mi, pallets: pal, qtd, qtdOriginal: it.qtd, palletsOriginal: pal0, reduzido });
+      return Object.assign({}, it, { mi, pallets: pal, qtd, qtdOriginal: it.qtd, palletsOriginal: pal0, reduzido, lotesManual: !mi.pecasPallet && lotesMan != null });
     });
     const sew = sewMatch(eff);
     const janelaAuto = f.janela || (sew ? sew.janela : 'MI'); // Origem da Solicitação de Embarque tem prioridade
@@ -1013,13 +1015,13 @@
       const lig = transporteDoTicket(tk, idx); const T = lig ? all.find(x => x.transporte === lig.t) : null;
       // itens da carga: da própria tabela da balança (se tiver material) ou da ordem
       const fonte = tk.itens.length ? tk.itens.map(i => ({ material: i.material, descricao: i.descricao || ((T && T.items.find(x => x.material === i.material)) || {}).descricao || '', qtd: i.qtd }))
-        : (T ? T.items.map(i => ({ material: i.material, descricao: i.descricao, qtd: i.qtd })) : []);
+        : (T ? T.items.map(i => ({ material: i.material, descricao: i.descricao, qtd: i.qtd, lotes: i.pallets })) : []);
       if (!fonte.length) { semOrdem.push(tk); return; }
       // transporte com mais de uma entrega: não dá para saber o peso de cada material — fica fora da análise
       if (T && !tk.itens.length && T.entregas.length > 1) { variasEntregas.push({ tk, T, motivo: `${T.entregas.length} entregas` }); return; }
       const g = new Map();
       fonte.forEach(i => { const k = i.material || i.descricao; const a = g.get(k) || { material: i.material || '(sem material)', descricao: i.descricao, qtd: 0, lotes: 0, lotesOk: true }; a.qtd += i.qtd || 0;
-        const mi = P.matInfo(i.descricao); if (i.qtd && mi.pecasPallet) a.lotes += i.qtd / mi.pecasPallet; else a.lotesOk = false; a.mi = mi; g.set(k, a); });
+        const mi = P.matInfo(i.descricao); if (i.lotes != null) a.lotes += i.lotes; else if (i.qtd && mi.pecasPallet) a.lotes += i.qtd / mi.pecasPallet; else a.lotesOk = false; a.mi = mi; g.set(k, a); });
       const mats = Array.from(g.values()).filter(m => m.qtd > 0);
       if (!mats.length) { semLote.push(tk); return; }
       // só cargas de um único material (sem mistura de itens): o peso líquido da balança é todo daquele material
@@ -1467,6 +1469,14 @@
         }
         save(true); renderSemAtrapalhar(); return;
       }
+      const kl = e.target.dataset.lotes;
+      if (kl) {
+        const v = e.target.value === '' ? '' : Math.max(0, Math.round(+e.target.value * 100) / 100);
+        const l = Object.assign({}, man.lotes || {});
+        if (v === '' || !isFinite(v)) delete l[kl]; else l[kl] = v;
+        if (Object.keys(l).length) man.lotes = l; else delete man.lotes;
+        save(true); renderSemAtrapalhar(); return;
+      }
       const k = e.target.dataset.redQtd;
       if (k && man.reducao) {
         const T = getTransport(t); const it = T && T.items.find(i => i.key === k);
@@ -1484,7 +1494,7 @@
       const man = state.manual[t] || (state.manual[t] = {}); if (!man.reducao) return;
       man.reducao = Object.assign({}, man.reducao, { motivo: e.target.value }); save();
     });
-    body.addEventListener('keydown', e => { if (e.target.dataset && e.target.dataset.redQtd && e.key === 'Enter') e.target.blur(); });
+    body.addEventListener('keydown', e => { if (e.target.dataset && (e.target.dataset.redQtd || e.target.dataset.lotes) && e.key === 'Enter') e.target.blur(); });
     body.addEventListener('click', e => { if (e.target.closest('#red-mail') && ui.open) emailReducao(ui.open); });
   }
   function bindFotos() {
@@ -1653,7 +1663,7 @@
       ['Transportes', list.length], ['Mercado interno', list.filter(T => T.janela !== 'CONTAINER').length], ['Containers', list.filter(T => T.janela === 'CONTAINER').length],
       ['Pallets / lotes', round(list.reduce((a, T) => a + (T.pallets || 0), 0), 1)], ['Ordens impressas', list.filter(T => T.printed).length], ['Faturadas', list.filter(T => T.faturado).length],
       ['Containers com divergência nas fotos', list.filter(T => temContainer(T) && validarFotos(T).st === 'div').length], ['Agendamentos SEW', sew.length], ['Pesagens (item × carga)', pesagens.length], ['Dias com embarque', dias.length]];
-    return { mes, ini, fim, list, sew, entregas, pesagens, abas: [['Resumo', resumo], ['Transportes', transportes], ['Itens', itens], ['Por dia', porDia], ['Agendamentos', agend], ['OTs', ots], ['Pesagens', pes]] };
+    return { mes, ini, fim, list, sew, entregas, pesagens, abas: [['Resumo', resumo], ['Transportes', transportes], ['Itens', itens], ['Por dia', porDia], ['Agendamentos', agend], ['OTs', ots], ['Pesagens', pes], ['Tickets 1 material', [EX_COLS].concat(dadosTickets(ini, fim).ok.map(linhaTicket))]] };
   }
   function excelMes(M) {
     const wb = XLSX.utils.book_new();
@@ -1755,13 +1765,101 @@
     setTimeout(() => { const E = espacoUsado(); if (E.pct > 70) toast(`O app está usando ${fmtNum(E.pct, 0)}% do espaço do navegador. Use "Semana" → Fechar a semana agora.`, 'warn'); }, 1500);
   }
 
+  // ------------------------------------------------------------------ guia Exportar tickets
+  // uma linha por ticket de balança (Controle OT): agendamento + transporte + material + lotes + peso.
+  // Só cargas com uma entrega e um único material; as outras vão para "Desconsiderados" com o motivo.
+  const exUI = { ini: '', fim: '' };
+  function dadosTickets(ini, fim) {
+    const no = d => !!d && (!ini || d >= ini) && (!fim || d <= fim);
+    const ok = [], fora = [];
+    allTransports().filter(T => no(T.eff.data)).sort((a, b) => (a.eff.data + (a.eff.hora || '99')).localeCompare(b.eff.data + (b.eff.hora || '99')) || a.transporte.localeCompare(b.transporte)).forEach(T => {
+      const tks = Array.from(new Set(String(T.ot.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(Boolean)));
+      const mats = Array.from(new Set(T.items.map(i => i.material || i.descricao)));
+      const base = { T, mats: mats.length };
+      if (!tks.length) { fora.push(Object.assign({ ticket: '', motivo: 'sem ticket' }, base)); return; }
+      const motivo = T.entregas.length > 1 ? `${T.entregas.length} entregas` : mats.length > 1 ? `${mats.length} materiais` : !mats.length ? 'sem itens' : '';
+      tks.forEach(ticket => {
+        if (motivo) { fora.push(Object.assign({ ticket, motivo }, base)); return; }
+        const its = T.items, i0 = its[0], tk = state.tickets[ticket] || null;
+        const qtd = its.reduce((a, i) => a + (i.qtd || 0), 0);
+        const lotes = its.every(i => i.pallets != null) ? its.reduce((a, i) => a + i.pallets, 0) : null;
+        ok.push({ T, ticket, tk, material: i0.material, descricao: i0.descricao, qtd, lotes, pecas: i0.mi.pecasPallet || '',
+          origemLotes: lotes == null ? 'indefinido' : its.some(i => i.lotesManual) ? 'informado à mão' : 'descrição do material',
+          qtdOriginal: T.reduzido ? its.reduce((a, i) => a + (i.qtdOriginal || 0), 0) : '', pedido: Array.from(new Set(its.map(i => i.pedido).filter(Boolean))).join(' / '),
+          peso: i0.peso != null && isFinite(i0.peso) ? i0.peso : '' });
+      });
+    });
+    return { ok, fora };
+  }
+  const EX_COLS = ['Ticket', 'Ticket (7 dígitos)', 'Data carregamento', 'Hora', 'Transporte', 'Tipo de carga', 'Cliente', 'Destino', 'Entrega', 'Pedido', 'OT(s)', 'NF-e',
+    'Material', 'Descrição', 'Qtd (pç)', 'Peças por lote', 'Lotes', 'Origem dos lotes', 'Carga fracionada', 'Redução: qtd original (pç)', 'Peso da carga na solicitação (kg)',
+    'Peso líquido balança (kg)', 'Data pesagem', 'Placa carreta/truck', 'Placa cavalo', 'Transportadora', 'Container', 'Lacre',
+    'Agendamento data', 'Agendamento hora', 'Janela', 'Senha', 'Status agendamento', 'Tipo de veículo', 'Impressa em', 'Faturada em'];
+  function linhaTicket(r) {
+    const T = r.T, e = T.eff, s = T.sew || {};
+    return [r.ticket, r.ticket.padStart(7, '0'), P.fmtDateBR(e.data), e.hora, T.transporte, tipoCarga(T), e.cliente, T.solic && T.solic.cidade ? `${T.solic.cidade}/${T.solic.uf}` : '', T.entregas.join(' / '), r.pedido,
+      T.otList.join(' / '), T.ot.nf, r.material, r.descricao, r.qtd, r.pecas, r.lotes == null ? '' : round(r.lotes, 3), r.origemLotes, isFracionada(T) ? 'SIM' : '', r.qtdOriginal, r.peso,
+      r.tk && r.tk.liq != null ? r.tk.liq : '', r.tk && r.tk.data ? P.fmtDateBR(r.tk.data) : '', e.placaL, isTruck(e) ? '' : e.placaM, e.transportadora, semValor(T.ot.container) ? '' : T.ot.container, semValor(T.ot.lacre) ? '' : T.ot.lacre,
+      s.data ? P.fmtDateBR(s.data) : '', s.hora || '', s.janela ? (s.janela === 'CONTAINER' ? 'PIÊN CONTAINERS' : 'PIÊN PAINÉIS') : '', s.senha || '', s.status || '', s.tipoVeiculo || e.tipoVeiculo || '', dt(T.printed), dt(T.faturado)];
+  }
+  function exPeriodo() {
+    const hoje = isoDia(new Date());
+    if (!exUI.fim) exUI.fim = hoje;
+    if (!exUI.ini) exUI.ini = exUI.fim.slice(0, 8) + '01';
+    return [exUI.ini, exUI.fim];
+  }
+  function renderExpo() {
+    const [ini, fim] = exPeriodo();
+    $('#ex-ini').value = ini; $('#ex-fim').value = fim;
+    const D = dadosTickets(ini, fim);
+    const cnt = m => D.fora.filter(f => m(f.motivo)).length;
+    $('#ex-resumo').innerHTML = [
+      ['Tickets exportáveis', D.ok.length], ['Com peso da balança', D.ok.filter(r => r.tk && r.tk.liq != null).length, 'grey'], ['Lotes indefinidos', D.ok.filter(r => r.lotes == null).length, D.ok.some(r => r.lotes == null) ? 'lime' : 'grey'],
+      ['Sem ticket', cnt(m => m === 'sem ticket'), 'grey'], ['Mais de uma entrega', cnt(m => /entregas/.test(m)), 'grey'], ['Mais de um material', cnt(m => /materiais/.test(m)), 'grey'],
+    ].map(([l, v, c]) => `<div class="card kpi ${c || ''}"><div class="k-label">${l}</div><div class="k-val">${v}</div></div>`).join('');
+    $('#ex-tabela').innerHTML = D.ok.length ? `<table class="grid"><thead><tr><th>Ticket</th><th>Data</th><th>Transporte</th><th>Cliente</th><th>Material</th><th>Descrição</th><th class="num">Qtd (pç)</th><th class="num">Lotes</th><th class="num">Peso balança (kg)</th><th>Agendamento</th><th>Placa</th></tr></thead><tbody>${D.ok.map(r => {
+      const T = r.T, s = T.sew;
+      return `<tr><td class="mono"><b>${esc(r.ticket)}</b></td><td>${esc(P.fmtDateBR(T.eff.data))}</td><td class="mono"><a href="#" data-pt="${esc(T.transporte)}">${esc(T.transporte)}</a></td><td>${esc(T.eff.cliente)}</td><td class="mono">${esc(r.material)}</td><td class="wrap">${esc(r.descricao)}</td>
+        <td class="num">${kg(r.qtd, 0)}</td><td class="num">${r.lotes == null ? '<span class="chip warn">verificar quantidade</span>' : fmtNum(r.lotes, 2) + (r.origemLotes === 'informado à mão' ? ' <span class="sub">à mão</span>' : '')}</td>
+        <td class="num">${r.tk && r.tk.liq != null ? kg(r.tk.liq, 0) : '<span class="muted">—</span>'}</td><td>${s ? esc(`${P.fmtDateBR(s.data)} ${s.hora || ''}${s.senha ? ' · senha ' + s.senha : ''}`) : '<span class="muted">sem agendamento</span>'}</td><td class="mono">${esc(T.eff.placaL)}</td></tr>`;
+    }).join('')}</tbody></table>`
+      : `<div class="empty" style="padding:36px"><p>Nenhuma carga com ticket, uma entrega e um único material entre ${esc(P.fmtDateBR(ini))} e ${esc(P.fmtDateBR(fim))}. O ticket é lançado no campo <b>Ticket balança</b> do Controle OT.</p></div>`;
+    const comT = D.fora.filter(f => f.ticket);
+    $('#ex-pend').innerHTML = comT.length ? `<details><summary><b>${comT.length}</b> ticket(s) desconsiderado(s) (mais de uma entrega ou de um material)</summary><p class="small">${comT.map(f => `<a href="#" data-pt="${esc(f.T.transporte)}">${esc(f.T.transporte)}</a> ticket ${esc(f.ticket)} (${esc(f.motivo)})`).join(' · ')}</p></details>` : '';
+  }
+  function exportarTickets() {
+    const [ini, fim] = exPeriodo(); const D = dadosTickets(ini, fim);
+    const rows = [EX_COLS].concat(D.ok.map(linhaTicket));
+    const desc = [['Ticket', 'Data carregamento', 'Transporte', 'Cliente', 'Entrega(s)', 'Materiais diferentes', 'Materiais', 'Motivo']]
+      .concat(D.fora.map(f => [f.ticket, P.fmtDateBR(f.T.eff.data), f.T.transporte, f.T.eff.cliente, f.T.entregas.join(' / '), f.mats, Array.from(new Set(f.T.items.map(i => i.material))).join(' / '), f.motivo]));
+    const nome = `tickets-${ini}_a_${fim}`;
+    if (window.XLSX) {
+      const wb = XLSX.utils.book_new();
+      [['Tickets 1 material', rows], ['Desconsiderados', desc]].forEach(([n, r]) => {
+        const ws = XLSX.utils.aoa_to_sheet(r);
+        ws['!cols'] = r[0].map((h, c) => ({ wch: Math.min(48, Math.max(String(h).length + 2, ...r.slice(1, 200).map(x => String(x[c] == null ? '' : x[c]).length + 1))) }));
+        if (r.length > 1) ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r.length - 1, c: r[0].length - 1 } }) };
+        XLSX.utils.book_append_sheet(wb, ws, n);
+      });
+      XLSX.writeFile(wb, nome + '.xlsx'); return { tipo: 'xlsx', n: D.ok.length };
+    }
+    const csv = rows.map(r => r.map(v => { const t = typeof v === 'number' ? String(v).replace('.', ',') : String(v == null ? '' : v); return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }).join(';')).join('\r\n');
+    baixar(nome + '.csv', new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })); return { tipo: 'csv', n: D.ok.length };
+  }
+  function bindExpo() {
+    $('#ex-ini').addEventListener('change', e => { exUI.ini = e.target.value; renderExpo(); });
+    $('#ex-fim').addEventListener('change', e => { exUI.fim = e.target.value; renderExpo(); });
+    $('#ex-xlsx').addEventListener('click', () => { const r = exportarTickets(); toast(`${r.n} ticket(s) exportado(s) (.${r.tipo})${r.tipo === 'csv' ? ' — sem internet o .xlsx não está disponível' : ''}.`, 'ok'); });
+    ['#ex-tabela', '#ex-pend'].forEach(id => $(id).addEventListener('click', e => { const a = e.target.closest('[data-pt]'); if (a) { e.preventDefault(); openDetail(a.dataset.pt); } }));
+  }
+
   // ------------------------------------------------------------------ guia Agendamentos
   function setView(v) {
     ui.view = v;
     $$('#views button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
     $$('[data-view-of]').forEach(el => { el.hidden = el.dataset.viewOf !== v; });
     $('#janela-filter').style.display = v === 'lista' ? '' : 'none';
-    $('.toolbar').style.display = v === 'pesos' ? 'none' : '';
+    $('.toolbar').style.display = v === 'pesos' || v === 'expo' ? 'none' : '';
     renderAll();
   }
   function renderAgenda() {
@@ -1893,7 +1991,7 @@
     $('#d-chips').innerHTML = [janelaChip(T), treinoChip(T), statusChip(T), fotoChip(T), T.fsc ? `<span class="chip mi">FSC ${esc(T.fsc.fsc)}</span>` : '', T.manualOnly ? '<span class="chip grey">Manual</span>' : ''].join('');
     const e = T.eff;
     const alerts = [];
-    if (T.verificarQtd) alerts.push(`<div class="alert warn"><b>Verificar quantidade de lotes:</b> ${T.items.filter(i => i.pallets == null).length} item(ns) sem as peças por pallet na descrição (padrão P/xx/NNN). Os lotes não foram calculados; a ordem sai com "VERIFICAR QUANTIDADE" ao lado dos lotes.</div>`);
+    if (T.verificarQtd) alerts.push(`<div class="alert warn"><b>Verificar quantidade de lotes:</b> ${T.items.filter(i => i.pallets == null).length} item(ns) sem as peças por pallet na descrição (padrão P/xx/NNN). Digite a quantidade de lotes no campo do item (coluna Pallets); enquanto faltar, a ordem sai com "VERIFICAR QUANTIDADE" ao lado dos lotes.</div>`);
     if (isAmostra(T)) alerts.push(`<div class="alert warn"><b>Amostra — conferir cliente.</b> A carga contém amostra; o aviso sai no check-list ao lado da quantidade de lotes.</div>`);
     { const tks = String(T.ot.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(k => k && state.tickets[k]);
       if (tks.length) alerts.push(`<div class="alert info"><b>Balança</b>: ${tks.map(k => `ticket ${esc(k)} · <b>${kg(state.tickets[k].liq, 0)} kg</b> líquidos`).join(' · ')}. Variação por item na guia Pesos.</div>`); }
@@ -1914,10 +2012,14 @@
       if (m.comp) tags.push(`<span class="tag">${m.comp}×${m.larg}</span>`);
       if (m.mercado) tags.push(`<span class="tag ${m.mercado === 'Exportação' ? 'e' : 'i'}">${esc(m.mercado)}${m.embalagem ? ' · ' + esc(m.embalagem) : ''}</span>`);
       if (m.pecasPallet) tags.push(`<span class="tag">${m.pecasPallet} pç/pallet</span>`);
+      else if (i.lotesManual) tags.push(`<span class="tag">lotes informados à mão</span>`);
       const qCel = T.reducao
         ? `<td class="num red-q">${i.reduzido ? `<s class="muted">${fmtNum(i.qtdOriginal, 0)}</s>` : `<span class="muted small">${fmtNum(i.qtdOriginal, 0)}</span>`}<input class="red-in" type="number" min="0" step="1" data-red-qtd="${esc(i.key)}" value="${T.reducao.qtd && T.reducao.qtd[i.key] != null ? esc(T.reducao.qtd[i.key]) : ''}" placeholder="nova"></td>`
         : `<td class="num">${fmtNum(i.qtd, 0)}</td>`;
-      const pCel = i.pallets == null ? `<td class="num"><span class="chip warn" title="A descrição não traz as peças por pallet (padrão P/xx/NNN)">verificar quantidade</span></td>`
+      // sem peças por lote na descrição: campo para digitar os lotes (fica marcado "manual")
+      const campoLotes = !m.pecasPallet ? `<input class="lotes-in" type="number" min="0" step="0.01" data-lotes="${esc(i.key)}" value="${T.man.lotes && T.man.lotes[i.key] != null ? esc(T.man.lotes[i.key]) : ''}" placeholder="lotes" title="A descrição não traz as peças por lote: digite a quantidade de lotes">` : '';
+      const pCel = i.pallets == null ? `<td class="num"><span class="chip warn" title="A descrição não traz as peças por pallet (padrão P/xx/NNN ou /HCnnnn)">verificar quantidade</span>${campoLotes}</td>`
+        : i.lotesManual && !i.reduzido ? `<td class="num">${campoLotes}<span class="sub">lotes informados</span></td>`
         : i.reduzido ? `<td class="num"><s class="muted">${fmtNum(i.palletsOriginal, 2)}</s><br><b class="red-novo">${fmtNum(i.pallets, 2)}</b></td>` : `<td class="num">${fmtNum(i.pallets, 2)}</td>`;
       return `<tr class="${i.reduzido ? 'reduzido' : ''}"><td class="mono">${esc(i.material)}<span class="sub">${esc(i.pedido)}</span></td><td>${esc(i.descricao)}<div class="mat-tags">${tags.join('')}</div></td>${qCel}${pCel}</tr>`;
     }).join('');
@@ -2044,6 +2146,7 @@
     if (ui.view === 'agenda') renderAgenda();
     if (ui.view === 'ots') renderOTs();
     if (ui.view === 'pesos') { renderPesos(); renderBalanca(); }
+    if (ui.view === 'expo') renderExpo();
     renderViewCounts();
     if (ui.open) renderDetail();
   }
@@ -2897,7 +3000,7 @@
     if (!TPL) { document.body.innerHTML = '<p style="padding:40px">Modelos de impressão não encontrados (js/templates.js).</p>'; return; }
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
-    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes();
+    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo();
     setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });

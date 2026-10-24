@@ -536,3 +536,15 @@ Os lotes/pallets só são calculados quando a descrição do material traz as pe
 (**P/xx/NNN**, ex.: `P/IF/280`) ou, na moldura, depois de **HC** (ex.: `…/HC1144` = 1.144 chapas por lote). Se algum
 item não tiver o número (ex.: `…/HC` sozinho), o app **não adivinha**: mostra
 **verificar quantidade** no painel e na lista, e a ordem impressa sai com **VERIFICAR QUANTIDADE** ao lado dos lotes.
+Nesse caso, digite os **lotes** no campo que aparece ao lado do aviso (painel da ordem, bloco Materiais): o total passa a
+ser calculado com esse número ("lotes informados à mão"), o aviso some e o check-list sai com a quantidade digitada.
+
+### Exportar tickets (Excel por ticket)
+
+Guia **Exportar tickets**: escolha o período (**De / Até**; abre no mês atual) e clique em **Exportar Excel**. Sai uma linha por
+**ticket de balança** lançado no Controle OT, com o agendamento ligado (data, hora, janela, senha, status), transporte, cliente,
+entrega, OT, NF-e, material, quantidade, peças por lote, **lotes** (e se vieram da descrição ou foram digitados), redução, placas,
+container e o peso líquido da balança quando a tabela já foi colada no app. O ticket sai também com 7 dígitos (`0012345`), como no
+Guardian, para cruzar as duas planilhas. **Só entram cargas com uma entrega e um único material**; as outras vão para a aba
+*Desconsiderados* com o motivo (sem ticket, N entregas, N materiais). A mesma aba entra no Excel do fechamento semanal.
+A importação do Guardian e a análise da balança na guia Pesos continuam funcionando como antes.

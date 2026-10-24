@@ -167,3 +167,9 @@
   relatórios, Excel semanal (coluna "Redução de carga") e análise de peso da balança. Quantidade nova maior que a da ordem
   é recusada. "E-mail da redução" (`htmlReducao`/`emailReducao`): copia HTML ("Prezados, segue informação de redução de
   carga." + Motivo + dados da carga + tabela antes → nova) e abre o e-mail.
+- Lotes à mão: item sem peças por lote na descrição ganha o campo `input[data-lotes]` no painel → `manual.lotes[itemKey]`;
+  `makeTransport` usa como pallets (`lotesManual`), some o "verificar quantidade". A balança também usa esses lotes.
+- Guia **Exportar tickets** (`data-view="expo"`, `dadosTickets`/`linhaTicket`/`exportarTickets`, período `exUI`): uma linha por
+  ticket do Controle OT com agendamento (`T.sew`), transporte, material, qtd, lotes, peso da balança (`state.tickets`) e ticket com
+  7 dígitos; só cargas com 1 entrega e 1 material (resto em "Desconsiderados" com motivo). Também vai como aba "Tickets 1 material"
+  no Excel semanal. A importação do Guardian/análise da balança continua (o usuário pediu para não remover ainda).

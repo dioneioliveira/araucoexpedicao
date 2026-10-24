@@ -57,6 +57,7 @@
       <button data-view="agenda" role="tab">Agendamentos <span class="count" id="v-count-agenda"></span></button>
       <button data-view="ots" role="tab">OTs <span class="count" id="v-count-ots"></span></button>
       <button data-view="pesos" role="tab">Pesos</button>
+      <button data-view="expo" role="tab">Exportar tickets</button>
     </nav>
     <section class="toolbar card">
       <div class="tb-group">
@@ -153,6 +154,26 @@
       <section class="kpis" id="ps-resumo" style="margin-bottom:12px"></section>
       <div class="card list-card"><div class="table-wrap" style="max-height:none" id="ps-tabela"></div></div>
       <div class="ps-pend" id="ps-pend"></div>
+    </section>
+    <section id="expo" data-view-of="expo" hidden>
+      <div class="card agenda-help">
+        <div>
+          <h2>Exportar dados por ticket</h2>
+          <p class="muted">Uma linha por <b>ticket de balança</b> (campo Ticket do Controle OT) com o agendamento, o transporte, o material, a quantidade, os lotes e o peso. Entram só as cargas com <b>uma entrega e um único material</b>; as demais vão para a aba "Desconsiderados" com o motivo. O ticket sai também com 7 dígitos (como no Guardian) para cruzar com a planilha da balança.</p>
+        </div>
+        <div class="agenda-tools">
+          <div class="ps-ctrl">
+            <label class="field-inline">De <input type="date" id="ex-ini"></label>
+            <label class="field-inline">Até <input type="date" id="ex-fim"></label>
+          </div>
+          <div class="ps-ctrl">
+            <button class="btn btn-primary btn-sm" id="ex-xlsx">Exportar Excel</button>
+          </div>
+        </div>
+      </div>
+      <section class="kpis" id="ex-resumo" style="margin-bottom:12px"></section>
+      <div class="card list-card"><div class="table-wrap" style="max-height:none" id="ex-tabela"></div></div>
+      <div class="ps-pend" id="ex-pend"></div>
     </section>
     <section id="ots" data-view-of="ots" hidden>
       <div class="card agenda-help">

@@ -620,3 +620,4 @@ tr.reduzido td{background:rgba(208,204,0,.08)}
 .red-box{margin-top:10px;border:1px dashed #D0CC00;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:#fffef6}
 .red-box textarea{width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 8px;resize:vertical}
 .red-acoes{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.lotes-in{width:80px;margin-top:4px;padding:4px 6px;border:1px solid #D0CC00;border-radius:6px;font:inherit;font-family:var(--f-mono);text-align:right;background:#fffef0;display:block;margin-left:auto}
