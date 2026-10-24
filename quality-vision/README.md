@@ -26,6 +26,14 @@ Na análise geral o modelo conta, lote a lote, as fitas e os calços do vão aba
 
 Lotes só com stretch e calços (sem papelão) são embalagem válida e não geram alerta.
 
+## Ignorar pontos, falhas graves e dúvidas
+
+- **Ignorar:** cada ponto tem um **X** no rótulo, na própria foto (e *Ignorar* na lista). O mapa e a nota se ajustam, e *Restaurar* na lista desfaz.
+- **Falhas graves:** *calço/barrote faltando* e *furo de garfo* têm gravidade mínima 80 (crítico) e limitam a nota geral a 35.
+- **Vão do garfo:** a faixa escura e alinhada entre lotes sobrepostos é o espaço do garfo e não é defeito. Só conta o dano no próprio lote e a falta de bloco no padrão dos barrotes.
+- **Cor e reflexo:** manchas e variações de tom na face do lote são defeito em potencial, mas o reflexo do plástico stretch não conta.
+- **Dúvidas:** o que a IA não consegue decidir aparece como *Dúvida* (azul-claro, com **?**). *Foto de perto* abre a câmera, a IA analisa a imagem com a dúvida original em mente e então confirma (vira defeito na foto de origem) ou descarta. A foto de perto não entra na nota geral e vai junto no envio.
+
 ## O que é verificado
 
 Calço/barrote faltando em relação ao padrão da pilha, **furo de garfo (sempre crítico: gravidade mínima 80 e nota máxima 35)**, filme stretch aberto ou solto, etiquetas rasgadas/caídas/rasuradas, fitas soltas, danos e batidas (marcas escuras), empilhamento/posicionamento e embalagem fora do padrão.
