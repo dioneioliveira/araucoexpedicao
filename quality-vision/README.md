@@ -61,7 +61,7 @@ A função `supabase/functions/analisar/index.ts` recebe a foto, confere um cód
 | `APP_TOKEN` | código de acesso que os celulares enviam (invente uma senha longa) |
 | `ALLOWED_ORIGIN` | opcional: endereço do app, ex.: `https://usuario.github.io` |
 
-Deploy sem JWT (a autenticação é o `APP_TOKEN`):
+Função já publicada em `https://njgsexaamsjdmcngxvjs.supabase.co/functions/v1/analisar` (sem JWT; a autenticação é o `APP_TOKEN`). Para publicar de novo:
 
 ```bash
 supabase functions deploy analisar --no-verify-jwt --project-ref <ref-do-projeto>
