@@ -198,6 +198,7 @@
     <div class="card" id="duvCard" hidden>
       <h2>Dúvidas (<span id="duvCnt">0</span>)</h2>
       <p class="note" style="margin:0 0 8px">Pontos que a IA não conseguiu decidir. Tire uma foto mais de perto para ela confirmar ou descartar.</p>
+      <div class="bar"><button id="duvAll" class="small">✕ Ignorar todas as dúvidas</button></div>
       <div class="list" id="duvList"></div>
     </div>
     <div class="card" id="listCard" hidden>
@@ -533,7 +534,8 @@ function updateDoubts(p, r){
   const box = $('duvList'); box.textContent = '';
   const qs = r ? r.duvidas : [];
   $('duvCard').hidden = !qs.length;
-  $('duvCnt').textContent = qs.filter(q => q.estado === 'aberta').length;
+  const nAb = qs.filter(q => q.estado === 'aberta').length;
+  $('duvCnt').textContent = nAb; $('duvAll').hidden = !nAb;
   const btn = (txt, fn) => { const b = document.createElement('button'); b.className = 'small'; b.textContent = txt; b.onclick = e => { e.stopPropagation(); fn(); }; return b; };
   qs.forEach((q, qi) => {
     const el = document.createElement('div'); el.className = 'it' + (q.estado === 'aberta' ? '' : ' off'); el.style.setProperty('--sev', DUV);
@@ -662,7 +664,7 @@ $('remove').onclick = () => {
 };
 
 /* ---------- análise por IA ---------- */
-const GUIDE = `Contexto do material: os lotes são RETANGULARES; vistos de frente, cada lote tem uma face retangular delimitada por linhas de divisão. Defeitos aparecem no meio da face, nos cantos, nas laterais e nas extremidades do lote. Os vãos escuros e retilíneos entre lotes sobrepostos, alinhados ao longo da pilha, NÃO são defeito: são os espaços onde a empilhadeira coloca o garfo para erguer o lote. Nunca marque o vão em si como defeito.
+const GUIDE = `Contexto do material: os lotes são RETANGULARES; vistos de frente, cada lote tem uma face retangular delimitada por linhas de divisão. Reflexos e sombras NÃO são defeito: o filme stretch reflete a luz (brilhos, reflexos brancos, aspecto leitoso ou transparente) e partes mais escuras do lote causadas por sombra, pouca luz, interior do baú/galpão ou ângulo são só iluminação. Não marque nem coloque em "duvidas" reflexo de luz ou área escura por sombra; só reporte escurecimento/mancha quando tiver contorno próprio dentro da face do lote (não acompanha dobras do plástico nem a borda da sombra). Pontos fora do lote (veículo, lona, fundo, piso) nunca entram. Defeitos aparecem no meio da face, nos cantos, nas laterais e nas extremidades do lote. Os vãos escuros e retilíneos entre lotes sobrepostos, alinhados ao longo da pilha, NÃO são defeito: são os espaços onde a empilhadeira coloca o garfo para erguer o lote. Nunca marque o vão em si como defeito.
 
 - calco_faltando (FALHA GRAVE, gravidade 80 a 100): os barrotes (calços) ficam embaixo de cada lote, no vão do garfo, e seguem um padrão de fixação: blocos de madeira em colunas verticais alinhadas, com espaçamento regular, normalmente casados com as fitas verticais. Compare todos os vãos e lotes entre si: um ponto onde a sequência de blocos não é igual à das demais (bloco ausente, coluna sem bloco, espaçamento irregular) indica falta de barrote; o bloco faltando aparece como espaço vazio (escuro/vazado) com a largura de um bloco. Também é calço faltando o lote apoiado direto sobre o lote de baixo ou sobre o piso, sem blocos. Marque o ponto onde o bloco deveria estar; nunca classifique como "dano".
 - furo_garfo (CRÍTICO, gravidade 80 a 100): furos, rasgos, lascas ou quebras causados pelo garfo da empilhadeira, no próprio lote: bordas, cantos, extremidades, laterais e, às vezes, o meio da face. Aparecem como pequenas rupturas de formato irregular (não retangular): lasca, dente, buraco, trecho escuro ou amassado, fibra exposta, borda desfiada. São pequenos: examine bordas e cantos com atenção. Não confunda com o vão do garfo, que é retilíneo e alinhado.
@@ -1002,6 +1004,12 @@ $('demo').onclick = () => {
 /* ---------- controles ---------- */
 ['tMark','tRot','tFoco'].forEach(id => $(id).oninput = () => render());
 
+$('duvAll').onclick = () => {
+  const p = cur(); if (!p || !p.result) return;
+  let n = 0; p.result.duvidas.forEach(q => { if (q.estado === 'aberta') { q.estado = 'ignorada'; n++; } });
+  setStatus(`${n} dúvida(s) ignorada(s). Use "Restaurar" na lista para desfazer.`); refresh();
+};
+
 /* ---------- ignorar / restaurar ponto (crítico exige motivo e fica registrado) ---------- */
 const audit = (p, d, acao, motivo) => {
   const r = p.result; (r.auditoria = r.auditoria || []).push({ acao, tipo: d.tipo, gravidade: d.gravidade, motivo: motivo || '', quando: new Date().toISOString(), operador: readMeta().op });
@@ -1119,6 +1127,10 @@ async function enviar(){
     for (const p of done) {
       const blob = await new Promise(ok => exportCanvas(p).toBlob(ok, 'image/jpeg', .88));
       files.push(new File([blob], `inspecao-${m.placa || 'carga'}-${p.lado}.jpg`, { type: 'image/jpeg' }));
+      // foto original, sem marcações, em anexo
+      const oc = document.createElement('canvas'); oc.width = p.img.width; oc.height = p.img.height; oc.getContext('2d').drawImage(p.img, 0, 0);
+      const ob = await new Promise(ok => oc.toBlob(ok, 'image/jpeg', .9));
+      files.push(new File([ob], `original-${m.placa || 'carga'}-${p.lado}.jpg`, { type: 'image/jpeg' }));
     }
     const text = reportText(), title = `Inspeção de carga${m.placa ? ' ' + m.placa : ''}${m.emb ? ' – embarque ' + m.emb : ''}`;
     try {
