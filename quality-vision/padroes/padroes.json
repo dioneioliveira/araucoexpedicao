@@ -1,0 +1,267 @@
+{
+ "fonte": "padrao_de_defeitos.docx",
+ "obs": "As cores dos círculos nas fotos NÃO têm significado fixo. Gravidade vem do texto do documento.",
+ "exemplos": [
+  {
+   "id": 1,
+   "imagem": "padroes/p01.jpg",
+   "titulo": "Falta de calços",
+   "tipos": [
+    "calco_faltando"
+   ],
+   "gravidade": "critico",
+   "descricao": "Calço ausente na base do lote (marcado em vermelho): vão sem bloco onde os demais têm."
+  },
+  {
+   "id": 2,
+   "imagem": "padroes/p02.jpg",
+   "titulo": "Sem filme stretch em material que precisa; canto batido; filme pendurado; etiqueta rasurada",
+   "tipos": [
+    "filme_ausente",
+    "dano",
+    "filme_stretch",
+    "etiqueta"
+   ],
+   "gravidade": "critico",
+   "descricao": "Lote de baixo sem filme (crítico); canto batido (crítico); filme pendurado no lote de cima (moderado); etiqueta rasurada (moderado)."
+  },
+  {
+   "id": 3,
+   "imagem": "padroes/p03.jpg",
+   "titulo": "Canto com batida",
+   "tipos": [
+    "dano"
+   ],
+   "gravidade": "critico",
+   "descricao": "Canto inferior do lote batido/esfarelado, filme rompido ao redor."
+  },
+  {
+   "id": 4,
+   "imagem": "padroes/p04.jpg",
+   "titulo": "Diferença de coloração com material do mesmo padrão (envelhecimento)",
+   "tipos": [
+    "mancha_cor"
+   ],
+   "gravidade": "moderado_verificar",
+   "descricao": "Um lote mais escuro/amarelado que os vizinhos do mesmo padrão. Moderado, pedir verificação."
+  },
+  {
+   "id": 5,
+   "imagem": "padroes/p05.jpg",
+   "titulo": "Lotes com manchas",
+   "tipos": [
+    "mancha_cor"
+   ],
+   "gravidade": "moderado",
+   "descricao": "Manchas espalhadas na face do lote."
+  },
+  {
+   "id": 6,
+   "imagem": "padroes/p06.jpg",
+   "titulo": "Etiqueta rasgada; furos de garfo; sem calço",
+   "tipos": [
+    "etiqueta",
+    "furo_garfo",
+    "calco_faltando"
+   ],
+   "gravidade": "critico",
+   "descricao": "Furos de garfo na face (crítico), calço ausente (crítico, círculo azul), etiqueta rasgada (moderado)."
+  },
+  {
+   "id": 7,
+   "imagem": "padroes/p07.jpg",
+   "titulo": "Manchas",
+   "tipos": [
+    "mancha_cor"
+   ],
+   "gravidade": "moderado",
+   "descricao": "Mancha/faixa escura vertical na face do lote."
+  },
+  {
+   "id": 8,
+   "imagem": "padroes/p08.jpg",
+   "titulo": "Manchas (sem legenda no documento)",
+   "tipos": [
+    "mancha_cor"
+   ],
+   "gravidade": "moderado",
+   "descricao": "Mancha escura no canto do lote."
+  },
+  {
+   "id": 9,
+   "imagem": "padroes/p09.jpg",
+   "titulo": "Plastificação perfeita",
+   "tipos": [
+    "nenhum"
+   ],
+   "gravidade": "ok",
+   "descricao": "Plástico cobre todo o material, sem partes penduradas. Exemplo de lote SEM defeito."
+  },
+  {
+   "id": 10,
+   "imagem": "padroes/p10.jpg",
+   "titulo": "Embalagem danificada",
+   "tipos": [
+    "embalagem_fora_padrao"
+   ],
+   "gravidade": "moderado",
+   "descricao": "Capa de papelão rasgada e solta."
+  },
+  {
+   "id": 11,
+   "imagem": "padroes/p11.jpg",
+   "titulo": "Furos de garfo e sem calço",
+   "tipos": [
+    "furo_garfo",
+    "calco_faltando"
+   ],
+   "gravidade": "critico",
+   "descricao": "Pequenas rupturas na face (furos) e calço faltando no vão."
+  },
+  {
+   "id": 12,
+   "imagem": "padroes/p12.jpg",
+   "titulo": "Batidas nos cantos (crítico) e manchas (verificar)",
+   "tipos": [
+    "dano",
+    "mancha_cor"
+   ],
+   "gravidade": "critico",
+   "descricao": "Cantos batidos nas extremidades; manchas a verificar."
+  },
+  {
+   "id": 13,
+   "imagem": "padroes/p13.jpg",
+   "titulo": "Furos de garfo",
+   "tipos": [
+    "furo_garfo"
+   ],
+   "gravidade": "critico",
+   "descricao": "Rupturas pequenas na borda e na face junto ao vão."
+  },
+  {
+   "id": 14,
+   "imagem": "padroes/p14.jpg",
+   "titulo": "Furos de garfo (crítico) e barrote quebrado (moderado)",
+   "tipos": [
+    "furo_garfo",
+    "barrote_quebrado"
+   ],
+   "gravidade": "critico",
+   "descricao": "Furos de garfo na face; barrote quebrado no canto inferior direito (neste exemplo moderado)."
+  },
+  {
+   "id": 15,
+   "imagem": "padroes/p15.jpg",
+   "titulo": "Furo de garfo",
+   "tipos": [
+    "furo_garfo"
+   ],
+   "gravidade": "critico",
+   "descricao": "Ruptura na borda inferior do lote, junto à fita."
+  },
+  {
+   "id": 16,
+   "imagem": "padroes/p16.jpg",
+   "titulo": "Fita de fixação solta",
+   "tipos": [
+    "fita_solta"
+   ],
+   "gravidade": "moderado",
+   "descricao": "Fita verde frouxa/curva na lateral do lote."
+  },
+  {
+   "id": 17,
+   "imagem": "padroes/p17.jpg",
+   "titulo": "Furo de garfo",
+   "tipos": [
+    "furo_garfo"
+   ],
+   "gravidade": "critico",
+   "descricao": "Ruptura na borda inferior do lote, sob o filme."
+  },
+  {
+   "id": 18,
+   "imagem": "padroes/p18.jpg",
+   "titulo": "Falta de filme stretch",
+   "tipos": [
+    "filme_ausente"
+   ],
+   "gravidade": "critico",
+   "descricao": "Filme rompido/aberto deixando a lateral do lote exposta."
+  },
+  {
+   "id": 19,
+   "imagem": "padroes/p19.jpg",
+   "titulo": "Falta de filme stretch",
+   "tipos": [
+    "filme_ausente"
+   ],
+   "gravidade": "critico",
+   "descricao": "Lote do meio sem filme, enquanto os vizinhos estão plastificados."
+  },
+  {
+   "id": 20,
+   "imagem": "padroes/p20.jpg",
+   "titulo": "Barrote quebrado",
+   "tipos": [
+    "barrote_quebrado"
+   ],
+   "gravidade": "critico",
+   "descricao": "Barrote partido/torto no vão, canto direito."
+  },
+  {
+   "id": 21,
+   "imagem": "padroes/p21.jpg",
+   "titulo": "Barrote quebrado",
+   "tipos": [
+    "barrote_quebrado"
+   ],
+   "gravidade": "critico",
+   "descricao": "Barrote torto/quebrado no vão do lote."
+  },
+  {
+   "id": 22,
+   "imagem": "padroes/p22.jpg",
+   "titulo": "Sem calço",
+   "tipos": [
+    "calco_faltando"
+   ],
+   "gravidade": "critico",
+   "descricao": "Calço ausente na base do lote (traseira da carga)."
+  },
+  {
+   "id": 23,
+   "imagem": "padroes/p23.jpg",
+   "titulo": "Sem calço",
+   "tipos": [
+    "calco_faltando"
+   ],
+   "gravidade": "critico",
+   "descricao": "Calço ausente/espaço vazio na extremidade do lote."
+  },
+  {
+   "id": 24,
+   "imagem": "padroes/p24.jpg",
+   "titulo": "Sem calço e furos de garfo",
+   "tipos": [
+    "calco_faltando",
+    "furo_garfo"
+   ],
+   "gravidade": "critico",
+   "descricao": "Calços ausentes (roxo) e furos de garfo (vermelho)."
+  },
+  {
+   "id": 25,
+   "imagem": "padroes/p25.jpg",
+   "titulo": "Sem calços; etiquetas rasuradas; avaria no lote",
+   "tipos": [
+    "calco_faltando",
+    "etiqueta",
+    "dano"
+   ],
+   "gravidade": "critico",
+   "descricao": "Calços ausentes (verde, crítico); etiquetas rasuradas/avariadas (amarelo, moderado); avaria no lote (vermelho, crítico)."
+  }
+ ]
+}

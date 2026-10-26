@@ -102,3 +102,7 @@ Mande o link por mensagem ao operador. Trate-o como senha: quem tem o link usa a
 Furo de garfo, calço faltando, falta de filme stretch, material molhado, lote quebrado (e qualquer ponto com gravidade ≥ 80) são **críticos**. Para ignorá-los (X na foto ou "Ignorar" na lista) o operador precisa escolher um motivo e confirmar. A decisão fica registrada: aparece no texto do relatório, na faixa da foto enviada (cinza tracejado, "IGNORADO") e em `result.auditoria` (ação, tipo, motivo, hora, operador). Advertências e dúvidas (azul) continuam sendo ignoradas com um toque, sem motivo.
 
 A área fora da carga (lona, veículo, fundo) não recebe mais marcações hachuradas: só a carga é analisada.
+
+## Base de padrões de defeito (`padroes/`)
+
+`padroes/padroes.json` + `padroes/pNN.jpg` guardam os exemplos enviados pela operação (25 fotos do documento "padrão de defeitos"), cada um com tipo(s) e gravidade. A tabela de gravidade (crítico / moderado / verificar / sem defeito) já está no `GUIDE` do `index.html`. Para ampliar: adicione a foto em `padroes/`, uma entrada no JSON e, se surgir um tipo novo, uma linha no `GUIDE` e em `TIPOS`.
