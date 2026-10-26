@@ -1,0 +1,1110 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest"><!--pwa-->
+<link rel="apple-touch-icon" href="icons/icon-180.png"><!--pwa-->
+<meta name="theme-color" content="#0a0e13"><!--pwa-->
+<meta name="apple-mobile-web-app-capable" content="yes"><!--pwa-->
+<meta name="mobile-web-app-capable" content="yes"><!--pwa-->
+<meta name="apple-mobile-web-app-title" content="Quality Vision"><!--pwa-->
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Arauco Quality Vision</title>
+<style>
+  :root{
+    --bg:#0a0e13; --panel:#12181f; --raised:#1d2731; --line:#28333f;
+    --ink:#e8edf3; --dim:#96a4b3; --faint:#576675; --accent:#5fd4e8; --accent-ink:#0a0e13;
+    --ok:#55c99a; --warn:#d5d94f; --bad:#e2543c; --radius:8px;
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--ui);
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  header{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  header h1{font-size:16px;margin:0;font-weight:700;letter-spacing:.02em}
+  header span{color:var(--dim);font-size:12px}
+  main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;padding:16px 0;max-width:1500px;margin:0 auto}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+  main>*{min-width:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px}
+  .stage{position:relative;min-height:240px;display:flex;align-items:center;justify-content:center;background:#05080b;border-radius:var(--radius);overflow:hidden}
+  .stage canvas{width:100%;height:auto;display:block}
+  .empty{color:var(--dim);text-align:center;padding:48px 16px}
+  .empty b{display:block;font-size:16px;color:var(--ink);margin-bottom:6px}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  .bar.after{margin:12px 0 0}
+  button,.btn,select,input[type=password],input[type=text]{font:inherit;color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:6px;padding:8px 12px}
+  button,.btn{cursor:pointer;display:inline-block}
+  button:hover,.btn:hover{border-color:var(--accent)}
+  button:focus-visible,.btn:focus-within,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary,.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+  button.small{padding:4px 8px;font-size:12px}
+  button:disabled{opacity:.5;cursor:default}
+  input[type=file]{display:none}
+  label.tog{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:13px}
+  input[type=range]{accent-color:var(--accent)}
+  .legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);margin-top:10px;flex-wrap:wrap}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .legend b{width:12px;height:12px;border-radius:3px;background:var(--sev)}
+  .legend em{font-style:normal;display:flex;align-items:center;gap:6px}
+  .legend em s{width:14px;height:10px;border:1px dashed var(--dim);background:repeating-linear-gradient(135deg,transparent 0 3px,rgba(255,255,255,.35) 3px 4px)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .chip{display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--dim);background:var(--panel)}
+  .chip.ok{color:var(--ok);border-color:var(--ok)}
+  .chip.pend{color:var(--warn);border-color:var(--warn)}
+  .chip.miss{color:var(--dim);border-style:dashed}
+  .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .th{position:relative;width:108px;padding:4px;text-align:left}
+  .th.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .th img{display:block;width:100%;height:64px;object-fit:cover;border-radius:4px}
+  .th span{display:block;font-size:11px;color:var(--dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .th b{position:absolute;top:8px;right:8px;min-width:26px;text-align:center;padding:1px 5px;border-radius:10px;font-size:12px;color:#0a0e13}
+  .score{display:flex;align-items:center;gap:14px}
+  .score .n{font-size:44px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .score .c{font-size:13px;color:var(--dim)}
+  .score .c b{display:block;font-size:16px;color:var(--ink)}
+  .sum{color:var(--dim);margin:10px 0 0}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:0 0 8px;font-weight:600}
+  .list{display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow:auto}
+  .it{display:flex;gap:10px;padding:8px;border:1px solid var(--line);border-radius:6px;cursor:pointer;background:var(--raised)}
+  .it.on{border-color:var(--accent)}
+  .it.off{opacity:.45}
+  .it>button{align-self:flex-start;flex:none}
+  .it .b{flex:none;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#0a0e13}
+  .it .body{flex:1;min-width:0}
+  .it .t{font-weight:600;font-size:13px}
+  .it .d{color:var(--dim);font-size:12px}
+  .it .a{color:var(--accent);font-size:12px;margin-top:2px}
+  .nao{display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:12px;color:var(--dim)}
+  .nao b{flex:none;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#c9d3dd;color:#0a0e13;font-size:11px}
+  .it .th2{position:relative;flex:none;width:88px;height:66px;border-radius:4px;overflow:hidden;border:2px solid var(--sev,#888)}
+  .it .th2 img{width:100%;height:100%;object-fit:cover;display:block}
+  .it .th2 b{position:absolute;left:0;top:0;min-width:20px;height:20px;padding:0 4px;display:flex;align-items:center;justify-content:center;background:var(--sev);color:#0a0e13;font-size:11px;font-weight:700;border-bottom-right-radius:6px}
+  .pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:var(--sev);color:#0a0e13;margin-left:6px;vertical-align:1px}
+  .sevsum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .sevsum span{display:flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid var(--sev);font-size:12px;color:var(--ink)}
+  .opts{margin:-4px 0 12px;color:var(--dim)}
+  .opts summary{cursor:pointer;padding:6px 0}
+  .optsrow{display:flex;flex-direction:column;gap:10px;align-items:flex-start;padding:4px 0}
+  .meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+  .meta label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--dim)}
+  .meta input{width:100%}
+  #mPlaca{text-transform:uppercase}
+  .sendbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;align-items:center;gap:10px;background:var(--panel);border-top:1px solid var(--line);padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  .sb-info{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px}
+  .sb-info b{font-size:26px;font-variant-numeric:tabular-nums}
+  .sb-info span{color:var(--dim);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #enviar{min-height:46px;padding:10px 22px;font-size:16px}
+  body.has-sendbar{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  @media(max-width:600px){
+    .meta{grid-template-columns:1fr 1fr}.meta label:last-child{grid-column:1/-1}
+    .bar .btn.primary{flex:1 1 100%;text-align:center;font-size:16px;padding:14px 12px}
+    button,.btn{min-height:44px}button.small{min-height:36px}
+    header span{display:none}
+  }
+  @media(pointer:coarse){input,select{font-size:16px}}
+  .it .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  #cv{cursor:pointer;touch-action:manipulation}
+  .rec{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+  .rec:first-of-type{border-top:0}
+  .rec .d{color:var(--dim);font-size:12px}
+  .side{display:flex;flex-direction:column;gap:16px}
+  .status{color:var(--dim);font-size:13px;min-height:20px}
+  .status.err{color:var(--bad)}
+  .note{color:var(--faint);font-size:12px;margin:8px 0 0}
+  .checks{display:flex;flex-direction:column;gap:6px}
+  details summary{cursor:pointer;color:var(--dim)}
+  details .row{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  details small{color:var(--faint)}
+  .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){.spin{animation:none}}
+</style>
+
+<header>
+  <h1>Arauco Quality Vision</h1><span>Verificador visual de carga</span>
+</header>
+<main>
+  <section>
+    <div class="meta">
+      <label>Embarque<input type="text" id="mEmb" inputmode="numeric" autocomplete="off" placeholder="Nº do embarque"></label>
+      <label>Placa<input type="text" id="mPlaca" autocomplete="off" maxlength="8" placeholder="ABC1D23"></label>
+      <label>Operador<input type="text" id="mOp" autocomplete="name" placeholder="Seu nome"></label>
+    </div>
+    <div class="bar">
+      <label class="btn primary">📷 Tirar foto<input id="fileCam" type="file" accept="image/*" capture="environment"></label>
+      <label class="btn">Enviar fotos<input id="fileMany" type="file" accept="image/*" multiple></label>
+      <button id="analyze" disabled>Analisar</button>
+      <span id="status" class="status" role="status"></span>
+    </div>
+    <details class="opts">
+      <summary>Opções</summary>
+      <div class="optsrow">
+        <label class="tog"><input type="checkbox" id="auto" checked> Analisar assim que tirar a foto</label>
+        <label class="tog"><input type="checkbox" id="detalhe" checked> Análise detalhada: varre a foto em partes ampliadas para achar furos e falhas pequenas (demora mais)</label>
+        <button id="demo" class="small">Ver exemplo (sem IA)</button>
+      </div>
+    </details>
+    <div class="chips" id="coverage"></div>
+    <div class="stage" id="stage">
+      <div class="empty" id="empty"><b>Envie as duas laterais da carga</b>Veículo carregado ou área de separação. Fotos extras (traseira, outro ângulo) ajudam quando algo está encoberto. Os pontos de atenção aparecem destacados sobre a própria foto.</div>
+      <canvas id="cv" hidden></canvas>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="bar after" id="photoBar" hidden>
+      <label class="tog">Esta foto é
+        <select id="lado"></select>
+      </label>
+      <button id="remove" class="small">Remover foto</button>
+    </div>
+    <div class="bar after">
+      <label class="tog"><input type="checkbox" id="tMark" checked> Pontos de atenção</label>
+      <label class="tog"><input type="checkbox" id="tRot" checked> Rótulos</label>
+      <label class="tog"><input type="checkbox" id="tFoco" checked> Destacar (escurece o resto)</label>
+      <label class="tog"><input type="checkbox" id="tNao" checked> Áreas não avaliáveis</label>
+      <button id="save" disabled>Baixar PNG</button>
+    </div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <aside class="side">
+    <div class="card" id="resCard" hidden>
+      <h2>Resultado geral</h2>
+      <div class="score"><div class="n" id="nota">–</div><div class="c"><b id="classe"></b><span id="notaSub">nota de qualidade (0–100)</span></div></div>
+      <p class="sum" id="resumo"></p>
+    </div>
+    <div class="card" id="fbCard" hidden>
+      <h2>Enviar manualmente</h2>
+      <p class="note" id="fbNote">Este aparelho não compartilha fotos direto. As imagens foram salvas: anexe-as na mensagem.</p>
+      <div class="bar" style="margin:8px 0 0">
+        <a class="btn" id="fbWa" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="btn" id="fbMail">E-mail</a>
+        <button id="fbCopy">Copiar texto</button>
+      </div>
+    </div>
+    <div class="card" id="recCard" hidden>
+      <h2>Fotos recomendadas</h2>
+      <div id="recs"></div>
+    </div>
+    <div class="card" id="naoCard" hidden>
+      <h2>Áreas não avaliáveis</h2>
+      <div class="list" id="naoList"></div>
+    </div>
+    <div class="card" id="duvCard" hidden>
+      <h2>Dúvidas (<span id="duvCnt">0</span>)</h2>
+      <p class="note" style="margin:0 0 8px">Pontos que a IA não conseguiu decidir. Tire uma foto mais de perto para ela confirmar ou descartar.</p>
+      <div class="list" id="duvList"></div>
+    </div>
+    <div class="card" id="listCard" hidden>
+      <h2>Pontos de atenção (<span id="cnt">0</span>)</h2>
+      <div class="sevsum" id="sevsum"></div>
+      <div class="list" id="list"></div>
+      <p class="note">Descarte o que não for defeito de verdade: as marcações e a nota se ajustam.</p>
+    </div>
+    <div class="card">
+      <h2>Não avaliar</h2>
+      <div class="checks">
+        <label class="tog"><input type="checkbox" id="ignCintas" checked> Cintas de amarração</label>
+        <label class="tog"><input type="checkbox" id="ignReguas" checked> Réguas já sobrepostas na carga</label>
+      </div>
+      <p class="note">A lona do sider e qualquer parte da carga encoberta são sempre marcadas como não avaliáveis.</p>
+    </div>
+    <div class="card" id="cfgCard">
+      <details id="cfg">
+        <summary>Configuração da IA</summary>
+        <div class="row">
+          <label for="key">Chave direta da API Anthropic (só para teste)</label>
+          <input type="password" id="key" placeholder="sk-ant-..." autocomplete="off">
+          <label for="model">Modelo</label>
+          <select id="model">
+            <option value="claude-sonnet-5-5">Sonnet 5.5 (equilíbrio)</option>
+            <option value="claude-opus-5-5">Opus 5.5 (mais preciso)</option>
+            <option value="claude-haiku-5-5">Haiku 5.5 (mais rápido)</option>
+          </select>
+          <label for="endpoint">Servidor de análise (URL da função)</label>
+          <input type="text" id="endpoint" placeholder="https://xxxx.supabase.co/functions/v1/analisar">
+          <label for="token">Código de acesso do app</label>
+          <input type="password" id="token" autocomplete="off" placeholder="fornecido pela TI">
+          <label for="mailTo">E-mail de destino (opcional)</label>
+          <input type="text" id="mailTo" inputmode="email" autocomplete="off" placeholder="expedicao@empresa.com">
+          <small>Em produção use o servidor de análise + código de acesso: a chave da Anthropic fica no servidor, não no celular. A chave direta acima serve só para teste e fica salva neste navegador.</small>
+        </div>
+      </details>
+    </div>
+  </aside>
+</main>
+
+<div class="sendbar" id="sendbar" hidden>
+  <div class="sb-info"><b id="sbNota">–</b><span id="sbTxt"></span></div>
+  <button id="novo" class="small">Nova inspeção</button>
+  <button id="enviar" class="primary">Enviar</button>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const MAX_SIDE = 2400, ANALYSIS_SIDE = 1568, MAX_PHOTOS = 6;
+const TIPOS = {
+  calco_faltando:'Calço/barrote faltando (grave)',
+  embalagem_fora_padrao:'Embalagem fora do padrão',
+  filme_stretch:'Filme stretch aberto/solto',
+  etiqueta:'Etiqueta rasurada/caída',
+  furo_garfo:'Furo de garfo (crítico)',
+  mancha_cor:'Mancha / variação de cor',
+  dano:'Dano / canto deformado',
+  empilhamento:'Empilhamento / posicionamento',
+  fita_faltando:'Fita faltando',
+  fita_solta:'Fita solta ou rompida',
+  outro:'Outro'
+};
+const LADOS = { esq:'Lateral esquerda', dir:'Lateral direita', tras:'Traseira', front:'Frontal', topo:'Superior', outra:'Outra', perto:'Foto de perto' };
+// falhas graves: gravidade mínima 80 e nota nunca acima de 35
+const CRIT = new Set(['furo_garfo', 'calco_faltando']);
+const DUV = '#4cc9f0';
+const HAS_CLAUDE = !!(window.claude && window.claude.use);
+
+const state = { photos:[], cur:-1, pending:null, perto:null, busy:false };
+if (/[?&]debug\b/.test(location.search)) window.__qv = state;
+const cv = $('cv'), ctx = cv.getContext('2d');
+const cur = () => state.photos[state.cur] || null;
+let uid = 0;
+
+const store = {
+  get(k){ try { return localStorage.getItem('qv_' + k); } catch(e){ return null; } },
+  set(k, v){ try { localStorage.setItem('qv_' + k, v); } catch(e){} }
+};
+
+/* ---------- app instalável + configuração por link ---------- */
+if (!HAS_CLAUDE && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+// link de configuração: ...#cfg=<base64url de {"endpoint":"...","token":"..."}>; aplica e limpa o endereço
+(() => {
+  const m = location.hash.match(/[#&]cfg=([A-Za-z0-9_-]+)/); if (!m) return;
+  try {
+    const c = JSON.parse(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (typeof c.endpoint === 'string') store.set('endpoint', c.endpoint.trim());
+    if (typeof c.token === 'string') store.set('token', c.token.trim());
+    if (typeof c.mailTo === 'string') store.set('mailTo', c.mailTo.trim());
+    state.cfgApplied = true;
+  } catch(e) {}
+  try { history.replaceState(null, '', location.pathname + location.search); } catch(e) {}
+})();
+
+/* ---------- configuração ---------- */
+if (HAS_CLAUDE) $('cfgCard').hidden = true;
+$('token').value = store.get('token') || ''; $('token').onchange = () => store.set('token', $('token').value.trim());
+$('mailTo').value = store.get('mailTo') || ''; $('mailTo').onchange = () => store.set('mailTo', $('mailTo').value.trim());
+['mEmb', 'mPlaca', 'mOp'].forEach(id => { $(id).value = store.get(id) || ''; $(id).oninput = () => { if (id === 'mPlaca') $(id).value = $(id).value.toUpperCase(); store.set(id, $(id).value.trim()); }; });
+$('key').value = store.get('key') || '';
+$('model').value = store.get('model') || 'claude-sonnet-5-5';
+$('endpoint').value = store.get('endpoint') || '';
+$('key').onchange = () => store.set('key', $('key').value.trim());
+$('model').onchange = () => store.set('model', $('model').value);
+$('endpoint').onchange = () => store.set('endpoint', $('endpoint').value.trim());
+['ignCintas','ignReguas','detalhe','auto'].forEach(id => {
+  const v = store.get(id); if (v !== null) $(id).checked = v === '1';
+  $(id).onchange = () => store.set(id, $(id).checked ? '1' : '0');
+});
+Object.entries(LADOS).forEach(([k, v]) => { const o = document.createElement('option'); o.value = k; o.textContent = v; $('lado').appendChild(o); });
+
+function setStatus(msg, err, busy){
+  const s = $('status'); s.className = 'status' + (err ? ' err' : '');
+  s.textContent = '';
+  if (busy) { const i = document.createElement('i'); i.className = 'spin'; s.appendChild(i); }
+  s.appendChild(document.createTextNode(msg || ''));
+}
+
+/* ---------- cor e gravidade ---------- */
+// risco 0 (ótimo) → 100 (crítico): verde → amarelo → vermelho
+function riskColor(r){ const h = 120 * (1 - Math.min(100, Math.max(0, r)) / 100); return `hsl(${h} 85% 48%)`; }
+const clamp01 = v => Math.min(1, Math.max(0, v));
+function normBox(b){
+  if (!b || ![b.x, b.y, b.w, b.h].every(v => isFinite(+v))) return null;
+  const x = clamp01(+b.x), y = clamp01(+b.y);
+  return { x, y, w: Math.min(1 - x, Math.max(0.01, +b.w)), h: Math.min(1 - y, Math.max(0.01, +b.h)) };
+}
+
+/* ---------- nota ---------- */
+const penalty = list => list.map(d => d.gravidade).sort((a, b) => b - a).reduce((s, g, i) => s + g / 2 ** i, 0);
+function notaPhoto(p){
+  const r = p.result, act = r.defeitos.filter(d => !d.off);
+  let n = r.nota_geral;
+  if (act.length !== r.defeitos.length) n = Math.min(100, n + (penalty(r.defeitos) - penalty(act)) * .6);
+  // falha grave (furo de garfo, calço faltando): nunca passa de "Crítico"
+  return act.some(d => CRIT.has(d.tipo)) ? Math.min(n, 35) : n;
+}
+function classify(n){ return n >= 85 ? 'Aprovado' : n >= 65 ? 'Atenção' : n >= 40 ? 'Reprovar / retrabalhar' : 'Crítico'; }
+
+/* ---------- desenho ---------- */
+let hatch = null;
+function hatchPattern(){
+  if (hatch) return hatch;
+  const c = document.createElement('canvas'); c.width = c.height = 14;
+  const g = c.getContext('2d'); g.strokeStyle = 'rgba(255,255,255,.4)'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(-2, 16); g.lineTo(16, -2); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(12, 16); g.lineTo(16, 12); g.stroke();
+  return hatch = ctx.createPattern(c, 'repeat');
+}
+
+const SEV = [{ min: 80, k: 'Crítico', c: '#ff2d6f' }, { min: 65, k: 'Alto', c: '#ff6a2b' }, { min: 40, k: 'Moderado', c: '#ffb02e' }, { min: 0, k: 'Leve', c: '#e8e04a' }];
+const sev = g => SEV.find(s => g >= s.min);
+const CURTO = { calco_faltando:'Calço faltando', furo_garfo:'Furo de garfo', etiqueta:'Etiqueta', filme_stretch:'Stretch', dano:'Dano', mancha_cor:'Mancha', fita_faltando:'Fita faltando', fita_solta:'Fita solta', empilhamento:'Empilhamento', embalagem_fora_padrao:'Embalagem', outro:'Atenção' };
+const hexA = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${a})`;
+function rr(g, x, y, w, h, r){ g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+let dimCv = null;
+
+function render(p = cur(), c = cv, opt = {}){
+  if (!p) return;
+  const g = c.getContext('2d');
+  c.width = p.img.width; c.height = p.img.height;
+  g.drawImage(p.img, 0, 0);
+  const selIdx = opt.sel !== undefined ? opt.sel : p.sel;
+  const r = p.result; if (!r) return;
+  const edit = opt.edit ?? (c === cv), scale = edit ? (c.getBoundingClientRect().width / c.width || 1) : 1;
+  const W = c.width, H = c.height, lw = Math.max(2, W / 400), fs = Math.max(12, W / 55, edit ? 16 / scale : 0);
+  if (edit) p._hits = [];
+  const act = r.defeitos.map((d, i) => ({ d, i })).filter(o => !o.d.off);
+  const openD = r.duvidas.map((q, i) => ({ q, i })).filter(o => o.q.estado === 'aberta');
+  const marks = opt.marks ?? $('tMark').checked;
+
+  // destaque: escurece o que está fora dos pontos (só o ponto selecionado, se houver)
+  if (marks && (opt.foco ?? $('tFoco').checked) && (act.length || openD.length)) {
+    const sel = act.find(o => o.i === selIdx), pad = fs * .4;
+    dimCv = dimCv || document.createElement('canvas'); dimCv.width = W; dimCv.height = H;
+    const dg = dimCv.getContext('2d'); dg.fillStyle = sel ? 'rgba(6,9,13,.66)' : 'rgba(6,9,13,.36)'; dg.fillRect(0, 0, W, H);
+    (sel ? [sel.d.box] : [...act.map(o => o.d.box), ...openD.map(o => o.q.box)]).forEach(b => { dg.clearRect(b.x * W - pad, b.y * H - pad, b.w * W + 2 * pad, b.h * H + 2 * pad); });
+    g.drawImage(dimCv, 0, 0);
+  }
+
+  if (opt.nao ?? $('tNao').checked) {
+    r.nao_avaliaveis.forEach((n, i) => {
+      const x = n.box.x * W, y = n.box.y * H, w = n.box.w * W, h = n.box.h * H;
+      g.fillStyle = 'rgba(15,20,26,.35)'; g.fillRect(x, y, w, h);
+      g.fillStyle = hatchPattern(); g.fillRect(x, y, w, h);
+      g.lineWidth = lw; g.strokeStyle = 'rgba(220,228,236,.8)'; g.setLineDash([lw * 4, lw * 3]); g.strokeRect(x, y, w, h); g.setLineDash([]);
+      g.fillStyle = '#c9d3dd'; g.beginPath(); g.arc(x + fs, y + fs, fs * .75, 0, 7); g.fill();
+      g.lineWidth = lw; g.strokeStyle = '#0a0e13'; g.stroke();
+      g.fillStyle = '#0a0e13'; g.font = `700 ${fs * .85}px system-ui,sans-serif`;
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⊘' + (i + 1), x + fs, y + fs + 1);
+    });
+  }
+
+  if (!marks) return;
+  const placed = [], ph = fs * 1.55, hits = [];
+  // um ponto: caixa com cantos em mira, rótulo curto com X (ignorar) e áreas de toque
+  const mark = (box, col, txt, numTxt, on, t, i, o = {}) => {
+    const x = box.x * W, y = box.y * H, w = box.w * W, h = box.h * H;
+    g.fillStyle = hexA(col, on ? .22 : .14); g.fillRect(x, y, w, h);
+    g.save(); if (o.dashed) g.setLineDash([lw * 3, lw * 2]);
+    g.lineWidth = Math.max(1, lw * .5); g.strokeStyle = hexA(col, .75); g.strokeRect(x, y, w, h); g.restore();
+    const L = Math.max(fs * .7, Math.min(w, h) * .3);
+    g.save(); g.lineWidth = lw * (on ? 2.6 : 1.9); g.strokeStyle = on ? '#fff' : col; g.lineCap = 'square';
+    if (o.glow) { g.shadowColor = col; g.shadowBlur = fs * .9; }
+    g.beginPath();
+    [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]].forEach(([cx, cy, sx, sy]) => { g.moveTo(cx + sx * L, cy); g.lineTo(cx, cy); g.lineTo(cx, cy + sy * L); });
+    g.stroke(); g.restore();
+    if (edit && t === 'd') hits.push({ k: 'sel', t, i, x, y, w, h });
+    if (opt.rot ?? $('tRot').checked) {
+      g.font = `700 ${fs * .78}px system-ui,sans-serif`;
+      const xw = edit ? ph * .95 : 0, pw = ph * 1.05 + g.measureText(txt).width + ph * .45 + xw;
+      let px = Math.min(Math.max(2, x), W - pw - 2), py = y - ph - lw * 2 < 2 ? y + h + lw * 2 : y - ph - lw * 2;
+      const dir = py > y ? 1 : -1;
+      for (let k = 0; k < 8 && placed.some(q => px < q.x + q.w && px + pw > q.x && py < q.y + q.h && py + ph > q.y); k++) py += dir * (ph + 3);
+      py = Math.min(Math.max(2, py), H - ph - 2); placed.push({ x: px, y: py, w: pw, h: ph });
+      g.fillStyle = col; rr(g, px, py, pw, ph, ph / 2); g.fill();
+      if (on) { g.lineWidth = lw; g.strokeStyle = '#fff'; g.stroke(); }
+      g.fillStyle = '#0a0e13'; g.beginPath(); g.arc(px + ph / 2, py + ph / 2, ph * .38, 0, 7); g.fill();
+      g.fillStyle = '#fff'; g.font = `700 ${fs * .72}px system-ui,sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(numTxt, px + ph / 2, py + ph / 2 + 1);
+      g.fillStyle = '#0a0e13'; g.font = `700 ${fs * .78}px system-ui,sans-serif`; g.textAlign = 'left';
+      g.fillText(txt, px + ph * 1.05, py + ph / 2 + 1);
+      if (edit) {
+        if (t === 'd') hits.push({ k: 'sel', t, i, x: px, y: py, w: pw - xw, h: ph });
+        const cx = px + pw - ph * .6, cy = py + ph / 2, rx = ph * .34, half = Math.max(ph * .6, 20 / scale);
+        g.fillStyle = 'rgba(10,14,19,.82)'; g.beginPath(); g.arc(cx, cy, rx, 0, 7); g.fill();
+        g.strokeStyle = '#fff'; g.lineWidth = lw * 1.5; g.lineCap = 'round'; g.beginPath();
+        g.moveTo(cx - rx * .5, cy - rx * .5); g.lineTo(cx + rx * .5, cy + rx * .5); g.moveTo(cx + rx * .5, cy - rx * .5); g.lineTo(cx - rx * .5, cy + rx * .5); g.stroke();
+        hits.push({ k: 'x', t, i, x: cx - half, y: cy - half, w: 2 * half, h: 2 * half });
+      }
+    } else {
+      g.fillStyle = col; g.beginPath(); g.arc(x, y, fs * .8, 0, 7); g.fill();
+      g.lineWidth = lw; g.strokeStyle = '#0a0e13'; g.stroke();
+      g.fillStyle = '#0a0e13'; g.font = `700 ${fs}px system-ui,sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(numTxt, x, y + 1);
+    }
+  };
+  openD.forEach(({ q, i }) => mark(q.box, DUV, 'Dúvida · foto de perto', '?', false, 'q', i, { dashed: true }));
+  // mais graves por último (ficam por cima)
+  act.slice().sort((a, b) => a.d.gravidade - b.d.gravidade).forEach(({ d, i }) => {
+    const s = sev(d.gravidade);
+    mark(d.box, s.c, `${CURTO[d.tipo] || 'Atenção'} · ${s.k}`, String(i + 1), i === selIdx, 'd', i, { glow: d.gravidade >= 80 });
+  });
+  if (edit) p._hits = hits;
+}
+
+/* ---------- painéis ---------- */
+function updateCoverage(){
+  const box = $('coverage'); box.textContent = '';
+  ['esq', 'dir'].forEach(k => {
+    const ps = state.photos.filter(p => p.lado === k);
+    const st = ps.some(p => p.result) ? 'ok' : ps.length ? 'pend' : 'miss';
+    const c = document.createElement('span'); c.className = 'chip ' + st;
+    c.textContent = `${LADOS[k]}: ${st === 'ok' ? '✓ analisada' : st === 'pend' ? 'aguardando análise' : 'faltando'}`;
+    box.appendChild(c);
+  });
+  const others = state.photos.filter(p => p.lado !== 'esq' && p.lado !== 'dir').length;
+  if (others) { const c = document.createElement('span'); c.className = 'chip'; c.textContent = `+${others} foto(s) extra`; box.appendChild(c); }
+}
+
+function updateThumbs(){
+  const box = $('thumbs'); box.textContent = '';
+  state.photos.forEach((p, i) => {
+    const b = document.createElement('button'); b.className = 'th' + (i === state.cur ? ' on' : '');
+    const im = document.createElement('img'); im.src = p.thumb; im.alt = LADOS[p.lado];
+    const t = document.createElement('span'); t.textContent = LADOS[p.lado];
+    b.append(im, t);
+    if (p.result && p.lado !== 'perto') { const s = document.createElement('b'); const n = notaPhoto(p); s.textContent = Math.round(n); s.style.background = riskColor(100 - n); b.appendChild(s); }
+    b.onclick = () => selectPhoto(i);
+    box.appendChild(b);
+  });
+}
+
+function updateSummary(){
+  const done = state.photos.filter(p => p.result && p.lado !== 'perto');
+  $('resCard').hidden = !done.length;
+  $('sendbar').hidden = !done.length; document.body.classList.toggle('has-sendbar', done.length > 0);
+  if (done.length) {
+    const ns = done.map(notaPhoto), min = Math.min(...ns), mean = ns.reduce((a, b) => a + b, 0) / ns.length;
+    const n = done.length === 1 ? ns[0] : .6 * min + .4 * mean;
+    $('nota').textContent = Math.round(n); $('nota').style.color = riskColor(100 - n);
+    $('classe').textContent = classify(n);
+    $('sbNota').textContent = Math.round(n); $('sbNota').style.color = riskColor(100 - n);
+    $('sbTxt').textContent = `${classify(n)} · ${done.reduce((s, q) => s + q.result.defeitos.filter(d => !d.off).length, 0)} ponto(s)`;
+    $('notaSub').textContent = `nota de qualidade (0–100) · ${done.length} foto(s)`;
+    const p = cur(), r = p && p.result;
+    $('resumo').textContent = r ? `${LADOS[p.lado]}: ${r.resumo}` : done[0].result.resumo;
+  }
+  // fotos recomendadas: lados que faltam + pedidos da IA
+  const recs = [];
+  const add = (lado, motivo) => { if (!recs.some(x => x.lado === lado && (lado !== 'outra' || x.motivo === motivo))) recs.push({ lado, motivo }); };
+  if (done.length) ['esq', 'dir'].forEach(k => { if (!state.photos.some(p => p.lado === k)) add(k, 'Necessária para inspecionar os dois lados da carga.'); });
+  done.forEach(p => p.result.fotos_adicionais.forEach(f => { if (!state.photos.some(q => q.lado === f.lado && q.result)) add(f.lado, f.motivo); }));
+  const rb = $('recs'); rb.textContent = '';
+  recs.forEach(rc => {
+    const row = document.createElement('div'); row.className = 'rec';
+    const tx = document.createElement('div');
+    const t = document.createElement('div'); t.textContent = LADOS[rc.lado]; t.style.fontWeight = 600;
+    const d = document.createElement('div'); d.className = 'd'; d.textContent = rc.motivo;
+    tx.append(t, d);
+    const b = document.createElement('button'); b.className = 'small'; b.textContent = 'Adicionar';
+    b.disabled = state.photos.length >= MAX_PHOTOS;
+    b.onclick = () => { state.pending = rc.lado; $('fileCam').click(); };
+    row.append(tx, b); rb.appendChild(row);
+  });
+  $('recCard').hidden = !recs.length;
+}
+
+function cropThumb(p, d, color){
+  if (d._thumb) return d._thumb;
+  const W = p.img.width, H = p.img.height, b = d.box;
+  let w = Math.max(b.w * W * 2.4, W * .16), h = w * .75;
+  if (h < b.h * H * 2.4) { h = b.h * H * 2.4; w = h / .75; }
+  w = Math.min(w, W); h = Math.min(h, H);
+  const x = Math.min(W - w, Math.max(0, (b.x + b.w / 2) * W - w / 2)), y = Math.min(H - h, Math.max(0, (b.y + b.h / 2) * H - h / 2));
+  const c = document.createElement('canvas'); c.width = 192; c.height = 144;
+  const g = c.getContext('2d'); g.drawImage(p.img, x, y, w, h, 0, 0, 192, 144);
+  g.lineWidth = 2; g.strokeStyle = color || sev(d.gravidade).c; g.strokeRect((b.x * W - x) * 192 / w, (b.y * H - y) * 144 / h, b.w * W * 192 / w, b.h * H * 144 / h);
+  return d._thumb = c.toDataURL('image/jpeg', .8);
+}
+
+function updateDoubts(p, r){
+  const box = $('duvList'); box.textContent = '';
+  const qs = r ? r.duvidas : [];
+  $('duvCard').hidden = !qs.length;
+  $('duvCnt').textContent = qs.filter(q => q.estado === 'aberta').length;
+  const btn = (txt, fn) => { const b = document.createElement('button'); b.className = 'small'; b.textContent = txt; b.onclick = e => { e.stopPropagation(); fn(); }; return b; };
+  qs.forEach((q, qi) => {
+    const el = document.createElement('div'); el.className = 'it' + (q.estado === 'aberta' ? '' : ' off'); el.style.setProperty('--sev', DUV);
+    const th = document.createElement('div'); th.className = 'th2';
+    const im = document.createElement('img'); im.src = cropThumb(p, q, DUV); im.alt = 'Dúvida';
+    const nb = document.createElement('b'); nb.textContent = '?'; th.append(im, nb);
+    const body = document.createElement('div'); body.className = 'body';
+    const t = document.createElement('div'); t.className = 't'; t.textContent = 'Dúvida';
+    const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = { aberta: 'Aberta', resolvida: 'Resolvida', ignorada: 'Ignorada' }[q.estado]; t.appendChild(pill);
+    const ds = document.createElement('div'); ds.className = 'd'; ds.textContent = q.motivo || 'Não deu para decidir.';
+    body.append(t, ds);
+    if (q.estado === 'aberta' && q.pedir) { const a = document.createElement('div'); a.className = 'a'; a.textContent = '→ Fotografar de perto: ' + q.pedir; body.appendChild(a); }
+    if (q.veredito) { const a = document.createElement('div'); a.className = 'a'; a.textContent = (q.veredito.e_defeito ? 'É defeito: ' : 'Não é defeito. ') + q.veredito.texto; body.appendChild(a); }
+    const acts = document.createElement('div'); acts.className = 'acts';
+    if (q.estado === 'aberta') {
+      const cam = btn('📷 Foto de perto', () => { state.perto = { foto: p.id, idx: qi }; $('fileCam').click(); });
+      cam.disabled = state.photos.length >= MAX_PHOTOS; acts.append(cam, btn('✕ Ignorar', () => { q.estado = 'ignorada'; refresh(); }));
+    } else if (q.estado === 'ignorada') acts.append(btn('Restaurar', () => { q.estado = 'aberta'; refresh(); }));
+    else { const ci = state.photos.findIndex(f => f.perto && f.perto.foto === p.id && f.perto.idx === qi); if (ci >= 0) acts.append(btn('Ver foto de perto', () => selectPhoto(ci))); }
+    body.appendChild(acts); el.append(th, body); box.appendChild(el);
+  });
+}
+
+function updateList(){
+  const p = cur(), r = p && p.result, list = $('list'); list.textContent = '';
+  updateDoubts(p, r);
+  const nl = $('naoList'); nl.textContent = '';
+  $('naoCard').hidden = !r || !r.nao_avaliaveis.length;
+  if (r) r.nao_avaliaveis.forEach((n, i) => {
+    const row = document.createElement('div'); row.className = 'nao';
+    const b = document.createElement('b'); b.textContent = '⊘' + (i + 1);
+    const t = document.createElement('div'); t.textContent = n.motivo || 'Não avaliável';
+    row.append(b, t); nl.appendChild(row);
+  });
+  $('listCard').hidden = !r || !r.defeitos.length;
+  if (!r) return;
+  const act = r.defeitos.filter(d => !d.off);
+  $('cnt').textContent = act.length;
+  const sm = $('sevsum'); sm.textContent = '';
+  SEV.forEach(s => { const n = act.filter(d => sev(d.gravidade) === s).length; if (!n) return;
+    const el = document.createElement('span'); el.style.setProperty('--sev', s.c); el.textContent = `${n} ${s.k.toLowerCase()}${n > 1 && s.k !== 'Leve' ? 's' : n > 1 ? 's' : ''}`; sm.appendChild(el); });
+  [...r.defeitos.keys()].sort((a, b) => r.defeitos[b].gravidade - r.defeitos[a].gravidade).forEach(i => {
+    const d = r.defeitos[i], s = sev(d.gravidade), el = document.createElement('div');
+    el.className = 'it' + (d.off ? ' off' : '') + (i === p.sel ? ' on' : ''); el.style.setProperty('--sev', s.c);
+    const th = document.createElement('div'); th.className = 'th2';
+    const im = document.createElement('img'); im.src = cropThumb(p, d); im.alt = TIPOS[d.tipo] || d.tipo;
+    const nb = document.createElement('b'); nb.textContent = i + 1; th.append(im, nb);
+    const body = document.createElement('div'); body.className = 'body';
+    const t = document.createElement('div'); t.className = 't'; t.textContent = TIPOS[d.tipo] || d.tipo;
+    const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = `${s.k} · ${d.gravidade}`; t.appendChild(pill);
+    const ds = document.createElement('div'); ds.className = 'd'; ds.textContent = d.descricao || '';
+    body.append(t, ds);
+    if (d.acao) { const a = document.createElement('div'); a.className = 'a'; a.textContent = '→ ' + d.acao; body.appendChild(a); }
+    const x = document.createElement('button'); x.className = 'small'; x.textContent = d.off ? 'Restaurar' : '✕ Ignorar';
+    x.onclick = e => { e.stopPropagation(); d.off = !d.off; refresh(); };
+    const acts = document.createElement('div'); acts.className = 'acts'; acts.appendChild(x); body.appendChild(acts);
+    el.append(th, body);
+    el.onclick = () => { p.sel = p.sel === i ? -1 : i; refresh(); };
+    list.appendChild(el);
+  });
+}
+
+function refreshControls(){
+  const has = state.photos.length > 0, p = cur();
+  $('empty').hidden = has; cv.hidden = !has; $('photoBar').hidden = !has;
+  $('analyze').disabled = !has || state.busy;
+  const pending = state.photos.some(q => !q.result);
+  $('analyze').textContent = pending ? 'Analisar' : 'Reanalisar esta foto';
+  $('analyze').classList.toggle('primary', pending && has);
+  $('save').disabled = !(p && p.result);
+  if (p) { $('lado').value = p.lado; $('lado').disabled = !!p.perto; }
+}
+
+function refresh(){ updateCoverage(); updateThumbs(); updateSummary(); updateList(); refreshControls(); render(); }
+
+/* ---------- fotos ---------- */
+function loadImage(src){
+  return new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('Não foi possível ler a imagem.')); im.src = src; });
+}
+function shrink(im, max){
+  const s = Math.min(1, max / Math.max(im.width, im.height));
+  const c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s);
+  c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+  return c;
+}
+// ajusta para o envio à IA: reduz fotos grandes e amplia trechos pequenos (lado maior entre 1000 e ANALYSIS_SIDE)
+function fitForAI(c){
+  const long = Math.max(c.width, c.height);
+  const s = long < 1000 ? 1000 / long : Math.min(1, ANALYSIS_SIDE / long);
+  if (s === 1) return c;
+  const o = document.createElement('canvas'); o.width = Math.round(c.width * s); o.height = Math.round(c.height * s);
+  const g = o.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, o.width, o.height);
+  return o;
+}
+function defaultLado(){
+  if (state.pending) { const l = state.pending; state.pending = null; return l; }
+  if (!state.photos.some(p => p.lado === 'esq')) return 'esq';
+  if (!state.photos.some(p => p.lado === 'dir')) return 'dir';
+  return 'outra';
+}
+function addPhoto(canvas, lado, result){
+  const p = { id: ++uid, lado: lado || defaultLado(), img: canvas, thumb: shrink(canvas, 220).toDataURL('image/jpeg', .7), result: null, sel: -1 };
+  if (result) p.result = result;
+  state.photos.push(p); state.cur = state.photos.length - 1;
+  return p;
+}
+function selectPhoto(i){ state.cur = i; refresh(); }
+async function handleFiles(files){
+  const list = [...files]; if (!list.length) return;
+  const room = MAX_PHOTOS - state.photos.length;
+  if (room <= 0) { setStatus(`Limite de ${MAX_PHOTOS} fotos por inspeção.`, true); return; }
+  try {
+    for (const f of list.slice(0, room)) {
+      const url = URL.createObjectURL(f);
+      try {
+        const ph = addPhoto(shrink(await loadImage(url), MAX_SIDE), state.perto ? 'perto' : undefined);
+        if (ph.lado === 'perto' && state.perto) { ph.perto = state.perto; state.perto = null; }
+      } finally { URL.revokeObjectURL(url); }
+    }
+    refresh();
+    setStatus(list.length > room ? `Só ${room} foto(s) couberam no limite.` : 'Foto(s) carregada(s). Clique em Analisar.');
+    if ($('auto').checked) analyze();
+  } catch(err){ state.pending = null; setStatus(err.message, true); }
+}
+['fileCam', 'fileMany'].forEach(id => $(id).onchange = async e => { if (id === 'fileMany') state.perto = null; await handleFiles(e.target.files); e.target.value = ''; });
+// tocar em "Tirar foto" (ou "Enviar fotos") cancela um pedido de foto de perto/lado que ficou pendente
+document.querySelectorAll('label.btn').forEach(l => l.addEventListener('click', e => { if (e.target.tagName !== 'INPUT') { state.perto = null; state.pending = null; } }));
+$('lado').onchange = () => { const p = cur(); if (p) { p.lado = $('lado').value; refresh(); } };
+$('remove').onclick = () => {
+  if (state.cur < 0) return;
+  state.photos.splice(state.cur, 1); state.cur = Math.min(state.cur, state.photos.length - 1);
+  setStatus(''); refresh();
+};
+
+/* ---------- análise por IA ---------- */
+const GUIDE = `Contexto do material: os lotes são RETANGULARES; vistos de frente, cada lote tem uma face retangular delimitada por linhas de divisão. Defeitos aparecem no meio da face, nos cantos, nas laterais e nas extremidades do lote. Os vãos escuros e retilíneos entre lotes sobrepostos, alinhados ao longo da pilha, NÃO são defeito: são os espaços onde a empilhadeira coloca o garfo para erguer o lote. Nunca marque o vão em si como defeito.
+
+- calco_faltando (FALHA GRAVE, gravidade 80 a 100): os barrotes (calços) ficam embaixo de cada lote, no vão do garfo, e seguem um padrão de fixação: blocos de madeira em colunas verticais alinhadas, com espaçamento regular, normalmente casados com as fitas verticais. Compare todos os vãos e lotes entre si: um ponto onde a sequência de blocos não é igual à das demais (bloco ausente, coluna sem bloco, espaçamento irregular) indica falta de barrote; o bloco faltando aparece como espaço vazio (escuro/vazado) com a largura de um bloco. Também é calço faltando o lote apoiado direto sobre o lote de baixo ou sobre o piso, sem blocos. Marque o ponto onde o bloco deveria estar; nunca classifique como "dano".
+- furo_garfo (CRÍTICO, gravidade 80 a 100): furos, rasgos, lascas ou quebras causados pelo garfo da empilhadeira, no próprio lote: bordas, cantos, extremidades, laterais e, às vezes, o meio da face. Aparecem como pequenas rupturas de formato irregular (não retangular): lasca, dente, buraco, trecho escuro ou amassado, fibra exposta, borda desfiada. São pequenos: examine bordas e cantos com atenção. Não confunda com o vão do garfo, que é retilíneo e alinhado.
+- dano: deformação do retângulo da face do lote. Se algum canto deforma o retângulo (amassado, arredondado, quebrado, mais escuro) ou a linha de divisão está torta, é possível defeito. Também batidas na face (áreas escuras/pretas). Marcas irregulares na borda são furo_garfo ou calco_faltando, não dano.
+- mancha_cor: diferença de coloração dentro da face do lote: de branco para mais escuro, de branco para esverdeado, de escuro para mais claro (umidade, mofo, sujeira, descoloração, batida). ATENÇÃO em lotes plastificados (stretch): o plástico reflete a luz e cria reflexos brancos e brilhos que NÃO são defeito. Reflexo muda de forma conforme as dobras do plástico; mancha tem contorno próprio e não acompanha as dobras. Se não der para distinguir reflexo de mancha, registre em "duvidas".
+- filme_stretch: plástico stretch solto, pendurado, rasgado ou aberto é defeito. Se os lotes da carga usam stretch, todos precisam estar plastificados. Se nenhum lote da carga usa stretch, não reporte a ausência.
+- etiqueta: etiquetas rasgadas, penduradas, caindo, rasuradas, ilegíveis ou ausentes onde deveriam existir. As etiquetas seguem posição e orientação padrão (mesmo canto e na horizontal em cada lote): etiqueta fora de posição, torta, na vertical, descolada ou pendurada está caindo.
+- fita_faltando: cada lote leva fitas verdes verticais que cintam o lote, em posições regulares e em número parecido com os lotes vizinhos do mesmo tipo. Lote sem nenhuma fita, ou com menos fitas que os vizinhos (trecho largo sem fita onde os outros têm), está com fita faltando.
+- fita_solta: fitas verdes DO PRÓPRIO LOTE frouxas, soltas, tortas ou rompidas.
+- empilhamento: cargas tortas ou inclinadas, lotes desalinhados ou salientes, material encavalado sobre o lote da lateral (um lote que invade ou se apoia em cima do lote ao lado). Lote sobre lote na vertical é o normal e não é defeito.
+- embalagem_fora_padrao: embalagem incompleta ou danificada em relação ao tipo de embalagem do próprio lote (ver regra abaixo).
+
+Embalagens variam conforme o material: há lotes com capa de papelão (impressa Arauco) e há lotes SOMENTE com filme stretch e calços, sem papelão. Os dois são padrão válido: NUNCA reporte ausência de papelão, nem "embalagem fora do padrão" só porque um lote não tem papelão e o vizinho tem. Compare cada lote apenas com lotes do mesmo tipo de embalagem. Papelão rasgado, solto ou amassado numa capa existente é defeito (dano).
+
+Dúvidas ("duvidas"): se algo parece defeito mas você não tem certeza (reflexo do plástico, sombra, distância, desfoque, ângulo), NÃO decida no escuro e não invente: registre em "duvidas" com a caixa, um motivo curto e o que fotografar de perto ("pedir"). Defeitos claros vão em "defeitos".`;
+
+function ignoreRules(){
+  const l = [];
+  if ($('ignCintas').checked) l.push('- Cintas/cintos de amarração do veículo (pendurados, soltos, caídos ou esticados) NÃO são defeito: serão usados para amarrar a carga depois. Ignore-os por completo, inclusive como "fita_solta".');
+  if ($('ignReguas').checked) l.push('- Réguas, ripas ou travessas de madeira já posicionadas sobre a carga fazem parte da arrumação: não conte como defeito nem como calço faltando.');
+  l.push('- Pilhas, lotes e materiais ao fundo ou nas laterais que não pertencem à carga inspecionada, a lona/cortina do sider, a estrutura do veículo, o piso, rodas e o ambiente.');
+  return l.join('\n');
+}
+const BOX_FMT = '{"x":0,"y":0,"w":0,"h":0}';
+const DUV_FMT = `{"box":${BOX_FMT},"motivo":"o que parece ser e por que não deu para decidir","pedir":"o que fotografar de perto"}`;
+const DEF_FMT = `{"tipo":"${Object.keys(TIPOS).join('|')}","gravidade":1-100,"descricao":"...","acao":"ação recomendada curta","box":${BOX_FMT}}`;
+
+function buildPrompt(p){
+  return `Você é inspetor de qualidade de expedição de painéis de madeira (chapas MDF/MDP em lotes) da Arauco. Analise a foto de uma carga (sobre veículo ou em área de separação) e avalie a qualidade visual do material carregado.
+
+Esta foto mostra: ${LADOS[p.lado]} da carga.
+
+Cada material tem embalagem própria, mas os insumos do lote (calços/barrotes, fitas, etiquetas, filme stretch) devem estar perfeitamente dispostos. Procure:
+${GUIDE}
+
+NÃO considere defeito, e não avalie:
+${ignoreRules()}
+
+Áreas não avaliáveis ("nao_avaliaveis"): use SOMENTE para (a) pilhas/objetos que não pertencem à carga e (b) partes da carga realmente encobertas pela lona ou por outro objeto. NUNCA marque como não avaliável uma parte da própria carga só porque está escura, distante ou pouco nítida: nesse caso avalie, e reporte suspeitas com gravidade moderada. Mantenha cada motivo curto (até 6 palavras).
+
+Regras: reporte apenas o que é visível; não invente defeitos. Caixas em coordenadas normalizadas 0–1 ((x,y) = canto superior esquerdo). Liste TODOS os lotes visíveis e avaliáveis em "lotes" com sua qualidade e as CONTAGENS abaixo (o app usa essas contagens para detectar fita e calço faltando, então conte com exatidão, lote por lote, sem estimar pelos vizinhos):
+- "fitas": número de fitas/cintas verdes verticais que cruzam o lote (conte uma a uma).
+- "calcos_abaixo": "sim" se há blocos de madeira (calços/barrotes) visíveis no vão logo abaixo do lote; "nao" se o lote está apoiado direto no lote de baixo ou no piso, sem vão nem blocos; "oculto" se não dá para ver.
+- "calcos_qtd": quantos blocos de calço aparecem nesse vão (0 se "nao" ou "oculto"). Se parte da carga ficou encoberta ou falta um ângulo para concluir, peça fotos em "fotos_adicionais" (lado: esq, dir, tras, front, topo ou outra) com o motivo.
+
+Responda SOMENTE com um JSON (sem texto extra, sem markdown) neste formato:
+{"nota_geral":0-100,"resumo":"1-3 frases em português","lotes":[{"box":${BOX_FMT},"qualidade":0-100,"fitas":0,"calcos_abaixo":"sim|nao|oculto","calcos_qtd":0}],"defeitos":[${DEF_FMT}],"duvidas":[${DUV_FMT}],"nao_avaliaveis":[{"box":${BOX_FMT},"motivo":"..."}],"fotos_adicionais":[{"lado":"esq|dir|tras|front|topo|outra","motivo":"..."}]}`;
+}
+
+function buildTilePrompt(p, t){
+  return `Você é inspetor de qualidade de expedição de painéis de madeira (chapas MDF/MDP em lotes) da Arauco. Esta imagem é um TRECHO AMPLIADO (coluna ${t.c + 1} de ${t.C}, linha ${t.r + 1} de ${t.R}) da foto da ${LADOS[p.lado]} de uma carga. Inspecione o trecho com atenção a detalhes pequenos e liste SOMENTE defeitos que você vê neste trecho:
+${GUIDE}
+
+NÃO considere defeito, e não avalie:
+${ignoreRules()}
+
+Regras: reporte apenas o que é visível, sem inventar. Se algo é suspeito mas pouco nítido, reporte com gravidade moderada em vez de ignorar. Defeitos cortados pela borda do trecho podem ser reportados mesmo assim. Caixas em coordenadas normalizadas 0–1 relativas a ESTE trecho ((x,y) = canto superior esquerdo).
+
+Responda SOMENTE com um JSON (sem texto extra, sem markdown), com lista vazia se não houver nada:
+{"defeitos":[${DEF_FMT}],"duvidas":[${DUV_FMT}]}`;
+}
+
+function buildCloseupPrompt(parent, q){
+  return `Você é inspetor de qualidade de expedição de painéis de madeira (chapas MDF/MDP em lotes) da Arauco. Esta é uma FOTO DE PERTO, tirada para esclarecer uma dúvida numa foto da ${parent ? LADOS[parent.lado] : 'carga'}. Dúvida original: "${q ? q.motivo : 'ponto sem classificação'}"${q && q.pedir ? ` (pedido: ${q.pedir})` : ''}.
+
+Olhe com atenção e decida se há um defeito real. Critérios:
+${GUIDE}
+
+NÃO considere defeito, e não avalie:
+${ignoreRules()}
+
+Se continuar impossível concluir (desfocado, escuro, longe demais), responda conclusivo=false e explique o que falta. Caixa em coordenadas normalizadas 0–1 relativas a ESTA foto ((x,y) = canto superior esquerdo) e marcando o defeito, se houver.
+
+Responda SOMENTE com um JSON (sem texto extra, sem markdown):
+{"e_defeito":true,"conclusivo":true,"tipo":"${Object.keys(TIPOS).join('|')}","gravidade":1-100,"descricao":"...","acao":"ação recomendada curta","box":${BOX_FMT},"motivo":"por que você concluiu isso"}`;
+}
+
+/* ---------- análise detalhada em trechos ---------- */
+function tileGrid(w, h){
+  const asp = w / h, C = asp >= 1.6 ? 3 : asp >= .8 ? 2 : 2, R = asp <= .8 ? 3 : 2, ov = .15, tiles = [];
+  const tw = w / (C - (C - 1) * ov), th = h / (R - (R - 1) * ov);
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++)
+    tiles.push({ c, r, C, R, x: c * tw * (1 - ov), y: r * th * (1 - ov), w: tw, h: th });
+  return tiles;
+}
+function cropTile(img, t){
+  const x = Math.round(Math.min(t.x, img.width - 1)), y = Math.round(Math.min(t.y, img.height - 1));
+  const w = Math.round(Math.min(t.w, img.width - x)), h = Math.round(Math.min(t.h, img.height - y));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(img, x, y, w, h, 0, 0, w, h);
+  return fitForAI(c);
+}
+const iou = (a, b) => {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  if (w <= 0 || h <= 0) return 0;
+  return w * h / (a.w * a.h + b.w * b.h - w * h);
+};
+const inside = (px, py, b) => px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h;
+function mergeDefects(base, extra, naos){
+  const list = base.slice();
+  for (const e of extra) {
+    const cx = e.box.x + e.box.w / 2, cy = e.box.y + e.box.h / 2;
+    if (naos.some(n => inside(cx, cy, n.box))) continue;
+    const dup = list.find(d => iou(d.box, e.box) > .2 || inside(cx, cy, d.box) || inside(d.box.x + d.box.w / 2, d.box.y + d.box.h / 2, e.box));
+    if (dup) {
+      if (e.tipo !== dup.tipo && dup.tipo === 'dano') { dup.tipo = e.tipo; dup.descricao = e.descricao; dup.acao = e.acao; }
+      dup.gravidade = Math.max(dup.gravidade, e.gravidade);
+    } else list.push(e);
+  }
+  return list;
+}
+// Fita e calço faltando por comparação entre lotes (contagens da IA)
+function deriveFromInventory(lotes){
+  const out = [], med = a => { const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+  const add = (tipo, g, l, box, txt, acao) => out.push({ tipo, gravidade: g, descricao: txt, acao, box: normBox(box || l.box), off: false });
+  const fl = lotes.filter(l => l.fitas !== null);
+  if (fl.length >= 3) {
+    const mf = med(fl.map(l => l.fitas)), md = med(fl.map(l => l.fitas / l.box.w));
+    fl.forEach(l => {
+      if (l.fitas === 0 && mf >= 2) add('fita_faltando', 70, l, null, `Lote sem nenhuma fita; os demais têm ${mf} (contagem).`, 'Fitar o lote antes de liberar.');
+      else if (mf - l.fitas >= 2 && l.fitas / l.box.w < .7 * md) add('fita_faltando', 55, l, null, `Lote com ${l.fitas} fita(s); os demais têm cerca de ${mf} (contagem).`, 'Conferir se falta fita.');
+    });
+  }
+  const sim = lotes.filter(l => l.calcos_abaixo === 'sim');
+  if (sim.length >= 2) {
+    lotes.filter(l => l.calcos_abaixo === 'nao').forEach(l => add('calco_faltando', 85, l,
+      { x: l.box.x, y: l.box.y + l.box.h * .8, w: l.box.w, h: l.box.h * .2 }, 'Lote apoiado direto, sem calços no vão; os demais têm (contagem).', 'Calçar o lote.'));
+    const sq = sim.filter(l => l.calcos_qtd > 0);
+    if (sq.length >= 3) {
+      const mq = med(sq.map(l => l.calcos_qtd)), mdq = med(sq.map(l => l.calcos_qtd / l.box.w));
+      sq.forEach(l => { if (mq - l.calcos_qtd >= 2 && l.calcos_qtd / l.box.w < .7 * mdq) add('calco_faltando', 80, l,
+        { x: l.box.x, y: l.box.y + l.box.h * .8, w: l.box.w, h: l.box.h * .2 }, `Lote com ${l.calcos_qtd} calço(s) no vão; os demais têm cerca de ${mq} (contagem).`, 'Conferir se falta calço.'); });
+    }
+  }
+  return out;
+}
+function mergeDerived(list, derived, naos){
+  for (const e of derived) {
+    const cx = e.box.x + e.box.w / 2, cy = e.box.y + e.box.h / 2;
+    if (naos.some(n => inside(cx, cy, n.box))) continue;
+    const dup = list.find(d => d.tipo === e.tipo && iou(d.box, e.box) > .2);
+    if (dup) dup.gravidade = Math.max(dup.gravidade, e.gravidade); else list.push(e);
+  }
+  return list;
+}
+async function pool(items, n, fn){
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
+}
+
+function ladoKey(s){
+  s = String(s || '').toLowerCase();
+  if (LADOS[s]) return s;
+  if (/esq/.test(s)) return 'esq'; if (/dir/.test(s)) return 'dir'; if (/tras|post/.test(s)) return 'tras';
+  if (/front|frente/.test(s)) return 'front'; if (/topo|sup|cima/.test(s)) return 'topo';
+  return 'outra';
+}
+function sanitize(raw){
+  const num = (v, a, b, d) => { v = +v; return isFinite(v) ? Math.min(b, Math.max(a, v)) : d; };
+  const cnt = v => (v === null || v === undefined || v === '' || !isFinite(+v)) ? null : Math.max(0, Math.round(+v));
+  const lotes = (raw.lotes || []).map(l => ({
+    box: normBox(l.box), qualidade: num(l.qualidade, 0, 100, 100), fitas: cnt(l.fitas),
+    calcos_abaixo: ['sim', 'nao', 'oculto'].includes(l.calcos_abaixo) ? l.calcos_abaixo : null, calcos_qtd: cnt(l.calcos_qtd)
+  })).filter(l => l.box);
+  const defeitos = (raw.defeitos || []).map(d => ({
+    tipo: TIPOS[d.tipo] ? d.tipo : 'outro', gravidade: CRIT.has(d.tipo) ? num(d.gravidade, 80, 100, 90) : num(d.gravidade, 1, 100, 50),
+    descricao: String(d.descricao || ''), acao: String(d.acao || ''), box: normBox(d.box), off: false
+  })).filter(d => d.box);
+  const duvidas = (raw.duvidas || []).map(q => ({ box: normBox(q.box), motivo: String(q.motivo || ''), pedir: String(q.pedir || ''), estado: 'aberta' })).filter(q => q.box).slice(0, 6);
+  const nao_avaliaveis = (raw.nao_avaliaveis || []).map(n => ({ box: normBox(n.box), motivo: String(n.motivo || '') })).filter(n => n.box);
+  const fotos_adicionais = (raw.fotos_adicionais || []).map(f => ({ lado: ladoKey(f.lado), motivo: String(f.motivo || '') }));
+  let nota = num(raw.nota_geral, 0, 100, NaN);
+  if (!isFinite(nota)) nota = Math.max(0, 100 - penalty(defeitos) * .9);
+  return { nota_geral: nota, resumo: String(raw.resumo || ''), lotes, defeitos, duvidas, nao_avaliaveis, fotos_adicionais };
+}
+function parseJSON(text){
+  const a = text.indexOf('{'), b = text.lastIndexOf('}');
+  if (a < 0 || b < a) throw new Error('A IA não retornou uma inspeção válida. Tente novamente.');
+  return JSON.parse(text.slice(a, b + 1));
+}
+const toB64 = blob => new Promise((ok, no) => { const f = new FileReader(); f.onload = () => ok(String(f.result).split(',')[1]); f.onerror = no; f.readAsDataURL(blob); });
+
+async function callModel(blob, prompt){
+  if (HAS_CLAUDE) {
+    const sample = await claude.use('sample');
+    if (sample) return await sample.json(prompt, { images: [blob], modelTier: 'complex', cache: false });
+  }
+  const key = $('key').value.trim(), tok = $('token').value.trim(), custom = $('endpoint').value.trim();
+  const endpoint = custom || 'https://api.anthropic.com/v1/messages';
+  if (!key && !tok && !custom) { $('cfgCard').hidden = false; $('cfg').open = true; throw new Error('Configure o servidor de análise e o código de acesso em "Configuração da IA".'); }
+  if (!key && custom && !tok) { $('cfgCard').hidden = false; $('cfg').open = true; throw new Error('Informe o código de acesso do app em "Configuração da IA".'); }
+  const headers = { 'content-type': 'application/json' };
+  if (key) { headers['anthropic-version'] = '2023-06-01'; headers['anthropic-dangerous-direct-browser-access'] = 'true'; headers['x-api-key'] = key; }
+  else headers['x-app-token'] = tok;
+  const resp = await fetch(endpoint, { method:'POST', headers, body: JSON.stringify({
+    model: $('model').value, max_tokens: 4096,
+    messages:[{ role:'user', content:[
+      { type:'image', source:{ type:'base64', media_type:'image/jpeg', data: await toB64(blob) } },
+      { type:'text', text: prompt } ] }]
+  }) });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error((data.error && data.error.message) || `Erro ${resp.status} na API.`);
+  return parseJSON((data.content || []).filter(c => c.type === 'text').map(c => c.text).join(''));
+}
+
+const toJpeg = c => new Promise(ok => c.toBlob(ok, 'image/jpeg', .9));
+const asObj = raw => typeof raw === 'string' ? parseJSON(raw) : raw;
+
+async function inspect(p, onStep){
+  const res = sanitize(asObj(await callModel(await toJpeg(fitForAI(p.img)), buildPrompt(p))));
+  res.detalhe = null;
+  if ($('detalhe').checked) {
+    const tiles = tileGrid(p.img.width, p.img.height), found = [], foundQ = [];
+    let done = 0, fail = 0, lastErr = null;
+    await pool(tiles, 3, async t => {
+      try {
+        const raw = asObj(await callModel(await toJpeg(cropTile(p.img, t)), buildTilePrompt(p, t)));
+        const sd = sanitize({ defeitos: raw.defeitos, duvidas: raw.duvidas });
+        const mapBox = b => normBox({ x: (t.x + b.x * t.w) / p.img.width, y: (t.y + b.y * t.h) / p.img.height, w: b.w * t.w / p.img.width, h: b.h * t.h / p.img.height });
+        sd.defeitos.forEach(d => { d.box = mapBox(d.box); if (d.box) found.push(d); });
+        sd.duvidas.forEach(q => { q.box = mapBox(q.box); if (q.box) foundQ.push(q); });
+      } catch(e){ fail++; lastErr = e; }
+      onStep && onStep(++done, tiles.length);
+    });
+    res.defeitos = mergeDefects(res.defeitos, found, res.nao_avaliaveis);
+    res.duvidas = res.duvidas.concat(foundQ);
+    res.detalhe = { total: tiles.length, fail, err: lastErr && (lastErr.message || String(lastErr)) };
+  }
+  res.defeitos = mergeDerived(res.defeitos, deriveFromInventory(res.lotes), res.nao_avaliaveis);
+  res.duvidas = mergeDoubts(res.duvidas, res.defeitos, res.nao_avaliaveis);
+  capNota(res);
+  p.result = res; p.sel = -1;
+}
+
+// a nota nunca fica mais alta do que os defeitos ativos permitem
+function capNota(res){
+  const act = res.defeitos.filter(d => !d.off);
+  res.nota_geral = Math.min(res.nota_geral, Math.max(act.length ? 5 : 0, 100 - penalty(act) * .9));
+}
+
+// dúvidas: sem repetir, fora de áreas não avaliáveis e sem cobrir um defeito já registrado
+function mergeDoubts(list, defs, naos){
+  const out = [];
+  for (const q of list) {
+    const cx = q.box.x + q.box.w / 2, cy = q.box.y + q.box.h / 2;
+    if (naos.some(n => inside(cx, cy, n.box))) continue;
+    if (defs.some(d => !d.off && (iou(d.box, q.box) > .1 || inside(cx, cy, d.box)))) continue;
+    if (out.some(o => iou(o.box, q.box) > .2 || inside(cx, cy, o.box))) continue;
+    out.push(q);
+  }
+  return out.slice(0, 6);
+}
+
+// foto de perto: decide a dúvida da foto de origem (vira defeito ou some)
+async function inspectCloseup(p){
+  const parent = state.photos.find(f => f.id === p.perto.foto), q = parent && parent.result && parent.result.duvidas[p.perto.idx];
+  const raw = asObj(await callModel(await toJpeg(fitForAI(p.img)), buildCloseupPrompt(parent, q)));
+  const e = raw.e_defeito === true || raw.e_defeito === 'true', conclusivo = raw.conclusivo !== false && raw.conclusivo !== 'false';
+  const tipo = TIPOS[raw.tipo] ? raw.tipo : 'outro', gv = +raw.gravidade;
+  const grav = !e ? 0 : CRIT.has(tipo) ? Math.min(100, Math.max(80, isFinite(gv) ? gv : 90)) : Math.min(100, Math.max(1, isFinite(gv) ? gv : 50));
+  const d = { tipo, gravidade: grav, descricao: String(raw.descricao || raw.motivo || ''), acao: String(raw.acao || ''), box: normBox(raw.box) || { x: .15, y: .15, w: .7, h: .7 }, off: false };
+  const texto = String(raw.motivo || raw.descricao || '');
+  p.result = { nota_geral: e ? Math.max(5, 100 - grav * .9) : 100, resumo: (e ? `Confirmado: ${TIPOS[tipo]}. ` : conclusivo ? 'Não é defeito. ' : 'Sem conclusão: ') + texto,
+    lotes: [], defeitos: e ? [d] : [], duvidas: [], nao_avaliaveis: [], fotos_adicionais: [], detalhe: null };
+  p.sel = -1;
+  if (!q) return;
+  if (!conclusivo) { q.motivo = 'Foto de perto sem conclusão: ' + texto; return; }
+  q.estado = 'resolvida'; q.veredito = { e_defeito: e, texto: e ? `${TIPOS[tipo]} (${sev(grav).k}). ${texto}` : texto };
+  if (e) { parent.result.defeitos.push({ ...d, box: q.box, descricao: 'Confirmado em foto de perto: ' + d.descricao, perto: p.id }); capNota(parent.result); }
+}
+
+async function analyze(){
+  if (state.busy || !state.photos.length) return;
+  let todo = state.photos.filter(p => !p.result);
+  if (!todo.length) todo = [cur()];
+  state.busy = true; refreshControls();
+  let ok = 0, warn = '';
+  try {
+    for (const [i, p] of todo.entries()) {
+      const head = `Analisando foto ${i + 1}/${todo.length} (${LADOS[p.lado]})`;
+      setStatus(head + '…', false, true);
+      await (p.perto ? inspectCloseup(p) : inspect(p, (d, n) => setStatus(`${head} · trecho ${d}/${n}`, false, true))); ok++;
+      if (p.result.detalhe && p.result.detalhe.fail) warn += ` ${p.result.detalhe.fail} de ${p.result.detalhe.total} trechos falharam (${p.result.detalhe.err}).`;
+      state.cur = state.photos.indexOf(p); refresh();
+    }
+    setStatus('Análise concluída.' + warn, !!warn);
+  } catch(err){ setStatus((ok ? `${ok} foto(s) analisada(s). ` : '') + (err.message || String(err)), true); }
+  state.busy = false; refreshControls();
+  // fotos tiradas durante a análise entram na fila
+  if ($('auto').checked && ok === todo.length && state.photos.some(q => !q.result)) analyze();
+}
+$('analyze').onclick = analyze;
+
+/* ---------- exemplo (sem IA) ---------- */
+$('demo').onclick = () => {
+  const c = document.createElement('canvas'); c.width = 1200; c.height = 800; const g = c.getContext('2d');
+  g.fillStyle = '#5a6068'; g.fillRect(0, 0, 1200, 800);
+  g.fillStyle = '#3b4047'; g.fillRect(0, 640, 1200, 160);
+  [[60,300,330,330],[430,300,330,330]].forEach(([x,y,w,h], n) => {
+    g.fillStyle = '#c9a36a'; g.fillRect(x, y, w, h);
+    g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(x, y, w, h);
+    g.fillStyle = '#8a6a3a'; for (let k = 0; k < 5; k++) { if (n === 1 && k === 3) continue; g.fillRect(x + 10 + k * 66, y + h - 40, 40, 40); }
+    g.fillStyle = '#eee'; g.fillRect(x + 20, y + 20, 90, 60);
+  });
+  g.fillStyle = '#1c1c1c'; g.fillRect(120, 360, 84, 64);
+  g.fillStyle = '#3d4a3a'; g.fillRect(800, 280, 340, 370);
+  g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 6; g.beginPath(); g.moveTo(450, 330); g.lineTo(470, 480); g.stroke();
+  state.photos = []; state.cur = -1;
+  addPhoto(c, 'esq', sanitize({
+    nota_geral: 58, resumo: 'Exemplo ilustrativo: calço faltando e etiqueta caída no lote central, batida no primeiro lote. Lona encobre o último lote.',
+    lotes: [ {box:{x:.05,y:.375,w:.275,h:.41},qualidade:70}, {box:{x:.358,y:.375,w:.275,h:.41},qualidade:45} ],
+    defeitos: [
+      { tipo:'calco_faltando', gravidade:80, descricao:'Quarto barrote ausente: vão irregular na base do lote.', acao:'Recalçar antes de liberar.', box:{x:.47,y:.67,w:.12,h:.09} },
+      { tipo:'etiqueta', gravidade:45, descricao:'Etiqueta caída/desalinhada.', acao:'Reetiquetar.', box:{x:.37,y:.4,w:.07,h:.07} },
+      { tipo:'dano', gravidade:75, descricao:'Marca escura de batida na face do lote.', acao:'Avaliar chapas e separar avariadas.', box:{x:.10,y:.45,w:.07,h:.08} }
+    ],
+    duvidas: [ { box:{x:.2,y:.5,w:.08,h:.08}, motivo:'Reflexo do plástico ou mancha de umidade?', pedir:'Foto de perto da face do lote, sem reflexo' } ],
+    nao_avaliaveis: [ { box:{x:.667,y:.35,w:.283,h:.46}, motivo:'Lona do sider encobre a carga' } ],
+    fotos_adicionais: [ { lado:'dir', motivo:'Ver o lado direito, onde a lona encobre os lotes.' } ]
+  }));
+  setStatus('Exemplo carregado (sem chamar a IA).'); refresh();
+};
+
+/* ---------- controles ---------- */
+['tMark','tRot','tFoco','tNao'].forEach(id => $(id).oninput = () => render());
+cv.addEventListener('click', e => {
+  const p = cur(); if (!p || !p.result || !p._hits || !p._hits.length) return;
+  const r = cv.getBoundingClientRect(), s = cv.width / r.width, x = (e.clientX - r.left) * s, y = (e.clientY - r.top) * s;
+  for (let k = p._hits.length - 1; k >= 0; k--) {
+    const h = p._hits[k];
+    if (x < h.x || x > h.x + h.w || y < h.y || y > h.y + h.h) continue;
+    if (h.k === 'x') {
+      if (h.t === 'd') p.result.defeitos[h.i].off = true; else p.result.duvidas[h.i].estado = 'ignorada';
+      p.sel = -1; setStatus('Ponto ignorado. Use "Restaurar" na lista para desfazer.');
+    } else p.sel = p.sel === h.i ? -1 : h.i;
+    refresh(); return;
+  }
+});
+let resizeT = 0;
+window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => render(), 150); });
+$('save').onclick = async () => {
+  const p = cur(); if (!p) return;
+  const name = `inspecao-${p.lado}.png`;
+  try {
+    const dl = HAS_CLAUDE ? await claude.use('downloads') : null;
+    const blob = await new Promise(ok => cv.toBlob(ok, 'image/png'));
+    if (dl) { await dl.save({ filename: name, data: blob }); return; }
+    const a = document.createElement('a'); a.download = name; a.href = URL.createObjectURL(blob); a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch(err){ setStatus(err.message || 'Não foi possível salvar.', true); }
+};
+/* ---------- envio (foto analisada + resumo) ---------- */
+const readMeta = () => ({ emb: $('mEmb').value.trim(), placa: $('mPlaca').value.trim().toUpperCase(), op: $('mOp').value.trim() });
+const fmtDate = d => d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+function overallNota(all){ const done = all.filter(p => p.lado !== 'perto'); const ns = done.map(notaPhoto); return done.length === 1 ? ns[0] : .6 * Math.min(...ns) + .4 * ns.reduce((a, b) => a + b, 0) / ns.length; }
+
+// foto com marcações + faixa de identificação (embarque, placa, nota, data)
+function exportCanvas(p){
+  const full = document.createElement('canvas');
+  render(p, full, { foco: false, sel: -1, marks: true, rot: true, nao: true });
+  const s = Math.min(1, 2000 / Math.max(full.width, full.height)), W = Math.round(full.width * s), H = Math.round(full.height * s);
+  const m = readMeta(), n = notaPhoto(p), act = p.result.defeitos.filter(d => !d.off).length;
+  const isP = p.lado === 'perto', f1 = Math.max(16, W / 34), f2 = Math.max(13, W / 44), pad = f1 * .7, F = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+  const lines = [
+    [`${m.emb ? 'EMBARQUE ' + m.emb : 'INSPEÇÃO DE CARGA'}${m.placa ? '  ·  PLACA ' + m.placa : ''}`, `700 ${f1}px ${F}`, '#ffffff', f1],
+    [isP ? `Foto de perto  ·  ${p.result.resumo}` : `${LADOS[p.lado]}  ·  Nota ${Math.round(n)} (${classify(n)})  ·  ${act} ponto(s) de atenção`, `600 ${f2}px ${F}`, '#e8edf3', f2],
+    [`${fmtDate(new Date())}${m.op ? '  ·  ' + m.op : ''}`, `400 ${f2 * .9}px ${F}`, '#96a4b3', f2 * .9]
+  ];
+  const band = Math.round(pad * 2 + lines.reduce((a, l) => a + l[3] * 1.35, 0));
+  const out = document.createElement('canvas'); out.width = W; out.height = H + band;
+  const g = out.getContext('2d'); g.drawImage(full, 0, 0, W, H);
+  g.fillStyle = '#0a0e13'; g.fillRect(0, H, W, band);
+  g.fillStyle = isP ? DUV : riskColor(100 - n); g.fillRect(0, H, W, Math.max(4, W / 200));
+  let y = H + pad; g.textBaseline = 'top'; g.textAlign = 'left';
+  lines.forEach(([t, font, col, sz]) => { g.font = font; g.fillStyle = col; g.fillText(t, pad, y, W - pad * 2); y += sz * 1.35; });
+  return out;
+}
+
+function reportText(){
+  const done = state.photos.filter(p => p.result), m = readMeta(), n = overallNota(done);
+  const L = ['INSPEÇÃO DE CARGA'];
+  const id = [m.emb && `Embarque ${m.emb}`, m.placa && `Placa ${m.placa}`, m.op && `Operador ${m.op}`].filter(Boolean).join(' · ');
+  if (id) L.push(id);
+  L.push(fmtDate(new Date()), `Resultado: ${Math.round(n)}/100 – ${classify(n)}`);
+  done.forEach(p => {
+    const act = p.result.defeitos.map((d, i) => ({ d, i })).filter(o => !o.d.off).sort((a, b) => b.d.gravidade - a.d.gravidade);
+    if (p.lado === 'perto') { L.push('', `Foto de perto – ${p.result.resumo}`); return; }
+    L.push('', `${LADOS[p.lado]} – nota ${Math.round(notaPhoto(p))}`);
+    if (!act.length) L.push('Sem pontos de atenção.');
+    act.slice(0, 8).forEach(({ d, i }) => L.push(`${i + 1}. ${CURTO[d.tipo] || d.tipo} (${sev(d.gravidade).k}) – ${d.descricao}`));
+    if (act.length > 8) L.push(`+${act.length - 8} ponto(s) na foto.`);
+    p.result.duvidas.filter(q => q.estado !== 'ignorada').forEach(q => L.push(q.estado === 'resolvida' ? `Dúvida resolvida: ${q.veredito.e_defeito ? 'é defeito – ' : 'não é defeito – '}${q.veredito.texto}` : `Dúvida em aberto: ${q.motivo} (fotografar de perto)`));
+    if (p.result.nao_avaliaveis.length) L.push('Não avaliável: ' + p.result.nao_avaliaveis.map(x => x.motivo).filter(Boolean).join('; '));
+  });
+  const miss = ['esq', 'dir'].filter(k => !state.photos.some(p => p.lado === k));
+  if (miss.length) L.push('', 'Atenção: falta foto da ' + miss.map(k => LADOS[k].toLowerCase()).join(' e ') + '.');
+  return L.join('\n');
+}
+
+async function saveFile(file){
+  const dl = HAS_CLAUDE ? await claude.use('downloads') : null;
+  if (dl) { await dl.save({ filename: file.name, data: file }); return; }
+  const a = document.createElement('a'); a.download = file.name; a.href = URL.createObjectURL(file); a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+async function enviar(){
+  const done = state.photos.filter(p => p.result); if (!done.length || state.busy) return;
+  $('enviar').disabled = true; setStatus('Preparando o envio…', false, true);
+  try {
+    const m = readMeta(), files = [];
+    for (const p of done) {
+      const blob = await new Promise(ok => exportCanvas(p).toBlob(ok, 'image/jpeg', .88));
+      files.push(new File([blob], `inspecao-${m.placa || 'carga'}-${p.lado}.jpg`, { type: 'image/jpeg' }));
+    }
+    const text = reportText(), title = `Inspeção de carga${m.placa ? ' ' + m.placa : ''}${m.emb ? ' – embarque ' + m.emb : ''}`;
+    try {
+      if (navigator.canShare && navigator.canShare({ files })) {
+        await navigator.share({ files, text, title });
+        $('fbCard').hidden = true; setStatus('Envio aberto no compartilhamento do aparelho.'); return;
+      }
+    } catch(e) { if (e && e.name === 'AbortError') { setStatus('Envio cancelado.'); return; } }
+    // sem compartilhamento de arquivos: salva as imagens e oferece atalhos com o texto
+    for (const f of files) await saveFile(f);
+    $('fbWa').href = 'https://wa.me/?text=' + encodeURIComponent(text);
+    $('fbMail').href = `mailto:${store.get('mailTo') || ''}?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}`;
+    $('fbCopy').onclick = () => { try { navigator.clipboard.writeText(text).then(() => setStatus('Texto copiado.'), () => setStatus('Não foi possível copiar.', true)); } catch(e) { setStatus('Não foi possível copiar.', true); } };
+    $('fbCard').hidden = false; setStatus('Imagens salvas. Use os atalhos ao lado para enviar o texto e anexe as fotos.');
+  } catch(err){ setStatus(err.message || 'Não foi possível preparar o envio.', true); }
+  finally { $('enviar').disabled = false; }
+}
+$('enviar').onclick = enviar;
+
+// nova inspeção: pede confirmação com um segundo toque
+let novoTimer = 0;
+$('novo').onclick = () => {
+  if (!$('novo').dataset.sure) {
+    $('novo').dataset.sure = '1'; $('novo').textContent = 'Confirmar?';
+    novoTimer = setTimeout(() => { delete $('novo').dataset.sure; $('novo').textContent = 'Nova inspeção'; }, 3000); return;
+  }
+  clearTimeout(novoTimer); delete $('novo').dataset.sure; $('novo').textContent = 'Nova inspeção';
+  state.photos = []; state.cur = -1; ['mEmb', 'mPlaca'].forEach(id => { $(id).value = ''; store.set(id, ''); });
+  $('fbCard').hidden = true; setStatus('Pronto para a próxima carga.'); refresh();
+};
+
+const lg = $('legend');
+SEV.slice().reverse().forEach(s => { const el = document.createElement('span'); el.style.setProperty('--sev', s.c); const b = document.createElement('b'); el.append(b, s.k); lg.appendChild(el); });
+refresh();
+if (state.cfgApplied) setStatus('Configuração aplicada neste aparelho.');
+})();
+</script>
