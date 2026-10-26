@@ -40,6 +40,15 @@
   button:focus-visible,.btn:focus-within,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   button.primary,.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
   button.small{padding:4px 8px;font-size:12px}
+  dialog{background:var(--panel);color:var(--ink);border:1px solid var(--bad);border-radius:var(--radius);padding:16px;width:min(92vw,420px)}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  dialog h2{margin:0 0 6px;font-size:16px}
+  dialog p{margin:0 0 10px;color:var(--dim)}
+  dialog .warnmsg{font-size:12px;margin:10px 0 0}
+  dialog label{display:block;margin:6px 0 4px;font-size:12px;color:var(--dim)}
+  dialog select,dialog textarea{width:100%;font:inherit;color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px}
+  dialog .bar{justify-content:flex-end;margin:8px 0 0}
+  .aud{font-size:12px;color:var(--warn);margin-top:4px}
   button:disabled{opacity:.5;cursor:default}
   input[type=file]{display:none}
   label.tog{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:13px}
@@ -162,7 +171,6 @@
       <label class="tog"><input type="checkbox" id="tMark" checked> Pontos de atenção</label>
       <label class="tog"><input type="checkbox" id="tRot" checked> Rótulos</label>
       <label class="tog"><input type="checkbox" id="tFoco" checked> Destacar (escurece o resto)</label>
-      <label class="tog"><input type="checkbox" id="tNao" checked> Áreas não avaliáveis</label>
       <button id="save" disabled>Baixar PNG</button>
     </div>
     <div class="legend" id="legend"></div>
@@ -187,10 +195,6 @@
       <h2>Fotos recomendadas</h2>
       <div id="recs"></div>
     </div>
-    <div class="card" id="naoCard" hidden>
-      <h2>Áreas não avaliáveis</h2>
-      <div class="list" id="naoList"></div>
-    </div>
     <div class="card" id="duvCard" hidden>
       <h2>Dúvidas (<span id="duvCnt">0</span>)</h2>
       <p class="note" style="margin:0 0 8px">Pontos que a IA não conseguiu decidir. Tire uma foto mais de perto para ela confirmar ou descartar.</p>
@@ -208,7 +212,7 @@
         <label class="tog"><input type="checkbox" id="ignCintas" checked> Cintas de amarração</label>
         <label class="tog"><input type="checkbox" id="ignReguas" checked> Réguas já sobrepostas na carga</label>
       </div>
-      <p class="note">A lona do sider e qualquer parte da carga encoberta são sempre marcadas como não avaliáveis.</p>
+      <p class="note">Só a carga é analisada: lona, veículo e objetos ao redor são ignorados e não recebem marcações.</p>
     </div>
     <div class="card" id="cfgCard">
       <details id="cfg">
@@ -241,6 +245,28 @@
   <button id="enviar" class="primary">Enviar</button>
 </div>
 
+<dialog id="dlgIgn">
+  <form method="dialog" id="ignForm">
+    <h2 id="ignTit">Ignorar ponto crítico?</h2>
+    <p id="ignTxt"></p>
+    <label for="ignMot">Motivo (obrigatório)</label>
+    <select id="ignMot">
+      <option value="">Selecione…</option>
+      <option>Não é defeito (reflexo, sombra ou vão do garfo)</option>
+      <option>Já foi corrigido / reparado</option>
+      <option>Não pertence a esta carga</option>
+      <option>Foto em ângulo ruim ou desfocada</option>
+      <option value="__outro">Outro (descrever abaixo)</option>
+    </select>
+    <textarea id="ignObs" rows="2" placeholder="Detalhe o motivo (obrigatório se escolher Outro)"></textarea>
+    <p class="warnmsg">Esta decisão fica registrada no relatório e na foto enviada.</p>
+    <div class="bar">
+      <button type="button" id="ignNo">Cancelar</button>
+      <button type="submit" id="ignOk" class="primary" disabled>Confirmar e ignorar</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 (() => {
 'use strict';
@@ -250,6 +276,9 @@ const TIPOS = {
   calco_faltando:'Calço/barrote faltando (grave)',
   embalagem_fora_padrao:'Embalagem fora do padrão',
   filme_stretch:'Filme stretch aberto/solto',
+  filme_ausente:'Falta de filme stretch (crítico)',
+  molhado:'Material molhado / umidade (crítico)',
+  lote_quebrado:'Lote quebrado / tombado (crítico)',
   etiqueta:'Etiqueta rasurada/caída',
   furo_garfo:'Furo de garfo (crítico)',
   mancha_cor:'Mancha / variação de cor',
@@ -261,7 +290,9 @@ const TIPOS = {
 };
 const LADOS = { esq:'Lateral esquerda', dir:'Lateral direita', tras:'Traseira', front:'Frontal', topo:'Superior', outra:'Outra', perto:'Foto de perto' };
 // falhas graves: gravidade mínima 80 e nota nunca acima de 35
-const CRIT = new Set(['furo_garfo', 'calco_faltando']);
+const CRIT = new Set(['furo_garfo', 'calco_faltando', 'filme_ausente', 'molhado', 'lote_quebrado']);
+// crítico = tipo grave ou gravidade ≥ 80; só esses exigem motivo ao serem ignorados (os de advertência/dúvida não)
+const isCrit = d => CRIT.has(d.tipo) || d.gravidade >= 80;
 const DUV = '#4cc9f0';
 const HAS_CLAUDE = !!(window.claude && window.claude.use);
 
@@ -337,18 +368,10 @@ function notaPhoto(p){
 function classify(n){ return n >= 85 ? 'Aprovado' : n >= 65 ? 'Atenção' : n >= 40 ? 'Reprovar / retrabalhar' : 'Crítico'; }
 
 /* ---------- desenho ---------- */
-let hatch = null;
-function hatchPattern(){
-  if (hatch) return hatch;
-  const c = document.createElement('canvas'); c.width = c.height = 14;
-  const g = c.getContext('2d'); g.strokeStyle = 'rgba(255,255,255,.4)'; g.lineWidth = 2;
-  g.beginPath(); g.moveTo(-2, 16); g.lineTo(16, -2); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(12, 16); g.lineTo(16, 12); g.stroke();
-  return hatch = ctx.createPattern(c, 'repeat');
-}
 
 const SEV = [{ min: 80, k: 'Crítico', c: '#ff2d6f' }, { min: 65, k: 'Alto', c: '#ff6a2b' }, { min: 40, k: 'Moderado', c: '#ffb02e' }, { min: 0, k: 'Leve', c: '#e8e04a' }];
 const sev = g => SEV.find(s => g >= s.min);
-const CURTO = { calco_faltando:'Calço faltando', furo_garfo:'Furo de garfo', etiqueta:'Etiqueta', filme_stretch:'Stretch', dano:'Dano', mancha_cor:'Mancha', fita_faltando:'Fita faltando', fita_solta:'Fita solta', empilhamento:'Empilhamento', embalagem_fora_padrao:'Embalagem', outro:'Atenção' };
+const CURTO = { calco_faltando:'Calço faltando', furo_garfo:'Furo de garfo', filme_ausente:'Sem stretch', molhado:'Molhado', lote_quebrado:'Lote quebrado', etiqueta:'Etiqueta', filme_stretch:'Stretch', dano:'Dano', mancha_cor:'Mancha', fita_faltando:'Fita faltando', fita_solta:'Fita solta', empilhamento:'Empilhamento', embalagem_fora_padrao:'Embalagem', outro:'Atenção' };
 const hexA = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${a})`;
 function rr(g, x, y, w, h, r){ g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 let dimCv = null;
@@ -374,19 +397,6 @@ function render(p = cur(), c = cv, opt = {}){
     const dg = dimCv.getContext('2d'); dg.fillStyle = sel ? 'rgba(6,9,13,.66)' : 'rgba(6,9,13,.36)'; dg.fillRect(0, 0, W, H);
     (sel ? [sel.d.box] : [...act.map(o => o.d.box), ...openD.map(o => o.q.box)]).forEach(b => { dg.clearRect(b.x * W - pad, b.y * H - pad, b.w * W + 2 * pad, b.h * H + 2 * pad); });
     g.drawImage(dimCv, 0, 0);
-  }
-
-  if (opt.nao ?? $('tNao').checked) {
-    r.nao_avaliaveis.forEach((n, i) => {
-      const x = n.box.x * W, y = n.box.y * H, w = n.box.w * W, h = n.box.h * H;
-      g.fillStyle = 'rgba(15,20,26,.35)'; g.fillRect(x, y, w, h);
-      g.fillStyle = hatchPattern(); g.fillRect(x, y, w, h);
-      g.lineWidth = lw; g.strokeStyle = 'rgba(220,228,236,.8)'; g.setLineDash([lw * 4, lw * 3]); g.strokeRect(x, y, w, h); g.setLineDash([]);
-      g.fillStyle = '#c9d3dd'; g.beginPath(); g.arc(x + fs, y + fs, fs * .75, 0, 7); g.fill();
-      g.lineWidth = lw; g.strokeStyle = '#0a0e13'; g.stroke();
-      g.fillStyle = '#0a0e13'; g.font = `700 ${fs * .85}px system-ui,sans-serif`;
-      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⊘' + (i + 1), x + fs, y + fs + 1);
-    });
   }
 
   if (!marks) return;
@@ -433,6 +443,8 @@ function render(p = cur(), c = cv, opt = {}){
     }
   };
   openD.forEach(({ q, i }) => mark(q.box, DUV, 'Dúvida · foto de perto', '?', false, 'q', i, { dashed: true }));
+  // na foto enviada, críticos ignorados continuam visíveis (cinza tracejado) para ficar registrado
+  if (opt.audit) r.defeitos.forEach((d, i) => { if (d.off && d.ignorado) mark(d.box, '#9aa7b4', `${CURTO[d.tipo] || 'Atenção'} · IGNORADO`, String(i + 1), false, 'd', i, { dashed: true }); });
   // mais graves por último (ficam por cima)
   act.slice().sort((a, b) => a.d.gravidade - b.d.gravidade).forEach(({ d, i }) => {
     const s = sev(d.gravidade);
@@ -547,14 +559,6 @@ function updateDoubts(p, r){
 function updateList(){
   const p = cur(), r = p && p.result, list = $('list'); list.textContent = '';
   updateDoubts(p, r);
-  const nl = $('naoList'); nl.textContent = '';
-  $('naoCard').hidden = !r || !r.nao_avaliaveis.length;
-  if (r) r.nao_avaliaveis.forEach((n, i) => {
-    const row = document.createElement('div'); row.className = 'nao';
-    const b = document.createElement('b'); b.textContent = '⊘' + (i + 1);
-    const t = document.createElement('div'); t.textContent = n.motivo || 'Não avaliável';
-    row.append(b, t); nl.appendChild(row);
-  });
   $('listCard').hidden = !r || !r.defeitos.length;
   if (!r) return;
   const act = r.defeitos.filter(d => !d.off);
@@ -575,7 +579,8 @@ function updateList(){
     body.append(t, ds);
     if (d.acao) { const a = document.createElement('div'); a.className = 'a'; a.textContent = '→ ' + d.acao; body.appendChild(a); }
     const x = document.createElement('button'); x.className = 'small'; x.textContent = d.off ? 'Restaurar' : '✕ Ignorar';
-    x.onclick = e => { e.stopPropagation(); d.off = !d.off; refresh(); };
+    x.onclick = e => { e.stopPropagation(); toggleDefect(p, d); };
+    if (d.ignorado) { const a = document.createElement('div'); a.className = 'aud'; a.textContent = `Ignorado pelo operador: ${d.ignorado.motivo}`; body.appendChild(a); }
     const acts = document.createElement('div'); acts.className = 'acts'; acts.appendChild(x); body.appendChild(acts);
     el.append(th, body);
     el.onclick = () => { p.sel = p.sel === i ? -1 : i; refresh(); };
@@ -662,7 +667,11 @@ const GUIDE = `Contexto do material: os lotes são RETANGULARES; vistos de frent
 - furo_garfo (CRÍTICO, gravidade 80 a 100): furos, rasgos, lascas ou quebras causados pelo garfo da empilhadeira, no próprio lote: bordas, cantos, extremidades, laterais e, às vezes, o meio da face. Aparecem como pequenas rupturas de formato irregular (não retangular): lasca, dente, buraco, trecho escuro ou amassado, fibra exposta, borda desfiada. São pequenos: examine bordas e cantos com atenção. Não confunda com o vão do garfo, que é retilíneo e alinhado.
 - dano: deformação do retângulo da face do lote. Se algum canto deforma o retângulo (amassado, arredondado, quebrado, mais escuro) ou a linha de divisão está torta, é possível defeito. Também batidas na face (áreas escuras/pretas). Marcas irregulares na borda são furo_garfo ou calco_faltando, não dano.
 - mancha_cor: diferença de coloração dentro da face do lote: de branco para mais escuro, de branco para esverdeado, de escuro para mais claro (umidade, mofo, sujeira, descoloração, batida). ATENÇÃO em lotes plastificados (stretch): o plástico reflete a luz e cria reflexos brancos e brilhos que NÃO são defeito. Reflexo muda de forma conforme as dobras do plástico; mancha tem contorno próprio e não acompanha as dobras. Se não der para distinguir reflexo de mancha, registre em "duvidas".
-- filme_stretch: plástico stretch solto, pendurado, rasgado ou aberto é defeito. Se os lotes da carga usam stretch, todos precisam estar plastificados. Se nenhum lote da carga usa stretch, não reporte a ausência.
+- filme_stretch: plástico stretch solto, pendurado, rasgado ou aberto é defeito.
+- filme_ausente (CRÍTICO, gravidade 80 a 100): lote que deveria estar plastificado com stretch (os demais lotes do mesmo tipo têm) mas está sem o filme ou com grande parte exposta. Se nenhum lote da carga usa stretch (ex.: todos com papelão), não reporte.
+- molhado (CRÍTICO, gravidade 80 a 100): sinais de molhado/umidade: manchas escuras de água escorrida, gotas ou poças, papelão encharcado, ondulado ou amolecido, bordas das chapas inchadas, pingos no filme. Reflexo do plástico não é molhado.
+- lote_quebrado (CRÍTICO, gravidade 80 a 100): lote partido, tombado, desabado, com chapas quebradas ou deslocadas a ponto de perder a forma retangular.
+Avalie sempre três coisas: condição da embalagem (filme, papelão, fitas, etiquetas), avarias (danos, furos, molhado, quebra) e carga mal feita ou mal empilhada (calços, alinhamento, encavalamento). Analise SOMENTE a carga: ignore tudo o que não é a carga e não gere marcações fora dela.
 - etiqueta: etiquetas rasgadas, penduradas, caindo, rasuradas, ilegíveis ou ausentes onde deveriam existir. As etiquetas seguem posição e orientação padrão (mesmo canto e na horizontal em cada lote): etiqueta fora de posição, torta, na vertical, descolada ou pendurada está caindo.
 - fita_faltando: cada lote leva fitas verdes verticais que cintam o lote, em posições regulares e em número parecido com os lotes vizinhos do mesmo tipo. Lote sem nenhuma fita, ou com menos fitas que os vizinhos (trecho largo sem fita onde os outros têm), está com fita faltando.
 - fita_solta: fitas verdes DO PRÓPRIO LOTE frouxas, soltas, tortas ou rompidas.
@@ -981,7 +990,34 @@ $('demo').onclick = () => {
 };
 
 /* ---------- controles ---------- */
-['tMark','tRot','tFoco','tNao'].forEach(id => $(id).oninput = () => render());
+['tMark','tRot','tFoco'].forEach(id => $(id).oninput = () => render());
+
+/* ---------- ignorar / restaurar ponto (crítico exige motivo e fica registrado) ---------- */
+const audit = (p, d, acao, motivo) => {
+  const r = p.result; (r.auditoria = r.auditoria || []).push({ acao, tipo: d.tipo, gravidade: d.gravidade, motivo: motivo || '', quando: new Date().toISOString(), operador: readMeta().op });
+};
+function toggleDefect(p, d){
+  const crit = isCrit(d);
+  if (d.off) { // restaurar
+    d.off = false; if (crit) { audit(p, d, 'restaurado'); delete d.ignorado; }
+    setStatus('Ponto restaurado.'); refresh(); return;
+  }
+  if (!crit) { d.off = true; setStatus('Ponto ignorado. Use "Restaurar" na lista para desfazer.'); refresh(); return; }
+  const dlg = $('dlgIgn'), mot = $('ignMot'), obs = $('ignObs'), ok = $('ignOk');
+  mot.value = ''; obs.value = '';
+  $('ignTit').textContent = `Ignorar: ${TIPOS[d.tipo] || d.tipo}?`;
+  $('ignTxt').textContent = 'Este é um ponto crítico. Para removê-lo é preciso informar o motivo, que será registrado.';
+  const check = () => { ok.disabled = !mot.value || (mot.value === '__outro' && obs.value.trim().length < 5); };
+  mot.onchange = obs.oninput = check; check();
+  $('ignNo').onclick = () => dlg.close();
+  $('ignForm').onsubmit = e => {
+    e.preventDefault(); check(); if (ok.disabled) return;
+    const motivo = (mot.value === '__outro' ? '' : mot.value) + (mot.value !== '__outro' && obs.value.trim() ? ' – ' : '') + obs.value.trim();
+    d.off = true; d.ignorado = { motivo, quando: new Date().toISOString(), operador: readMeta().op };
+    audit(p, d, 'ignorado', motivo); dlg.close(); setStatus('Ponto crítico ignorado e registrado.'); refresh();
+  };
+  dlg.showModal();
+}
 cv.addEventListener('click', e => {
   const p = cur(); if (!p || !p.result || !p._hits || !p._hits.length) return;
   const r = cv.getBoundingClientRect(), s = cv.width / r.width, x = (e.clientX - r.left) * s, y = (e.clientY - r.top) * s;
@@ -989,8 +1025,9 @@ cv.addEventListener('click', e => {
     const h = p._hits[k];
     if (x < h.x || x > h.x + h.w || y < h.y || y > h.y + h.h) continue;
     if (h.k === 'x') {
-      if (h.t === 'd') p.result.defeitos[h.i].off = true; else p.result.duvidas[h.i].estado = 'ignorada';
-      p.sel = -1; setStatus('Ponto ignorado. Use "Restaurar" na lista para desfazer.');
+      p.sel = -1;
+      if (h.t === 'd') toggleDefect(p, p.result.defeitos[h.i]);
+      else { p.result.duvidas[h.i].estado = 'ignorada'; setStatus('Ponto ignorado. Use "Restaurar" na lista para desfazer.'); }
     } else p.sel = p.sel === h.i ? -1 : h.i;
     refresh(); return;
   }
@@ -1016,7 +1053,7 @@ function overallNota(all){ const done = all.filter(p => p.lado !== 'perto'); con
 // foto com marcações + faixa de identificação (embarque, placa, nota, data)
 function exportCanvas(p){
   const full = document.createElement('canvas');
-  render(p, full, { foco: false, sel: -1, marks: true, rot: true, nao: true });
+  render(p, full, { foco: false, sel: -1, marks: true, rot: true, audit: true });
   const s = Math.min(1, 2000 / Math.max(full.width, full.height)), W = Math.round(full.width * s), H = Math.round(full.height * s);
   const m = readMeta(), n = notaPhoto(p), act = p.result.defeitos.filter(d => !d.off).length;
   const isP = p.lado === 'perto', f1 = Math.max(16, W / 34), f2 = Math.max(13, W / 44), pad = f1 * .7, F = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
@@ -1025,6 +1062,7 @@ function exportCanvas(p){
     [isP ? `Foto de perto  ·  ${p.result.resumo}` : `${LADOS[p.lado]}  ·  Nota ${Math.round(n)} (${classify(n)})  ·  ${act} ponto(s) de atenção`, `600 ${f2}px ${F}`, '#e8edf3', f2],
     [`${fmtDate(new Date())}${m.op ? '  ·  ' + m.op : ''}`, `400 ${f2 * .9}px ${F}`, '#96a4b3', f2 * .9]
   ];
+  p.result.defeitos.filter(d => d.off && d.ignorado).forEach(d => lines.push([`CRÍTICO IGNORADO – ${CURTO[d.tipo] || d.tipo}: ${d.ignorado.motivo}`, `600 ${f2 * .9}px ${F}`, '#ffb02e', f2 * .9]));
   const band = Math.round(pad * 2 + lines.reduce((a, l) => a + l[3] * 1.35, 0));
   const out = document.createElement('canvas'); out.width = W; out.height = H + band;
   const g = out.getContext('2d'); g.drawImage(full, 0, 0, W, H);
@@ -1049,7 +1087,7 @@ function reportText(){
     act.slice(0, 8).forEach(({ d, i }) => L.push(`${i + 1}. ${CURTO[d.tipo] || d.tipo} (${sev(d.gravidade).k}) – ${d.descricao}`));
     if (act.length > 8) L.push(`+${act.length - 8} ponto(s) na foto.`);
     p.result.duvidas.filter(q => q.estado !== 'ignorada').forEach(q => L.push(q.estado === 'resolvida' ? `Dúvida resolvida: ${q.veredito.e_defeito ? 'é defeito – ' : 'não é defeito – '}${q.veredito.texto}` : `Dúvida em aberto: ${q.motivo} (fotografar de perto)`));
-    if (p.result.nao_avaliaveis.length) L.push('Não avaliável: ' + p.result.nao_avaliaveis.map(x => x.motivo).filter(Boolean).join('; '));
+    p.result.defeitos.filter(d => d.off && d.ignorado).forEach(d => L.push(`⚠ CRÍTICO IGNORADO pelo operador – ${CURTO[d.tipo] || d.tipo} (${d.descricao}). Motivo: ${d.ignorado.motivo}`));
   });
   const miss = ['esq', 'dir'].filter(k => !state.photos.some(p => p.lado === k));
   if (miss.length) L.push('', 'Atenção: falta foto da ' + miss.map(k => LADOS[k].toLowerCase()).join(' e ') + '.');

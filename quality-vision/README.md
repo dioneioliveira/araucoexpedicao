@@ -96,3 +96,9 @@ Mande o link por mensagem ao operador. Trate-o como senha: quem tem o link usa a
 - O envio usa o compartilhamento do aparelho: cabe ao operador escolher o destinatário (ou o grupo do WhatsApp). Envio automático sem toque exigiria um serviço de e-mail/WhatsApp Business.
 - Em navegadores sem compartilhamento de arquivos, o app salva as imagens e oferece atalhos de WhatsApp e e-mail só com o texto: as fotos precisam ser anexadas à mão.
 - O código de acesso é único e compartilhado; para revogar um aparelho, troque o `APP_TOKEN` e reenvie o link aos demais.
+
+## Pontos críticos: ignorar exige motivo
+
+Furo de garfo, calço faltando, falta de filme stretch, material molhado, lote quebrado (e qualquer ponto com gravidade ≥ 80) são **críticos**. Para ignorá-los (X na foto ou "Ignorar" na lista) o operador precisa escolher um motivo e confirmar. A decisão fica registrada: aparece no texto do relatório, na faixa da foto enviada (cinza tracejado, "IGNORADO") e em `result.auditoria` (ação, tipo, motivo, hora, operador). Advertências e dúvidas (azul) continuam sendo ignoradas com um toque, sem motivo.
+
+A área fora da carga (lona, veículo, fundo) não recebe mais marcações hachuradas: só a carga é analisada.
