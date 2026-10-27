@@ -262,6 +262,17 @@
    ],
    "gravidade": "critico",
    "descricao": "Calços ausentes (verde, crítico); etiquetas rasuradas/avariadas (amarelo, moderado); avaria no lote (vermelho, crítico)."
+  },
+  {
+   "id": 26,
+   "imagem": "padroes/p26.jpg",
+   "titulo": "Barrote faltando fora do padrão e desalinhamento de carga",
+   "tipos": [
+    "calco_faltando",
+    "empilhamento"
+   ],
+   "gravidade": "critico",
+   "descricao": "X vermelho: barrote faltando, foge do padrão dos demais lotes (os círculos verdes marcam blocos presentes, o padrão). Marca amarela na lateral: desalinhamento de carga (moderado), NÃO é dano nem fita solta."
   }
  ]
 }
