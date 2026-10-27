@@ -13,7 +13,7 @@
 
   // ------------------------------------------------------------------ estado
   const STORE_KEY = 'arauco.ordensEmbarque.v1';
-  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {}, fotos: {}, histBalanca: {} });
+  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {}, fotos: {}, histBalanca: {}, ocorr: {} });
   let state = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.v === 1) return Object.assign(emptyState(), s); } catch (e) { /* sem storage */ }
@@ -429,6 +429,7 @@
 
   async function printTransports(list) {
     if (!list.length) return;
+    if (!(await avisoOcorrencias(list))) return;
     const incompletos = list.filter(T => T.missing.length);
     if (incompletos.length) {
       const ok = await confirmBox('Dados obrigatórios faltando',
@@ -1723,7 +1724,7 @@
         manual: pick(state.manual), printed: pick(state.printed), snap: pick(state.snap), faturado: pick(state.faturado), fatNf: pick(state.fatNf), fotos: pick(state.fotos),
         sew: state.sew.filter(e => e.data && e.data > fim), ots: Object.fromEntries(Object.entries(state.ots).filter(([en]) => !M.entregas.has(en))),
         tickets: Object.fromEntries(Object.entries(state.tickets).filter(([, t]) => t.data && t.data > fim)),
-        fsc: state.fsc, fscInfo: state.fscInfo, histBalanca: hist, pesos: {},
+        fsc: state.fsc, fscInfo: state.fscInfo, histBalanca: hist, ocorr: state.ocorr || {}, pesos: {},
         fechamentos: { ultimo: corte.toISOString(), em: new Date().toISOString(), por: usuario() || 'automático', arquivo: nome + '.xlsx', semana: { ini, fim } },
       });
       state = novo;
@@ -1763,6 +1764,114 @@
     });
     setInterval(verificarFechamento, 30000); setTimeout(verificarFechamento, 8000);
     setTimeout(() => { const E = espacoUsado(); if (E.pct > 70) toast(`O app está usando ${fmtNum(E.pct, 0)}% do espaço do navegador. Use "Semana" → Fechar a semana agora.`, 'warn'); }, 1500);
+  }
+
+  // ------------------------------------------------------------------ ocorrências (motorista / placa)
+  // state.ocorr[id] = { id, cpf, nome, placas: [plate7], cat, texto, quando, turno, por, transporte, em }
+  // Só para consulta na tela (aviso ao imprimir): nunca vai para documento impresso.
+  const soDig = v => String(v || '').replace(/\D/g, '');
+  function turnoDe(d) {
+    const m = d.getHours() * 60 + d.getMinutes();
+    return m >= 360 && m < 860 ? '1º turno' : m >= 860 && m < 1360 ? '2º turno' : '3º turno'; // 06:00–14:20 · 14:20–22:40 · 22:40–06:00
+  }
+  // registros que valem para a carga: motorista pelo CPF (ou nome, se faltar CPF) e placas pelos 7 caracteres
+  function ocorrDe(T) {
+    const e = T.eff, cpf = soDig(e.cpf), nome = P.norm(e.motorista);
+    const placas = [P.plate7(e.placaL), isTruck(e) ? '' : P.plate7(e.placaM)].filter(Boolean);
+    const out = [];
+    Object.values(state.ocorr || {}).forEach(o => {
+      const porMot = (o.cpf && cpf && o.cpf === cpf) || (o.nome && nome && (!o.cpf || !cpf) && P.norm(o.nome) === nome);
+      const pl = (o.placas || []).filter(x => placas.includes(x));
+      if (porMot || pl.length) out.push({ o, porMot, pl });
+    });
+    return out.sort((a, b) => (b.o.quando || '').localeCompare(a.o.quando || ''));
+  }
+  const fmtQuando = q => q ? new Date(q).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  const ocAlvo = o => [o.nome || o.cpf ? `Motorista ${o.nome || ''}${o.cpf ? ` (CPF ${P.fmtCPF(o.cpf)})` : ''}` : '', (o.placas || []).length ? `Placa ${o.placas.join(' / ')}` : ''].filter(Boolean).join(' · ');
+  function ocItemHTML(o, extra) {
+    return `<div class="oc-item"><div class="oc-top"><span class="chip oc-cat">${esc(o.cat || 'Outro')}</span> <b>${esc(fmtQuando(o.quando))}</b> · ${esc(o.turno || '')}${extra || ''}</div>
+      <div class="oc-alvo">${esc(ocAlvo(o))}</div><div class="oc-txt">${esc(o.texto)}</div>
+      <div class="muted small">Registrado${o.por ? ' por ' + esc(o.por) : ''}${o.transporte ? ` · transporte ${esc(o.transporte)}` : ''}</div></div>`;
+  }
+  function ocSecaoHTML(T) {
+    const l = ocorrDe(T);
+    return `<div class="section" id="oc-sec">
+      <h3>Histórico motorista / veículo <span class="h-note">só na tela, não sai na impressão</span>
+        <button type="button" class="btn btn-ghost btn-sm" id="oc-reg" style="margin-left:auto">Registrar ocorrência</button></h3>
+      ${l.length ? `<details class="oc-det"><summary><span class="chip warn">${l.length} registro(s)</span> ${esc(resumoOcorr(l))}</summary>${l.map(x => ocItemHTML(x.o)).join('')}</details>` : '<p class="muted small">Nenhum registro para este motorista ou estas placas.</p>'}
+    </div>`;
+  }
+  function resumoOcorr(l) {
+    const mot = l.filter(x => x.porMot).length, pl = {};
+    l.forEach(x => x.pl.forEach(p => { pl[p] = (pl[p] || 0) + 1; }));
+    return [mot ? `motorista: ${mot}` : '', ...Object.entries(pl).map(([p, n]) => `placa ${p}: ${n}`)].filter(Boolean).join(' · ');
+  }
+  // formulário (do painel já vem preenchido com o motorista e as placas da carga)
+  function novaOcorrencia(T) {
+    const dlg = $('#oc-dialog'), e = T ? T.eff : {}, agora = new Date();
+    $('#oc-nome').value = e.motorista || ''; $('#oc-cpf').value = e.cpf ? P.fmtCPF(e.cpf) : '';
+    $('#oc-pl1').value = e.placaL || ''; $('#oc-pl2').value = T && !isTruck(e) ? (e.placaM || '') : '';
+    $('#oc-c-mot').checked = !!T && !!(e.motorista || e.cpf); $('#oc-c-pl').checked = false;
+    $('#oc-cat').value = 'Comportamento'; $('#oc-texto').value = ''; $('#oc-erro').hidden = true;
+    $('#oc-quando').value = `${isoDia(agora)}T${P.pad(agora.getHours())}:${P.pad(agora.getMinutes())}`; $('#oc-turno').value = turnoDe(agora);
+    dlg._t = T ? T.transporte : ''; dlg.returnValue = ''; dlg.showModal(); $('#oc-texto').focus();
+  }
+  function salvarOcorrencia(ev) {
+    const dlg = $('#oc-dialog');
+    if (ev.submitter && ev.submitter.value !== 'ok') return;
+    const mot = $('#oc-c-mot').checked, pl = $('#oc-c-pl').checked;
+    const cpf = mot ? soDig($('#oc-cpf').value) : '', nome = mot ? P.clean($('#oc-nome').value).toUpperCase() : '';
+    const placas = pl ? Array.from(new Set([$('#oc-pl1').value, $('#oc-pl2').value].map(P.plate7).filter(Boolean))) : [];
+    const texto = $('#oc-texto').value.trim();
+    const erro = !mot && !pl ? 'Marque Motorista e/ou Veículo.' : mot && !cpf && !nome ? 'Informe o nome ou o CPF do motorista.' : pl && !placas.length ? 'Informe uma placa válida (ex.: ABC1D23).' : !texto ? 'Descreva a ocorrência.' : '';
+    if (erro) { ev.preventDefault(); $('#oc-erro').textContent = erro; $('#oc-erro').hidden = false; return; }
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const q = $('#oc-quando').value;
+    state.ocorr = state.ocorr || {};
+    state.ocorr[id] = { id, cpf, nome, placas, cat: $('#oc-cat').value, texto, quando: q ? new Date(q).toISOString() : new Date().toISOString(), turno: $('#oc-turno').value,
+      por: usuario() || '', transporte: dlg._t || '', em: new Date().toISOString() };
+    save(true); renderAll(); if (ui.open) renderDetail();
+    toast('Ocorrência registrada.', 'ok');
+  }
+  function renderOcorr() {
+    const q = P.norm($('#oc-busca').value), qd = soDig($('#oc-busca').value);
+    const l = Object.values(state.ocorr || {}).sort((a, b) => (b.quando || '').localeCompare(a.quando || ''))
+      .filter(o => !q || P.norm([o.nome, o.texto, o.cat, o.turno, o.por, o.transporte, ...(o.placas || [])].join(' ')).includes(q) || (qd.length >= 3 && (o.cpf || '').includes(qd)));
+    $('#oc-tabela').innerHTML = l.length ? `<table class="grid"><thead><tr><th>Data e hora</th><th>Turno</th><th>Tipo</th><th>Motorista</th><th>CPF</th><th>Placas</th><th>Descrição</th><th>Registrado por</th><th>Transporte</th><th></th></tr></thead><tbody>${l.map(o => `<tr>
+      <td>${esc(fmtQuando(o.quando))}</td><td>${esc(o.turno || '')}</td><td><span class="chip oc-cat">${esc(o.cat || '')}</span></td><td>${esc(o.nome || '')}</td><td class="mono">${o.cpf ? esc(P.fmtCPF(o.cpf)) : ''}</td>
+      <td class="mono">${esc((o.placas || []).join(' / '))}</td><td class="wrap">${esc(o.texto)}</td><td>${esc(o.por || '')}</td><td class="mono">${o.transporte ? `<a href="#" data-pt="${esc(o.transporte)}">${esc(o.transporte)}</a>` : ''}</td>
+      <td><button class="btn btn-ghost btn-sm" data-oc-del="${esc(o.id)}" title="Excluir registro">Excluir</button></td></tr>`).join('')}</tbody></table>`
+      : `<div class="empty" style="padding:36px"><p>${Object.keys(state.ocorr || {}).length ? 'Nenhum registro com essa busca.' : 'Nenhuma ocorrência registrada. Use <b>Nova ocorrência</b> ou o botão <b>Registrar ocorrência</b> no painel da ordem.'}</p></div>`;
+  }
+  // aviso antes de imprimir: Ver registros / Ignorar e imprimir / Cancelar
+  function avisoOcorrencias(list) {
+    const com = list.map(T => ({ T, l: ocorrDe(T) })).filter(x => x.l.length);
+    if (!com.length) return Promise.resolve(true);
+    const dlg = $('#oc-alerta');
+    $('#oc-al-body').innerHTML = `<p>${com.length === 1 ? 'Esta carga tem' : 'Estas cargas têm'} registro(s) no histórico de ocorrências:</p>
+      <ul>${com.map(x => `<li><b>${esc(x.T.transporte)}</b> · ${esc(x.T.eff.motorista || '')} · ${esc(x.T.eff.placaL || '')}: ${esc(resumoOcorr(x.l))}</li>`).join('')}</ul>
+      <div id="oc-al-det" hidden>${com.map(x => `<h4 class="oc-h4">Transporte ${esc(x.T.transporte)}</h4>${x.l.map(y => ocItemHTML(y.o)).join('')}`).join('')}</div>
+      <p class="muted small">Estes registros não saem na impressão.</p>`;
+    $('#oc-al-ver').hidden = false; $('#oc-al-ok').textContent = 'Ignorar e imprimir';
+    dlg.returnValue = ''; dlg.showModal();
+    return new Promise(res => dlg.addEventListener('close', () => res(dlg.returnValue === 'ok'), { once: true }));
+  }
+  function bindOcorr() {
+    $('#oc-novo').addEventListener('click', () => novaOcorrencia(null));
+    $('#oc-busca').addEventListener('input', renderOcorr);
+    $('#oc-form').addEventListener('submit', salvarOcorrencia);
+    $('#oc-al-ver').addEventListener('click', () => { $('#oc-al-det').hidden = false; $('#oc-al-ver').hidden = true; $('#oc-al-ok').textContent = 'Continuar e imprimir'; });
+    $('#oc-tabela').addEventListener('click', async e => {
+      const a = e.target.closest('[data-pt]'); if (a) { e.preventDefault(); openDetail(a.dataset.pt); return; }
+      const b = e.target.closest('[data-oc-del]'); if (!b) return;
+      const o = state.ocorr[b.dataset.ocDel]; if (!o) return;
+      if (!(await confirmBox('Excluir ocorrência', `<p>Excluir o registro de <b>${esc(fmtQuando(o.quando))}</b>?</p><p class="muted">${esc(o.texto)}</p>`, 'Excluir'))) return;
+      delete state.ocorr[o.id]; save(true); renderAll(); toast('Ocorrência excluída.', 'ok');
+    });
+    ['#oc-c-mot', '#oc-c-pl'].forEach(id => $(id).addEventListener('change', () => { $('#oc-erro').hidden = true; }));
+    ['#oc-nome', '#oc-cpf'].forEach(id => $(id).addEventListener('input', () => { $('#oc-c-mot').checked = true; }));
+    ['#oc-pl1', '#oc-pl2'].forEach(id => $(id).addEventListener('input', () => { $('#oc-c-pl').checked = true; }));
+    $('#oc-quando').addEventListener('change', e => { if (e.target.value) $('#oc-turno').value = turnoDe(new Date(e.target.value)); });
   }
 
   // ------------------------------------------------------------------ guia Exportar tickets
@@ -1859,7 +1968,7 @@
     $$('#views button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
     $$('[data-view-of]').forEach(el => { el.hidden = el.dataset.viewOf !== v; });
     $('#janela-filter').style.display = v === 'lista' ? '' : 'none';
-    $('.toolbar').style.display = v === 'pesos' || v === 'expo' ? 'none' : '';
+    $('.toolbar').style.display = ['pesos', 'expo', 'ocorr'].includes(v) ? 'none' : '';
     renderAll();
   }
   function renderAgenda() {
@@ -2073,6 +2182,7 @@
         </div>
       </div>
       ${temContainer(T) ? fotosHTML(T) : ''}
+      ${ocSecaoHTML(T)}
       <div class="section">
         <h3>Documentos da ordem <span class="h-note">clique para ampliar</span></h3>
         <div class="pv-thumbs" id="pv-thumbs"></div>
@@ -2147,6 +2257,8 @@
     if (ui.view === 'ots') renderOTs();
     if (ui.view === 'pesos') { renderPesos(); renderBalanca(); }
     if (ui.view === 'expo') renderExpo();
+    if (ui.view === 'ocorr') renderOcorr();
+    { const n = Object.keys(state.ocorr || {}).length; $('#v-count-ocorr').textContent = n || ''; }
     renderViewCounts();
     if (ui.open) renderDetail();
   }
@@ -2285,6 +2397,7 @@
       imprimirAvulso([doc.dataset.doc === 'sep' ? buildSeparacao(T) : buildIdentificador(T)]);
     });
     $('#d-body').addEventListener('click', e => {
+      if (e.target.closest('#oc-reg')) { e.preventDefault(); novaOcorrencia(getTransport(ui.open)); return; }
       const doc = e.target.closest('[data-doc]');
       if (doc) {
         const T = getTransport(ui.open); if (!T) return;
@@ -3000,7 +3113,7 @@
     if (!TPL) { document.body.innerHTML = '<p style="padding:40px">Modelos de impressão não encontrados (js/templates.js).</p>'; return; }
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
-    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo();
+    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo(); bindOcorr();
     setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });

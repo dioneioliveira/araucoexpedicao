@@ -48,6 +48,7 @@
     Object.entries(state.tickets || {}).forEach(([k, v]) => put('tk:' + k, v));
     Object.entries(state.fotos || {}).forEach(([k, v]) => put('foto:' + k, v));
     Object.entries(state.histBalanca || {}).forEach(([k, v]) => put('hb:' + k, v));
+    Object.entries(state.ocorr || {}).forEach(([k, v]) => put('oc:' + k, v));
     if (state.fechamentos) put('fech', state.fechamentos); // só nomes e dados lidos; as imagens ficam no computador
     if (state.fsc && Object.keys(state.fsc).length) put('fsc', state.fsc);
     if (state.fscInfo) put('fscinfo', state.fscInfo);
@@ -72,6 +73,7 @@
         case 'tk': (s.tickets = s.tickets || {})[id] = v; break;
         case 'foto': (s.fotos = s.fotos || {})[id] = v; break;
         case 'hb': (s.histBalanca = s.histBalanca || {})[id] = v; break;
+        case 'oc': (s.ocorr = s.ocorr || {})[id] = v; break;
         case 'fech': s.fechamentos = v; break;
         case 'fsc': s.fsc = v; break;
         case 'fscinfo': s.fscInfo = v; break;

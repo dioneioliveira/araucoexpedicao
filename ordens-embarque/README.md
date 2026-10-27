@@ -548,3 +548,15 @@ container e o peso líquido da balança quando a tabela já foi colada no app. O
 Guardian, para cruzar as duas planilhas. **Só entram cargas com uma entrega e um único material**; as outras vão para a aba
 *Desconsiderados* com o motivo (sem ticket, N entregas, N materiais). A mesma aba entra no Excel do fechamento semanal.
 A importação do Guardian e a análise da balança na guia Pesos continuam funcionando como antes.
+
+### Ocorrências (histórico de motorista e veículo)
+
+Guia **Ocorrências** ou botão **Registrar ocorrência** no painel da ordem (já vem com o motorista e as placas da carga).
+Cada registro marca a quem se refere (**motorista** por nome/CPF e/ou **placas**), o tipo (Comportamento, Segurança,
+Veículo, Documentação, Outro), a descrição, a **data e hora** e o **turno** (calculado pela hora: 1º 06:00–14:20,
+2º 14:20–22:40, 3º 22:40–06:00; pode ser trocado), e guarda o perfil de quem registrou. Exemplos: "motorista agressivo ao
+pedirmos para ficar na cabine", "carreta sempre com falta de lona".
+Ao **imprimir** uma ordem (ou várias selecionadas) com motorista (pelo CPF, ou pelo nome se faltar CPF) ou placa que tenha
+registro, aparece o aviso com o resumo: **Ver registros**, **Ignorar e imprimir** ou **Cancelar impressão**. Os registros
+**não saem em nenhum documento**; ficam só na tela, são compartilhados pela pasta oficial e não são apagados no
+fechamento semanal. Na guia dá para buscar (nome, CPF, placa, texto) e excluir registros.

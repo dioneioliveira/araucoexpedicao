@@ -58,6 +58,7 @@
       <button data-view="ots" role="tab">OTs <span class="count" id="v-count-ots"></span></button>
       <button data-view="pesos" role="tab">Pesos</button>
       <button data-view="expo" role="tab">Exportar tickets</button>
+      <button data-view="ocorr" role="tab">Ocorrências <span class="count" id="v-count-ocorr"></span></button>
     </nav>
     <section class="toolbar card">
       <div class="tb-group">
@@ -174,6 +175,21 @@
       <section class="kpis" id="ex-resumo" style="margin-bottom:12px"></section>
       <div class="card list-card"><div class="table-wrap" style="max-height:none" id="ex-tabela"></div></div>
       <div class="ps-pend" id="ex-pend"></div>
+    </section>
+    <section id="ocorr" data-view-of="ocorr" hidden>
+      <div class="card agenda-help">
+        <div>
+          <h2>Histórico de ocorrências · motoristas e veículos</h2>
+          <p class="muted">Registre incidentes ou informações importantes sobre um <b>motorista</b> (nome/CPF) ou uma <b>placa</b> (ex.: motorista agressivo ao pedirmos para ficar na cabine; carreta sempre sem lona). Ao imprimir uma ordem com esse motorista ou placa, o app avisa e mostra os registros. <b>Nada disso sai em documento</b>: é só para consulta na tela.</p>
+        </div>
+        <div class="agenda-tools">
+          <div class="ps-ctrl">
+            <label class="field-inline">Buscar <input type="search" id="oc-busca" placeholder="nome, CPF, placa, texto"></label>
+            <button class="btn btn-primary btn-sm" id="oc-novo">Nova ocorrência</button>
+          </div>
+        </div>
+      </div>
+      <div class="card list-card"><div class="table-wrap" style="max-height:none" id="oc-tabela"></div></div>
     </section>
     <section id="ots" data-view-of="ots" hidden>
       <div class="card agenda-help">
@@ -468,6 +484,41 @@
       <p class="muted small">Use o Google Chrome. Ao abrir o app, o Chrome pode pedir para liberar o acesso de novo: clique no aviso <b>Reconectar dados compartilhados</b> no topo.</p>
     </div>
   </div>
+</dialog>
+
+<dialog id="oc-dialog" class="modal modal-sm">
+  <form method="dialog" class="modal-inner" id="oc-form">
+    <div class="modal-head"><h2>Registrar ocorrência</h2></div>
+    <div class="cf-body oc-form">
+      <p class="muted small">Marque a quem o registro se refere (motorista, placas ou os dois). Não sai em nenhum documento impresso.</p>
+      <label class="oc-chk"><input type="checkbox" id="oc-c-mot"> Motorista</label>
+      <div class="oc-row"><input id="oc-nome" placeholder="Nome do motorista"><input id="oc-cpf" placeholder="CPF" style="font-family:var(--f-mono)"></div>
+      <label class="oc-chk"><input type="checkbox" id="oc-c-pl"> Veículo (placas)</label>
+      <div class="oc-row"><input id="oc-pl1" placeholder="Placa carreta/truck" style="font-family:var(--f-mono)"><input id="oc-pl2" placeholder="Placa cavalo" style="font-family:var(--f-mono)"></div>
+      <div class="oc-row">
+        <label class="f">Tipo<select id="oc-cat"><option>Comportamento</option><option>Segurança</option><option>Veículo</option><option>Documentação</option><option>Outro</option></select></label>
+        <label class="f">Data e hora<input type="datetime-local" id="oc-quando"></label>
+        <label class="f">Turno<select id="oc-turno"><option>1º turno</option><option>2º turno</option><option>3º turno</option><option>ADM</option></select></label>
+      </div>
+      <label class="f">Descrição<textarea id="oc-texto" rows="3" placeholder="o que aconteceu / informação importante"></textarea></label>
+      <div class="alert err" id="oc-erro" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button value="cancel" class="btn btn-ghost" formnovalidate>Cancelar</button>
+      <button value="ok" class="btn btn-primary" id="oc-salvar">Salvar</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="oc-alerta" class="modal">
+  <form method="dialog" class="modal-inner">
+    <div class="modal-head"><h2>Atenção: histórico de motorista / veículo</h2></div>
+    <div class="cf-body" id="oc-al-body"></div>
+    <div class="modal-foot">
+      <button value="cancel" class="btn btn-ghost">Cancelar impressão</button>
+      <button type="button" class="btn btn-ghost" id="oc-al-ver">Ver registros</button>
+      <button value="ok" class="btn btn-primary" id="oc-al-ok">Ignorar e imprimir</button>
+    </div>
+  </form>
 </dialog>
 
 <dialog id="confirm-dialog" class="modal modal-sm">

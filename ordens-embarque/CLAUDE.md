@@ -173,3 +173,9 @@
   ticket do Controle OT com agendamento (`T.sew`), transporte, material, qtd, lotes, peso da balança (`state.tickets`) e ticket com
   7 dígitos; só cargas com 1 entrega e 1 material (resto em "Desconsiderados" com motivo). Também vai como aba "Tickets 1 material"
   no Excel semanal. A importação do Guardian/análise da balança continua (o usuário pediu para não remover ainda).
+- Ocorrências (`state.ocorr`, sync `oc:`; guia `data-view="ocorr"`, `#oc-dialog`, `#oc-alerta`): registro sobre motorista
+  (cpf só dígitos / nome) e/ou placas (`plate7`), tipo, texto, `quando`, `turno` (`turnoDe`: 06:00–14:20, 14:20–22:40,
+  22:40–06:00), `por` (perfil). `ocorrDe(T)` liga pela CPF (nome se faltar CPF) e placas carreta/cavalo. `printTransports`
+  chama `avisoOcorrencias` antes de imprimir (Ver / Ignorar e imprimir / Cancelar). **Nunca** vai para documento impresso.
+  Mantido no fechamento semanal. Painel: seção `#oc-sec` com os registros e "Registrar ocorrência".
+

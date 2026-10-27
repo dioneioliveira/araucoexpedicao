@@ -621,3 +621,20 @@ tr.reduzido td{background:rgba(208,204,0,.08)}
 .red-box textarea{width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 8px;resize:vertical}
 .red-acoes{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .lotes-in{width:80px;margin-top:4px;padding:4px 6px;border:1px solid #D0CC00;border-radius:6px;font:inherit;font-family:var(--f-mono);text-align:right;background:#fffef0;display:block;margin-left:auto}
+
+/* ocorrências (motorista / placa) */
+.oc-form .oc-row{display:flex;gap:8px;margin:4px 0 10px}
+.oc-form .oc-row>*{flex:1;min-width:0}
+.oc-form input,.oc-form select,.oc-form textarea{width:100%;box-sizing:border-box}
+.oc-form .f{display:flex;flex-direction:column;gap:3px;font-size:12px}
+.oc-chk{display:flex;align-items:center;gap:6px;font-weight:600;margin-top:6px}
+.oc-chk input{width:auto}
+.oc-item{border-left:4px solid #E3B341;background:#FFFBEF;padding:8px 12px;margin:8px 0;border-radius:4px}
+.oc-alvo{font-size:12px;color:#555;margin:2px 0}
+.oc-txt{white-space:pre-wrap;margin:4px 0}
+.chip.oc-cat{background:#FFF1C9;color:#7a5a00}
+.oc-det summary{cursor:pointer;padding:4px 0}
+.oc-h4{margin:12px 0 2px;font-size:13px}
+#oc-sec h3{display:flex;align-items:center;gap:8px}
+#oc-alerta{width:min(720px,94vw)}
+#oc-al-det{max-height:50vh;overflow:auto}
