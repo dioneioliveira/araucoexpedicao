@@ -48,6 +48,9 @@
   dialog label{display:block;margin:6px 0 4px;font-size:12px;color:var(--dim)}
   dialog select,dialog textarea{width:100%;font:inherit;color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px}
   dialog .bar{justify-content:flex-end;margin:8px 0 0}
+  .parts{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px;-webkit-overflow-scrolling:touch}
+  .parts button{flex:none;white-space:nowrap;border-left-width:4px}
+  .parts button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
   .aud{font-size:12px;color:var(--warn);margin-top:4px}
   button:disabled{opacity:.5;cursor:default}
   input[type=file]{display:none}
@@ -151,7 +154,7 @@
       <summary>Opções</summary>
       <div class="optsrow">
         <label class="tog"><input type="checkbox" id="auto" checked> Analisar assim que tirar a foto</label>
-        <label class="tog"><input type="checkbox" id="detalhe" checked> Análise detalhada: varre a foto em partes ampliadas para achar furos e falhas pequenas (demora mais)</label>
+        <label class="tog"><input type="checkbox" id="detalhe" checked> Análise por partes: depois da visão geral, divide a carga em pilhas, amplia (zoom) e analisa cada parte para achar furos e falhas pequenas (demora mais)</label>
         <button id="demo" class="small">Ver exemplo (sem IA)</button>
       </div>
     </details>
@@ -167,6 +170,7 @@
       </label>
       <button id="remove" class="small">Remover foto</button>
     </div>
+    <div class="parts" id="parts" hidden></div>
     <div class="bar after">
       <label class="tog"><input type="checkbox" id="tMark" checked> Pontos de atenção</label>
       <label class="tog"><input type="checkbox" id="tRot" checked> Rótulos</label>
@@ -381,15 +385,19 @@ let dimCv = null;
 function render(p = cur(), c = cv, opt = {}){
   if (!p) return;
   const g = c.getContext('2d');
-  c.width = p.img.width; c.height = p.img.height;
-  g.drawImage(p.img, 0, 0);
+  // zoom: p.view é o trecho (0–1) exibido; as caixas são convertidas para o recorte
+  const V = (opt.view !== undefined ? opt.view : p.view) || { x: 0, y: 0, w: 1, h: 1 }, iw = p.img.width, ih = p.img.height;
+  c.width = Math.max(1, Math.round(iw * V.w)); c.height = Math.max(1, Math.round(ih * V.h));
+  g.drawImage(p.img, V.x * iw, V.y * ih, V.w * iw, V.h * ih, 0, 0, c.width, c.height);
+  const tb = b => ({ x: (b.x - V.x) / V.w, y: (b.y - V.y) / V.h, w: b.w / V.w, h: b.h / V.h });
+  const vis = b => b.x + b.w > V.x && b.x < V.x + V.w && b.y + b.h > V.y && b.y < V.y + V.h;
   const selIdx = opt.sel !== undefined ? opt.sel : p.sel;
   const r = p.result; if (!r) return;
   const edit = opt.edit ?? (c === cv), scale = edit ? (c.getBoundingClientRect().width / c.width || 1) : 1;
   const W = c.width, H = c.height, lw = Math.max(2, W / 400), fs = Math.max(12, W / 55, edit ? 16 / scale : 0);
   if (edit) p._hits = [];
-  const act = r.defeitos.map((d, i) => ({ d, i })).filter(o => !o.d.off);
-  const openD = r.duvidas.map((q, i) => ({ q, i })).filter(o => o.q.estado === 'aberta');
+  const act = r.defeitos.map((d, i) => ({ d, i })).filter(o => !o.d.off && vis(o.d.box));
+  const openD = r.duvidas.map((q, i) => ({ q, i })).filter(o => o.q.estado === 'aberta' && vis(o.q.box));
   const marks = opt.marks ?? $('tMark').checked;
 
   // destaque: escurece o que está fora dos pontos (só o ponto selecionado, se houver)
@@ -397,7 +405,7 @@ function render(p = cur(), c = cv, opt = {}){
     const sel = act.find(o => o.i === selIdx), pad = fs * .4;
     dimCv = dimCv || document.createElement('canvas'); dimCv.width = W; dimCv.height = H;
     const dg = dimCv.getContext('2d'); dg.fillStyle = sel ? 'rgba(6,9,13,.66)' : 'rgba(6,9,13,.36)'; dg.fillRect(0, 0, W, H);
-    (sel ? [sel.d.box] : [...act.map(o => o.d.box), ...openD.map(o => o.q.box)]).forEach(b => { dg.clearRect(b.x * W - pad, b.y * H - pad, b.w * W + 2 * pad, b.h * H + 2 * pad); });
+    (sel ? [sel.d.box] : [...act.map(o => o.d.box), ...openD.map(o => o.q.box)]).map(tb).forEach(b => { dg.clearRect(b.x * W - pad, b.y * H - pad, b.w * W + 2 * pad, b.h * H + 2 * pad); });
     g.drawImage(dimCv, 0, 0);
   }
 
@@ -405,6 +413,7 @@ function render(p = cur(), c = cv, opt = {}){
   const placed = [], ph = fs * 1.55, hits = [];
   // um ponto: caixa com cantos em mira, rótulo curto com X (ignorar) e áreas de toque
   const mark = (box, col, txt, numTxt, on, t, i, o = {}) => {
+    box = tb(box);
     const x = box.x * W, y = box.y * H, w = box.w * W, h = box.h * H;
     g.fillStyle = hexA(col, on ? .22 : .14); g.fillRect(x, y, w, h);
     g.save(); if (o.dashed) g.setLineDash([lw * 3, lw * 2]);
@@ -446,7 +455,7 @@ function render(p = cur(), c = cv, opt = {}){
   };
   openD.forEach(({ q, i }) => mark(q.box, DUV, 'Dúvida · foto de perto', '?', false, 'q', i, { dashed: true }));
   // na foto enviada, críticos ignorados continuam visíveis (cinza tracejado) para ficar registrado
-  if (opt.audit) r.defeitos.forEach((d, i) => { if (d.off && d.ignorado) mark(d.box, '#9aa7b4', `${CURTO[d.tipo] || 'Atenção'} · IGNORADO`, String(i + 1), false, 'd', i, { dashed: true }); });
+  if (opt.audit) r.defeitos.forEach((d, i) => { if (d.off && d.ignorado && vis(d.box)) mark(d.box, '#9aa7b4', `${CURTO[d.tipo] || 'Atenção'} · IGNORADO`, String(i + 1), false, 'd', i, { dashed: true }); });
   // mais graves por último (ficam por cima)
   act.slice().sort((a, b) => a.d.gravidade - b.d.gravidade).forEach(({ d, i }) => {
     const s = sev(d.gravidade);
@@ -586,7 +595,7 @@ function updateList(){
     if (d.ignorado) { const a = document.createElement('div'); a.className = 'aud'; a.textContent = `Ignorado pelo operador: ${d.ignorado.motivo}`; body.appendChild(a); }
     const acts = document.createElement('div'); acts.className = 'acts'; acts.appendChild(x); body.appendChild(acts);
     el.append(th, body);
-    el.onclick = () => { p.sel = p.sel === i ? -1 : i; refresh(); };
+    el.onclick = () => { p.sel = p.sel === i ? -1 : i; const b = d.box, V = p.view; if (V && !(b.x + b.w > V.x && b.x < V.x + V.w && b.y + b.h > V.y && b.y < V.y + V.h)) p.view = null; refresh(); };
     list.appendChild(el);
   });
 }
@@ -602,7 +611,24 @@ function refreshControls(){
   if (p) { $('lado').value = p.lado; $('lado').disabled = !!p.perto; }
 }
 
-function refresh(){ updateCoverage(); updateThumbs(); updateSummary(); updateList(); refreshControls(); render(); }
+// barra "Partes da carga": visão geral + uma ficha por pilha, com zoom e contagem de pontos
+function updateParts(){
+  const p = cur(), r = p && p.result, box = $('parts'); box.textContent = '';
+  const partes = r && r.partes || [];
+  box.hidden = !partes.length; if (!partes.length) return;
+  const cnt = b => ({ d: r.defeitos.filter(d => !d.off && inside(d.box.x + d.box.w / 2, d.box.y + d.box.h / 2, b)), q: r.duvidas.filter(q => q.estado === 'aberta' && inside(q.box.x + q.box.w / 2, q.box.y + q.box.h / 2, b)) });
+  const chip = (txt, view, col) => {
+    const b = document.createElement('button'); b.className = 'small' + ((view === null ? !p.view : p.view === view) ? ' on' : '');
+    b.textContent = txt; if (col) b.style.borderLeftColor = col;
+    b.onclick = () => { p.view = view; p.sel = -1; refresh(); }; box.appendChild(b);
+  };
+  chip('Visão geral', null);
+  partes.forEach(pt => {
+    const c = cnt(pt.box), g = Math.max(0, ...c.d.map(d => d.gravidade));
+    chip(`${pt.nome} · ${c.d.length + c.q.length ? c.d.length + c.q.length + ' ponto(s)' : 'ok'}`, pt.box, c.d.length ? sev(g).c : c.q.length ? DUV : '#55c99a');
+  });
+}
+function refresh(){ updateCoverage(); updateThumbs(); updateSummary(); updateList(); updateParts(); refreshControls(); render(); }
 
 /* ---------- fotos ---------- */
 function loadImage(src){
@@ -728,7 +754,7 @@ Responda SOMENTE com um JSON (sem texto extra, sem markdown) neste formato:
 }
 
 function buildTilePrompt(p, t){
-  return `Você é inspetor de qualidade de expedição de painéis de madeira (chapas MDF/MDP em lotes) da Arauco. Esta imagem é um TRECHO AMPLIADO (coluna ${t.c + 1} de ${t.C}, linha ${t.r + 1} de ${t.R}) da foto da ${LADOS[p.lado]} de uma carga. Inspecione o trecho com atenção a detalhes pequenos e liste SOMENTE defeitos que você vê neste trecho:
+  return `Você é inspetor de qualidade de expedição de painéis de madeira (chapas MDF/MDP em lotes) da Arauco. Esta imagem é um TRECHO AMPLIADO (${t.label}) da foto da ${LADOS[p.lado]} de uma carga. Inspecione o trecho com atenção a detalhes pequenos e liste SOMENTE defeitos que você vê neste trecho:
 ${GUIDE}
 
 NÃO considere defeito, e não avalie:
@@ -760,8 +786,23 @@ function tileGrid(w, h){
   const asp = w / h, C = asp >= 1.6 ? 3 : asp >= .8 ? 2 : 2, R = asp <= .8 ? 3 : 2, ov = .15, tiles = [];
   const tw = w / (C - (C - 1) * ov), th = h / (R - (R - 1) * ov);
   for (let r = 0; r < R; r++) for (let c = 0; c < C; c++)
-    tiles.push({ c, r, C, R, x: c * tw * (1 - ov), y: r * th * (1 - ov), w: tw, h: th });
+    tiles.push({ c, r, C, R, x: c * tw * (1 - ov), y: r * th * (1 - ov), w: tw, h: th, label: `coluna ${c + 1} de ${C}, linha ${r + 1} de ${R}`, nome: `Trecho ${r * C + c + 1}` });
   return tiles;
+}
+// partes da carga: agrupa os lotes da visão geral em pilhas (colunas) e devolve cada uma como trecho para zoom
+function partsFromLotes(lotes, W, H){
+  const cl = [];
+  lotes.map(l => l.box).sort((a, b) => a.x + a.w / 2 - (b.x + b.w / 2)).forEach(b => {
+    const c = cl.find(c => Math.min(c.x + c.w, b.x + b.w) - Math.max(c.x, b.x) > .4 * Math.min(c.w, b.w));
+    if (c) { const x2 = Math.max(c.x + c.w, b.x + b.w), y2 = Math.max(c.y + c.h, b.y + b.h); c.x = Math.min(c.x, b.x); c.y = Math.min(c.y, b.y); c.w = x2 - c.x; c.h = y2 - c.y; }
+    else cl.push({ ...b });
+  });
+  cl.sort((a, b) => a.x - b.x);
+  if (cl.length < 2 || cl.length > 8 || cl.some(c => c.w * c.h > .6)) return null;
+  return cl.map((c, i) => {
+    const pad = .04, x = clamp01(c.x - pad), y = clamp01(c.y - pad), nb = { x, y, w: Math.min(1 - x, c.w + 2 * pad), h: Math.min(1 - y, c.h + 2 * pad) };
+    return { x: nb.x * W, y: nb.y * H, w: nb.w * W, h: nb.h * H, label: `pilha ${i + 1} de ${cl.length}, da esquerda para a direita`, nome: `Pilha ${i + 1}`, nbox: nb };
+  });
 }
 function cropTile(img, t){
   const x = Math.round(Math.min(t.x, img.width - 1)), y = Math.round(Math.min(t.y, img.height - 1));
@@ -889,8 +930,12 @@ const asObj = raw => typeof raw === 'string' ? parseJSON(raw) : raw;
 async function inspect(p, onStep){
   const res = sanitize(asObj(await callModel(await toJpeg(fitForAI(p.img)), buildPrompt(p))));
   res.detalhe = null;
+  res.partes = (partsFromLotes(res.lotes, p.img.width, p.img.height) || []).map(t => ({ nome: t.nome, box: t.nbox }));
   if ($('detalhe').checked) {
-    const tiles = tileGrid(p.img.width, p.img.height), found = [], foundQ = [];
+    const W = p.img.width, H = p.img.height;
+    const tiles = partsFromLotes(res.lotes, W, H) || tileGrid(W, H).map(t => ({ ...t, nbox: { x: t.x / W, y: t.y / H, w: t.w / W, h: t.h / H } }));
+    res.partes = tiles.map(t => ({ nome: t.nome, box: t.nbox }));
+    const found = [], foundQ = [];
     let done = 0, fail = 0, lastErr = null;
     await pool(tiles, 3, async t => {
       try {
@@ -900,7 +945,7 @@ async function inspect(p, onStep){
         sd.defeitos.forEach(d => { d.box = mapBox(d.box); if (d.box) found.push(d); });
         sd.duvidas.forEach(q => { q.box = mapBox(q.box); if (q.box) foundQ.push(q); });
       } catch(e){ fail++; lastErr = e; }
-      onStep && onStep(++done, tiles.length);
+      onStep && onStep(++done, tiles.length, t.nome);
     });
     res.defeitos = mergeDefects(res.defeitos, found, res.nao_avaliaveis);
     res.duvidas = res.duvidas.concat(foundQ);
@@ -909,7 +954,7 @@ async function inspect(p, onStep){
   res.defeitos = mergeDerived(res.defeitos, deriveFromInventory(res.lotes), res.nao_avaliaveis);
   res.duvidas = mergeDoubts(res.duvidas, res.defeitos, res.nao_avaliaveis);
   capNota(res);
-  p.result = res; p.sel = -1;
+  p.result = res; p.sel = -1; p.view = null;
 }
 
 // a nota nunca fica mais alta do que os defeitos ativos permitem
@@ -959,7 +1004,7 @@ async function analyze(){
     for (const [i, p] of todo.entries()) {
       const head = `Analisando foto ${i + 1}/${todo.length} (${LADOS[p.lado]})`;
       setStatus(head + '…', false, true);
-      await (p.perto ? inspectCloseup(p) : inspect(p, (d, n) => setStatus(`${head} · trecho ${d}/${n}`, false, true))); ok++;
+      await (p.perto ? inspectCloseup(p) : inspect(p, (d, n) => setStatus(`${head} · zoom ${d}/${n}`, false, true))); ok++;
       if (p.result.detalhe && p.result.detalhe.fail) warn += ` ${p.result.detalhe.fail} de ${p.result.detalhe.total} trechos falharam (${p.result.detalhe.err}).`;
       state.cur = state.photos.indexOf(p); refresh();
     }
@@ -998,6 +1043,7 @@ $('demo').onclick = () => {
     nao_avaliaveis: [ { box:{x:.667,y:.35,w:.283,h:.46}, motivo:'Lona do sider encobre a carga' } ],
     fotos_adicionais: [ { lado:'dir', motivo:'Ver o lado direito, onde a lona encobre os lotes.' } ]
   }));
+  { const q = cur(), pt = partsFromLotes(q.result.lotes, q.img.width, q.img.height); if (pt) q.result.partes = pt.map(t => ({ nome: t.nome, box: t.nbox })); }
   setStatus('Exemplo carregado (sem chamar a IA).'); refresh();
 };
 
@@ -1071,7 +1117,7 @@ function overallNota(all){ const done = all.filter(p => p.lado !== 'perto'); con
 // foto com marcações + faixa de identificação (embarque, placa, nota, data)
 function exportCanvas(p){
   const full = document.createElement('canvas');
-  render(p, full, { foco: false, sel: -1, marks: true, rot: true, audit: true });
+  render(p, full, { foco: false, sel: -1, marks: true, rot: true, audit: true, view: null });
   const s = Math.min(1, 2000 / Math.max(full.width, full.height)), W = Math.round(full.width * s), H = Math.round(full.height * s);
   const m = readMeta(), n = notaPhoto(p), act = p.result.defeitos.filter(d => !d.off).length;
   const isP = p.lado === 'perto', f1 = Math.max(16, W / 34), f2 = Math.max(13, W / 44), pad = f1 * .7, F = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';

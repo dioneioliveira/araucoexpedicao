@@ -106,3 +106,7 @@ A área fora da carga (lona, veículo, fundo) não recebe mais marcações hachu
 ## Base de padrões de defeito (`padroes/`)
 
 `padroes/padroes.json` + `padroes/pNN.jpg` guardam os exemplos enviados pela operação (25 fotos do documento "padrão de defeitos"), cada um com tipo(s) e gravidade. A tabela de gravidade (crítico / moderado / verificar / sem defeito) já está no `GUIDE` do `index.html`. Para ampliar: adicione a foto em `padroes/`, uma entrada no JSON e, se surgir um tipo novo, uma linha no `GUIDE` e em `TIPOS`.
+
+## Análise por partes com zoom
+
+Depois da visão geral, o app agrupa os lotes encontrados em **pilhas** (colunas, da esquerda para a direita), recorta cada pilha na resolução original e a analisa ampliada. Se não der para identificar pilhas (menos de 2, mais de 8 ou uma só ocupando a foto), usa uma grade 2×3 / 3×2 com sobreposição. Na tela, a barra "Partes da carga" mostra "Visão geral" e uma ficha por parte (com a quantidade de pontos e a cor da maior gravidade); tocar numa ficha aproxima a foto naquela parte. A foto enviada continua sendo a visão geral completa.
