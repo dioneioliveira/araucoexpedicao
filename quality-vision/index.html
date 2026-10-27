@@ -692,7 +692,7 @@ $('remove').onclick = () => {
 /* ---------- análise por IA ---------- */
 const GUIDE = `Contexto do material: os lotes são RETANGULARES; vistos de frente, cada lote tem uma face retangular delimitada por linhas de divisão. Reflexos e sombras NÃO são defeito: o filme stretch reflete a luz (brilhos, reflexos brancos, aspecto leitoso ou transparente) e partes mais escuras do lote causadas por sombra, pouca luz, interior do baú/galpão ou ângulo são só iluminação. Não marque nem coloque em "duvidas" reflexo de luz ou área escura por sombra; só reporte escurecimento/mancha quando tiver contorno próprio dentro da face do lote (não acompanha dobras do plástico nem a borda da sombra). Pontos fora do lote (veículo, lona, fundo, piso) nunca entram. Defeitos aparecem no meio da face, nos cantos, nas laterais e nas extremidades do lote. Os vãos escuros e retilíneos entre lotes sobrepostos, alinhados ao longo da pilha, NÃO são defeito: são os espaços onde a empilhadeira coloca o garfo para erguer o lote. Nunca marque o vão em si como defeito.
 
-- calco_faltando (FALHA GRAVE, gravidade 80 a 100): os barrotes (calços) ficam embaixo de cada lote, no vão do garfo, e seguem um padrão de fixação: blocos de madeira em colunas verticais alinhadas, com espaçamento regular, normalmente casados com as fitas verticais. Compare todos os vãos e lotes entre si: um ponto onde a sequência de blocos não é igual à das demais (bloco ausente, coluna sem bloco, espaçamento irregular) indica falta de barrote; o bloco faltando aparece como espaço vazio (escuro/vazado) com a largura de um bloco. Também é calço faltando o lote apoiado direto sobre o lote de baixo ou sobre o piso, sem blocos. Marque o ponto onde o bloco deveria estar; nunca classifique como "dano".
+- calco_faltando (FALHA GRAVE, gravidade 80 a 100): os barrotes (calços) ficam embaixo de cada lote, no vão do garfo, e seguem um padrão de fixação: blocos de madeira em colunas verticais alinhadas, com espaçamento regular, normalmente casados com as fitas verticais. Compare todos os vãos e lotes entre si: um ponto onde a sequência de blocos não é igual à das demais (bloco ausente, coluna sem bloco, espaçamento irregular) indica falta de barrote; o bloco faltando aparece como espaço vazio (escuro/vazado) com a largura de um bloco. Também é calço faltando o lote apoiado direto sobre o lote de baixo ou sobre o piso, sem blocos. Os blocos ficam alinhados sob as fitas verdes verticais: onde uma fita desce até o vão e não há bloco embaixo (enquanto os outros vãos da pilha têm bloco naquela coluna), falta barrote. Examine CADA vão, de cima a baixo, em cada pilha, inclusive o vão entre o lote de baixo e a carroceria/piso. Marque o ponto onde o bloco deveria estar; nunca classifique como "dano".
 - furo_garfo (CRÍTICO, gravidade 80 a 100): furos, rasgos, lascas ou quebras causados pelo garfo da empilhadeira, no próprio lote: bordas, cantos, extremidades, laterais e, às vezes, o meio da face. Aparecem como pequenas rupturas de formato irregular (não retangular): lasca, dente, buraco, trecho escuro ou amassado, fibra exposta, borda desfiada. São pequenos: examine bordas e cantos com atenção. Não confunda com o vão do garfo, que é retilíneo e alinhado.
 - dano: deformação do retângulo da face do lote. Se algum canto deforma o retângulo (amassado, arredondado, quebrado, mais escuro) ou a linha de divisão está torta, é possível defeito. Também batidas na face (áreas escuras/pretas). Marcas irregulares na borda são furo_garfo ou calco_faltando, não dano.
 - mancha_cor: diferença de coloração dentro da face do lote: de branco para mais escuro, de branco para esverdeado, de escuro para mais claro (umidade, mofo, sujeira, descoloração, batida). ATENÇÃO em lotes plastificados (stretch): o plástico reflete a luz e cria reflexos brancos e brilhos que NÃO são defeito. Reflexo muda de forma conforme as dobras do plástico; mancha tem contorno próprio e não acompanha as dobras. Se não der para distinguir reflexo de mancha, registre em "duvidas".
@@ -762,8 +762,10 @@ ${ignoreRules()}
 
 Regras: reporte apenas o que é visível, sem inventar. Se algo é suspeito mas pouco nítido, reporte com gravidade moderada em vez de ignorar. Defeitos cortados pela borda do trecho podem ser reportados mesmo assim. Caixas em coordenadas normalizadas 0–1 relativas a ESTE trecho ((x,y) = canto superior esquerdo).
 
+Inventário dos vãos do garfo (para detectar barrote faltando por comparação): em "vaos" liste CADA vão horizontal visível neste trecho (faixa escura entre um lote e o de baixo, ou entre o lote e a carroceria/piso) com "y" (centro vertical do vão, 0–1), "fitas_x" (posições horizontais 0–1 das fitas verdes verticais que cruzam ou chegam nesse vão) e "blocos_x" (posição horizontal 0–1 do centro de cada bloco/barrote realmente visível nesse vão). Conte com exatidão, bloco por bloco, sem supor o que está atrás de algo; não liste vão que não aparece por inteiro.
+
 Responda SOMENTE com um JSON (sem texto extra, sem markdown), com lista vazia se não houver nada:
-{"defeitos":[${DEF_FMT}],"duvidas":[${DUV_FMT}]}`;
+{"defeitos":[${DEF_FMT}],"duvidas":[${DUV_FMT}],"vaos":[{"y":0,"fitas_x":[0],"blocos_x":[0]}]}`;
 }
 
 function buildCloseupPrompt(parent, q){
@@ -855,6 +857,23 @@ function deriveFromInventory(lotes){
   }
   return out;
 }
+// Barrote faltando por comparação entre vãos da mesma pilha: bloco esperado sob a fita (ou onde os outros vãos têm) e ausente neste vão
+function deriveFromVaos(vaos){
+  const out = [], tol = .03, near = (arr, x) => arr.some(v => Math.abs(v - x) <= tol), groups = {};
+  vaos.forEach(v => (groups[v.tile] = groups[v.tile] || []).push(v));
+  Object.values(groups).forEach(vs => vs.forEach(v => {
+    const others = vs.filter(o => o !== v), pos = [];
+    [...v.fitas, ...others.flatMap(o => o.blocos)].forEach(x => { if (!pos.some(q => Math.abs(q - x) <= tol)) pos.push(x); });
+    pos.forEach(x => {
+      if (near(v.blocos, x)) return;
+      const fita = near(v.fitas, x), fr = others.length ? others.filter(o => near(o.blocos, x)).length / others.length : 0;
+      if (!((fita && fr >= .5) || (!fita && others.length >= 3 && fr >= .75))) return;
+      const box = normBox({ x: x - .022, y: v.y - .03, w: .044, h: .06 });
+      if (box) out.push({ tipo: 'calco_faltando', gravidade: 85, descricao: 'Posição sem barrote: os outros vãos da pilha têm bloco nesta coluna (sob a fita).', acao: 'Conferir e recalçar.', box, off: false });
+    });
+  }));
+  return out.slice(0, 8);
+}
 function mergeDerived(list, derived, naos){
   for (const e of derived) {
     const cx = e.box.x + e.box.w / 2, cy = e.box.y + e.box.h / 2;
@@ -931,6 +950,7 @@ async function inspect(p, onStep){
   const res = sanitize(asObj(await callModel(await toJpeg(fitForAI(p.img)), buildPrompt(p))));
   res.detalhe = null;
   res.partes = (partsFromLotes(res.lotes, p.img.width, p.img.height) || []).map(t => ({ nome: t.nome, box: t.nbox }));
+  const vaosAll = [];
   if ($('detalhe').checked) {
     const W = p.img.width, H = p.img.height;
     const tiles = partsFromLotes(res.lotes, W, H) || tileGrid(W, H).map(t => ({ ...t, nbox: { x: t.x / W, y: t.y / H, w: t.w / W, h: t.h / H } }));
@@ -944,6 +964,8 @@ async function inspect(p, onStep){
         const mapBox = b => normBox({ x: (t.x + b.x * t.w) / p.img.width, y: (t.y + b.y * t.h) / p.img.height, w: b.w * t.w / p.img.width, h: b.h * t.h / p.img.height });
         sd.defeitos.forEach(d => { d.box = mapBox(d.box); if (d.box) found.push(d); });
         sd.duvidas.forEach(q => { q.box = mapBox(q.box); if (q.box) foundQ.push(q); });
+        const nums = a => (Array.isArray(a) ? a : []).map(Number).filter(v => isFinite(v) && v >= 0 && v <= 1).map(v => (t.x + v * t.w) / W);
+        (Array.isArray(raw.vaos) ? raw.vaos : []).forEach(v => { const y = +v.y; if (isFinite(y) && y >= 0 && y <= 1) vaosAll.push({ tile: t.nome, y: (t.y + y * t.h) / H, fitas: nums(v.fitas_x), blocos: nums(v.blocos_x) }); });
       } catch(e){ fail++; lastErr = e; }
       onStep && onStep(++done, tiles.length, t.nome);
     });
@@ -951,7 +973,7 @@ async function inspect(p, onStep){
     res.duvidas = res.duvidas.concat(foundQ);
     res.detalhe = { total: tiles.length, fail, err: lastErr && (lastErr.message || String(lastErr)) };
   }
-  res.defeitos = mergeDerived(res.defeitos, deriveFromInventory(res.lotes), res.nao_avaliaveis);
+  res.defeitos = mergeDerived(res.defeitos, deriveFromInventory(res.lotes).concat(deriveFromVaos(vaosAll)), res.nao_avaliaveis);
   res.duvidas = mergeDoubts(res.duvidas, res.defeitos, res.nao_avaliaveis);
   capNota(res);
   p.result = res; p.sel = -1; p.view = null;
