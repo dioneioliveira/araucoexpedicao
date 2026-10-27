@@ -178,4 +178,11 @@
   22:40–06:00), `por` (perfil). `ocorrDe(T)` liga pela CPF (nome se faltar CPF) e placas carreta/cavalo. `printTransports`
   chama `avisoOcorrencias` antes de imprimir (Ver / Ignorar e imprimir / Cancelar). **Nunca** vai para documento impresso.
   Mantido no fechamento semanal. Painel: seção `#oc-sec` com os registros e "Registrar ocorrência".
+- Balança — histórico e exclusões: fechamento semanal grava pesagens compactas (`paraHistorico`) em `state.histBalanca`
+  (sem duplicar ticket|material; `doHistorico` recalcula kg/lote) e guarda 90 dias as cargas com ticket ainda sem pesagem
+  (`state.histCargas`, sync `hc:`, `arquivarCarga`/`cargaArquivada`; `registrosBalanca` liga ticket → carga arquivada).
+  Tipos por pesagem (`tiposCarga`, `TIPOS_PES`: fracionada, manual, reducao, amostra, placa); desconsiderar por tipo
+  (`state.blCfg.excl`, sync `blcfg`) ou uma a uma (`state.pesExcl[ticket|material]`, sync `px:`) → `motivoExcl`, fora da
+  média/gráfico. Média do item = soma dos pesos ÷ soma dos lotes (ponderada); `relacaoLotes`/`relacaoHTML`: grupos por nº
+  de lotes + reta peso = a + b·lotes. Tudo isso é mantido no fechamento semanal.
 

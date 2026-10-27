@@ -560,3 +560,18 @@ Ao **imprimir** uma ordem (ou várias selecionadas) com motorista (pelo CPF, ou 
 registro, aparece o aviso com o resumo: **Ver registros**, **Ignorar e imprimir** ou **Cancelar impressão**. Os registros
 **não saem em nenhum documento**; ficam só na tela, são compartilhados pela pasta oficial e não são apagados no
 fechamento semanal. Na guia dá para buscar (nome, CPF, placa, texto) e excluir registros.
+
+### Histórico de pesagens, pesagens desconsideradas e média por quantidade de lotes
+
+- **O histórico de pesagens não é apagado no domingo.** No fechamento semanal as pesagens da semana vão para o histórico
+  do app (registro compacto, sincronizado pela pasta oficial), e a análise da balança usa tudo (período até "Tudo" / 24 meses).
+  Cargas com ticket informado que **ainda não tinham a pesagem** (ex.: planilha do Guardian importada na segunda-feira)
+  ficam guardadas por 90 dias: quando o ticket chega, a pesagem entra na análise normalmente.
+- **Desconsiderar** (card da balança): botões por tipo de pesagem que pode ter erro — Carga fracionada, Lotes informados à
+  mão, Redução de carga, Amostra, Ligada por placa + data. Marcado, o tipo sai da média e do gráfico (vale para todos os
+  computadores). Para tirar uma pesagem só, use **Desconsiderar** na linha dela (tabela do item); **Considerar** devolve.
+  As desconsideradas continuam na tabela, riscadas, e no Excel com o motivo.
+- **Média ponderada pela quantidade**: kg/lote = soma dos pesos ÷ soma dos lotes (a carga com mais lotes pesa mais na
+  média). Abaixo do gráfico, a **relação peso × quantidade de lotes**: cargas agrupadas por nº de lotes (peso médio,
+  mín.–máx., kg/lote, esperado pela média e diferença) e, com duas ou mais quantidades diferentes, a reta
+  "peso ≈ parte fixa + kg por lote × lotes" (quanto cada lote a mais acrescenta).

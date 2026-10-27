@@ -49,6 +49,9 @@
     Object.entries(state.fotos || {}).forEach(([k, v]) => put('foto:' + k, v));
     Object.entries(state.histBalanca || {}).forEach(([k, v]) => put('hb:' + k, v));
     Object.entries(state.ocorr || {}).forEach(([k, v]) => put('oc:' + k, v));
+    Object.entries(state.histCargas || {}).forEach(([k, v]) => put('hc:' + k, v));
+    Object.entries(state.pesExcl || {}).forEach(([k, v]) => put('px:' + k, v));
+    if (state.blCfg && Object.keys(state.blCfg).length) put('blcfg', state.blCfg);
     if (state.fechamentos) put('fech', state.fechamentos); // só nomes e dados lidos; as imagens ficam no computador
     if (state.fsc && Object.keys(state.fsc).length) put('fsc', state.fsc);
     if (state.fscInfo) put('fscinfo', state.fscInfo);
@@ -74,6 +77,9 @@
         case 'foto': (s.fotos = s.fotos || {})[id] = v; break;
         case 'hb': (s.histBalanca = s.histBalanca || {})[id] = v; break;
         case 'oc': (s.ocorr = s.ocorr || {})[id] = v; break;
+        case 'hc': (s.histCargas = s.histCargas || {})[id] = v; break;
+        case 'px': (s.pesExcl = s.pesExcl || {})[id] = v; break;
+        case 'blcfg': s.blCfg = v; break;
         case 'fech': s.fechamentos = v; break;
         case 'fsc': s.fsc = v; break;
         case 'fscinfo': s.fscInfo = v; break;

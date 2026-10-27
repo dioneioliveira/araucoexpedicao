@@ -638,3 +638,13 @@ tr.reduzido td{background:rgba(208,204,0,.08)}
 #oc-sec h3{display:flex;align-items:center;gap:8px}
 #oc-alerta{width:min(720px,94vw)}
 #oc-al-det{max-height:50vh;overflow:auto}
+
+/* balança: desconsiderar e relação por lotes */
+.bl-excl{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 10px}
+.bl-excl-l{font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em}
+.chip-btn{border:1px solid #ccc;background:#fff;border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer;color:#444}
+.chip-btn.on{background:#5a5a5a;border-color:#5a5a5a;color:#fff}
+tr.bl-excluida td{color:#999;text-decoration:line-through;text-decoration-color:#bbb}
+tr.bl-excluida td:last-child, tr.bl-excluida td:nth-child(5){text-decoration:none}
+.bl-rel{margin:10px 0 4px}
+.bl-rel h4{margin:6px 0;font-size:13px}

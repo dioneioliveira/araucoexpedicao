@@ -13,7 +13,7 @@
 
   // ------------------------------------------------------------------ estado
   const STORE_KEY = 'arauco.ordensEmbarque.v1';
-  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {}, fotos: {}, histBalanca: {}, ocorr: {} });
+  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {}, fotos: {}, histBalanca: {}, histCargas: {}, pesExcl: {}, blCfg: {}, ocorr: {} });
   let state = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.v === 1) return Object.assign(emptyState(), s); } catch (e) { /* sem storage */ }
@@ -1010,10 +1010,13 @@
   function registrosBalanca() {
     const all = allTransports();
     const idx = { tk: ticketParaTransporte(), ts: new Set(all.map(T => T.transporte)), nf: nfParaTransporte(), all };
+    // cargas de semanas já fechadas que ainda esperavam a pesagem (state.histCargas): ticket → carga arquivada
+    const arq = new Map(); Object.values(state.histCargas || {}).forEach(h => (h.tickets || []).forEach(k => arq.set(k, h)));
     const ref = refPesos(); const recs = [], semOrdem = [], semLote = [], variasEntregas = [];
     Object.values(state.tickets).forEach(tk => {
       const peso = tk.liq != null ? tk.liq : null; if (peso == null) return;
-      const lig = transporteDoTicket(tk, idx); const T = lig ? all.find(x => x.transporte === lig.t) : null;
+      let lig = transporteDoTicket(tk, idx); let T = lig ? all.find(x => x.transporte === lig.t) : null;
+      if (!T && arq.has(tk.ticket)) { T = cargaArquivada(arq.get(tk.ticket)); lig = { t: T.transporte, via: 'ticket (semana fechada)' }; }
       // itens da carga: da própria tabela da balança (se tiver material) ou da ordem
       const fonte = tk.itens.length ? tk.itens.map(i => ({ material: i.material, descricao: i.descricao || ((T && T.items.find(x => x.material === i.material)) || {}).descricao || '', qtd: i.qtd }))
         : (T ? T.items.map(i => ({ material: i.material, descricao: i.descricao, qtd: i.qtd, lotes: i.pallets })) : []);
@@ -1044,26 +1047,62 @@
         const pesoItem = soma ? peso * w(m) / soma : null;
         const nfRef = refNF(m);
         recs.push({ ticket: tk.ticket, data: tk.data || (T ? T.eff.data : ''), transporte: T ? T.transporte : (tk.transporte || ''), via: lig ? lig.via : 'tabela',
+          tipos: T ? tiposCarga(T, lig) : [],
           cliente: (T && T.eff.cliente) || tk.cliente || '', placa: tk.placa || (T ? T.eff.placaL : ''), material: m.material, descricao: m.descricao,
           qtd: m.qtd, lotes: m.lotesOk ? m.lotes : null, pesoCarga: peso, pesoItem, metodo, itensCarga: mats.length,
           kgLote: pesoItem != null && m.lotesOk && m.lotes ? pesoItem / m.lotes : null, kgPc: pesoItem != null ? pesoItem / m.qtd : null,
           nfItem: nfRef != null ? nfRef * m.qtd : null });
       });
     });
-    // meses fechados: pesagens guardadas no histórico
-    Object.values(state.histBalanca || {}).forEach(l => l.forEach(r => recs.push(Object.assign({}, r))));
+    // semanas fechadas: pesagens guardadas no histórico (não são apagadas no domingo); a pesagem atual vence a guardada
+    const vivos = new Set(recs.map(r => r.ticket + '|' + r.material));
+    Object.values(state.histBalanca || {}).forEach(l => l.forEach(r => { if (!vivos.has(r.ticket + '|' + r.material)) recs.push(doHistorico(r)); }));
+    recs.forEach(r => { r.id = r.ticket + '|' + r.material; r.excl = (state.pesExcl || {})[r.id] || null; });
     return { recs, semOrdem, semLote, variasEntregas };
+  }
+  // tipos de pesagem que podem ter erro (botões "Desconsiderar" da balança)
+  const TIPOS_PES = [['fracionada', 'Carga fracionada'], ['manual', 'Lotes informados à mão'], ['reducao', 'Redução de carga'], ['amostra', 'Amostra'], ['placa', 'Ligada por placa + data']];
+  function tiposCarga(T, lig) {
+    if (T.tipos) return T.tipos; // carga arquivada
+    return [isFracionada(T) && 'fracionada', T.items.some(i => i.lotesManual) && 'manual', T.reduzido && 'reducao', isAmostra(T) && 'amostra', lig && lig.via === 'placa + data' && 'placa'].filter(Boolean);
+  }
+  // carga de semana fechada com a mesma "cara" de um transporte para registrosBalanca
+  const cargaArquivada = h => ({ transporte: h.t, eff: { data: h.data, cliente: h.cliente, placaL: h.placa }, entregas: Array(h.entregas || 1).fill(''), ot: { nf: h.nf || '' },
+    items: h.itens.map(i => ({ material: i.material, descricao: i.descricao, qtd: i.qtd, pallets: i.lotes })), tipos: h.tipos || [] });
+  function arquivarCarga(T) {
+    const tks = String(T.ot.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(Boolean);
+    return { t: T.transporte, data: T.eff.data, cliente: T.eff.cliente, placa: T.eff.placaL, nf: T.ot.nf, tickets: tks, entregas: T.entregas.length, tipos: tiposCarga(T, null),
+      itens: T.items.map(i => ({ material: i.material, descricao: i.descricao, qtd: i.qtd, lotes: i.pallets })), em: new Date().toISOString() };
+  }
+  // registro compacto do histórico → registro completo (kg/lote e kg/peça recalculados)
+  function doHistorico(r) {
+    const peso = r.pesoItem != null ? r.pesoItem : r.pesoCarga;
+    return Object.assign({ via: 'arquivo', metodo: 'item único', itensCarga: 1, tipos: [] }, r, { pesoItem: peso,
+      kgLote: r.kgLote != null ? r.kgLote : (peso != null && r.lotes ? peso / r.lotes : null), kgPc: r.kgPc != null ? r.kgPc : (peso != null && r.qtd ? peso / r.qtd : null) });
+  }
+  const paraHistorico = r => ({ ticket: r.ticket, data: r.data, transporte: r.transporte, cliente: r.cliente, placa: r.placa, material: r.material, descricao: r.descricao,
+    qtd: r.qtd, lotes: r.lotes, pesoCarga: r.pesoCarga, pesoItem: r.pesoItem !== r.pesoCarga ? r.pesoItem : undefined, metodo: r.metodo !== 'item único' ? r.metodo : undefined, tipos: r.tipos && r.tipos.length ? r.tipos : undefined });
+  // pesagem desconsiderada: à mão (state.pesExcl) ou pelo tipo marcado em "Desconsiderar"
+  function motivoExcl(r) {
+    if (r.excl) return 'desconsiderada à mão' + (r.excl.por ? ' por ' + r.excl.por : '');
+    const ex = (state.blCfg || {}).excl || {};
+    const t = (r.tipos || []).find(x => ex[x]); return t ? (TIPOS_PES.find(([k]) => k === t) || [, t])[1] : '';
   }
   function analiseBalanca() {
     const B = registrosBalanca();
     const desde = blUI.per === 'todos' ? '' : (() => { const d = new Date(); d.setDate(d.getDate() - (+blUI.per)); return d.toISOString().slice(0, 10); })();
-    const recs = B.recs.filter(r => !desde || !r.data || r.data >= desde);
-    const k = blUI.met === 'pc' ? 'kgPc' : 'kgLote';
+    const todos = B.recs.filter(r => !desde || !r.data || r.data >= desde);
+    todos.forEach(r => { r.motivoExcl = motivoExcl(r); });
+    const recs = todos.filter(r => !r.motivoExcl), excluidas = todos.filter(r => r.motivoExcl);
+    const k = blUI.met === 'pc' ? 'kgPc' : 'kgLote', base = k === 'kgPc' ? 'qtd' : 'lotes';
     const g = new Map();
     recs.forEach(r => { if (!g.has(r.material)) g.set(r.material, []); g.get(r.material).push(r); });
     const itens = Array.from(g, ([material, rs]) => {
       const v = rs.map(r => r[k]).filter(x => x != null);
-      const media = v.length ? v.reduce((a, x) => a + x, 0) / v.length : null;
+      // média ponderada pela quantidade: soma dos pesos ÷ soma dos lotes (ou peças) — carga com mais lotes pesa mais
+      const comK = rs.filter(r => r[k] != null && r[base]);
+      const sP = comK.reduce((a, r) => a + r.pesoItem, 0), sQ = comK.reduce((a, r) => a + r[base], 0);
+      const media = sQ ? sP / sQ : null;
       const sd = v.length ? Math.sqrt(v.reduce((a, x) => a + (x - media) ** 2, 0) / v.length) : 0;
       rs.forEach(r => {
         r.desvio = r[k] != null && media ? r[k] - media : null;
@@ -1073,10 +1112,24 @@
         r.fora = r.desvioPct != null && Math.abs(r.desvioPct) > pesoUI.tol / 100;
       });
       const difs = rs.map(r => r.difCarga).filter(x => x != null);
-      return { material, desc: (rs.find(r => r.descricao) || {}).descricao || '', rs, n: v.length, cargas: new Set(rs.map(r => r.ticket)).size, media, cv: media ? sd / media : null,
+      return { material, desc: (rs.find(r => r.descricao) || {}).descricao || '', rs, n: v.length, cargas: new Set(rs.map(r => r.ticket)).size, media, cv: media ? sd / media : null, rel: relacaoLotes(rs, media),
         min: v.length ? Math.min(...v) : null, max: v.length ? Math.max(...v) : null, maiorDif: difs.length ? Math.max(...difs.map(Math.abs)) : null, fora: rs.filter(r => r.fora).length };
     }).sort((a, b) => (b.n >= 2) - (a.n >= 2) || (b.maiorDif || 0) - (a.maiorDif || 0));
-    return Object.assign(B, { recsPer: recs, itens, k });
+    return Object.assign(B, { recsPer: recs, excluidas, itens, k });
+  }
+  // relação peso × quantidade de lotes: cargas agrupadas pela quantidade de lotes e reta peso = fixo + kg por lote × lotes
+  function relacaoLotes(rs, media) {
+    const c = rs.filter(r => r.lotes && r.pesoItem != null);
+    const g = new Map(); c.forEach(r => { const q = Math.round(r.lotes * 100) / 100; if (!g.has(q)) g.set(q, []); g.get(q).push(r); });
+    const grupos = Array.from(g, ([lotes, l]) => { const p = l.reduce((a, r) => a + r.pesoItem, 0) / l.length;
+      return { lotes, cargas: l.length, peso: p, kgLote: p / lotes, min: Math.min(...l.map(r => r.pesoItem)), max: Math.max(...l.map(r => r.pesoItem)), esperado: media != null ? media * lotes : null }; }).sort((a, b) => a.lotes - b.lotes);
+    let reta = null;
+    if (grupos.length >= 2 && c.length >= 3) {
+      const n = c.length, mx = c.reduce((a, r) => a + r.lotes, 0) / n, my = c.reduce((a, r) => a + r.pesoItem, 0) / n;
+      const sxx = c.reduce((a, r) => a + (r.lotes - mx) ** 2, 0), sxy = c.reduce((a, r) => a + (r.lotes - mx) * (r.pesoItem - my), 0), syy = c.reduce((a, r) => a + (r.pesoItem - my) ** 2, 0);
+      if (sxx > 0) { const b = sxy / sxx; reta = { b, a: my - b * mx, r2: syy ? sxy * sxy / (sxx * syy) : null }; }
+    }
+    return { grupos, reta };
   }
   function svgBalanca(it, k, unidade) {
     const host = $('#bl-chart'); const W = Math.max(520, Math.min(1400, host.clientWidth || 900)), H = 300;
@@ -1121,27 +1174,34 @@
     sel.value = blUI.item;
     const it = A.itens.find(i => i.material === blUI.item);
     const nT = Object.keys(state.tickets).length;
+    // botões "Desconsiderar" por tipo de pesagem (valem para todos: state.blCfg, sincronizado)
+    const ex = (state.blCfg || {}).excl || {}, perTipo = k => A.recsPer.concat(A.excluidas).filter(r => (r.tipos || []).includes(k)).length;
+    $('#bl-excl').innerHTML = `<span class="bl-excl-l">Desconsiderar:</span>${TIPOS_PES.map(([k, l]) => `<button type="button" class="chip-btn ${ex[k] ? 'on' : ''}" data-blx="${k}" title="${ex[k] ? 'Desconsiderado: clique para voltar a considerar' : 'Clique para tirar estas pesagens da média e do gráfico'}">${ex[k] ? '✕ ' : ''}${esc(l)} <b>${perTipo(k)}</b></button>`).join('')}
+      <span class="muted small">${A.excluidas.length ? `${A.excluidas.length} pesagem(ns) fora da análise` : 'nenhuma pesagem desconsiderada'} · para tirar uma pesagem só, use <b>Desconsiderar</b> na linha da tabela do item</span>`;
     $('#bl-kpis').innerHTML = (it ? [
-      ['Cargas', it.cargas], [`Média ${unidade}`, kg(it.media, dec)], ['Mínimo', kg(it.min, dec)], ['Máximo', kg(it.max, dec)],
+      ['Cargas', it.cargas], [`Média ponderada ${unidade}`, kg(it.media, dec)], ['Mínimo', kg(it.min, dec)], ['Máximo', kg(it.max, dec)],
       ['Amplitude', kg(it.max - it.min, dec)], ['Maior diferença numa carga', it.maiorDif != null ? fmtNum(it.maiorDif, 0) + ' kg' : '—', it.maiorDif >= 1000 ? 'red' : ''],
       ['Fora da faixa', it.fora, it.fora ? 'red' : 'grey'],
     ] : [
       ['Tickets na memória', nT, 'grey'], ['Cargas no período', new Set(A.recsPer.map(r => r.ticket)).size], ['Itens', A.itens.length],
       ['Itens com carga fora da faixa', A.itens.filter(i => i.fora).length, A.itens.some(i => i.fora) ? 'red' : 'grey'],
-      ['Tickets sem ordem', A.semOrdem.length, A.semOrdem.length ? 'lime' : 'grey'],
+      ['Tickets sem ordem', A.semOrdem.length, A.semOrdem.length ? 'lime' : 'grey'], ['Desconsideradas', A.excluidas.length, 'grey'],
+      ['Histórico guardado', Object.values(state.histBalanca || {}).reduce((a, l) => a + l.length, 0), 'grey'],
     ]).map(([l, v, c]) => `<div class="card kpi ${c || ''}"><div class="k-label">${l}</div><div class="k-val">${v}</div></div>`).join('');
     const ch = $('#bl-chart');
-    if (it) ch.innerHTML = svgBalanca(it, A.k, unidade);
+    if (it) ch.innerHTML = svgBalanca(it, A.k, unidade) + relacaoHTML(it);
     else ch.innerHTML = nT ? '<div class="empty" style="padding:22px"><p>Escolha um <b>item</b> acima (ou clique numa linha do resumo) para ver o gráfico da variação de peso por carga.</p></div>'
       : '<div class="empty" style="padding:30px"><p>Nenhuma pesagem na memória. Copie a tabela diária da balança (com a linha de títulos: <b>Ticket</b>, peso de entrada/saída ou líquido, data, placa…) e use <b>Colar tickets</b> (ou Ctrl+V nesta guia).</p></div>';
     const ord = r => (r.data || '') + r.ticket;
     $('#bl-tab').innerHTML = it
-      ? `<table class="grid ps-grid"><thead><tr><th>Data</th><th>Ticket</th><th>Transporte</th><th>Cliente</th><th class="num">Qtd (pç)</th><th class="num">Lotes</th><th class="num">Peso balança carga (kg)</th><th class="num">Peso do item (kg)</th><th>Rateio</th><th class="num">kg/lote</th><th class="num">kg/peça</th><th class="num">Desvio ${esc(unidade)}</th><th class="num">Diferença na carga (kg)</th><th class="num">Peso bruto NF (kg)</th></tr></thead>
-        <tbody>${it.rs.slice().sort((a, b) => ord(b).localeCompare(ord(a))).map(r => `<tr class="${r.fora ? 'ps-fora' : ''}"><td>${esc(P.fmtDateBR(r.data))}</td><td class="mono">${esc(r.ticket)}</td><td class="mono">${r.transporte ? `<a href="#" data-pt="${esc(r.transporte)}">${esc(r.transporte)}</a>` : '—'}</td><td>${esc(r.cliente)}</td>
+      ? `<table class="grid ps-grid"><thead><tr><th>Data</th><th>Ticket</th><th>Transporte</th><th>Cliente</th><th>Tipo</th><th class="num">Qtd (pç)</th><th class="num">Lotes</th><th class="num">Peso balança carga (kg)</th><th class="num">Peso do item (kg)</th><th>Rateio</th><th class="num">kg/lote</th><th class="num">kg/peça</th><th class="num">Desvio ${esc(unidade)}</th><th class="num">Diferença na carga (kg)</th><th class="num">Peso bruto NF (kg)</th><th></th></tr></thead>
+        <tbody>${it.rs.concat(A.excluidas.filter(r => r.material === it.material)).sort((a, b) => ord(b).localeCompare(ord(a))).map(r => `<tr class="${r.motivoExcl ? 'bl-excluida' : r.fora ? 'ps-fora' : ''}"><td>${esc(P.fmtDateBR(r.data))}</td><td class="mono">${esc(r.ticket)}</td><td class="mono">${r.transporte ? (getTransport(r.transporte) ? `<a href="#" data-pt="${esc(r.transporte)}">${esc(r.transporte)}</a>` : esc(r.transporte)) : '—'}</td><td>${esc(r.cliente)}</td>
+          <td class="small">${(r.tipos || []).map(t => `<span class="chip">${esc((TIPOS_PES.find(([k]) => k === t) || [, t])[1])}</span>`).join(' ')}${r.motivoExcl ? `<span class="chip alt" title="Fora da média e do gráfico: ${esc(r.motivoExcl)}">desconsiderada</span>` : ''}</td>
           <td class="num">${kg(r.qtd, 0)}</td><td class="num">${kg(r.lotes, 2)}</td><td class="num">${kg(r.pesoCarga, 0)}</td><td class="num">${kg(r.pesoItem, 0)}</td><td class="small muted">${esc(r.metodo)}</td>
           <td class="num"><b>${kg(r.kgLote, 0)}</b></td><td class="num">${kg(r.kgPc, 3)}</td><td class="num">${r.desvio == null ? '—' : (r.desvio > 0 ? '+' : '') + fmtNum(r.desvio, dec)} <span class="muted small">${pct(r.desvioPct)}</span></td>
-          <td class="num"><b>${r.difCarga == null ? '—' : (r.difCarga > 0 ? '+' : '') + fmtNum(r.difCarga, 0)}</b></td><td class="num">${kg(r.nfItem, 0)}</td></tr>`).join('')}</tbody></table>`
-      : (A.itens.length ? `<table class="grid ps-grid"><thead><tr><th>Material</th><th>Descrição</th><th class="num">Cargas</th><th class="num">Média ${esc(unidade)}</th><th class="num">Mín.</th><th class="num">Máx.</th><th class="num">Amplitude</th><th class="num">Dispersão</th><th class="num">Maior diferença numa carga (kg)</th><th class="num">Fora da faixa</th></tr></thead>
+          <td class="num"><b>${r.motivoExcl || r.difCarga == null ? '—' : (r.difCarga > 0 ? '+' : '') + fmtNum(r.difCarga, 0)}</b></td><td class="num">${kg(r.nfItem, 0)}</td>
+          <td>${r.excl ? `<button class="btn btn-ghost btn-sm" data-blexcl="${esc(r.id)}" data-on="0">Considerar</button>` : `<button class="btn btn-ghost btn-sm" data-blexcl="${esc(r.id)}" data-on="1" title="Tirar esta pesagem da média e do gráfico (pode ter erro)">Desconsiderar</button>`}</td></tr>`).join('')}</tbody></table>`
+      : (A.itens.length ? `<table class="grid ps-grid"><thead><tr><th>Material</th><th>Descrição</th><th class="num">Cargas</th><th class="num">Média ponderada ${esc(unidade)}</th><th class="num">Mín.</th><th class="num">Máx.</th><th class="num">Amplitude</th><th class="num">Dispersão</th><th class="num">Maior diferença numa carga (kg)</th><th class="num">Fora da faixa</th></tr></thead>
         <tbody>${A.itens.map(i => `<tr class="ps-item" data-blmat="${esc(i.material)}"><td class="mono"><b>${esc(i.material)}</b></td><td class="wrap">${esc(i.desc)}</td><td class="num">${i.cargas}</td><td class="num"><b>${kg(i.media, dec)}</b></td><td class="num">${kg(i.min, dec)}</td><td class="num">${kg(i.max, dec)}</td><td class="num">${i.min == null ? '—' : kg(i.max - i.min, dec)}</td><td class="num">${i.cv == null ? '—' : fmtNum(i.cv * 100, 1) + '%'}</td><td class="num ${i.maiorDif >= 1000 ? 'ps-alerta' : ''}">${i.maiorDif == null ? '—' : fmtNum(i.maiorDif, 0)}</td><td class="num">${i.fora ? `<span class="chip alt">${i.fora}</span>` : '<span class="muted">0</span>'}</td></tr>`).join('')}</tbody></table>` : '');
     const tkOrdem = ticketParaTransporte(), semPesagem = Array.from(tkOrdem).filter(([tk]) => !state.tickets[tk]);
     $('#bl-pend').innerHTML = (A.variasEntregas.length ? `<details><summary><b>${A.variasEntregas.length}</b> carga(s) desconsiderada(s): mais de uma entrega ou mais de um material</summary><p class="small">${A.variasEntregas.map(x => x.T ? `<a href="#" data-pt="${esc(x.T.transporte)}">${esc(x.T.transporte)}</a> (ticket ${esc(x.tk.ticket)}, ${esc(x.motivo)})` : `ticket ${esc(x.tk.ticket)} (${esc(x.motivo)})`).join(' · ')}</p><p class="muted small">A análise usa só cargas com uma entrega e um único material, para o peso líquido da balança ser todo daquele material.</p></details>` : '')
@@ -1149,7 +1209,28 @@
       + (semPesagem.length ? `<details><summary><b>${semPesagem.length}</b> ordem(ns) com ticket informado, mas ainda sem pesagem colada</summary><p class="small">${semPesagem.map(([tk, t]) => `<a href="#" data-pt="${esc(t)}">${esc(t)}</a> (ticket ${esc(tk)})`).join(' · ')}</p></details>` : '')
       + (A.recs.some(r => r.lotes == null) ? `<details><summary>Cargas sem o nº de peças por lote no texto do material</summary><p class="muted small">Nelas só o kg/peça é calculado (o texto do material precisa terminar com as peças por lote, ex.: P/EF/208).</p></details>` : '');
   }
+  // tabela da relação peso × quantidade de lotes do item (abaixo do gráfico)
+  function relacaoHTML(it) {
+    const R = it.rel; if (!R || !R.grupos.length) return '';
+    const t = R.reta;
+    return `<div class="bl-rel"><h4>Relação peso × quantidade de lotes <span class="muted small">média ponderada ${kg(it.media, 0)} kg/lote = soma dos pesos ÷ soma dos lotes</span></h4>
+      ${t ? `<p class="small">Pelas cargas: peso ≈ <b>${fmtNum(t.a, 0)} kg</b> + <b>${fmtNum(t.b, 0)} kg por lote</b>${t.r2 != null ? ` <span class="muted">(ajuste ${fmtNum(t.r2 * 100, 0)}%)</span>` : ''} · cada lote a mais na carga soma ~${fmtNum(t.b, 0)} kg.</p>` : '<p class="muted small">Com cargas de pelo menos duas quantidades de lotes diferentes, o app calcula também quanto cada lote a mais acrescenta.</p>'}
+      <table class="grid ps-grid"><thead><tr><th class="num">Lotes na carga</th><th class="num">Cargas</th><th class="num">Peso médio da carga (kg)</th><th class="num">Mín. – máx. (kg)</th><th class="num">kg/lote</th><th class="num">Esperado pela média (kg)</th><th class="num">Diferença (kg)</th></tr></thead>
+      <tbody>${R.grupos.map(g => `<tr><td class="num"><b>${fmtNum(g.lotes, 2)}</b></td><td class="num">${g.cargas}</td><td class="num">${kg(g.peso, 0)}</td><td class="num">${kg(g.min, 0)} – ${kg(g.max, 0)}</td><td class="num">${kg(g.kgLote, 0)}</td><td class="num">${kg(g.esperado, 0)}</td><td class="num">${g.esperado == null ? '—' : (g.peso - g.esperado > 0 ? '+' : '') + fmtNum(g.peso - g.esperado, 0)}</td></tr>`).join('')}</tbody></table></div>`;
+  }
   function bindBalanca() {
+    $('#bl-excl').addEventListener('click', e => {
+      const b = e.target.closest('[data-blx]'); if (!b) return;
+      const c = Object.assign({}, state.blCfg || {}); c.excl = Object.assign({}, c.excl || {});
+      if (c.excl[b.dataset.blx]) delete c.excl[b.dataset.blx]; else c.excl[b.dataset.blx] = true;
+      state.blCfg = c; save(true); renderBalanca();
+    });
+    $('#bl-tab').addEventListener('click', e => {
+      const b = e.target.closest('[data-blexcl]'); if (!b) return; e.stopPropagation();
+      state.pesExcl = Object.assign({}, state.pesExcl || {});
+      if (b.dataset.on === '1') state.pesExcl[b.dataset.blexcl] = { por: usuario() || '', em: new Date().toISOString() }; else delete state.pesExcl[b.dataset.blexcl];
+      save(true); renderBalanca(); toast(b.dataset.on === '1' ? 'Pesagem desconsiderada (fora da média e do gráfico).' : 'Pesagem considerada de novo.', 'ok');
+    });
     $('#bl-item').addEventListener('change', e => { blUI.item = e.target.value; renderBalanca(); });
     $('#bl-per').addEventListener('change', e => { blUI.per = e.target.value; renderBalanca(); });
     $$('#bl-met button').forEach(b => b.addEventListener('click', () => { blUI.met = b.dataset.v; renderBalanca(); }));
@@ -1171,8 +1252,10 @@
   }
   function exportarBalanca() {
     const B = registrosBalanca();
-    const cab = ['Material', 'Descrição', 'Data', 'Ticket', 'Transporte', 'Ligação', 'Cliente', 'Placa', 'Qtd (pç)', 'Lotes', 'Peso balança carga (kg)', 'Itens na carga', 'Rateio', 'Peso do item (kg)', 'kg/lote', 'kg/peça', 'Peso bruto NF (kg)'];
-    const rows = [cab].concat(B.recs.sort((a, b) => a.material.localeCompare(b.material) || (a.data || '').localeCompare(b.data || '')).map(r => [r.material, r.descricao, P.fmtDateBR(r.data), r.ticket, r.transporte, r.via, r.cliente, r.placa, r.qtd, round(r.lotes, 3), r.pesoCarga, r.itensCarga, r.metodo, round(r.pesoItem, 1), round(r.kgLote, 1), round(r.kgPc, 4), round(r.nfItem, 1)]));
+    const cab = ['Material', 'Descrição', 'Data', 'Ticket', 'Transporte', 'Ligação', 'Cliente', 'Placa', 'Qtd (pç)', 'Lotes', 'Peso balança carga (kg)', 'Itens na carga', 'Rateio', 'Peso do item (kg)', 'kg/lote', 'kg/peça', 'Peso bruto NF (kg)', 'Tipo', 'Desconsiderada'];
+    const nomeTipo = t => (TIPOS_PES.find(([k]) => k === t) || [, t])[1];
+    const rows = [cab].concat(B.recs.sort((a, b) => a.material.localeCompare(b.material) || (a.data || '').localeCompare(b.data || '')).map(r => [r.material, r.descricao, P.fmtDateBR(r.data), r.ticket, r.transporte, r.via, r.cliente, r.placa, r.qtd, round(r.lotes, 3), r.pesoCarga, r.itensCarga, r.metodo, round(r.pesoItem, 1), round(r.kgLote, 1), round(r.kgPc, 4), round(r.nfItem, 1),
+      (r.tipos || []).map(nomeTipo).join(', '), motivoExcl(r)]));
     const nome = `pesagens-balanca-${P.todayISO()}`;
     if (window.XLSX) { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Cargas por item'); XLSX.writeFile(wb, nome + '.xlsx'); return 'xlsx'; }
     const csv = rows.map(r => r.map(v => typeof v === 'number' ? String(v).replace('.', ',') : `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
@@ -1715,8 +1798,15 @@
       // estado novo: só o que tem data depois do domingo, FSC e histórico de pesagens
       const ficaT = new Set(allTransports().filter(T => T.eff.data && T.eff.data > fim).map(T => T.transporte));
       const sai = M.list.map(T => T.transporte).filter(t => !ficaT.has(t));
-      const hist = Object.assign({}, state.histBalanca || {});
-      M.pesagens.forEach(r => { const k = (r.data || fim).slice(0, 7); (hist[k] = hist[k] || []).push({ ticket: r.ticket, data: r.data, transporte: r.transporte, via: 'arquivo', cliente: r.cliente, placa: r.placa, material: r.material, descricao: r.descricao, qtd: r.qtd, lotes: r.lotes, pesoCarga: r.pesoCarga, pesoItem: r.pesoItem, metodo: r.metodo, itensCarga: r.itensCarga, kgLote: r.kgLote, kgPc: r.kgPc, nfItem: r.nfItem }); });
+      // histórico de pesagens (fica para sempre; mesma pesagem guardada de novo substitui a anterior)
+      const hist = {}, novas = new Set(M.pesagens.map(r => r.ticket + '|' + r.material));
+      Object.entries(state.histBalanca || {}).forEach(([k, l]) => { const f = l.filter(r => !novas.has(r.ticket + '|' + r.material)); if (f.length) hist[k] = f; });
+      M.pesagens.forEach(r => { const k = (r.data || fim).slice(0, 7); (hist[k] = hist[k] || []).push(paraHistorico(r)); });
+      // cargas com ticket que ainda não têm a pesagem (ex.: planilha do Guardian importada depois): ficam guardadas 90 dias
+      const pesados = new Set(M.pesagens.map(r => r.ticket)), lim = isoDia(new Date(Date.now() - 90 * 864e5));
+      const histCargas = Object.fromEntries(Object.entries(state.histCargas || {}).filter(([, h]) => h.data >= lim && !h.tickets.some(k => pesados.has(k))));
+      M.list.filter(T => !ficaT.has(T.transporte) && T.entregas.length === 1 && new Set(T.items.map(i => i.material)).size === 1).forEach(T => {
+        const h = arquivarCarga(T); if (h.tickets.length && !h.tickets.some(k => pesados.has(k))) histCargas[T.transporte] = h; });
       const pick = o => Object.fromEntries(Object.entries(o || {}).filter(([k]) => ficaT.has(k)));
       sai.forEach(t => { const fo = state.fotos[t]; if (fo) Object.values(fo.slots || {}).forEach(it => window.OEF.delLocal(it.id).catch(() => {})); }); // fotos: só a cópia local
       const novo = Object.assign(emptyState(), {
@@ -1724,7 +1814,7 @@
         manual: pick(state.manual), printed: pick(state.printed), snap: pick(state.snap), faturado: pick(state.faturado), fatNf: pick(state.fatNf), fotos: pick(state.fotos),
         sew: state.sew.filter(e => e.data && e.data > fim), ots: Object.fromEntries(Object.entries(state.ots).filter(([en]) => !M.entregas.has(en))),
         tickets: Object.fromEntries(Object.entries(state.tickets).filter(([, t]) => t.data && t.data > fim)),
-        fsc: state.fsc, fscInfo: state.fscInfo, histBalanca: hist, ocorr: state.ocorr || {}, pesos: {},
+        fsc: state.fsc, fscInfo: state.fscInfo, histBalanca: hist, histCargas, pesExcl: state.pesExcl || {}, blCfg: state.blCfg || {}, ocorr: state.ocorr || {}, pesos: {},
         fechamentos: { ultimo: corte.toISOString(), em: new Date().toISOString(), por: usuario() || 'automático', arquivo: nome + '.xlsx', semana: { ini, fim } },
       });
       state = novo;
