@@ -394,7 +394,7 @@ function render(p = cur(), c = cv, opt = {}){
   const selIdx = opt.sel !== undefined ? opt.sel : p.sel;
   const r = p.result; if (!r) return;
   const edit = opt.edit ?? (c === cv), scale = edit ? (c.getBoundingClientRect().width / c.width || 1) : 1;
-  const W = c.width, H = c.height, lw = Math.max(2, W / 400), fs = Math.max(12, W / 55, edit ? 16 / scale : 0);
+  const W = c.width, H = c.height, lw = Math.max(2, W / 400), fs = Math.max(edit ? 12 : 17, W / 55, edit ? 16 / scale : 0);
   if (edit) p._hits = [];
   const act = r.defeitos.map((d, i) => ({ d, i })).filter(o => !o.d.off && vis(o.d.box));
   const openD = r.duvidas.map((q, i) => ({ q, i })).filter(o => o.q.estado === 'aberta' && vis(o.q.box));
@@ -410,7 +410,7 @@ function render(p = cur(), c = cv, opt = {}){
   }
 
   if (!marks) return;
-  const placed = [], ph = fs * 1.55, hits = [];
+  const placed = [], ph = fs * 1.15, hits = [];
   // um ponto: caixa com cantos em mira, rótulo curto com X (ignorar) e áreas de toque
   const mark = (box, col, txt, numTxt, on, t, i, o = {}) => {
     box = tb(box);
@@ -426,7 +426,7 @@ function render(p = cur(), c = cv, opt = {}){
     g.stroke(); g.restore();
     if (edit && t === 'd') hits.push({ k: 'sel', t, i, x, y, w, h });
     if (opt.rot ?? $('tRot').checked) {
-      g.font = `700 ${fs * .78}px system-ui,sans-serif`;
+      g.font = `700 ${fs * .6}px system-ui,sans-serif`;
       const xw = edit ? ph * .95 : 0, pw = ph * 1.05 + g.measureText(txt).width + ph * .45 + xw;
       let px = Math.min(Math.max(2, x), W - pw - 2), py = y - ph - lw * 2 < 2 ? y + h + lw * 2 : y - ph - lw * 2;
       const dir = py > y ? 1 : -1;
@@ -435,9 +435,9 @@ function render(p = cur(), c = cv, opt = {}){
       g.fillStyle = col; rr(g, px, py, pw, ph, ph / 2); g.fill();
       if (on) { g.lineWidth = lw; g.strokeStyle = '#fff'; g.stroke(); }
       g.fillStyle = '#0a0e13'; g.beginPath(); g.arc(px + ph / 2, py + ph / 2, ph * .38, 0, 7); g.fill();
-      g.fillStyle = '#fff'; g.font = `700 ${fs * .72}px system-ui,sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = '#fff'; g.font = `700 ${fs * .55}px system-ui,sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(numTxt, px + ph / 2, py + ph / 2 + 1);
-      g.fillStyle = '#0a0e13'; g.font = `700 ${fs * .78}px system-ui,sans-serif`; g.textAlign = 'left';
+      g.fillStyle = '#0a0e13'; g.font = `700 ${fs * .6}px system-ui,sans-serif`; g.textAlign = 'left';
       g.fillText(txt, px + ph * 1.05, py + ph / 2 + 1);
       if (edit) {
         if (t === 'd') hits.push({ k: 'sel', t, i, x: px, y: py, w: pw - xw, h: ph });
@@ -453,13 +453,13 @@ function render(p = cur(), c = cv, opt = {}){
       g.fillStyle = '#0a0e13'; g.font = `700 ${fs}px system-ui,sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(numTxt, x, y + 1);
     }
   };
-  openD.forEach(({ q, i }) => mark(q.box, DUV, 'Dúvida · foto de perto', '?', false, 'q', i, { dashed: true }));
+  openD.forEach(({ q, i }) => mark(q.box, DUV, 'Dúvida', '?', false, 'q', i, { dashed: true }));
   // na foto enviada, críticos ignorados continuam visíveis (cinza tracejado) para ficar registrado
-  if (opt.audit) r.defeitos.forEach((d, i) => { if (d.off && d.ignorado && vis(d.box)) mark(d.box, '#9aa7b4', `${CURTO[d.tipo] || 'Atenção'} · IGNORADO`, String(i + 1), false, 'd', i, { dashed: true }); });
+  if (opt.audit) r.defeitos.forEach((d, i) => { if (d.off && d.ignorado && vis(d.box)) mark(d.box, '#9aa7b4', `${CURTO[d.tipo] || 'Atenção'} · ignorado`, String(i + 1), false, 'd', i, { dashed: true }); });
   // mais graves por último (ficam por cima)
   act.slice().sort((a, b) => a.d.gravidade - b.d.gravidade).forEach(({ d, i }) => {
     const s = sev(d.gravidade);
-    mark(d.box, s.c, `${CURTO[d.tipo] || 'Atenção'} · ${s.k}`, String(i + 1), i === selIdx, 'd', i, { glow: d.gravidade >= 80 });
+    mark(d.box, s.c, `${CURTO[d.tipo] || 'Atenção'}`, String(i + 1), i === selIdx, 'd', i, { glow: d.gravidade >= 80 });
   });
   if (edit) p._hits = hits;
 }
@@ -1115,18 +1115,20 @@ const fmtDate = d => d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 
 function overallNota(all){ const done = all.filter(p => p.lado !== 'perto'); const ns = done.map(notaPhoto); return done.length === 1 ? ns[0] : .6 * Math.min(...ns) + .4 * ns.reduce((a, b) => a + b, 0) / ns.length; }
 
 // foto com marcações + faixa de identificação (embarque, placa, nota, data)
-function exportCanvas(p){
+// pontos (defeitos ativos e dúvidas abertas) cujo centro cai dentro do trecho
+const pointsIn = (p, b) => p.result.defeitos.filter(d => !d.off && inside(d.box.x + d.box.w / 2, d.box.y + d.box.h / 2, b)).length + p.result.duvidas.filter(q => q.estado === 'aberta' && inside(q.box.x + q.box.w / 2, q.box.y + q.box.h / 2, b)).length;
+function exportCanvas(p, part){
   const full = document.createElement('canvas');
-  render(p, full, { foco: false, sel: -1, marks: true, rot: true, audit: true, view: null });
+  render(p, full, { foco: false, sel: -1, marks: true, rot: true, audit: true, view: part ? part.box : null });
   const s = Math.min(1, 2000 / Math.max(full.width, full.height)), W = Math.round(full.width * s), H = Math.round(full.height * s);
-  const m = readMeta(), n = notaPhoto(p), act = p.result.defeitos.filter(d => !d.off).length;
+  const m = readMeta(), n = notaPhoto(p), act = part ? pointsIn(p, part.box) : p.result.defeitos.filter(d => !d.off).length;
   const isP = p.lado === 'perto', f1 = Math.max(16, W / 34), f2 = Math.max(13, W / 44), pad = f1 * .7, F = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
   const lines = [
     [`${m.emb ? 'EMBARQUE ' + m.emb : 'INSPEÇÃO DE CARGA'}${m.placa ? '  ·  PLACA ' + m.placa : ''}`, `700 ${f1}px ${F}`, '#ffffff', f1],
-    [isP ? `Foto de perto  ·  ${p.result.resumo}` : `${LADOS[p.lado]}  ·  Nota ${Math.round(n)} (${classify(n)})  ·  ${act} ponto(s) de atenção`, `600 ${f2}px ${F}`, '#e8edf3', f2],
+    [isP ? `Foto de perto  ·  ${p.result.resumo}` : part ? `${LADOS[p.lado]}  ·  ${part.nome} ampliada  ·  ${act} ponto(s) de atenção` : `${LADOS[p.lado]}  ·  Nota ${Math.round(n)} (${classify(n)})  ·  ${act} ponto(s) de atenção`, `600 ${f2}px ${F}`, '#e8edf3', f2],
     [`${fmtDate(new Date())}${m.op ? '  ·  ' + m.op : ''}`, `400 ${f2 * .9}px ${F}`, '#96a4b3', f2 * .9]
   ];
-  p.result.defeitos.filter(d => d.off && d.ignorado).forEach(d => lines.push([`CRÍTICO IGNORADO – ${CURTO[d.tipo] || d.tipo}: ${d.ignorado.motivo}`, `600 ${f2 * .9}px ${F}`, '#ffb02e', f2 * .9]));
+  if (!part) p.result.defeitos.filter(d => d.off && d.ignorado).forEach(d => lines.push([`CRÍTICO IGNORADO – ${CURTO[d.tipo] || d.tipo}: ${d.ignorado.motivo}`, `600 ${f2 * .9}px ${F}`, '#ffb02e', f2 * .9]));
   const band = Math.round(pad * 2 + lines.reduce((a, l) => a + l[3] * 1.35, 0));
   const out = document.createElement('canvas'); out.width = W; out.height = H + band;
   const g = out.getContext('2d'); g.drawImage(full, 0, 0, W, H);
@@ -1177,6 +1179,12 @@ async function enviar(){
       const oc = document.createElement('canvas'); oc.width = p.img.width; oc.height = p.img.height; oc.getContext('2d').drawImage(p.img, 0, 0);
       const ob = await new Promise(ok => oc.toBlob(ok, 'image/jpeg', .9));
       files.push(new File([ob], `original-${m.placa || 'carga'}-${p.lado}.jpg`, { type: 'image/jpeg' }));
+      // partes ampliadas que têm pontos de atenção (até 4 por foto)
+      const com = (p.result.partes || []).filter(pt => pointsIn(p, pt.box)).slice(0, 4);
+      for (const pt of com) {
+        const pb = await new Promise(ok => exportCanvas(p, pt).toBlob(ok, 'image/jpeg', .88));
+        files.push(new File([pb], `parte-${m.placa || 'carga'}-${p.lado}-${pt.nome.toLowerCase().replace(/\s+/g, '')}.jpg`, { type: 'image/jpeg' }));
+      }
     }
     const text = reportText(), title = `Inspeção de carga${m.placa ? ' ' + m.placa : ''}${m.emb ? ' – embarque ' + m.emb : ''}`;
     try {

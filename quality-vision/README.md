@@ -110,3 +110,5 @@ A área fora da carga (lona, veículo, fundo) não recebe mais marcações hachu
 ## Análise por partes com zoom
 
 Depois da visão geral, o app agrupa os lotes encontrados em **pilhas** (colunas, da esquerda para a direita), recorta cada pilha na resolução original e a analisa ampliada. Se não der para identificar pilhas (menos de 2, mais de 8 ou uma só ocupando a foto), usa uma grade 2×3 / 3×2 com sobreposição. Na tela, a barra "Partes da carga" mostra "Visão geral" e uma ficha por parte (com a quantidade de pontos e a cor da maior gravidade); tocar numa ficha aproxima a foto naquela parte. A foto enviada continua sendo a visão geral completa.
+
+No envio, além da foto analisada e da original, seguem até 4 partes ampliadas por foto (as que têm pontos), nomeadas `parte-<placa>-<lado>-pilhaN.jpg`. Os rótulos das marcações mostram só o tipo (a cor indica a gravidade) e usam fonte pequena para não cobrir a imagem.
