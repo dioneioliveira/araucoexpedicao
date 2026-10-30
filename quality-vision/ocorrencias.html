@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0e13">
+<title>Base de defeitos · Arauco Quality Vision</title>
+<style>
+  :root{--bg:#0a0e13;--panel:#12181f;--raised:#1d2731;--line:#28333f;--ink:#e8edf3;--dim:#96a4b3;--accent:#5fd4e8;--ok:#55c99a;--bad:#e2543c;color-scheme:dark}
+  *{box-sizing:border-box}[hidden]{display:none!important}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:0 max(16px,env(safe-area-inset-left,0px))}
+  header{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  h1{font-size:16px;margin:0}header a{color:var(--accent);font-size:13px}
+  main{max-width:1300px;margin:0 auto;padding:16px 0}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  select,button,input{font:inherit;color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+  button{cursor:pointer}button.primary{background:var(--accent);color:#0a0e13;border-color:var(--accent);font-weight:600}
+  .sum{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .sum span{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--dim)}
+  .sum b{color:var(--ink)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+  .card img{width:100%;aspect-ratio:4/3;object-fit:cover;background:#05080b;display:block}
+  .noimg{aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;color:var(--dim);background:#05080b;font-size:12px}
+  .b{padding:10px;display:flex;flex-direction:column;gap:4px;flex:1}
+  .t{font-weight:600}.d{color:var(--dim);font-size:13px}.m{color:var(--dim);font-size:12px}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:10px;font-weight:700;text-transform:uppercase;background:var(--sev,#e8e04a);color:#0a0e13;margin-left:6px}
+  .tag{font-size:12px;color:var(--ok)}.tag.err{color:var(--bad)}.tag.warn{color:#ffb02e}
+  .acts{display:flex;gap:6px;margin-top:auto;padding-top:6px}.acts button{padding:4px 8px;font-size:12px}
+  .msg{color:var(--dim);padding:32px 0;text-align:center}.msg.err{color:var(--bad)}
+</style>
+</head>
+<body>
+<header><h1>Base de defeitos</h1><a href="./">← Voltar ao app</a></header>
+<main>
+  <div class="bar">
+    <select id="fTipo"><option value="">Todos os tipos</option></select>
+    <select id="fPer"><option value="">Todo o período</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option></select>
+    <select id="fSit"><option value="">Todas as situações</option><option value="critico">Só críticos</option><option value="ignorado">Só ignorados</option><option value="acertou">IA acertou</option><option value="errou">Falso alarme</option></select>
+    <button id="ok" class="primary">Filtrar</button>
+    <button id="csv">Baixar CSV</button>
+  </div>
+  <div class="sum" id="sum"></div>
+  <div class="msg" id="msg">Carregando…</div>
+  <div class="grid" id="grid"></div>
+</main>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const st = k => { try { return localStorage.getItem('qv_' + k) || ''; } catch(e) { return ''; } };
+const TIPOS = { calco_faltando:'Calço/barrote faltando', barrote_quebrado:'Barrote quebrado', furo_garfo:'Furo de garfo', filme_ausente:'Falta de filme stretch', molhado:'Molhado', lote_quebrado:'Lote quebrado', filme_stretch:'Filme stretch solto', etiqueta:'Etiqueta', dano:'Dano / canto', mancha_cor:'Mancha / cor', empilhamento:'Empilhamento', fita_faltando:'Fita faltando', fita_solta:'Fita solta', embalagem_fora_padrao:'Embalagem', outro:'Outro' };
+Object.entries(TIPOS).forEach(([k, v]) => { const o = document.createElement('option'); o.value = k; o.textContent = v; $('fTipo').appendChild(o); });
+const SEV = [[80, 'Crítico', '#ff2d6f'], [65, 'Alto', '#ff6a2b'], [40, 'Moderado', '#ffb02e'], [0, 'Leve', '#e8e04a']];
+const sev = g => SEV.find(s => (g || 0) >= s[0]);
+const ep = st('endpoint').replace(/\/analisar\/?$/, '/registrar'), tok = st('token');
+let rows = [];
+
+async function call(body){
+  const r = await fetch(ep, { method: 'POST', headers: { 'content-type': 'application/json', 'x-app-token': tok }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j.error && j.error.message) || `Erro ${r.status}`);
+  return j;
+}
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+const fmt = s => new Date(s).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+
+function draw(){
+  const g = $('grid'); g.textContent = '';
+  $('msg').hidden = !!rows.length; $('msg').className = 'msg'; $('msg').textContent = 'Nenhuma ocorrência com esses filtros.';
+  const by = {}; rows.forEach(r => by[r.tipo] = (by[r.tipo] || 0) + 1);
+  const sm = $('sum'); sm.textContent = '';
+  const tot = el('span'); tot.innerHTML = `<b>${rows.length}</b> ocorrência(s)`; sm.appendChild(tot);
+  Object.entries(by).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => { const s = el('span'); s.innerHTML = `${TIPOS[k] || k}: <b>${n}</b>`; sm.appendChild(s); });
+  const nOk = rows.filter(r => r.veredito === 'acertou').length, nErr = rows.filter(r => r.veredito === 'errou').length;
+  if (nOk + nErr) { const s = el('span'); s.innerHTML = `Acerto da IA (com retorno): <b>${Math.round(100 * nOk / (nOk + nErr))}%</b> (${nOk} certos, ${nErr} falsos alarmes)`; sm.appendChild(s); }
+  rows.forEach(r => {
+    const c = el('div', 'card');
+    if (r.recorte_url) { const i = el('img'); i.src = r.recorte_url; i.alt = TIPOS[r.tipo] || r.tipo; i.loading = 'lazy'; c.appendChild(i); } else c.appendChild(el('div', 'noimg', 'sem imagem'));
+    const b = el('div', 'b'), t = el('div', 't', TIPOS[r.tipo] || r.tipo), s = sev(r.gravidade), p = el('span', 'pill', `${s[1]} · ${r.gravidade ?? '-'}`); p.style.setProperty('--sev', s[2]); t.appendChild(p);
+    b.append(t, el('div', 'd', r.descricao || ''));
+    const ins = r.inspecoes || {};
+    b.appendChild(el('div', 'm', [fmt(r.criado_em), ins.placa && 'Placa ' + ins.placa, ins.embarque && 'Emb. ' + ins.embarque, r.lado].filter(Boolean).join(' · ')));
+    if (r.veredito) b.appendChild(el('div', 'tag' + (r.veredito === 'errou' ? ' err' : ''), r.veredito === 'acertou' ? '✓ IA acertou' : '✗ Falso alarme'));
+    if (r.ignorado) b.appendChild(el('div', 'tag warn', 'Ignorado' + (r.motivo_ignorado ? ': ' + r.motivo_ignorado : '')));
+    const a = el('div', 'acts');
+    if (r.foto_url) { const l = el('a'); l.href = r.foto_url; l.target = '_blank'; l.rel = 'noopener'; const bt = el('button', '', 'Foto inteira (7 dias)'); l.appendChild(bt); a.appendChild(l); }
+    [['acertou', '✓ Correto'], ['errou', '✗ Falso alarme']].forEach(([v, txt]) => {
+      const bt = el('button', '', txt); bt.onclick = async () => { try { await call({ acao: 'veredito', id: r.id, veredito: r.veredito === v ? null : v }); r.veredito = r.veredito === v ? null : v; draw(); } catch(e) { alert(e.message); } };
+      a.appendChild(bt);
+    });
+    b.appendChild(a); c.appendChild(b); g.appendChild(c);
+  });
+}
+
+async function load(){
+  if (!ep || !tok || !/\/registrar$/.test(ep)) { $('msg').className = 'msg err'; $('msg').textContent = 'Abra primeiro o app neste aparelho com o link de configuração.'; return; }
+  $('msg').hidden = false; $('msg').className = 'msg'; $('msg').textContent = 'Carregando…'; $('grid').textContent = '';
+  const f = {}; if ($('fTipo').value) f.tipo = $('fTipo').value;
+  if ($('fPer').value) f.desde = new Date(Date.now() - $('fPer').value * 86400000).toISOString();
+  const sit = $('fSit').value; if (sit === 'critico') f.critico = true; else if (sit === 'ignorado') f.ignorado = true; else if (sit) f.veredito = sit;
+  try { rows = (await call({ acao: 'listar', filtros: f, limite: 200 })).defeitos || []; draw(); }
+  catch(e) { $('msg').hidden = false; $('msg').className = 'msg err'; $('msg').textContent = e.message || 'Não foi possível carregar.'; }
+}
+$('ok').onclick = load;
+$('csv').onclick = () => {
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const L = [['data', 'placa', 'embarque', 'lado', 'tipo', 'gravidade', 'critico', 'descricao', 'veredito', 'ignorado', 'motivo_ignorado'].join(',')];
+  rows.forEach(r => { const i = r.inspecoes || {}; L.push([r.criado_em, i.placa, i.embarque, r.lado, r.tipo, r.gravidade, r.critico, r.descricao, r.veredito, r.ignorado, r.motivo_ignorado].map(q).join(',')); });
+  const a = document.createElement('a'); a.download = 'base-defeitos.csv'; a.href = URL.createObjectURL(new Blob(['﻿' + L.join('\n')], { type: 'text/csv' })); a.click();
+};
+load();
+})();
+</script>
+</body>
+</html>

@@ -593,7 +593,10 @@ function updateList(){
     const x = document.createElement('button'); x.className = 'small'; x.textContent = d.off ? 'Restaurar' : '✕ Ignorar';
     x.onclick = e => { e.stopPropagation(); toggleDefect(p, d); };
     if (d.ignorado) { const a = document.createElement('div'); a.className = 'aud'; a.textContent = `Ignorado pelo operador: ${d.ignorado.motivo}`; body.appendChild(a); }
-    const acts = document.createElement('div'); acts.className = 'acts'; acts.appendChild(x); body.appendChild(acts);
+    const acts = document.createElement('div'); acts.className = 'acts';
+    // retorno do operador sobre a IA (alimenta a base de defeitos)
+    const vb = (txt, val) => { const b = document.createElement('button'); b.className = 'small' + (d.veredito === val ? ' primary' : ''); b.textContent = txt; b.onclick = e => { e.stopPropagation(); d.veredito = d.veredito === val ? null : val; refresh(); }; return b; };
+    acts.append(vb('✓ Correto', 'acertou'), vb('✗ Falso alarme', 'errou'), x); body.appendChild(acts);
     el.append(th, body);
     el.onclick = () => { p.sel = p.sel === i ? -1 : i; const b = d.box, V = p.view; if (V && !(b.x + b.w > V.x && b.x < V.x + V.w && b.y + b.h > V.y && b.y < V.y + V.h)) p.view = null; refresh(); };
     list.appendChild(el);
@@ -1189,6 +1192,44 @@ async function saveFile(file){
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
+/* ---------- base de defeitos (recortes ficam; foto inteira só 7 dias, no servidor) ---------- */
+const b64Of = blob => toB64(blob);
+async function cropDb(p, d){
+  const W = p.img.width, H = p.img.height, b = d.box;
+  let w = Math.max(b.w * W * 2.2, W * .22), h = w * .75;
+  if (h < b.h * H * 2.2) { h = b.h * H * 2.2; w = h / .75; }
+  w = Math.min(w, W); h = Math.min(h, H);
+  const x = Math.min(W - w, Math.max(0, (b.x + b.w / 2) * W - w / 2)), y = Math.min(H - h, Math.max(0, (b.y + b.h / 2) * H - h / 2));
+  const c = document.createElement('canvas'); c.width = 480; c.height = 360; const g = c.getContext('2d');
+  g.drawImage(p.img, x, y, w, h, 0, 0, 480, 360);
+  g.lineWidth = 3; g.strokeStyle = sev(d.gravidade).c; g.strokeRect((b.x * W - x) * 480 / w, (b.y * H - y) * 360 / h, b.w * W * 480 / w, b.h * H * 360 / h);
+  return b64Of(await new Promise(ok => c.toBlob(ok, 'image/jpeg', .8)));
+}
+async function registrarBase(done){
+  const ep = $('endpoint').value.trim().replace(/\/analisar\/?$/, '/registrar'), tok = $('token').value.trim();
+  if (HAS_CLAUDE || !tok || !/\/registrar$/.test(ep)) return;
+  const ps = done.filter(p => p.lado !== 'perto' && !p._reg), fotos = [], defeitos = [];
+  for (const p of ps) {
+    if (!p.result.defeitos.length) continue;
+    const full = exportCanvas(p), sc = Math.min(1, 1280 / Math.max(full.width, full.height)), o = document.createElement('canvas');
+    o.width = Math.round(full.width * sc); o.height = Math.round(full.height * sc); o.getContext('2d').drawImage(full, 0, 0, o.width, o.height);
+    const fi = fotos.length; fotos.push({ b64: await b64Of(await new Promise(ok => o.toBlob(ok, 'image/jpeg', .7))) });
+    for (const d of p.result.defeitos) defeitos.push({
+      lado: p.lado, foto: fi, tipo: d.tipo, gravidade: d.gravidade, critico: isCrit(d), descricao: d.descricao, acao: d.acao, box: d.box, origem: 'ia',
+      veredito: d.veredito || null, ignorado: !!d.off, motivo_ignorado: d.ignorado ? d.ignorado.motivo : null, recorte_b64: await cropDb(p, d)
+    });
+  }
+  if (!defeitos.length) return;
+  const m = readMeta(), n = overallNota(done), prev = $('status').textContent;
+  try {
+    const r = await fetch(ep, { method: 'POST', headers: { 'content-type': 'application/json', 'x-app-token': tok }, body: JSON.stringify({ acao: 'registrar', inspecao: { embarque: m.emb, placa: m.placa, operador: m.op, nota: Math.round(n), resultado: classify(n) }, fotos, defeitos }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((j.error && j.error.message) || `Erro ${r.status}`);
+    ps.forEach(p => { p._reg = true; });
+    setStatus(`${prev} Registrado na base de defeitos (${j.defeitos} ponto(s)).`);
+  } catch(err){ setStatus(`${prev} Não registrou na base de defeitos: ${err.message || err}`, true); }
+}
+
 async function enviar(){
   const done = state.photos.filter(p => p.result); if (!done.length || state.busy) return;
   $('enviar').disabled = true; setStatus('Preparando o envio…', false, true);
@@ -1212,7 +1253,7 @@ async function enviar(){
     try {
       if (navigator.canShare && navigator.canShare({ files })) {
         await navigator.share({ files, text, title });
-        $('fbCard').hidden = true; setStatus('Envio aberto no compartilhamento do aparelho.'); return;
+        $('fbCard').hidden = true; setStatus('Envio aberto no compartilhamento do aparelho.'); registrarBase(done); return;
       }
     } catch(e) { if (e && e.name === 'AbortError') { setStatus('Envio cancelado.'); return; } }
     // sem compartilhamento de arquivos: salva as imagens e oferece atalhos com o texto
@@ -1220,7 +1261,7 @@ async function enviar(){
     $('fbWa').href = 'https://wa.me/?text=' + encodeURIComponent(text);
     $('fbMail').href = `mailto:${store.get('mailTo') || ''}?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}`;
     $('fbCopy').onclick = () => { try { navigator.clipboard.writeText(text).then(() => setStatus('Texto copiado.'), () => setStatus('Não foi possível copiar.', true)); } catch(e) { setStatus('Não foi possível copiar.', true); } };
-    $('fbCard').hidden = false; setStatus('Imagens salvas. Use os atalhos ao lado para enviar o texto e anexe as fotos.');
+    $('fbCard').hidden = false; setStatus('Imagens salvas. Use os atalhos ao lado para enviar o texto e anexe as fotos.'); registrarBase(done);
   } catch(err){ setStatus(err.message || 'Não foi possível preparar o envio.', true); }
   finally { $('enviar').disabled = false; }
 }
