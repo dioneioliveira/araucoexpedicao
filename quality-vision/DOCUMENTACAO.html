@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR" xml:lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Arauco Quality Vision ��� o que o sistema faz</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <style>
+  :root{color-scheme:light dark}
+  body{font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:900px;margin:0 auto;padding:24px 16px;color:#1b2430;background:#fff}
+  h1{font-size:28px;border-bottom:3px solid #e2543c;padding-bottom:8px}h2{margin-top:32px;border-bottom:1px solid #d5dbe3;padding-bottom:4px}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}th,td{border:1px solid #d5dbe3;padding:6px 10px;text-align:left;vertical-align:top}th{background:#eef2f6}
+  code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-size:90%}
+  @media(prefers-color-scheme:dark){body{background:#0f141a;color:#e6ebf1}th{background:#1b2530}th,td,h2{border-color:#2c3948}code{background:#1b2530}}
+  @media print{body{max-width:none}}
+  </style>
+</head>
+<body>
+<h1 id="arauco-quality-vision-o-que-o-sistema-faz">Arauco Quality Vision
+— o que o sistema faz</h1>
+<p>Documento de apresentação do sistema de inspeção visual de cargas no
+embarque. Atualizado em 05/11/2026.</p>
+<h2 id="objetivo">1. Objetivo</h2>
+<p>Ao final do carregamento, o operador fotografa a carga no celular. O
+sistema analisa a foto com inteligência artificial (IA), devolve
+<strong>a mesma foto com os pontos de atenção marcados</strong>, uma
+nota de qualidade e uma lista dos problemas, e permite <strong>enviar o
+resultado por WhatsApp ou e-mail</strong>. Os defeitos encontrados
+formam uma <strong>base de ocorrências com imagem</strong> para análise
+posterior.</p>
+<h2 id="como-o-operador-usa-fluxo">2. Como o operador usa (fluxo)</h2>
+<ol type="1">
+<li>Abre o app pelo link (instalável na tela inicial do celular, como um
+aplicativo).</li>
+<li>Informa embarque, placa e operador.</li>
+<li>Tira a foto da <strong>lateral esquerda</strong> e da
+<strong>lateral direita</strong> da carga (quando possível), e fotos
+extras se necessário.</li>
+<li>O sistema analisa automaticamente: primeiro uma <strong>visão
+geral</strong>; depois divide a carga em <strong>partes
+(pilhas)</strong> e analisa cada uma <strong>ampliada
+(zoom)</strong>.</li>
+<li>Vê a foto com as marcações, a nota, a lista de pontos e, se quiser,
+aproxima cada parte.</li>
+<li>Confirma ou descarta pontos, tira <strong>fotos de perto</strong>
+para esclarecer dúvidas.</li>
+<li>Envia por WhatsApp/e-mail a foto analisada, a foto original e as
+partes ampliadas com pontos, mais um texto-resumo.</li>
+</ol>
+<h2 id="o-que-o-sistema-detecta">3. O que o sistema detecta</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Tipo</th>
+<th>Exemplos</th>
+<th>Gravidade</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Furo de garfo</td>
+<td>rupturas, lascas ou furos causados pela empilhadeira</td>
+<td><strong>Crítico</strong></td>
+</tr>
+<tr class="even">
+<td>Calço / barrote faltando</td>
+<td>bloco ausente no vão do garfo; lote apoiado direto; foge do padrão
+dos demais lotes</td>
+<td><strong>Crítico</strong></td>
+</tr>
+<tr class="odd">
+<td>Barrote quebrado</td>
+<td>bloco partido, torto ou deslocado</td>
+<td><strong>Crítico</strong></td>
+</tr>
+<tr class="even">
+<td>Falta de filme stretch</td>
+<td>lote que deveria estar plastificado e está sem filme</td>
+<td><strong>Crítico</strong></td>
+</tr>
+<tr class="odd">
+<td>Canto batido / avaria no lote</td>
+<td>canto amassado, esfarelado ou quebrado; lote quebrado ou
+tombado</td>
+<td><strong>Crítico</strong></td>
+</tr>
+<tr class="even">
+<td>Material molhado</td>
+<td>manchas de água, papelão encharcado ou ondulado</td>
+<td><strong>Crítico</strong></td>
+</tr>
+<tr class="odd">
+<td>Desalinhamento de carga (empilhamento)</td>
+<td>chapas deslocadas ou salientes, carga torta, material
+encavalado</td>
+<td>Moderado</td>
+</tr>
+<tr class="even">
+<td>Filme stretch solto ou pendurado</td>
+<td>plástico aberto, rasgado ou pendurado</td>
+<td>Moderado</td>
+</tr>
+<tr class="odd">
+<td>Etiqueta rasurada, rasgada ou caída</td>
+<td>fora de posição ou ilegível</td>
+<td>Moderado</td>
+</tr>
+<tr class="even">
+<td>Manchas / diferença de cor</td>
+<td>em relação a lotes do mesmo padrão (a verificar)</td>
+<td>Moderado</td>
+</tr>
+<tr class="odd">
+<td>Embalagem danificada</td>
+<td>papelão rasgado ou solto</td>
+<td>Moderado</td>
+</tr>
+<tr class="even">
+<td>Fita de fixação solta ou faltando</td>
+<td>fita frouxa, rompida ou ausente</td>
+<td>Moderado</td>
+</tr>
+</tbody>
+</table>
+<p><strong>O que não é defeito</strong> (e o sistema ignora): reflexo de
+luz no plástico stretch; sombras e partes escuras por iluminação; o vão
+onde a empilhadeira coloca o garfo; cintas de amarração do veículo;
+réguas já posicionadas; lona do sider, veículo e fundo; lotes sem
+papelão que usam apenas filme stretch e calços (padrão válido).</p>
+<h2 id="principais-funções">4. Principais funções</h2>
+<ul>
+<li><strong>Pontos de atenção com destaque:</strong> caixas em mira com
+rótulo curto (tipo) e cor pela gravidade (leve, moderado, alto,
+crítico); o restante da imagem escurece ao selecionar um ponto.</li>
+<li><strong>Análise por partes com zoom:</strong> a carga é dividida em
+pilhas e cada uma é inspecionada ampliada; barra “Partes da carga” para
+navegar; cada parte mostra quantos pontos tem.</li>
+<li><strong>Barrote faltando por comparação:</strong> o sistema compara
+os vãos da mesma pilha (posição das fitas e dos blocos) e aponta onde
+falta bloco em relação ao padrão.</li>
+<li><strong>Dúvidas e foto de perto:</strong> quando a IA não consegue
+decidir, pede uma foto mais próxima; a IA decide com a nova foto. Existe
+o botão para ignorar todas as dúvidas de uma vez.</li>
+<li><strong>Ignorar pontos:</strong> qualquer ponto pode ser ignorado
+com um toque (X). <strong>Pontos críticos exigem motivo e
+confirmação</strong>, que ficam registrados no relatório, na foto
+enviada e na base. Pontos de advertência e dúvidas não exigem.</li>
+<li><strong>Nota e classificação:</strong> nota de 0 a 100 (Aprovado,
+Atenção, Reprovar/retrabalhar, Crítico). Falhas críticas limitam a
+nota.</li>
+<li><strong>Envio:</strong> compartilhamento nativo do celular com a
+foto analisada, a original e as partes ampliadas com pontos, mais um
+resumo em texto.</li>
+<li><strong>Base de defeitos:</strong> cada defeito é registrado com
+recorte da imagem; o operador pode marcar “Correto” ou “Falso alarme”
+(retorno para medir e melhorar a IA). Página
+<code>ocorrencias.html</code> com filtros por tipo, período e situação,
+taxa de acerto da IA e exportação em CSV.</li>
+<li><strong>Base de padrões de defeito:</strong> 26 exemplos
+fotográficos fornecidos pela operação (pasta <code>padroes/</code>) com
+tipo e gravidade; as regras de gravidade já estão incorporadas à
+análise.</li>
+</ul>
+<h2 id="como-funciona-por-dentro-resumo-técnico">5. Como funciona por
+dentro (resumo técnico)</h2>
+<ul>
+<li><strong>Aplicativo:</strong> página web única (HTML/JavaScript),
+instalável como PWA, funciona no navegador do celular.</li>
+<li><strong>Análise:</strong> modelo de visão da Anthropic (Claude)
+chamado por uma <strong>função no servidor</strong> (Supabase Edge
+Function <code>analisar</code>). A chave da IA fica só no servidor; o
+celular guarda apenas o endereço da função e um código de acesso.</li>
+<li><strong>Fluxo de análise:</strong> visão geral (identifica lotes,
+conta fitas e calços) → recorte e ampliação de cada pilha → inspeção
+detalhada → regras do sistema (comparação entre lotes e vãos, remoção de
+duplicados, gravidade).</li>
+<li><strong>Base de dados:</strong> Supabase (Postgres + Storage
+privado), acessada somente pela função <code>registrar</code>. Tabelas
+<code>inspecoes</code> e <code>defeitos</code>. Recortes dos defeitos
+ficam guardados; <strong>a foto inteira é apagada após 7
+dias</strong>.</li>
+<li><strong>Segurança:</strong> código de acesso
+(<code>x-app-token</code>) em todas as funções; tabelas com RLS e sem
+acesso direto; fotos em bucket privado com link temporário; a
+configuração dos celulares é feita por link que deve ser tratado como
+senha.</li>
+<li><strong>Configuração dos aparelhos:</strong> link com a configuração
+embutida (<code>#cfg=</code>), aplicado e removido do endereço ao
+abrir.</li>
+</ul>
+<h2 id="situação-atual-e-pendências">6. Situação atual e pendências</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Item</th>
+<th>Situação</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>App de campo (foto, análise, marcações, envio)</td>
+<td>Pronto e mesclado no repositório</td>
+</tr>
+<tr class="even">
+<td>Análise por partes, dúvidas, ignorar com motivo</td>
+<td>Pronto no branch de desenvolvimento</td>
+</tr>
+<tr class="odd">
+<td>Funções no Supabase (<code>analisar</code>,
+<code>registrar</code>)</td>
+<td>Publicadas</td>
+</tr>
+<tr class="even">
+<td>Segredos <code>APP_TOKEN</code> e <code>ANTHROPIC_API_KEY</code> no
+Supabase</td>
+<td><strong>Pendente</strong> (criados pelo responsável no painel)</td>
+</tr>
+<tr class="odd">
+<td>Tabelas da base de defeitos</td>
+<td><strong>Pendente</strong>: executar o SQL
+<code>supabase/migrations/20261030_base_defeitos.sql</code></td>
+</tr>
+<tr class="even">
+<td>Endereço de hospedagem do app (ex.: GitHub Pages)</td>
+<td><strong>A confirmar</strong></td>
+</tr>
+<tr class="odd">
+<td>Precisão da IA em fotos reais</td>
+<td><strong>Em validação</strong>: testes feitos com modelo substituto e
+respostas simuladas; precisa de teste com a IA real e fotos da
+operação</td>
+</tr>
+</tbody>
+</table>
+<h2 id="limitações-conhecidas">7. Limitações conhecidas</h2>
+<ul>
+<li>A IA pode <strong>deixar de ver defeitos pequenos</strong> (furos de
+garfo, barrote faltando) ou <strong>marcar falsos alarmes</strong>
+(reflexo, sombra). Por isso existem a análise por partes, as dúvidas com
+foto de perto e o retorno “Correto / Falso alarme”.</li>
+<li>Depende da qualidade da foto: boa luz, foto de frente, sem muita
+distância.</li>
+<li>Cada análise faz várias chamadas à IA (visão geral + uma por parte),
+o que aumenta tempo e custo por foto.</li>
+<li>Os exemplos de padrões servem como referência e regras; ainda não
+são enviados à IA junto de cada foto.</li>
+</ul>
+<h2 id="pontos-para-adoção-corporativa">8. Pontos para adoção
+corporativa</h2>
+<ul>
+<li><strong>Dados pessoais:</strong> placa e nome do operador são
+registrados; definir quem acessa e por quanto tempo guardar.</li>
+<li><strong>Custo:</strong> uso da API da Anthropic (por foto analisada)
+e do plano do Supabase (armazenamento e funções); estimar por volume de
+embarques.</li>
+<li><strong>Hospedagem e identidade:</strong> avaliar hospedagem no
+ambiente da empresa e login por usuário no lugar de um código de acesso
+único.</li>
+<li><strong>Governança da base de padrões:</strong> definir quem aprova
+novos exemplos e tipos de defeito.</li>
+</ul>
+<h2 id="próximos-passos-sugeridos">9. Próximos passos sugeridos</h2>
+<ol type="1">
+<li>Criar os segredos e as tabelas no Supabase; teste ponta a ponta com
+a IA real.</li>
+<li>Validar com fotos reais da operação e medir o acerto por tipo de
+defeito (usando o retorno dos operadores).</li>
+<li>Botão “Faltou marcar” para o operador desenhar defeitos que a IA não
+viu.</li>
+<li>Usar os casos confirmados da base como exemplos para melhorar a
+IA.</li>
+<li>Painel de indicadores (defeitos por tipo, por período e por
+origem).</li>
+</ol>
+<h2 id="arquivos-do-projeto">10. Arquivos do projeto</h2>
+<ul>
+<li><code>index.html</code> — aplicativo</li>
+<li><code>ocorrencias.html</code> — consulta da base de defeitos</li>
+<li><code>supabase/functions/analisar</code> e <code>registrar</code> —
+funções do servidor</li>
+<li><code>supabase/migrations/</code> — SQL da base de defeitos</li>
+<li><code>padroes/</code> — exemplos fotográficos de defeitos e
+<code>padroes.json</code></li>
+<li><code>README.md</code> — instruções técnicas de instalação e
+configuração</li>
+</ul>
+</body>
+</html>
