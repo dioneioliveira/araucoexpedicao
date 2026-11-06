@@ -740,6 +740,30 @@ tr.bl-excluida td:last-child, tr.bl-excluida td:nth-child(5){text-decoration:non
 .sap-d tr.sap-mark-row td:last-child::after{position:absolute;right:-10px;top:-8px;background:var(--sap-cor);color:#fff;border-radius:50%;width:20px;height:20px;display:grid;place-items:center;font-weight:800;font-size:11px}
 .sap-leg{margin:8px 0 0;padding-left:20px}
 .sap-leg li{margin:2px 0}
+/* lista diária sem barra de rolagem horizontal: colunas fixas + textos que quebram linha (no máx. 2 linhas) */
+#daily-table{table-layout:fixed;width:100%}
+#daily-table td{white-space:normal;overflow-wrap:anywhere;overflow:hidden}
+#daily-table thead th{white-space:normal;line-height:1.15}
+#daily-table th:nth-child(1){width:28px}#daily-table th:nth-child(2){width:44px}#daily-table th:nth-child(3){width:74px}
+#daily-table th:nth-child(6){width:70px}#daily-table th:nth-child(8){width:52px}#daily-table th:nth-child(9){width:96px}
+#daily-table th:nth-child(13){width:72px}#daily-table th:nth-child(14){width:98px}#daily-table th:nth-child(15){width:92px}
+#daily-table th.c-status{width:118px;min-width:0}#daily-table th.c-act{width:34px;min-width:0}
+#daily-table .c-status{right:34px;width:auto;min-width:0}
+#daily-table .wrap{min-width:0;max-width:none;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis}
+#daily-table td.wrap{display:table-cell}
+#daily-table td.wrap > *{vertical-align:baseline}
+#daily-table .chip{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#daily-table td .chip + .chip,#daily-table td .chip + span .chip{margin-top:2px}
+#daily-table .conf-ck b{max-width:62px}
+#daily-table .c-status .chip{display:inline-flex;margin:1px 0}
+#daily-table .clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+#daily-table thead th{letter-spacing:.03em;font-size:9.5px;padding:7px 6px}
+#daily-table td{padding:5px 6px}
+#daily-table th:nth-child(2){width:46px}#daily-table th:nth-child(3){width:80px}#daily-table th:nth-child(4){width:96px}
+#daily-table th:nth-child(8){width:56px}#daily-table th:nth-child(11){width:96px}
+#daily-table td:nth-child(2),#daily-table td:nth-child(3){white-space:nowrap;overflow:visible}
+#daily-table td:nth-child(4) .chip,#daily-table td:nth-child(11) .chip{white-space:normal;text-align:left;line-height:1.15}
+#daily-table thead th{overflow:hidden;text-overflow:ellipsis}
 
 </style>
 </head>
@@ -6058,14 +6082,14 @@ window.ORDEM_TEMPLATES = {
       <td class="mono">${esc(e.hora)}</td>
       <td class="mono"><span class="muted">senha ${esc(e.senha || '—')}</span></td>
       <td><span class="chip ${ct ? 'ct' : 'mi'}"><span class="dot"></span>${ct ? 'Container' : 'Mercado interno'}</span></td>
-      <td class="wrap" title="${esc(e.cliente)}">${esc(e.cliente)}</td>
+      <td class="wrap" title="${esc(e.cliente)}"><div class="clamp">${esc(e.cliente)}</div></td>
       <td class="mono"></td>
-      <td class="wrap" title="${esc(e.tipoVeiculo)}">${esc(e.tipoVeiculo)}</td>
+      <td class="wrap" title="${esc(e.tipoVeiculo)}"><div class="clamp">${esc(e.tipoVeiculo)}</div></td>
       <td class="num">${e.volume ? fmtNum(e.volume, 3) : ''}</td>
       <td><span class="mono">${esc(e.carreta)}</span>${e.cavalo ? `<span class="sub">cavalo ${esc(e.cavalo)}</span>` : ''}</td>
-      <td class="wrap"><span class="sub mono">${esc(e.cpf)}</span></td>
+      <td class="wrap"><div class="clamp"><span class="sub mono">${esc(e.cpf)}</span></div></td>
       <td></td>
-      <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
+      <td class="wrap" title="${esc(e.transportadora)}"><div class="clamp">${esc(e.transportadora)}</div></td>
       <td></td>
       <td class="mono">${ct && e.container ? esc(fmtContainer(e.container)) : ''}</td>
       <td class="c-conf"></td>
@@ -6091,14 +6115,14 @@ window.ORDEM_TEMPLATES = {
         <td class="mono">${esc(e.hora)}</td>
         <td class="mono"><b>${esc(T.transporte)}</b></td>
         <td>${janelaChip(T)}</td>
-        <td class="wrap" title="${esc(e.cliente)}">${esc(e.cliente)}${T.fsc ? ` <span class="chip mi">FSC</span>` : ''}</td>
+        <td class="wrap" title="${esc(e.cliente)}"><div class="clamp">${esc(e.cliente)}${T.fsc ? ` <span class="chip mi">FSC</span>` : ''}</div></td>
         <td class="mono">${esc(e.entrega)}</td>
-        <td class="wrap" title="${esc(T.items.map(i => i.descricao).join('\n'))}">${esc(first.descricao || '')}${more}</td>
+        <td class="wrap" title="${esc(T.items.map(i => i.descricao).join('\n'))}"><div class="clamp">${esc(first.descricao || '')}${more}</div></td>
         <td class="num">${T.verificarQtd ? '<span class="chip warn" title="Peças por pallet não definidas na descrição">verificar</span>' : fmtNum(T.pallets, 2)}</td>
         <td>${placasHTML(e)}</td>
-        <td class="wrap" title="${esc(e.motorista)}">${esc(e.motorista)}<span class="sub mono">${esc(P.fmtCPF(e.cpf))}</span></td>
+        <td class="wrap" title="${esc(e.motorista)}"><div class="clamp">${esc(e.motorista)}<span class="sub mono">${esc(P.fmtCPF(e.cpf))}</span></div></td>
         <td>${treinoChip(T)}</td>
-        <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
+        <td class="wrap" title="${esc(e.transportadora)}"><div class="clamp">${esc(e.transportadora)}</div></td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
         <td class="mono c-cont">${semValor(T.ot.container) ? '' : esc(fmtContainer(T.ot.container))}</td>
         <td class="c-conf">${confCel(T)}</td>
@@ -8080,7 +8104,7 @@ window.ORDEM_TEMPLATES = {
     $('#ps-colar').addEventListener('click', () => colarPorBotao('pesos'));
     bindBalanca();
     $('#ps-xlsx').addEventListener('click', () => { const t = exportarPesos(); toast(t === 'xlsx' ? 'Análise de pesos exportada (.xlsx).' : 'Exportada em .csv (sem internet, o .xlsx não está disponível).', 'ok'); });
-    $('#ps-file').addEventListener('change', async e => {
+    $('#ps-file').addEventListener('change', async e => { lembreteConferencia();
       const f = e.target.files[0]; if (!f) return; e.target.value = '';
       try {
         let grid;
@@ -8271,6 +8295,26 @@ window.ORDEM_TEMPLATES = {
   }
   // tipo: 'ordem' | 'MI' | 'CONTAINER' | 'ots' | null (detectar pelo conteúdo)
   function processarColagem(text, html, tipo) {
+    const r = processarColagem0(text, html, tipo); lembreteConferencia(); return r;
+  }
+  // lembrete a cada importação: transportes de dias anteriores ainda sem conferência na saída (balança)
+  let lembreteTm = null;
+  function lembreteConferencia() {
+    clearTimeout(lembreteTm);
+    lembreteTm = setTimeout(async () => {
+      if (document.querySelector('#confirm-dialog[open]')) return;
+      const hoje = P.todayISO();
+      const pend = allTransports().filter(T => T.eff.data && T.eff.data < hoje && !T.man.conferido);
+      if (!pend.length) return;
+      const dias = new Map(); pend.forEach(T => dias.set(T.eff.data, (dias.get(T.eff.data) || 0) + 1));
+      const ord = [...dias.keys()].sort().reverse();
+      const ok = await confirmBox('Confira os transportes do dia anterior', `<p><b>${pend.length}</b> transporte(s) de dias anteriores ainda <b>sem conferência na saída</b> (balança):</p>
+        <ul>${ord.map(d => `<li><b>${esc(P.fmtDateBR(d))}</b>: ${dias.get(d)} transporte(s) — ${esc(pend.filter(T => T.eff.data === d).map(T => T.transporte).slice(0, 8).join(', '))}${dias.get(d) > 8 ? '…' : ''}</li>`).join('')}</ul>
+        <p class="muted small">Marque a coluna <b>Conferido</b> na lista diária de cada dia.</p>`, 'Ver transportes', 'Depois');
+      if (ok) { ui.date = ord[0]; $('#date-filter').value = ui.date; if (ui.view !== 'lista') setView('lista'); else renderAll(); }
+    }, 900);
+  }
+  function processarColagem0(text, html, tipo) {
     text = P.fixMojibake(text);
     const htmlGrid = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null;
     // a Solicitação de Embarque é inconfundível: vai para "ordem" mesmo que o botão seja outro
@@ -8404,10 +8448,10 @@ window.ORDEM_TEMPLATES = {
     }, 400); });
 
     // planilha FSC (arquivo)
-    $('#fsc-file').addEventListener('change', e => { const f = e.target.files[0]; if (f) lerPlanilhaFSC(f); });
+    $('#fsc-file').addEventListener('change', e => { const f = e.target.files[0]; if (f) { lerPlanilhaFSC(f); lembreteConferencia(); } });
     // XLSX
     const fi = $('#xlsx-file'); const drop = $('#xlsx-drop');
-    fi.addEventListener('change', () => fi.files[0] && readWorkbook(fi.files[0]));
+    fi.addEventListener('change', () => { if (fi.files[0]) { readWorkbook(fi.files[0]); lembreteConferencia(); } });
     ['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
     ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove('over')));
     drop.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) readWorkbook(f); });

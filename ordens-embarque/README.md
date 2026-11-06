@@ -602,3 +602,11 @@ mostram o modelo correto da tela *Modificar transporte* do SAP (desenho com dado
 - **Mercado interno**: peso total indicado, tipo de veículo na Condição exped. (ex.: Y3 Truck), Planejamento travado e
   **Início transp. marcado** (com data, hora e ✔).
 Desmarcar pede confirmação. A conferência entra no Excel semanal (coluna "Conferido na saída").
+
+### Lista sem rolagem lateral e lembrete de conferência
+
+- A lista diária cabe na largura da tela (colunas com largura fixa; cliente, material, motorista e transportadora em até
+  2 linhas — o texto completo aparece ao passar o mouse).
+- A cada importação (colar ordem, MI, CONTAINER, LT22, FSC, base de pesos/balança, planilha), se houver transportes de
+  **dias anteriores sem conferência na saída**, aparece o aviso *Confira os transportes do dia anterior* com os dias e
+  transportes pendentes; **Ver transportes** abre a lista do dia pendente mais recente.

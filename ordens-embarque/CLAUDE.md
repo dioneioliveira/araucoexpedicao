@@ -197,4 +197,7 @@
   transporte" com dados fictícios (as capturas reais do usuário NÃO vão para o repositório): exportação (`isExport`) = peso,
   Planejamento travado, Início transp. desmarcado; mercado interno = peso, Condição exped. (Y3 Truck), Planejamento travado,
   Início transp. marcado.
+- Lista diária sem rolagem horizontal: `#daily-table{table-layout:fixed}` com larguras por coluna (nth-child) e `.clamp` (2 linhas)
+  nas células `.wrap` (renderList / linhaAgendamento). Lembrete `lembreteConferencia()` (debounce 900 ms) depois de toda importação
+  (`processarColagem` → `processarColagem0`, arquivos de pesos/FSC/planilha): transportes com data < hoje sem `manual.conferido`.
 

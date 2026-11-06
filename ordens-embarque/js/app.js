@@ -553,14 +553,14 @@
       <td class="mono">${esc(e.hora)}</td>
       <td class="mono"><span class="muted">senha ${esc(e.senha || '—')}</span></td>
       <td><span class="chip ${ct ? 'ct' : 'mi'}"><span class="dot"></span>${ct ? 'Container' : 'Mercado interno'}</span></td>
-      <td class="wrap" title="${esc(e.cliente)}">${esc(e.cliente)}</td>
+      <td class="wrap" title="${esc(e.cliente)}"><div class="clamp">${esc(e.cliente)}</div></td>
       <td class="mono"></td>
-      <td class="wrap" title="${esc(e.tipoVeiculo)}">${esc(e.tipoVeiculo)}</td>
+      <td class="wrap" title="${esc(e.tipoVeiculo)}"><div class="clamp">${esc(e.tipoVeiculo)}</div></td>
       <td class="num">${e.volume ? fmtNum(e.volume, 3) : ''}</td>
       <td><span class="mono">${esc(e.carreta)}</span>${e.cavalo ? `<span class="sub">cavalo ${esc(e.cavalo)}</span>` : ''}</td>
-      <td class="wrap"><span class="sub mono">${esc(e.cpf)}</span></td>
+      <td class="wrap"><div class="clamp"><span class="sub mono">${esc(e.cpf)}</span></div></td>
       <td></td>
-      <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
+      <td class="wrap" title="${esc(e.transportadora)}"><div class="clamp">${esc(e.transportadora)}</div></td>
       <td></td>
       <td class="mono">${ct && e.container ? esc(fmtContainer(e.container)) : ''}</td>
       <td class="c-conf"></td>
@@ -586,14 +586,14 @@
         <td class="mono">${esc(e.hora)}</td>
         <td class="mono"><b>${esc(T.transporte)}</b></td>
         <td>${janelaChip(T)}</td>
-        <td class="wrap" title="${esc(e.cliente)}">${esc(e.cliente)}${T.fsc ? ` <span class="chip mi">FSC</span>` : ''}</td>
+        <td class="wrap" title="${esc(e.cliente)}"><div class="clamp">${esc(e.cliente)}${T.fsc ? ` <span class="chip mi">FSC</span>` : ''}</div></td>
         <td class="mono">${esc(e.entrega)}</td>
-        <td class="wrap" title="${esc(T.items.map(i => i.descricao).join('\n'))}">${esc(first.descricao || '')}${more}</td>
+        <td class="wrap" title="${esc(T.items.map(i => i.descricao).join('\n'))}"><div class="clamp">${esc(first.descricao || '')}${more}</div></td>
         <td class="num">${T.verificarQtd ? '<span class="chip warn" title="Peças por pallet não definidas na descrição">verificar</span>' : fmtNum(T.pallets, 2)}</td>
         <td>${placasHTML(e)}</td>
-        <td class="wrap" title="${esc(e.motorista)}">${esc(e.motorista)}<span class="sub mono">${esc(P.fmtCPF(e.cpf))}</span></td>
+        <td class="wrap" title="${esc(e.motorista)}"><div class="clamp">${esc(e.motorista)}<span class="sub mono">${esc(P.fmtCPF(e.cpf))}</span></div></td>
         <td>${treinoChip(T)}</td>
-        <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
+        <td class="wrap" title="${esc(e.transportadora)}"><div class="clamp">${esc(e.transportadora)}</div></td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
         <td class="mono c-cont">${semValor(T.ot.container) ? '' : esc(fmtContainer(T.ot.container))}</td>
         <td class="c-conf">${confCel(T)}</td>
@@ -2575,7 +2575,7 @@
     $('#ps-colar').addEventListener('click', () => colarPorBotao('pesos'));
     bindBalanca();
     $('#ps-xlsx').addEventListener('click', () => { const t = exportarPesos(); toast(t === 'xlsx' ? 'Análise de pesos exportada (.xlsx).' : 'Exportada em .csv (sem internet, o .xlsx não está disponível).', 'ok'); });
-    $('#ps-file').addEventListener('change', async e => {
+    $('#ps-file').addEventListener('change', async e => { lembreteConferencia();
       const f = e.target.files[0]; if (!f) return; e.target.value = '';
       try {
         let grid;
@@ -2766,6 +2766,26 @@
   }
   // tipo: 'ordem' | 'MI' | 'CONTAINER' | 'ots' | null (detectar pelo conteúdo)
   function processarColagem(text, html, tipo) {
+    const r = processarColagem0(text, html, tipo); lembreteConferencia(); return r;
+  }
+  // lembrete a cada importação: transportes de dias anteriores ainda sem conferência na saída (balança)
+  let lembreteTm = null;
+  function lembreteConferencia() {
+    clearTimeout(lembreteTm);
+    lembreteTm = setTimeout(async () => {
+      if (document.querySelector('#confirm-dialog[open]')) return;
+      const hoje = P.todayISO();
+      const pend = allTransports().filter(T => T.eff.data && T.eff.data < hoje && !T.man.conferido);
+      if (!pend.length) return;
+      const dias = new Map(); pend.forEach(T => dias.set(T.eff.data, (dias.get(T.eff.data) || 0) + 1));
+      const ord = [...dias.keys()].sort().reverse();
+      const ok = await confirmBox('Confira os transportes do dia anterior', `<p><b>${pend.length}</b> transporte(s) de dias anteriores ainda <b>sem conferência na saída</b> (balança):</p>
+        <ul>${ord.map(d => `<li><b>${esc(P.fmtDateBR(d))}</b>: ${dias.get(d)} transporte(s) — ${esc(pend.filter(T => T.eff.data === d).map(T => T.transporte).slice(0, 8).join(', '))}${dias.get(d) > 8 ? '…' : ''}</li>`).join('')}</ul>
+        <p class="muted small">Marque a coluna <b>Conferido</b> na lista diária de cada dia.</p>`, 'Ver transportes', 'Depois');
+      if (ok) { ui.date = ord[0]; $('#date-filter').value = ui.date; if (ui.view !== 'lista') setView('lista'); else renderAll(); }
+    }, 900);
+  }
+  function processarColagem0(text, html, tipo) {
     text = P.fixMojibake(text);
     const htmlGrid = html && /<table/i.test(html) ? P.trimGrid(P.parseHTMLTable(html) || []) : null;
     // a Solicitação de Embarque é inconfundível: vai para "ordem" mesmo que o botão seja outro
@@ -2899,10 +2919,10 @@
     }, 400); });
 
     // planilha FSC (arquivo)
-    $('#fsc-file').addEventListener('change', e => { const f = e.target.files[0]; if (f) lerPlanilhaFSC(f); });
+    $('#fsc-file').addEventListener('change', e => { const f = e.target.files[0]; if (f) { lerPlanilhaFSC(f); lembreteConferencia(); } });
     // XLSX
     const fi = $('#xlsx-file'); const drop = $('#xlsx-drop');
-    fi.addEventListener('change', () => fi.files[0] && readWorkbook(fi.files[0]));
+    fi.addEventListener('change', () => { if (fi.files[0]) { readWorkbook(fi.files[0]); lembreteConferencia(); } });
     ['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
     ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove('over')));
     drop.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) readWorkbook(f); });

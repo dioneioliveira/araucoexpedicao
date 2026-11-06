@@ -727,3 +727,27 @@ tr.bl-excluida td:last-child, tr.bl-excluida td:nth-child(5){text-decoration:non
 .sap-d tr.sap-mark-row td:last-child::after{position:absolute;right:-10px;top:-8px;background:var(--sap-cor);color:#fff;border-radius:50%;width:20px;height:20px;display:grid;place-items:center;font-weight:800;font-size:11px}
 .sap-leg{margin:8px 0 0;padding-left:20px}
 .sap-leg li{margin:2px 0}
+/* lista diária sem barra de rolagem horizontal: colunas fixas + textos que quebram linha (no máx. 2 linhas) */
+#daily-table{table-layout:fixed;width:100%}
+#daily-table td{white-space:normal;overflow-wrap:anywhere;overflow:hidden}
+#daily-table thead th{white-space:normal;line-height:1.15}
+#daily-table th:nth-child(1){width:28px}#daily-table th:nth-child(2){width:44px}#daily-table th:nth-child(3){width:74px}
+#daily-table th:nth-child(6){width:70px}#daily-table th:nth-child(8){width:52px}#daily-table th:nth-child(9){width:96px}
+#daily-table th:nth-child(13){width:72px}#daily-table th:nth-child(14){width:98px}#daily-table th:nth-child(15){width:92px}
+#daily-table th.c-status{width:118px;min-width:0}#daily-table th.c-act{width:34px;min-width:0}
+#daily-table .c-status{right:34px;width:auto;min-width:0}
+#daily-table .wrap{min-width:0;max-width:none;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis}
+#daily-table td.wrap{display:table-cell}
+#daily-table td.wrap > *{vertical-align:baseline}
+#daily-table .chip{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#daily-table td .chip + .chip,#daily-table td .chip + span .chip{margin-top:2px}
+#daily-table .conf-ck b{max-width:62px}
+#daily-table .c-status .chip{display:inline-flex;margin:1px 0}
+#daily-table .clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+#daily-table thead th{letter-spacing:.03em;font-size:9.5px;padding:7px 6px}
+#daily-table td{padding:5px 6px}
+#daily-table th:nth-child(2){width:46px}#daily-table th:nth-child(3){width:80px}#daily-table th:nth-child(4){width:96px}
+#daily-table th:nth-child(8){width:56px}#daily-table th:nth-child(11){width:96px}
+#daily-table td:nth-child(2),#daily-table td:nth-child(3){white-space:nowrap;overflow:visible}
+#daily-table td:nth-child(4) .chip,#daily-table td:nth-child(11) .chip{white-space:normal;text-align:left;line-height:1.15}
+#daily-table thead th{overflow:hidden;text-overflow:ellipsis}
