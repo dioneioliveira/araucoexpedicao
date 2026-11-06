@@ -563,6 +563,7 @@
       <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
       <td></td>
       <td class="mono">${ct && e.container ? esc(fmtContainer(e.container)) : ''}</td>
+      <td class="c-conf"></td>
       <td class="c-status"><span class="chip nimp">Não impressa</span></td>
       <td class="c-act"></td>
     </tr>`;
@@ -580,7 +581,7 @@
     tb.innerHTML = linhas.map(L => L.html || (T => {
       const e = T.eff; const first = T.items[0] || {};
       const more = T.items.length > 1 ? ` <span class="chip grey">+${T.items.length - 1}</span>` : '';
-      return `<tr data-t="${esc(T.transporte)}" class="${ui.open === T.transporte ? 'active' : ''} ${T.printed && !T.faturado ? 'printed' : (!T.printed ? 'pendente' : '')} ${T.faturado ? 'faturada' : ''} ${T.printed && !T.faturado && T.alteracoes.length ? 'alterada' : ''}">
+      return `<tr data-t="${esc(T.transporte)}" class="${ui.open === T.transporte ? 'active' : ''} ${T.printed && !T.faturado ? 'printed' : (!T.printed ? 'pendente' : '')} ${T.faturado ? 'faturada' : ''} ${T.printed && !T.faturado && T.alteracoes.length ? 'alterada' : ''} ${T.man.conferido ? 'conferida' : 'nconf'}">
         <td class="c-check"><input type="checkbox" ${ui.selected.has(T.transporte) ? 'checked' : ''} aria-label="Selecionar ${esc(T.transporte)}"></td>
         <td class="mono">${esc(e.hora)}</td>
         <td class="mono"><b>${esc(T.transporte)}</b></td>
@@ -595,6 +596,7 @@
         <td class="wrap" title="${esc(e.transportadora)}">${esc(e.transportadora)}</td>
         <td class="mono">${T.otList.map(esc).join('<br>')}${T.otList.length > 1 ? `<span class="sub">${T.otList.length} OTs</span>` : ''}</td>
         <td class="mono c-cont">${semValor(T.ot.container) ? '' : esc(fmtContainer(T.ot.container))}</td>
+        <td class="c-conf">${confCel(T)}</td>
         <td class="c-status">${statusChip(T)}${fotoChip(T)}${quemAbriu(T.transporte).map(n => ` <span class="chip pres" title="${esc(n)} está com esta ordem aberta"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>${esc(n)}</span>`).join('')}</td>
         <td class="c-act"><button class="row-del" data-del="${esc(T.transporte)}" title="Excluir da lista"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></td>
       </tr>`;
@@ -1724,13 +1726,13 @@
     const pesoTicket = T => String(T.ot.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(k => k && state.tickets[k]).reduce((a, k) => a + (state.tickets[k].liq || 0), 0) || '';
     const transportes = [['Data', 'Hora', 'Transporte', 'Tipo de carga', 'Cliente', 'Destino', 'Entrega(s)', 'Incoterm', 'Materiais', 'Qtd (pç)', 'Pallets / lotes', 'Redução de carga', 'Carga fracionada', 'Amostra', 'FSC',
       'Placa carreta/truck', 'Placa cavalo', 'Motorista', 'CPF', 'Treinamento', 'Transportadora', 'OT(s)', 'Doc', 'NF-e', 'EXP', 'Container', 'Lacre', 'Tara (kg)', 'MWG (kg)', 'Ticket balança', 'Peso balança (kg)',
-      'Impressa em', 'Faturada em', 'Status', 'Alterações após impressão', 'Fotos', 'Conferência das fotos', 'Container (porta)', 'Container (RIC)', 'Lacre (RIC)', 'Lacre físico', 'Tara (RIC)', 'Max gross (RIC)']]
+      'Impressa em', 'Faturada em', 'Conferido na saída', 'Status', 'Alterações após impressão', 'Fotos', 'Conferência das fotos', 'Container (porta)', 'Container (RIC)', 'Lacre (RIC)', 'Lacre físico', 'Tara (RIC)', 'Max gross (RIC)']]
       .concat(list.map(T => {
         const e = T.eff, f = state.fotos[T.transporte], L = s => (f && f.lido[s]) || {}, v = temContainer(T) ? validarFotos(T) : null;
         return [P.fmtDateBR(e.data), e.hora, T.transporte, tipoCarga(T), e.cliente, T.solic && T.solic.cidade ? `${T.solic.cidade}/${T.solic.uf}` : '', T.entregas.join(' / '), e.incoterm,
           T.items.map(i => i.descricao).filter(Boolean).join(' | '), T.items.reduce((a, i) => a + (i.qtd || 0), 0), T.pallets == null ? '' : round(T.pallets, 2), T.reduzido ? `${resumoReducao(T)}${T.reducao.motivo ? ' · motivo: ' + T.reducao.motivo : ''}` : '', isFracionada(T) ? 'SIM' : '', isAmostra(T) ? 'SIM' : '', T.fsc ? (T.fsc.fsc || 'FSC') : '',
           e.placaL, isTruck(e) ? '' : e.placaM, e.motorista, P.fmtCPF(e.cpf), e.treinamento, e.transportadora, T.otList.join(' / '), T.ot.doc, T.ot.nf, T.ot.exp, T.ot.container, T.ot.lacre, T.ot.tara, T.ot.mwg, T.ot.ticket, pesoTicket(T),
-          dt(T.printed), dt(T.faturado), statusTexto(T), T.alteracoes.map(a => `${a.campo}: ${a.de || '—'} → ${a.para || '—'}`).join('; '),
+          dt(T.printed), dt(T.faturado), T.man.conferido ? `${T.man.conferido.nome} · ${dt(T.man.conferido.em)}` : '', statusTexto(T), T.alteracoes.map(a => `${a.campo}: ${a.de || '—'} → ${a.para || '—'}`).join('; '),
           temContainer(T) ? `${nFotos(T.transporte)}/6` : '', v ? ({ ok: 'Conferido', div: 'DIVERGENTE: ' + v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', '), pend: 'Pendente' }[v.st]) : '',
           L('porta').container || '', L('ric').container || '', L('ric').lacre || '', L('ric').lacreFis || '', L('ric').tara || '', L('ric').mwg || ''];
       }));
@@ -1966,6 +1968,72 @@
     ['#oc-nome', '#oc-cpf'].forEach(id => $(id).addEventListener('input', () => { $('#oc-c-mot').checked = true; }));
     ['#oc-pl1', '#oc-pl2'].forEach(id => $(id).addEventListener('input', () => { $('#oc-c-pl').checked = true; }));
     $('#oc-quando').addEventListener('change', e => { if (e.target.value) $('#oc-turno').value = turnoDe(new Date(e.target.value)); });
+  }
+
+  // ------------------------------------------------------------------ conferência do transporte na saída (balança)
+  // manual.conferido = { nome, em, por }: linha sem conferência fica vermelho claro na lista diária.
+  // Modelo do que conferir no SAP (Modificar transporte): exportação × mercado interno (desenho com dados fictícios).
+  const CONF_NOME = 'arauco.ordensEmbarque.conferente';
+  function confCel(T) {
+    const c = T.man.conferido;
+    return `<label class="conf-ck" title="${c ? esc(`Conferido por ${c.nome} em ${new Date(c.em).toLocaleString('pt-BR')}`) : 'Marcar transporte conferido na saída (balança)'}"><input type="checkbox" data-conf ${c ? 'checked' : ''}>${c ? `<span><b>${esc(c.nome)}</b><small>${esc(new Date(c.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))}</small></span>` : ''}</label>`;
+  }
+  const modeloConf = T => isExport(T) ? 'exp' : 'mi';
+  function sapModelo(tipo) {
+    const exp = tipo === 'exp';
+    const linha = (l, v, extra) => `<div class="sap-f"><span>${l}</span><i class="${extra || ''}">${v}</i></div>`;
+    const data = (l, d, h, ok, btn, cls) => `<tr class="${cls || ''}"><td>${l}</td><td><i>${d}</i></td><td><i>${h}</i></td><td>${ok ? '<b class="sap-ok">✔</b>' : ''}</td><td><span class="sap-btn${btn === 'off' ? ' off' : ''}">${btn === 'off' ? 'Planejamento' : btn}</span></td></tr>`;
+    return `<div class="sap ${exp ? 'sap-exp' : 'sap-mi'}">
+      <div class="sap-t">Modificar transporte: 1ª tela <small>modelo correto · ${exp ? 'EXPORTAÇÃO' : 'MERCADO INTERNO'} · dados fictícios</small></div>
+      <div class="sap-cab">
+        <div>${linha('Tp.transporte', exp ? 'BR Export Marítimo' : 'BR Peso Nacional')}${linha('Status global', exp ? 'Processamento p/ transp.' : 'Início do transporte')}${linha('Tipo expedição', exp ? 'YD · Container 40 pé' : 'Y0 · Truck (3 eixos)')}
+          <div class="sap-mark">${linha('PesoTotalPerm.', exp ? '24.980 KG' : '14.070 KG', 'forte')}<em>1</em></div></div>
+        <div>${linha('Local org.trsp.', 'ZB26 · Piên')}${exp ? linha('ID container', 'ABCU 123456-0') : `<div class="sap-mark">${linha('Condição exped.', 'Y3 · Truck', 'forte')}<em>4</em></div>`}</div>
+      </div>
+      <table class="sap-d"><thead><tr><th></th><th colspan="2">Execução</th><th></th><th></th></tr></thead><tbody>
+        ${data('', '25.10.2026', '00:00', true, 'off', 'sap-mark-row m2')}
+        ${data('Registro', '26.10.2026', '10:25', true, 'Registro')}
+        ${data('Início carreg.', '26.10.2026', '13:33', true, 'Iníc.carrgmto.')}
+        ${data('Fim carregamto.', '26.10.2026', '13:33', true, 'Fim carrg.')}
+        ${data('Início transp.', exp ? '' : '26.10.2026', exp ? '00:00' : '17:24', !exp, 'Início transp.', 'sap-mark-row m3')}
+      </tbody></table>
+      <ol class="sap-leg">
+        <li><b>Peso total</b> indicado (PesoTotalPerm.).</li>
+        <li><b>Planejamento</b> travado: botão apagado/transparente, sem edição.</li>
+        <li><b>Início transp.</b> ${exp ? '<b>desmarcado</b> (sem data e sem ✔).' : '<b>marcado</b> (com data, hora e ✔).'}</li>
+        ${exp ? '' : '<li><b>Tipo de veículo</b> indicado na Condição exped. (ex.: Y3 Truck).</li>'}
+      </ol></div>`;
+  }
+  function mostrarModelo(tipo) {
+    const box = $('#cfr-modelo');
+    if (!box.hidden && box.dataset.tipo === tipo) { box.hidden = true; return; }
+    box.dataset.tipo = tipo; box.innerHTML = sapModelo(tipo); box.hidden = false;
+    $$('.cfr-q').forEach(b => b.classList.toggle('on', b.dataset.cfrQ === tipo));
+  }
+  async function conferirTransporte(t) {
+    const T = getTransport(t); if (!T) return;
+    const c = T.man.conferido;
+    if (c) {
+      if (!(await confirmBox('Desmarcar conferência', `<p>O transporte <b>${esc(t)}</b> foi conferido por <b>${esc(c.nome)}</b> em ${esc(new Date(c.em).toLocaleString('pt-BR'))}. Desmarcar?</p>`, 'Desmarcar'))) return;
+      const man = state.manual[t] || {}; delete man.conferido; save(true); renderAll(); toast(`Conferência do transporte ${t} desmarcada.`, 'ok'); return;
+    }
+    const dlg = $('#cfr-dialog'); dlg._t = t;
+    $('#cfr-info').innerHTML = `Transporte <b>${esc(t)}</b> · ${esc(T.eff.cliente)} · placa ${esc(T.eff.placaL || '—')} · <b>${modeloConf(T) === 'exp' ? 'Exportação' : 'Mercado interno'}</b>`;
+    let nome = ''; try { nome = localStorage.getItem(CONF_NOME) || ''; } catch (e) { /* sem storage */ }
+    $('#cfr-quem').value = nome; $('#cfr-erro').hidden = true; $('#cfr-modelo').hidden = true; $$('.cfr-q').forEach(b => b.classList.remove('on'));
+    dlg.returnValue = ''; dlg.showModal(); $('#cfr-quem').focus(); $('#cfr-quem').select();
+  }
+  function bindConferencia() {
+    $$('.cfr-q').forEach(b => b.addEventListener('click', () => mostrarModelo(b.dataset.cfrQ)));
+    $('#cfr-form').addEventListener('submit', ev => {
+      if (ev.submitter && ev.submitter.value !== 'ok') return;
+      const nome = P.clean($('#cfr-quem').value);
+      if (nome.length < 2) { ev.preventDefault(); $('#cfr-erro').textContent = 'Digite o nome de quem conferiu.'; $('#cfr-erro').hidden = false; return; }
+      const t = $('#cfr-dialog')._t; const man = state.manual[t] || (state.manual[t] = {});
+      man.conferido = { nome, em: new Date().toISOString(), por: usuario() || '' };
+      try { localStorage.setItem(CONF_NOME, nome); } catch (e) { /* sem storage */ }
+      save(true); renderAll(); toast(`Transporte ${t} conferido por ${nome}.`, 'ok');
+    });
   }
 
   // ------------------------------------------------------------------ clientes especiais
@@ -2498,6 +2566,7 @@
       const t = tr.dataset.t;
       const del = e.target.closest('[data-del]');
       if (del) { excluirTransportes([del.dataset.del]); return; }
+      if (e.target.closest('.c-conf')) { if (e.target.matches('input[data-conf]')) { e.preventDefault(); conferirTransporte(t); } return; }
       if (e.target.matches('input[type=checkbox]')) { e.target.checked ? ui.selected.add(t) : ui.selected.delete(t); renderList(); return; }
       openDetail(t);
     });
@@ -3325,7 +3394,7 @@
     if (!TPL) { document.body.innerHTML = '<p style="padding:40px">Modelos de impressão não encontrados (js/templates.js).</p>'; return; }
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
-    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo(); bindOcorr(); bindEspeciais();
+    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo(); bindOcorr(); bindEspeciais(); bindConferencia();
     setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });

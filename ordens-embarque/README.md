@@ -591,3 +591,14 @@ Toda carga desse cliente:
   pedido das fotos;
 - tem no painel a seção **Fotos das laterais da carga** (lateral esquerda e direita: clique ou arraste a foto).
 Esse check list é interno (não é formulário registrado). Os cadastros ficam na pasta oficial e não são apagados no domingo.
+
+### Conferência do transporte na saída (balança)
+
+Na lista diária, coluna **Conferido**: enquanto o transporte não é conferido, a linha inteira fica **vermelho claro**. Ao
+marcar, abre a janela *Conferência do transporte na saída*: digite **quem conferiu** (o nome fica lembrado neste
+computador) e confirme; o app grava nome, data e hora (aparecem na linha) e a linha volta ao normal. Os dois botões **?**
+mostram o modelo correto da tela *Modificar transporte* do SAP (desenho com dados fictícios):
+- **Exportação**: peso total indicado (PesoTotalPerm.), Planejamento travado (botão apagado) e **Início transp. desmarcado**;
+- **Mercado interno**: peso total indicado, tipo de veículo na Condição exped. (ex.: Y3 Truck), Planejamento travado e
+  **Início transp. marcado** (com data, hora e ✔).
+Desmarcar pede confirmação. A conferência entra no Excel semanal (coluna "Conferido na saída").

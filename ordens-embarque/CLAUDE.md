@@ -191,4 +191,10 @@
   `buildCheckVisual` (folha interna A4 `sheet-cv`, itens `CV_ITENS`; não é formulário registrado) quando `checklist`.
   Fotos das laterais: `state.fotos[t].slots.latE/latD` (mesma gravação `gravarFoto`, fora de `OEF.SLOTS`), seção `#lat-sec`,
   `nLaterais`. `printTransports` → `avisoEspeciais` (mensagem + pedido das fotos). Mantido no fechamento semanal.
+- Conferência na saída (balança): `manual.conferido` = { nome, em, por } (sync `man:t|conferido`). Lista diária: coluna `.c-conf`
+  (`confCel`), linha `tr.nconf` vermelho claro sem conferência; marcar → `#cfr-dialog` (`conferirTransporte`, nome lembrado em
+  `arauco.ordensEmbarque.conferente`), desmarcar com confirmação. Botões "?" (`sapModelo`): desenho HTML da tela SAP "Modificar
+  transporte" com dados fictícios (as capturas reais do usuário NÃO vão para o repositório): exportação (`isExport`) = peso,
+  Planejamento travado, Início transp. desmarcado; mercado interno = peso, Condição exped. (Y3 Truck), Planejamento travado,
+  Início transp. marcado.
 

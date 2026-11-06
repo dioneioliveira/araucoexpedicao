@@ -99,7 +99,7 @@
               <th class="c-check"><input type="checkbox" id="check-all" title="Selecionar todas"></th>
               <th>Hora</th><th>Transporte</th><th>Janela</th><th>Cliente</th><th>Entrega</th>
               <th>Material</th><th class="num">Pallets</th><th>Placas</th><th>Motorista</th>
-              <th>Treinamento</th><th>Transportadora</th><th>OT</th><th>Container</th><th class="c-status">Status</th><th class="c-act"></th>
+              <th>Treinamento</th><th>Transportadora</th><th>OT</th><th>Container</th><th class="c-conf" title="Transporte conferido na saída (balança)">Conferido</th><th class="c-status">Status</th><th class="c-act"></th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -498,6 +498,26 @@
   </div>
 </dialog>
 
+<dialog id="cfr-dialog" class="modal">
+  <form method="dialog" class="modal-inner" id="cfr-form">
+    <div class="modal-head"><h2>Conferência do transporte na saída (balança)</h2></div>
+    <div class="cf-body">
+      <p id="cfr-info"></p>
+      <div class="cfr-ajuda">
+        <span class="muted small">O que conferir no SAP (Modificar transporte):</span>
+        <button type="button" class="cfr-q" data-cfr-q="exp" title="Modelo correto para exportação">?</button><span class="small">Exportação</span>
+        <button type="button" class="cfr-q" data-cfr-q="mi" title="Modelo correto para mercado interno">?</button><span class="small">Mercado interno</span>
+      </div>
+      <div id="cfr-modelo" hidden></div>
+      <label class="f cfr-nome">Conferido por<input id="cfr-quem" placeholder="nome de quem conferiu" autocomplete="off"></label>
+      <div class="alert err" id="cfr-erro" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button value="cancel" class="btn btn-ghost" formnovalidate>Cancelar</button>
+      <button value="ok" class="btn btn-primary" id="cfr-ok">Confirmar conferência</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="ce-dialog" class="modal modal-sm">
   <form method="dialog" class="modal-inner" id="ce-form">
     <div class="modal-head"><h2>Cliente especial</h2></div>
