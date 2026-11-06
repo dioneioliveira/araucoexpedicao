@@ -13,7 +13,7 @@
 
   // ------------------------------------------------------------------ estado
   const STORE_KEY = 'arauco.ordensEmbarque.v1';
-  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {}, fotos: {}, histBalanca: {}, histCargas: {}, pesExcl: {}, blCfg: {}, ocorr: {} });
+  const emptyState = () => ({ v: 1, items: {}, sew: [], fsc: {}, manual: {}, printed: {}, snap: {}, faturado: {}, ots: {}, pesos: {}, tickets: {}, fotos: {}, histBalanca: {}, histCargas: {}, pesExcl: {}, blCfg: {}, ocorr: {}, especiais: {} });
   let state = load();
   function load() {
     try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s && s.v === 1) return Object.assign(emptyState(), s); } catch (e) { /* sem storage */ }
@@ -200,7 +200,7 @@
       otQr: T.otList[0] || '',
       ot: T.otList.join('\n'), // várias OTs: uma por linha no campo OT
       fsc: T.fsc ? T.fsc.fsc : '',
-      janelaContainer: destaque(T, cont),
+      janelaContainer: [destaque(T, cont), especialDe(T) ? especialDe(T).mensagem || 'CLIENTE ESPECIAL' : ''].filter(Boolean).join('\n'), // + mensagem do cliente especial
       treinamento: e.treinamento,
       cpfTreinamento: /EXPIRADO/i.test(e.cpfStatus) && !T.man.cpf ? e.cpfStatus : P.fmtCPF(e.cpf),
       entregaTransporte: [e.entrega, T.transporte].filter(Boolean).join(' / '),
@@ -344,6 +344,7 @@
     if (!opts || opts.extras !== false) {
       if (isExport(T) && comSeparacao(T)) pages.push(buildSeparacao(T));
       if (comIdentificador(T)) pages.push(buildIdentificador(T)); // identificador só para container
+      const esp = especialDe(T); if (esp && esp.checklist !== false) pages.push(buildCheckVisual(T, esp)); // cliente especial
     }
     return pages;
   }
@@ -364,7 +365,7 @@
     const el = document.createElement('div'); el.className = 'sheet sheet-sep'; el.dataset.wpt = '595.3'; el.dataset.hpt = '841.9';
     const linhas = linhasSeparacao(T);
     const totQtd = linhas.reduce((a, l) => a + (l.qtd || 0), 0);
-    const tipo = d.janelaContainer || (T.janela === 'CONTAINER' ? 'CONTAINER' : 'EXPORTAÇÃO');
+    const tipo = destaque(T, T.janela === 'CONTAINER') || (T.janela === 'CONTAINER' ? 'CONTAINER' : 'EXPORTAÇÃO');
     const cel = (l, v, big) => `<div class="sp-cel${big ? ' big' : ''}"><span>${esc(l)}</span><b>${esc(v || '—')}</b></div>`;
     el.innerHTML = `
       <div class="sp-head">
@@ -401,7 +402,7 @@
     const e = T.eff, d = printData(T);
     const el = document.createElement('div'); el.className = 'sheet sheet-id'; el.dataset.wpt = '841.9'; el.dataset.hpt = '595.3';
     const cont = fmtContainer(T.ot.container);
-    const tipo = d.janelaContainer || (T.janela === 'CONTAINER' ? 'CONTAINER' : 'EXPORTAÇÃO');
+    const tipo = destaque(T, T.janela === 'CONTAINER') || (T.janela === 'CONTAINER' ? 'CONTAINER' : 'EXPORTAÇÃO');
     const box = (l, v, max) => `<div class="id-box"><span>${esc(l)}</span><b data-fit="${max}">${esc(v || '—')}</b></div>`;
     el.innerHTML = `
       <div class="id-top"><img src="${logoSrc()}" alt="Arauco"><div class="id-kind">${esc(tipo)}</div><div class="id-date">${esc(P.fmtDateBR(e.data))}</div></div>
@@ -430,6 +431,7 @@
   async function printTransports(list) {
     if (!list.length) return;
     if (!(await avisoOcorrencias(list))) return;
+    if (!(await avisoEspeciais(list))) return;
     const incompletos = list.filter(T => T.missing.length);
     if (incompletos.length) {
       const ok = await confirmBox('Dados obrigatórios faltando',
@@ -475,7 +477,8 @@
   // ------------------------------------------------------------------ renderização
   function janelaChip(T) {
     const c = T.janela === 'CONTAINER';
-    const amostra = isAmostra(T) ? ' <span class="chip warn">Amostra</span>' : '';
+    const esp = especialDe(T);
+    const amostra = (esp ? ` <span class="chip especial" title="${esc(esp.mensagem || 'Cliente especial')}${esp.fotos !== false ? ` · fotos das laterais ${nLaterais(T.transporte)}/2` : ''}">Cliente especial${esp.fotos !== false ? ` · ${nLaterais(T.transporte)}/2 fotos` : ''}</span>` : '') + (isAmostra(T) ? ' <span class="chip warn">Amostra</span>' : '');
     const extra = amostra + (isAraucoMaderas(T) ? ' <span class="chip grey">Exp. terrestre</span>' : (isBreakbulk(T) ? ' <span class="chip grey">Breakbulk</span>' : (isCabotagem(T) ? ' <span class="chip ct">Cabotagem</span>' : '')));
     return extra + `<span class="chip ${c ? 'ct' : 'mi'}" title="Origem: ${esc(T.janelaSrc)}"><span class="dot"></span>${c ? 'Container' : 'Mercado interno'}</span>`;
   }
@@ -1608,17 +1611,18 @@
       if (e.target.closest('[data-ft-fill]')) { preencherOTdasFotos(t); return; }
       const d = e.target.closest('[data-ft-del]');
       if (d) { const f = fotosDe(t); const it = f.slots[d.dataset.ftDel]; if (it) { F.del(it.id).catch(() => {}); fotoURL.delete(it.id); delete f.slots[d.dataset.ftDel]; save(true); renderAll(); } return; }
-      const im = e.target.closest('.ft-img');
+      const im = e.target.closest('#ft-sec .ft-img');
       if (im) { const s = im.closest('.ft-slot'); const it = fotosDe(t).slots[s.dataset.slot];
         if (it) abrirZoom(t, s.dataset.slot);
         else { const inp = $('#ft-um'); inp.dataset.slot = s.dataset.slot; inp.click(); } }
     });
     // arrastar: arquivos do Windows para uma posição, ou trocar fotos de posição
-    body.addEventListener('dragstart', e => { const s = e.target.closest && e.target.closest('.ft-slot.tem'); if (s) e.dataTransfer.setData('text/oe-slot', s.dataset.slot); });
+    body.addEventListener('dragstart', e => { const s = e.target.closest && e.target.closest('#ft-sec .ft-slot.tem'); if (s) e.dataTransfer.setData('text/oe-slot', s.dataset.slot); });
     body.addEventListener('dragover', e => { const s = e.target.closest('.ft-slot'); if (s) { e.preventDefault(); s.classList.add('over'); } });
     body.addEventListener('dragleave', e => { const s = e.target.closest('.ft-slot'); if (s) s.classList.remove('over'); });
     body.addEventListener('drop', e => {
       const s = e.target.closest('.ft-slot'); if (!s || !ui.open) return; e.preventDefault(); s.classList.remove('over');
+      if (s.dataset.lat) { const fl = e.dataTransfer.files && e.dataTransfer.files[0]; if (fl) salvarLateral(ui.open, s.dataset.lat, fl); return; } // foto da lateral
       const de = e.dataTransfer.getData('text/oe-slot');
       if (de && de !== s.dataset.slot) { const f = fotosDe(ui.open); const a = f.slots[de], b = f.slots[s.dataset.slot]; if (a) f.slots[s.dataset.slot] = a; else delete f.slots[s.dataset.slot]; if (b) f.slots[de] = b; else delete f.slots[de]; save(true); renderAll(); return; }
       const files = e.dataTransfer.files; if (files && files.length) importarFotos(ui.open, files, files.length === 1 ? s.dataset.slot : null);
@@ -1814,7 +1818,7 @@
         manual: pick(state.manual), printed: pick(state.printed), snap: pick(state.snap), faturado: pick(state.faturado), fatNf: pick(state.fatNf), fotos: pick(state.fotos),
         sew: state.sew.filter(e => e.data && e.data > fim), ots: Object.fromEntries(Object.entries(state.ots).filter(([en]) => !M.entregas.has(en))),
         tickets: Object.fromEntries(Object.entries(state.tickets).filter(([, t]) => t.data && t.data > fim)),
-        fsc: state.fsc, fscInfo: state.fscInfo, histBalanca: hist, histCargas, pesExcl: state.pesExcl || {}, blCfg: state.blCfg || {}, ocorr: state.ocorr || {}, pesos: {},
+        fsc: state.fsc, fscInfo: state.fscInfo, histBalanca: hist, histCargas, pesExcl: state.pesExcl || {}, blCfg: state.blCfg || {}, ocorr: state.ocorr || {}, especiais: state.especiais || {}, pesos: {},
         fechamentos: { ultimo: corte.toISOString(), em: new Date().toISOString(), por: usuario() || 'automático', arquivo: nome + '.xlsx', semana: { ini, fim } },
       });
       state = novo;
@@ -1964,6 +1968,121 @@
     $('#oc-quando').addEventListener('change', e => { if (e.target.value) $('#oc-turno').value = turnoDe(new Date(e.target.value)); });
   }
 
+  // ------------------------------------------------------------------ clientes especiais
+  // state.especiais[id] = { id, nome (cliente ou parte do nome), mensagem (vai na A41), detalhes, checklist, fotos, ativo, em, por }
+  // Carga do cliente: mensagem no campo grande da carga (A41), check list visual do material na impressão e fotos das 2 laterais.
+  function especialDe(T) {
+    const c = ' ' + P.nomeChave(T.eff.cliente) + ' ';
+    if (c.trim() === '') return null;
+    return Object.values(state.especiais || {}).find(x => x.ativo !== false && P.nomeChave(x.nome) && c.includes(' ' + P.nomeChave(x.nome) + ' ')) || null;
+  }
+  const LATERAIS = [['latE', 'Lateral esquerda'], ['latD', 'Lateral direita']];
+  const nLaterais = t => { const f = state.fotos[t]; return f ? LATERAIS.filter(([k]) => f.slots[k]).length : 0; };
+  function lateraisHTML(T) {
+    const f = state.fotos[T.transporte] || { slots: {} };
+    return `<div class="section" id="lat-sec">
+      <h3>Fotos das laterais da carga <span class="h-note">cliente especial · ${nLaterais(T.transporte)}/2</span></h3>
+      <div class="lat-grid">${LATERAIS.map(([k, nome]) => { const it = f.slots[k]; return `<div class="ft-slot ${it ? 'tem' : ''}" data-lat="${k}">
+        <div class="ft-img" title="${it ? esc(it.nome) : 'Clique para escolher a foto'}">${it ? `<img data-fid="${esc(it.id)}" alt="${esc(nome)}"><button class="ft-del" data-lat-del="${k}" title="Remover foto">×</button>` : '<span>+ foto</span>'}</div>
+        <div class="ft-cap"><b>${esc(nome)}</b><small>${it ? esc(new Date(it.em).toLocaleString('pt-BR')) : 'carga inteira, do chão ao topo'}</small></div></div>`; }).join('')}</div>
+      <input type="file" id="lat-arq" accept="image/*" hidden>
+    </div>`;
+  }
+  async function salvarLateral(t, k, file) {
+    try { await gravarFoto(t, k, file); } catch (e) { toast('Não foi possível guardar a foto: ' + (e.message || e), 'err'); return; }
+    save(true); renderAll(); if (ui.open === t) renderDetail(); toast(`Foto guardada: ${LATERAIS.find(x => x[0] === k)[1]}.`, 'ok');
+  }
+  // folha extra impressa para cliente especial: check list visual do material carregado (só aspectos físicos)
+  const CV_ITENS = [
+    ['Embalagem', ['Embalagem íntegra (filme, papelão e proteções sem rasgos)', 'Cantoneiras / protetores de quina posicionados', 'Etiquetas de identificação legíveis e corretas']],
+    ['Cintas', ['Cintas na quantidade padrão em cada lote', 'Cintas íntegras e tensionadas (sem rompimento ou folga)']],
+    ['Calços e barrotes', ['Calços / barrotes presentes em todas as posições (sem falta)', 'Calços alinhados na vertical entre os lotes']],
+    ['Disposição e empilhamento', ['Disposição das cargas conforme o plano de carregamento', 'Empilhamento alinhado, sem inclinação ou deslocamento', 'Altura de empilhamento dentro do limite', 'Amarração da carga no caminhão (cintas / catracas)']],
+    ['Aspecto visual das chapas', ['Sem molhadura ou umidade', 'Sem manchas ou sujeira', 'Sem placas com avarias (quinas, bordas, faces)', 'Sem ondulação / empenamento', 'Carroceria limpa e seca; lona / cobertura íntegra']],
+  ];
+  function buildCheckVisual(T, esp) {
+    const e = T.eff, d = printData(T);
+    const el = document.createElement('div'); el.className = 'sheet sheet-sep sheet-cv'; el.dataset.wpt = '595.3'; el.dataset.hpt = '841.9';
+    const cel = (l, v, big) => `<div class="sp-cel${big ? ' big' : ''}"><span>${esc(l)}</span><b>${esc(v || '—')}</b></div>`;
+    let n = 0;
+    el.innerHTML = `
+      <div class="sp-head">
+        <img src="${logoSrc()}" alt="Arauco">
+        <div class="sp-title"><div>CHECK LIST VISUAL DO MATERIAL</div><small>CLIENTE ESPECIAL · ASPECTOS FÍSICOS DA CARGA</small></div>
+        <div class="sp-tr"><span>TRANSPORTE</span><b>${esc(T.transporte)}</b><small>${esc(P.fmtDateBR(e.data))} ${esc(e.hora || '')}</small></div>
+      </div>
+      <div class="sp-alert cv-msg">${esc(esp.mensagem || 'CLIENTE ESPECIAL')}</div>
+      ${esp.detalhes ? `<div class="cv-det"><span>Histórico / atenção</span>${esc(esp.detalhes)}</div>` : ''}
+      <div class="sp-grid">
+        ${cel('Cliente', e.cliente)}${cel('Entrega(s)', T.entregas.join(' / '))}${cel('OT', T.otList.join(' / '))}${cel('Pallets / lotes', d.pallets)}
+        ${cel('Placa carreta', isTruck(e) ? e.placaL + ' (truck)' : e.placaL)}${cel('Placa cavalo', isTruck(e) ? '' : e.placaM)}${cel('Motorista', e.motorista)}${cel('Transportadora', e.transportadora)}
+      </div>
+      <div class="cv-mat">${T.items.map(i => `<div><b>${esc(i.material)}</b> ${esc(i.descricao)} · ${fmtNum(i.qtd, 0)} pç${i.pallets != null ? ` · ${fmtNum(i.pallets, 2)} lote(s)` : ''}</div>`).join('')}</div>
+      <table class="sp-tab cv-tab"><thead><tr><th class="n">#</th><th>Verificação</th><th class="ck">Conforme</th><th class="ck">Não conf.</th><th class="ck">N/A</th><th>Observação</th></tr></thead>
+      <tbody>${CV_ITENS.map(([g, its]) => `<tr class="cv-g"><td colspan="6">${esc(g)}</td></tr>` + its.map(t => `<tr><td class="n">${++n}</td><td>${esc(t)}</td><td class="ck">☐</td><td class="ck">☐</td><td class="ck">☐</td><td></td></tr>`).join('')).join('')}</tbody></table>
+      <div class="cv-fotos"><b>Registro fotográfico obrigatório:</b> <span>☐ Lateral esquerda</span> <span>☐ Lateral direita</span> <em>(guardar as fotos no app, painel da ordem)</em></div>
+      <div class="sp-obs"><span>Observações / não conformidades encontradas</span></div>
+      <div class="sp-sign">
+        <div><span>Conferente</span><i></i><em>Data ___/___/______ &nbsp; Hora ___:___</em></div>
+        <div><span>Turno</span><i></i><em>☐ 1º &nbsp; ☐ 2º &nbsp; ☐ 3º</em></div>
+        <div><span>Liberado por</span><i></i><em>Assinatura</em></div>
+      </div>
+      <div class="sp-foot">Arauco · Expedição Piên · check list interno de cliente especial · gerado em ${esc(new Date().toLocaleString('pt-BR'))}</div>`;
+    return el;
+  }
+  // antes de imprimir: avisa a mensagem do cliente especial e pede as fotos das laterais
+  function avisoEspeciais(list) {
+    const com = list.map(T => ({ T, esp: especialDe(T) })).filter(x => x.esp);
+    if (!com.length) return Promise.resolve(true);
+    return confirmBox('Cliente com especificações especiais', `<ul>${com.map(({ T, esp }) => `<li><b>${esc(T.transporte)}</b> · ${esc(T.eff.cliente)}: <b>${esc(esp.mensagem || 'cliente especial')}</b>${esp.detalhes ? `<div class="muted small">${esc(esp.detalhes)}</div>` : ''}</li>`).join('')}</ul>
+      ${com.some(x => x.esp.checklist !== false) ? '<p>Será impresso também o <b>check list visual do material carregado</b>.</p>' : ''}
+      ${com.some(x => x.esp.fotos !== false) ? '<p><b>Após o carregamento, registre as fotos das duas laterais da carga</b> (painel da ordem → Fotos das laterais).</p>' : ''}`, 'Imprimir', 'Cancelar');
+  }
+  function renderEspeciais() {
+    const hoje = allTransports();
+    const l = Object.values(state.especiais || {}).sort((a, b) => a.nome.localeCompare(b.nome));
+    $('#ce-tabela').innerHTML = l.length ? `<table class="grid"><thead><tr><th>Cliente</th><th>Mensagem na ordem</th><th>Histórico / atenção</th><th>Check list visual</th><th>Fotos laterais</th><th>Cargas no app</th><th>Situação</th><th></th></tr></thead><tbody>${l.map(x => {
+      const n = hoje.filter(T => especialDe(T) === x).length;
+      return `<tr class="${x.ativo === false ? 'ghost' : ''}"><td><b>${esc(x.nome)}</b></td><td>${esc(x.mensagem || '')}</td><td class="wrap">${esc(x.detalhes || '')}</td><td>${x.checklist !== false ? 'Imprime' : '—'}</td><td>${x.fotos !== false ? 'Pede 2 fotos' : '—'}</td><td class="num">${n}</td>
+        <td>${x.ativo === false ? '<span class="chip grey">Inativo</span>' : '<span class="chip especial">Ativo</span>'}</td><td><button class="btn btn-ghost btn-sm" data-ce-ed="${esc(x.id)}">Editar</button> <button class="btn btn-ghost btn-sm" data-ce-del="${esc(x.id)}">Excluir</button></td></tr>`; }).join('')}</tbody></table>`
+      : '<div class="empty" style="padding:36px"><p>Nenhum cliente especial cadastrado. Use <b>Novo cliente especial</b> (ex.: cliente CARIOBA, com reclamações de qualidade e do aspecto físico das cargas).</p></div>';
+  }
+  function editarEspecial(id) {
+    const x = (state.especiais || {})[id] || { nome: '', mensagem: '', detalhes: '', checklist: true, fotos: true, ativo: true };
+    const dlg = $('#ce-dialog'); dlg._id = id || '';
+    $('#ce-nome').value = x.nome; $('#ce-msg').value = x.mensagem || ''; $('#ce-det').value = x.detalhes || '';
+    $('#ce-ck').checked = x.checklist !== false; $('#ce-ft').checked = x.fotos !== false; $('#ce-at').checked = x.ativo !== false; $('#ce-erro').hidden = true;
+    dlg.returnValue = ''; dlg.showModal(); $('#ce-nome').focus();
+  }
+  function bindEspeciais() {
+    $('#ce-novo').addEventListener('click', () => editarEspecial(''));
+    $('#ce-form').addEventListener('submit', ev => {
+      if (ev.submitter && ev.submitter.value !== 'ok') return;
+      const nome = P.clean($('#ce-nome').value).toUpperCase();
+      if (!P.nomeChave(nome)) { ev.preventDefault(); $('#ce-erro').textContent = 'Informe o nome do cliente (ou a parte do nome que identifica o cliente, ex.: CARIOBA).'; $('#ce-erro').hidden = false; return; }
+      const dlg = $('#ce-dialog'), id = dlg._id || Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      state.especiais = Object.assign({}, state.especiais || {});
+      state.especiais[id] = { id, nome, mensagem: P.clean($('#ce-msg').value).toUpperCase(), detalhes: $('#ce-det').value.trim(), checklist: $('#ce-ck').checked, fotos: $('#ce-ft').checked,
+        ativo: $('#ce-at').checked, em: new Date().toISOString(), por: usuario() || '' };
+      save(true); renderAll(); toast(`Cliente especial salvo: ${nome}.`, 'ok');
+    });
+    $('#ce-tabela').addEventListener('click', async e => {
+      const ed = e.target.closest('[data-ce-ed]'); if (ed) { editarEspecial(ed.dataset.ceEd); return; }
+      const del = e.target.closest('[data-ce-del]'); if (!del) return;
+      const x = state.especiais[del.dataset.ceDel]; if (!x) return;
+      if (!(await confirmBox('Excluir cliente especial', `<p>Excluir <b>${esc(x.nome)}</b>? As próximas ordens desse cliente saem sem a mensagem e sem o check list visual.</p>`, 'Excluir'))) return;
+      delete state.especiais[x.id]; save(true); renderAll(); toast('Cliente especial excluído.', 'ok');
+    });
+    // fotos das laterais (painel da ordem)
+    $('#d-body').addEventListener('click', async e => {
+      const del = e.target.closest('[data-lat-del]');
+      if (del) { e.stopPropagation(); const f = fotosDe(ui.open), it = f.slots[del.dataset.latDel]; if (it) { F.del(it.id).catch(() => {}); fotoURL.delete(it.id); delete f.slots[del.dataset.latDel]; save(true); renderAll(); renderDetail(); } return; }
+      const sl = e.target.closest('[data-lat]'); if (!sl) return;
+      const inp = $('#lat-arq'); inp.dataset.k = sl.dataset.lat; inp.value = ''; inp.click();
+    });
+    $('#d-body').addEventListener('change', e => { if (e.target.id === 'lat-arq' && e.target.files[0] && e.target.dataset.k) salvarLateral(ui.open, e.target.dataset.k, e.target.files[0]); });
+  }
+
   // ------------------------------------------------------------------ guia Exportar tickets
   // uma linha por ticket de balança (Controle OT): agendamento + transporte + material + lotes + peso.
   // Só cargas com uma entrega e um único material; as outras vão para "Desconsiderados" com o motivo.
@@ -2058,7 +2177,7 @@
     $$('#views button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
     $$('[data-view-of]').forEach(el => { el.hidden = el.dataset.viewOf !== v; });
     $('#janela-filter').style.display = v === 'lista' ? '' : 'none';
-    $('.toolbar').style.display = ['pesos', 'expo', 'ocorr'].includes(v) ? 'none' : '';
+    $('.toolbar').style.display = ['pesos', 'expo', 'ocorr', 'esp'].includes(v) ? 'none' : '';
     renderAll();
   }
   function renderAgenda() {
@@ -2191,6 +2310,7 @@
     const e = T.eff;
     const alerts = [];
     if (T.verificarQtd) alerts.push(`<div class="alert warn"><b>Verificar quantidade de lotes:</b> ${T.items.filter(i => i.pallets == null).length} item(ns) sem as peças por pallet na descrição (padrão P/xx/NNN). Digite a quantidade de lotes no campo do item (coluna Pallets); enquanto faltar, a ordem sai com "VERIFICAR QUANTIDADE" ao lado dos lotes.</div>`);
+    { const esp = especialDe(T); if (esp) alerts.push(`<div class="alert especial"><b>Cliente especial: ${esc(esp.mensagem || esp.nome)}</b>${esp.detalhes ? `<div class="esp-det">${esc(esp.detalhes)}</div>` : ''}<div class="small">${esp.checklist !== false ? 'A impressão inclui o <b>check list visual do material carregado</b>. ' : ''}${esp.fotos !== false ? `Registre as <b>fotos das duas laterais</b> da carga (${nLaterais(T.transporte)}/2).` : ''}</div></div>`); }
     if (isAmostra(T)) alerts.push(`<div class="alert warn"><b>Amostra — conferir cliente.</b> A carga contém amostra; o aviso sai no check-list ao lado da quantidade de lotes.</div>`);
     { const tks = String(T.ot.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(k => k && state.tickets[k]);
       if (tks.length) alerts.push(`<div class="alert info"><b>Balança</b>: ${tks.map(k => `ticket ${esc(k)} · <b>${kg(state.tickets[k].liq, 0)} kg</b> líquidos`).join(' · ')}. Variação por item na guia Pesos.</div>`); }
@@ -2272,6 +2392,7 @@
         </div>
       </div>
       ${temContainer(T) ? fotosHTML(T) : ''}
+      ${especialDe(T) && especialDe(T).fotos !== false ? lateraisHTML(T) : ''}
       ${ocSecaoHTML(T)}
       <div class="section">
         <h3>Documentos da ordem <span class="h-note">clique para ampliar</span></h3>
@@ -2285,7 +2406,7 @@
     renderPresencaPainel();
     $('#d-mail').hidden = !temContainer(T);
     $('#d-expterr').hidden = !isAraucoMaderas(T); // só em exportação terrestre (Arauco Maderas)
-    if (temContainer(T)) carregarMiniaturas($('#d-body'));
+    if (temContainer(T) || $('#lat-sec')) carregarMiniaturas($('#d-body'));
   }
 
   function scalePage(page, boxWidth) {
@@ -2348,6 +2469,7 @@
     if (ui.view === 'pesos') { renderPesos(); renderBalanca(); }
     if (ui.view === 'expo') renderExpo();
     if (ui.view === 'ocorr') renderOcorr();
+    if (ui.view === 'esp') renderEspeciais();
     { const n = Object.keys(state.ocorr || {}).length; $('#v-count-ocorr').textContent = n || ''; }
     renderViewCounts();
     if (ui.open) renderDetail();
@@ -3203,7 +3325,7 @@
     if (!TPL) { document.body.innerHTML = '<p style="padding:40px">Modelos de impressão não encontrados (js/templates.js).</p>'; return; }
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
-    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo(); bindOcorr();
+    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo(); bindOcorr(); bindEspeciais();
     setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });

@@ -575,3 +575,19 @@ fechamento semanal. Na guia dá para buscar (nome, CPF, placa, texto) e excluir 
   média). Abaixo do gráfico, a **relação peso × quantidade de lotes**: cargas agrupadas por nº de lotes (peso médio,
   mín.–máx., kg/lote, esperado pela média e diferença) e, com duas ou mais quantidades diferentes, a reta
   "peso ≈ parte fixa + kg por lote × lotes" (quanto cada lote a mais acrescenta).
+
+### Clientes especiais
+
+Guia **Clientes especiais** → **Novo cliente especial**: nome do cliente (basta a parte que o identifica, ex.: `CARIOBA`),
+**mensagem na ordem**, histórico / pontos de atenção (ex.: reclamações de qualidade e do aspecto físico) e as opções
+*Imprimir o check list visual do material carregado*, *Pedir fotos das duas laterais da carga* e *Ativo*.
+Toda carga desse cliente:
+- leva a **mensagem no campo grande da carga** do Check List de Expedição (onde aparece "EXPORTAÇÃO TERRESTRE"; se as duas
+  valem, sai uma em cada linha);
+- imprime junto a folha **Check list visual do material carregado** (A4): embalagem, cantoneiras, etiquetas, cintas, calços e
+  barrotes, disposição, empilhamento, amarração, molhadura, manchas, placas com avaria, ondulação, carroceria/lona — com
+  Conforme / Não conforme / N/A / Observação, registro fotográfico, conferente, turno e liberação;
+- mostra o aviso no painel e na lista (chip "Cliente especial · n/2 fotos") e, ao imprimir, um aviso com a mensagem e o
+  pedido das fotos;
+- tem no painel a seção **Fotos das laterais da carga** (lateral esquerda e direita: clique ou arraste a foto).
+Esse check list é interno (não é formulário registrado). Os cadastros ficam na pasta oficial e não são apagados no domingo.

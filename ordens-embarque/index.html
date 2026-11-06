@@ -58,6 +58,7 @@
       <button data-view="ots" role="tab">OTs <span class="count" id="v-count-ots"></span></button>
       <button data-view="pesos" role="tab">Pesos</button>
       <button data-view="expo" role="tab">Exportar tickets</button>
+      <button data-view="esp" role="tab">Clientes especiais</button>
       <button data-view="ocorr" role="tab">Ocorrências <span class="count" id="v-count-ocorr"></span></button>
     </nav>
     <section class="toolbar card">
@@ -191,6 +192,16 @@
         </div>
       </div>
       <div class="card list-card"><div class="table-wrap" style="max-height:none" id="oc-tabela"></div></div>
+    </section>
+    <section id="esp" data-view-of="esp" hidden>
+      <div class="card agenda-help">
+        <div>
+          <h2>Clientes com especificações especiais</h2>
+          <p class="muted">Clientes com reclamações ou exigências sobre o <b>aspecto físico</b> das cargas. Para cada um, a ordem impressa leva a <b>mensagem</b> no campo grande da carga (onde aparece "EXPORTAÇÃO TERRESTRE"), sai junto o <b>check list visual do material carregado</b> (embalagem, cintas, calços, disposição, empilhamento, molhadura, manchas, avarias, ondulação…) e o app pede as <b>fotos das duas laterais</b> da carga. O cliente é reconhecido pelo nome (basta a parte que o identifica, ex.: CARIOBA).</p>
+        </div>
+        <div class="agenda-tools"><div class="ps-ctrl"><button class="btn btn-primary btn-sm" id="ce-novo">Novo cliente especial</button></div></div>
+      </div>
+      <div class="card list-card"><div class="table-wrap" style="max-height:none" id="ce-tabela"></div></div>
     </section>
     <section id="ots" data-view-of="ots" hidden>
       <div class="card agenda-help">
@@ -487,6 +498,24 @@
   </div>
 </dialog>
 
+<dialog id="ce-dialog" class="modal modal-sm">
+  <form method="dialog" class="modal-inner" id="ce-form">
+    <div class="modal-head"><h2>Cliente especial</h2></div>
+    <div class="cf-body oc-form">
+      <label class="f">Cliente (nome ou parte do nome que o identifica)<input id="ce-nome" placeholder="ex.: CARIOBA"></label>
+      <label class="f">Mensagem na ordem (campo grande da carga)<input id="ce-msg" maxlength="60" placeholder="ex.: CLIENTE ESPECIAL - CONFERIR ASPECTO FÍSICO"></label>
+      <label class="f">Histórico / pontos de atenção<textarea id="ce-det" rows="3" placeholder="ex.: reclamações de qualidade: molhadura, placas com avaria nas quinas"></textarea></label>
+      <label class="oc-chk"><input type="checkbox" id="ce-ck"> Imprimir o check list visual do material carregado</label>
+      <label class="oc-chk"><input type="checkbox" id="ce-ft"> Pedir fotos das duas laterais da carga</label>
+      <label class="oc-chk"><input type="checkbox" id="ce-at"> Ativo</label>
+      <div class="alert err" id="ce-erro" hidden></div>
+    </div>
+    <div class="modal-foot">
+      <button value="cancel" class="btn btn-ghost" formnovalidate>Cancelar</button>
+      <button value="ok" class="btn btn-primary" id="ce-salvar">Salvar</button>
+    </div>
+  </form>
+</dialog>
 <dialog id="oc-dialog" class="modal modal-sm">
   <form method="dialog" class="modal-inner" id="oc-form">
     <div class="modal-head"><h2>Registrar ocorrência</h2></div>

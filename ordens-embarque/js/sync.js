@@ -49,6 +49,7 @@
     Object.entries(state.fotos || {}).forEach(([k, v]) => put('foto:' + k, v));
     Object.entries(state.histBalanca || {}).forEach(([k, v]) => put('hb:' + k, v));
     Object.entries(state.ocorr || {}).forEach(([k, v]) => put('oc:' + k, v));
+    Object.entries(state.especiais || {}).forEach(([k, v]) => put('ce:' + k, v));
     Object.entries(state.histCargas || {}).forEach(([k, v]) => put('hc:' + k, v));
     Object.entries(state.pesExcl || {}).forEach(([k, v]) => put('px:' + k, v));
     if (state.blCfg && Object.keys(state.blCfg).length) put('blcfg', state.blCfg);
@@ -77,6 +78,7 @@
         case 'foto': (s.fotos = s.fotos || {})[id] = v; break;
         case 'hb': (s.histBalanca = s.histBalanca || {})[id] = v; break;
         case 'oc': (s.ocorr = s.ocorr || {})[id] = v; break;
+        case 'ce': (s.especiais = s.especiais || {})[id] = v; break;
         case 'hc': (s.histCargas = s.histCargas || {})[id] = v; break;
         case 'px': (s.pesExcl = s.pesExcl || {})[id] = v; break;
         case 'blcfg': s.blCfg = v; break;
