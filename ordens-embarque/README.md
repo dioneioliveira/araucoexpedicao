@@ -582,8 +582,8 @@ Guia **Clientes especiais** → **Novo cliente especial**: nome do cliente (bast
 **mensagem na ordem**, histórico / pontos de atenção (ex.: reclamações de qualidade e do aspecto físico) e as opções
 *Imprimir o check list visual do material carregado*, *Pedir fotos das duas laterais da carga* e *Ativo*.
 Toda carga desse cliente:
-- leva a **mensagem no campo grande da carga** do Check List de Expedição (onde aparece "EXPORTAÇÃO TERRESTRE"; se as duas
-  valem, sai uma em cada linha);
+- leva a **mensagem ao lado da quantidade de lotes** no Check List de Expedição (mesma célula de "carga fracionada" e
+  "Amostra", em linha própria);
 - imprime junto a folha **Check list visual do material carregado** (A4): embalagem, cantoneiras, etiquetas, cintas, calços e
   barrotes, disposição, empilhamento, amarração, molhadura, manchas, placas com avaria, ondulação, carroceria/lona — com
   Conforme / Não conforme / N/A / Observação, registro fotográfico, conferente, turno e liberação;

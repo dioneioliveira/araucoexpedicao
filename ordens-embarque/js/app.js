@@ -195,12 +195,14 @@
       naContainer: cont || isCabotagem(T) ? 'N/A' : '', // cabotagem também é container
       pallets: palTxt,
       // ao lado da quantidade de lotes (C23): carga fracionada e/ou aviso de amostra
-      fracionada: [T.verificarQtd ? 'VERIFICAR QUANTIDADE' : '', isFracionada(T) ? 'carga fracionada' : '', isAmostra(T) ? 'Amostra-conferir cliente' : ''].filter(Boolean).join(' · '),
+      // + mensagem do cliente especial, em linha própria
+      fracionada: [[T.verificarQtd ? 'VERIFICAR QUANTIDADE' : '', isFracionada(T) ? 'carga fracionada' : '', isAmostra(T) ? 'Amostra-conferir cliente' : ''].filter(Boolean).join(' · '),
+        especialDe(T) ? especialDe(T).mensagem || 'CLIENTE ESPECIAL' : ''].filter(Boolean).join('\n'),
       fscClaim: T.fsc ? T.fsc.claim : '',
       otQr: T.otList[0] || '',
       ot: T.otList.join('\n'), // várias OTs: uma por linha no campo OT
       fsc: T.fsc ? T.fsc.fsc : '',
-      janelaContainer: [destaque(T, cont), especialDe(T) ? especialDe(T).mensagem || 'CLIENTE ESPECIAL' : ''].filter(Boolean).join('\n'), // + mensagem do cliente especial
+      janelaContainer: destaque(T, cont),
       treinamento: e.treinamento,
       cpfTreinamento: /EXPIRADO/i.test(e.cpfStatus) && !T.man.cpf ? e.cpfStatus : P.fmtCPF(e.cpf),
       entregaTransporte: [e.entrega, T.transporte].filter(Boolean).join(' / '),
@@ -306,7 +308,7 @@
         el.classList.add('qr'); el.innerHTML = qrSvg(val);
         const s = el.querySelector('svg'); if (s) { s.removeAttribute('width'); s.removeAttribute('height'); }
       } else {
-        if (f.wrap) el.classList.add('wrap');
+        if (f.wrap || f.key === 'fracionada') el.classList.add('wrap'); // C23: avisos longos (cliente especial) quebram linha
         if (f.key === 'janelaContainer') el.style.opacity = '0.7'; // texto sobre o desenho da carreta: 30% transparente
         if (String(val).includes('\n')) { el.classList.add('wrap', 'clip'); el.style.whiteSpace = 'pre-line'; el.style.lineHeight = '1.05'; }
         const sp = document.createElement('span');

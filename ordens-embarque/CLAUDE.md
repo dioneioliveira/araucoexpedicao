@@ -186,8 +186,8 @@
   média/gráfico. Média do item = soma dos pesos ÷ soma dos lotes (ponderada); `relacaoLotes`/`relacaoHTML`: grupos por nº
   de lotes + reta peso = a + b·lotes. Tudo isso é mantido no fechamento semanal.
 - Clientes especiais (`state.especiais`, sync `ce:`; guia `data-view="esp"`, `#ce-dialog`): `especialDe(T)` = cadastro ativo cujo
-  `nomeChave(nome)` está contido (palavras inteiras) no `nomeChave` do cliente. Mensagem vai na A41 junto do `destaque`
-  (`printData.janelaContainer`, uma por linha; separação/identificador usam só `destaque`). `pagesFor` acrescenta
+  `nomeChave(nome)` está contido (palavras inteiras) no `nomeChave` do cliente. Mensagem vai na C23 (ao lado da quantidade de lotes,
+  campo `fracionada`, em linha própria; NÃO na A41). `pagesFor` acrescenta
   `buildCheckVisual` (folha interna A4 `sheet-cv`, itens `CV_ITENS`; não é formulário registrado) quando `checklist`.
   Fotos das laterais: `state.fotos[t].slots.latE/latD` (mesma gravação `gravarFoto`, fora de `OEF.SLOTS`), seção `#lat-sec`,
   `nLaterais`. `printTransports` → `avisoEspeciais` (mensagem + pedido das fotos). Mantido no fechamento semanal.
