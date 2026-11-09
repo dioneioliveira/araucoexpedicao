@@ -583,7 +583,7 @@ Guia **Clientes especiais** → **Novo cliente especial**: nome do cliente (bast
 *Imprimir o check list visual do material carregado*, *Pedir fotos das duas laterais da carga* e *Ativo*.
 Toda carga desse cliente:
 - leva a **mensagem ao lado da quantidade de lotes** no Check List de Expedição (mesma célula de "carga fracionada" e
-  "Amostra", em linha própria);
+  "Amostra", em linha própria, em tarja preta);
 - imprime junto a folha **Check list visual do material carregado** (A4): embalagem, cantoneiras, etiquetas, cintas, calços e
   barrotes, disposição, empilhamento, amarração, molhadura, manchas, placas com avaria, ondulação, carroceria/lona — com
   Conforme / Não conforme / N/A / Observação, registro fotográfico, conferente, turno e liberação;
@@ -602,6 +602,7 @@ mostram o modelo correto da tela *Modificar transporte* do SAP (desenho com dado
 - **Mercado interno**: peso total indicado, tipo de veículo na Condição exped. (ex.: Y3 Truck), Planejamento travado e
   **Início transp. marcado** (com data, hora e ✔).
 Desmarcar pede confirmação. A conferência entra no Excel semanal (coluna "Conferido na saída").
+Carga **FOB** (o cliente retira): a conferência é opcional — a linha não fica vermelha ("FOB · opcional") e não entra no lembrete.
 
 ### Lista sem rolagem lateral e lembrete de conferência
 

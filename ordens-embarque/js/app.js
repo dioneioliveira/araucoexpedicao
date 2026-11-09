@@ -203,6 +203,7 @@
       ot: T.otList.join('\n'), // várias OTs: uma por linha no campo OT
       fsc: T.fsc ? T.fsc.fsc : '',
       janelaContainer: destaque(T, cont),
+      especialMsg: especialDe(T) ? especialDe(T).mensagem || 'CLIENTE ESPECIAL' : '', // só para a tarja da C23
       treinamento: e.treinamento,
       cpfTreinamento: /EXPIRADO/i.test(e.cpfStatus) && !T.man.cpf ? e.cpfStatus : P.fmtCPF(e.cpf),
       entregaTransporte: [e.entrega, T.transporte].filter(Boolean).join(' / '),
@@ -313,7 +314,11 @@
         if (String(val).includes('\n')) { el.classList.add('wrap', 'clip'); el.style.whiteSpace = 'pre-line'; el.style.lineHeight = '1.05'; }
         const sp = document.createElement('span');
         if (f.key === 'fracionada') // "carga fracionada" em tarja preta com letras brancas
-          String(val).split(' · ').forEach((t, i) => { if (i) sp.append(' · '); const x = document.createElement('span'); x.textContent = t; if (t === 'carga fracionada' || t === 'VERIFICAR QUANTIDADE') x.className = 'tarja'; sp.appendChild(x); });
+          String(val).split('\n').forEach((linha, n) => {
+            if (n) sp.append(document.createElement('br'));
+            // mensagem do cliente especial (linha própria) também em tarja preta
+            linha.split(' · ').forEach((t, i) => { if (i) sp.append(' · '); const x = document.createElement('span'); x.textContent = t; if (t === data.especialMsg || t === 'carga fracionada' || t === 'VERIFICAR QUANTIDADE') x.className = 'tarja'; sp.appendChild(x); });
+          });
         else sp.textContent = val;
         el.appendChild(sp);
       }
@@ -583,7 +588,7 @@
     tb.innerHTML = linhas.map(L => L.html || (T => {
       const e = T.eff; const first = T.items[0] || {};
       const more = T.items.length > 1 ? ` <span class="chip grey">+${T.items.length - 1}</span>` : '';
-      return `<tr data-t="${esc(T.transporte)}" class="${ui.open === T.transporte ? 'active' : ''} ${T.printed && !T.faturado ? 'printed' : (!T.printed ? 'pendente' : '')} ${T.faturado ? 'faturada' : ''} ${T.printed && !T.faturado && T.alteracoes.length ? 'alterada' : ''} ${T.man.conferido ? 'conferida' : 'nconf'}">
+      return `<tr data-t="${esc(T.transporte)}" class="${ui.open === T.transporte ? 'active' : ''} ${T.printed && !T.faturado ? 'printed' : (!T.printed ? 'pendente' : '')} ${T.faturado ? 'faturada' : ''} ${T.printed && !T.faturado && T.alteracoes.length ? 'alterada' : ''} ${T.man.conferido ? 'conferida' : (precisaConferir(T) ? 'nconf' : 'conf-fob')}">
         <td class="c-check"><input type="checkbox" ${ui.selected.has(T.transporte) ? 'checked' : ''} aria-label="Selecionar ${esc(T.transporte)}"></td>
         <td class="mono">${esc(e.hora)}</td>
         <td class="mono"><b>${esc(T.transporte)}</b></td>
@@ -1976,9 +1981,12 @@
   // manual.conferido = { nome, em, por }: linha sem conferência fica vermelho claro na lista diária.
   // Modelo do que conferir no SAP (Modificar transporte): exportação × mercado interno (desenho com dados fictícios).
   const CONF_NOME = 'arauco.ordensEmbarque.conferente';
+  // carga FOB: o cliente retira, a conferência na saída não é obrigatória (sem vermelho e sem lembrete)
+  const isFOB = T => /\bFOB\b/.test(P.norm(T.eff.incoterm));
+  const precisaConferir = T => !isFOB(T) && !T.man.conferido;
   function confCel(T) {
     const c = T.man.conferido;
-    return `<label class="conf-ck" title="${c ? esc(`Conferido por ${c.nome} em ${new Date(c.em).toLocaleString('pt-BR')}`) : 'Marcar transporte conferido na saída (balança)'}"><input type="checkbox" data-conf ${c ? 'checked' : ''}>${c ? `<span><b>${esc(c.nome)}</b><small>${esc(new Date(c.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))}</small></span>` : ''}</label>`;
+    return `<label class="conf-ck" title="${c ? esc(`Conferido por ${c.nome} em ${new Date(c.em).toLocaleString('pt-BR')}`) : 'Marcar transporte conferido na saída (balança)'}"><input type="checkbox" data-conf ${c ? 'checked' : ''}>${c ? `<span><b>${esc(c.nome)}</b><small>${esc(new Date(c.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))}</small></span>` : (isFOB(T) ? '<span><small>FOB · opcional</small></span>' : '')}</label>`;
   }
   const modeloConf = T => isExport(T) ? 'exp' : 'mi';
   function sapModelo(tipo) {
@@ -2777,7 +2785,7 @@
     lembreteTm = setTimeout(async () => {
       if (document.querySelector('#confirm-dialog[open]')) return;
       const hoje = P.todayISO();
-      const pend = allTransports().filter(T => T.eff.data && T.eff.data < hoje && !T.man.conferido);
+      const pend = allTransports().filter(T => T.eff.data && T.eff.data < hoje && precisaConferir(T));
       if (!pend.length) return;
       const dias = new Map(); pend.forEach(T => dias.set(T.eff.data, (dias.get(T.eff.data) || 0) + 1));
       const ord = [...dias.keys()].sort().reverse();
