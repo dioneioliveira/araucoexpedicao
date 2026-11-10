@@ -41,6 +41,7 @@ def main():
     inline("js/parsers.js", read("js/parsers.js"))
     inline("js/sync.js", read("js/sync.js"))
     inline("js/fotos.js", read("js/fotos.js"))
+    inline("js/cancelamento-modelo.js", read("js/cancelamento-modelo.js"))
     inline("js/app.js", read("js/app.js"))
     assert not re.search(r'(src|href)="(css|js|assets|templates|vendor)/', html), "recurso local não embutido"
     out = os.path.join(ROOT, "ordens-embarque.html")

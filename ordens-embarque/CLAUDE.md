@@ -200,4 +200,11 @@
 - Lista diária sem rolagem horizontal: `#daily-table{table-layout:fixed}` com larguras por coluna (nth-child) e `.clamp` (2 linhas)
   nas células `.wrap` (renderList / linhaAgendamento). Lembrete `lembreteConferencia()` (debounce 900 ms) depois de toda importação
   (`processarColagem` → `processarColagem0`, arquivos de pesos/FSC/planilha): transportes com data < hoje sem `manual.conferido`.
+- Cancelamento de nota (`#d-canc` → `#cn-dialog`, `abrirCancelamento`; `manual.cancelamento`): modelo `window.OE_CANC`
+  (`js/cancelamento-modelo.js`, gerado por `tools/build_cancelamento.py` a partir da planilha oficial — **não editar à mão**;
+  o gerador apaga dados de exemplo/autores). Células de dados (`campos`): B5 nf, C5 série (0, formato "00"), D5 doc,
+  F5 emissão, G5 mês, B8 filial, B15 razão, G15 valor, B18 transportadora, B20 motivo, B23 NF substituta. `cancHTML` desenha
+  a área de impressão B2:G30 com os estilos da planilha (texto escorre como no Excel); `cancXlsx` = partes originais + valores
+  nas células (zip sem compressão próprio, `zipStore`/`crc32`, sem depender do SheetJS); `cancPNG` = mesmo desenho via SVG
+  foreignObject → canvas → clipboard (senão baixa .png). Avisos de prazo (PR/RS 168 h; MS/SC/SP 24 h) e mês corrente.
 

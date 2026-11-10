@@ -751,3 +751,13 @@ tr.bl-excluida td:last-child, tr.bl-excluida td:nth-child(5){text-decoration:non
 #daily-table td:nth-child(2),#daily-table td:nth-child(3){white-space:nowrap;overflow:visible}
 #daily-table td:nth-child(4) .chip,#daily-table td:nth-child(11) .chip{white-space:normal;text-align:left;line-height:1.15}
 #daily-table thead th{overflow:hidden;text-overflow:ellipsis}
+
+/* cancelamento de nota: desenho da planilha */
+.cn-wrap{overflow:auto;background:#f3f3f3;padding:14px;border-radius:8px;max-height:62vh}
+.cn-sheet{border-collapse:collapse;table-layout:fixed;background:#fff}
+.cn-sheet td{padding:0 2px;overflow:visible;line-height:1.15}
+.cn-in{width:100%;box-sizing:border-box;border:1px dashed rgba(255,0,0,.45);background:rgba(255,255,255,.6);padding:0 2px;height:100%;min-height:20px;outline:0}
+.cn-in:focus{border:1px solid #c00;background:#fff}
+.cn-in.falta{background:#fff7c2;border-color:#d4a300}
+#cn-dialog .modal-foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#cn-dialog #cn-status{margin-right:auto}

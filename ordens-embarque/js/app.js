@@ -1977,6 +1977,190 @@
     $('#oc-quando').addEventListener('change', e => { if (e.target.value) $('#oc-turno').value = turnoDe(new Date(e.target.value)); });
   }
 
+  // ------------------------------------------------------------------ cancelamento de nota (planilha oficial)
+  // Formulário igual à guia "FORMULÁRIO CANCELAMENTO" (window.OE_CANC, gerado por tools/build_cancelamento.py).
+  // O Excel é a planilha original com valores só nas células de dados; a imagem do e-mail é o mesmo desenho.
+  // manual.cancelamento = { nf, serie, doc, emissao (AAAA-MM-DD), mes (AAAA-MM), filial, razao, valor, transp, motivo, subst, em, por }
+  const CN = window.OE_CANC;
+  const CN_OBRIG = ['nf', 'doc', 'emissao', 'mes', 'filial', 'razao', 'transp', 'motivo'];
+  const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  function cancDados(T) {
+    const hoje = new Date(), salvo = T.man.cancelamento || {};
+    const fat = state.faturado[T.transporte] ? isoDia(new Date(state.faturado[T.transporte])) : '';
+    const d = { nf: String(T.ot.nf || '').split(/[\/,;\s]+/)[0].replace(/\D/g, ''), serie: '0', doc: String(T.ot.doc || '').replace(/\D/g, ''), emissao: fat,
+      mes: `${hoje.getFullYear()}-${P.pad(hoje.getMonth() + 1)}`, filial: 'PB26', razao: T.eff.cliente || '', valor: '', transp: T.eff.transportadora || '', motivo: '', subst: '' };
+    Object.keys(d).forEach(k => { if (salvo[k] != null && salvo[k] !== '') d[k] = salvo[k]; });
+    return d;
+  }
+  // texto exibido como o Excel mostra (formatos da planilha)
+  function cancTexto(k, v) {
+    if (v == null || v === '') return '';
+    if (k === 'nf') return String(v).replace(/\D/g, '').padStart(9, '0');
+    if (k === 'serie') return String(+v || 0).padStart(2, '0');
+    if (k === 'emissao') { const [y, m, dd] = v.split('-'); return `${dd}/${m}/${y.slice(2)}`; }
+    if (k === 'mes') { const [y, m] = v.split('-'); return `${MESES[+m - 1]}-${y.slice(2)}`; }
+    if (k === 'valor') { const n = P.toNum(v); return n == null || !isFinite(n) ? String(v) : 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    return String(v);
+  }
+  const cssCor = c => '#' + (c || '000000');
+  // desenho da planilha: tabela com as larguras/alturas/estilos de A1:G30; editavel = inputs nas células de dados
+  function cancHTML(d, editavel) {
+    const L = CN.layout, campoDe = {}; Object.entries(CN.campos).forEach(([ref, k]) => { campoDe[ref] = k; });
+    const pos = ref => { const m = ref.match(/([A-Z]+)(\d+)/); return { c: m[1].charCodeAt(0) - 64, r: +m[2] }; };
+    const span = {}, oculto = new Set();
+    L.merges.forEach(m => { const [a, b] = m.split(':').map(pos); span[`${a.c},${a.r}`] = { cs: b.c - a.c + 1, rs: b.r - a.r + 1 };
+      for (let r = a.r; r <= b.r; r++) for (let c = a.c; c <= b.c; c++) if (r !== a.r || c !== a.c) oculto.add(`${c},${r}`); });
+    const cel = {}; L.cells.forEach(x => { const p = pos(x.ref); cel[`${p.c},${p.r}`] = x; });
+    const bd = v => v === 'medium' ? '2px solid #000' : v ? '1px solid #000' : 'none';
+    // área de impressão da planilha: B2:G30
+    const C0 = 2, R0 = 2, cols = L.cols.slice(C0 - 1);
+    let h = `<table class="cn-sheet" style="width:${cols.reduce((a, b) => a + b, 0)}px"><colgroup>${cols.map(w => `<col style="width:${w}px">`).join('')}</colgroup><tbody>`;
+    for (let r = R0; r <= L.rows.length; r++) {
+      h += `<tr style="height:${L.rows[r - 1]}px">`;
+      for (let c = C0; c <= L.cols.length; c++) {
+        const k = `${c},${r}`; if (oculto.has(k)) continue;
+        const x = cel[k], sp = span[k], st = x ? x.st : null, f = st ? st.f : { sz: 12, b: false, cor: '000000', nome: 'Calibri' };
+        // borda da direita/de baixo da célula mesclada vem da última célula
+        const fim = sp ? cel[`${c + sp.cs - 1},${r + sp.rs - 1}`] : null;
+        const b = Object.assign({}, st ? st.bd : {}, fim ? { r: fim.st.bd.r, b: fim.st.bd.b } : {});
+        const sty = [`border-left:${bd(b.l)}`, `border-right:${bd(b.r)}`, `border-top:${bd(b.t)}`, `border-bottom:${bd(b.b)}`,
+          st && st.fill ? `background:${cssCor(st.fill)}` : '', `font:${f.b ? 'bold ' : ''}${f.sz}pt Calibri,Carlito,Arial,sans-serif`, `color:${cssCor(f.cor)}`,
+          `text-align:${st && st.h ? (st.h === 'centerContinuous' ? 'center' : st.h) : 'left'}`, `vertical-align:${st && st.v === 'center' ? 'middle' : (st && st.v === 'top' ? 'top' : 'bottom')}`,
+          st && st.wrap ? 'white-space:pre-line' : 'white-space:nowrap', st && st.ind ? `padding-left:${st.ind * 9 + 2}px` : ''].filter(Boolean).join(';');
+        let conteudo = '';
+        const campo = x && campoDe[x.ref];
+        if (campo) {
+          const v = d[campo];
+          if (editavel) {
+            const tipo = campo === 'emissao' ? 'date' : (campo === 'mes' ? 'month' : 'text');
+            const falta = CN_OBRIG.includes(campo) && !v;
+            // textos longos: o campo vai até o fim da linha (como o texto escorre no Excel)
+            const ate = { razao: 6, transp: 7, motivo: 7, subst: 7 }[campo];
+            const larg = ate ? L.cols.slice(c - 1, ate).reduce((a, w) => a + w, 0) - 6 : 0;
+            conteudo = `<input class="cn-in${falta ? ' falta' : ''}" data-cn="${campo}" type="${tipo}" value="${esc(v)}" placeholder="${falta ? 'preencher' : ''}" style="font:inherit;color:inherit;text-align:inherit${larg ? `;width:${larg}px;position:relative;z-index:1` : ''}">`;
+          } else conteudo = esc(cancTexto(campo, v));
+        } else if (x && Array.isArray(x.val)) {
+          conteudo = x.val.map(run => `<span style="font-family:${run.nome === 'Segoe UI Symbol' ? "'Segoe UI Symbol','DejaVu Sans',sans-serif" : "Calibri,Carlito,Arial,sans-serif"};font-size:${run.sz}pt;font-weight:${run.b ? 700 : 400};color:${cssCor(run.cor)}">${esc(run.t.replace(/\r/g, ''))}</span>`).join('');
+        } else if (x && x.val != null) conteudo = esc(x.val);
+        h += `<td${sp ? ` colspan="${sp.cs}" rowspan="${sp.rs}"` : ''} style="${sty}">${conteudo}</td>`;
+      }
+      h += '</tr>';
+    }
+    const lg = L.logo, left = L.cols.slice(C0 - 1, lg.col).reduce((a, b) => a + b, 0) + lg.dx, top = L.rows.slice(R0 - 1, lg.row).reduce((a, b) => a + b, 0) + lg.dy;
+    return `<div class="cn-box" style="position:relative;display:inline-block;background:#fff">${h}</tbody></table><img src="${lg.src}" alt="arauco" style="position:absolute;left:${left}px;top:${top}px;width:${lg.w}px;height:${lg.h}px"></div>`;
+  }
+  // prazo legal (aba "Prazo de cancelamento NF-E") e mês corrente
+  function cancAvisos(T, d) {
+    const av = [], uf = (T.solic && T.solic.uf || '').toUpperCase();
+    const h = { PR: 168, RS: 168, SC: 24, SP: 24, MS: 24 }[uf];
+    if (d.emissao) {
+      const horas = (Date.now() - new Date(d.emissao + 'T00:00:00').getTime()) / 36e5;
+      if (h && horas > h) av.push(`<div class="alert err">Prazo de cancelamento para <b>${uf}</b> é de <b>${h} horas</b> a partir da emissão — a nota foi emitida há cerca de ${Math.floor(horas)} h.</div>`);
+      else if (h) av.push(`<div class="alert info">Destino <b>${uf}</b>: prazo de cancelamento de <b>${h} horas</b> a partir da emissão.</div>`);
+      if (d.emissao.slice(0, 7) !== d.mes) av.push('<div class="alert err">A nota foi emitida <b>fora do mês corrente</b>: não será cancelada (ex.: emissão em janeiro, cancelamento em fevereiro).</div>');
+    }
+    const faltam = CN_OBRIG.filter(k => !d[k]);
+    if (faltam.length) av.push(`<div class="alert warn">Falta preencher: <b>${faltam.map(k => ({ nf: 'Nº Nota Fiscal', doc: 'Nº Documento', emissao: 'Data de Emissão', mes: 'Mês Corrente', filial: 'Nº Filial', razao: 'Razão Social', transp: 'Transportadora', motivo: 'Motivo do cancelamento' })[k]).join(', ')}</b>.</div>`);
+    return av.join('');
+  }
+  let cnAtual = null; // { t, d }
+  function abrirCancelamento(t) {
+    const T = getTransport(t); if (!T) return;
+    cnAtual = { t, d: cancDados(T) };
+    $('#cn-t').textContent = t;
+    renderCancelamento(); $('#cn-dialog').showModal();
+  }
+  function renderCancelamento(manterFoco) {
+    const T = getTransport(cnAtual.t), d = cnAtual.d;
+    $('#cn-avisos').innerHTML = cancAvisos(T, d);
+    if (!manterFoco) $('#cn-form').innerHTML = cancHTML(d, true);
+    const c = T.man.cancelamento;
+    $('#cn-status').textContent = c && c.em ? `Salvo por ${c.por || '—'} em ${new Date(c.em).toLocaleString('pt-BR')}` : '';
+  }
+  function salvarCancelamento(quieto) {
+    const man = state.manual[cnAtual.t] || (state.manual[cnAtual.t] = {});
+    man.cancelamento = Object.assign({}, cnAtual.d, { em: new Date().toISOString(), por: usuario() || '' });
+    save(true); renderCancelamento(true); if (ui.open === cnAtual.t) renderDetail();
+    if (!quieto) toast(`Cancelamento da NF ${cancTexto('nf', cnAtual.d.nf) || ''} salvo no transporte ${cnAtual.t}.`, 'ok');
+  }
+  // ---------- .xlsx: as partes originais + valores nas células de dados, num zip sem compressão ----------
+  const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = u => { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = CRC_T[(c ^ u[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  function zipStore(arquivos) {
+    const enc = new TextEncoder(), partes = [], central = []; let off = 0;
+    const dt = new Date(), dosT = (dt.getHours() << 11) | (dt.getMinutes() << 5) | (dt.getSeconds() >> 1), dosD = ((dt.getFullYear() - 1980) << 9) | ((dt.getMonth() + 1) << 5) | dt.getDate();
+    arquivos.forEach(([nome, dados]) => {
+      const n = enc.encode(nome), crc = crc32(dados), h = new DataView(new ArrayBuffer(30));
+      [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [8, 0, 2], [10, dosT, 2], [12, dosD, 2], [14, crc, 4], [18, dados.length, 4], [22, dados.length, 4], [26, n.length, 2], [28, 0, 2]]
+        .forEach(([o, v, s]) => s === 4 ? h.setUint32(o, v, true) : h.setUint16(o, v, true));
+      const c = new DataView(new ArrayBuffer(46));
+      [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0x0800, 2], [10, 0, 2], [12, dosT, 2], [14, dosD, 2], [16, crc, 4], [20, dados.length, 4], [24, dados.length, 4], [28, n.length, 2], [30, 0, 2], [32, 0, 2], [34, 0, 2], [36, 0, 2], [38, 0, 4], [42, off, 4]]
+        .forEach(([o, v, s]) => s === 4 ? c.setUint32(o, v, true) : c.setUint16(o, v, true));
+      partes.push(new Uint8Array(h.buffer), n, dados); central.push(new Uint8Array(c.buffer), n);
+      off += 30 + n.length + dados.length;
+    });
+    const tam = central.reduce((a, x) => a + x.length, 0), e = new DataView(new ArrayBuffer(22));
+    [[0, 0x06054b50, 4], [8, arquivos.length, 2], [10, arquivos.length, 2], [12, tam, 4], [16, off, 4]].forEach(([o, v, s]) => s === 4 ? e.setUint32(o, v, true) : e.setUint16(o, v, true));
+    return new Blob([...partes, ...central, new Uint8Array(e.buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  const b64u8 = b => Uint8Array.from(atob(b), ch => ch.charCodeAt(0));
+  const xmlEsc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const serialData = iso => { const [y, m, dd] = iso.split('-').map(Number); return (Date.UTC(y, m - 1, dd || 1) - Date.UTC(1899, 11, 30)) / 864e5; };
+  function cancXlsx(d) {
+    const dec = new TextDecoder(), enc = new TextEncoder();
+    let xml = dec.decode(b64u8(CN.arquivos.find(([n]) => n === CN.planilha)[1]));
+    Object.entries(CN.campos).forEach(([ref, k]) => {
+      let v = d[k], cel;
+      if (v == null || v === '') return;
+      if (['nf', 'doc', 'serie'].includes(k)) v = { n: +String(v).replace(/\D/g, '') || 0 };
+      else if (k === 'valor') { const n = P.toNum(v); v = n != null && isFinite(n) ? { n } : { s: String(v) }; }
+      else if (k === 'emissao') v = { n: serialData(v) };
+      else if (k === 'mes') v = { n: serialData(v + '-01') };
+      else v = { s: String(v) };
+      const re = new RegExp(`<c r="${ref}"( s="\\d+")?(?: t="\\w+")?(?:/>|>[\\s\\S]*?</c>)`);
+      xml = xml.replace(re, (m0, s) => { cel = v.n != null ? `<c r="${ref}"${s || ''}><v>${v.n}</v></c>` : `<c r="${ref}"${s || ''} t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v.s)}</t></is></c>`; return cel; });
+    });
+    return zipStore(CN.arquivos.map(([n, b]) => [n, n === CN.planilha ? enc.encode(xml) : b64u8(b)]));
+  }
+  // ---------- imagem fiel (PNG) para colar no e-mail: o mesmo desenho, via SVG foreignObject ----------
+  async function cancPNG(d) {
+    const tmp = document.createElement('div'); tmp.style.cssText = 'position:fixed;left:-10000px;top:0'; tmp.innerHTML = cancHTML(d, false); document.body.appendChild(tmp);
+    const box = tmp.firstElementChild, w = Math.ceil(box.offsetWidth) + 2, h = Math.ceil(box.offsetHeight) + 2; tmp.remove();
+    const css = '.cn-sheet{border-collapse:collapse;table-layout:fixed;background:#fff}.cn-sheet td{padding:0 2px;overflow:visible;line-height:1.15}';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml"><style>${css}</style>${cancHTML(d, false).replace(/<img ([^>]*)>/g, '<img $1/>').replace(/<col ([^>]*)>/g, '<col $1/>')}</div></foreignObject></svg>`;
+    const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    await img.decode();
+    const k = 2, cv = document.createElement('canvas'); cv.width = w * k; cv.height = h * k;
+    const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.scale(k, k); g.drawImage(img, 0, 0);
+    return new Promise(res => cv.toBlob(res, 'image/png'));
+  }
+  function bindCancelamento() {
+    $('#d-canc').addEventListener('click', () => { if (ui.open) abrirCancelamento(ui.open); });
+    $('#cn-close').addEventListener('click', () => $('#cn-dialog').close());
+    $('#cn-form').addEventListener('input', e => {
+      const k = e.target.dataset.cn; if (!k || !cnAtual) return;
+      cnAtual.d[k] = k === 'filial' ? e.target.value.toUpperCase() : e.target.value;
+      e.target.classList.toggle('falta', CN_OBRIG.includes(k) && !e.target.value);
+      renderCancelamento(true);
+    });
+    $('#cn-salvar').addEventListener('click', () => salvarCancelamento());
+    $('#cn-xlsx').addEventListener('click', () => {
+      const d = cnAtual.d, faltam = CN_OBRIG.filter(k => !d[k]);
+      if (faltam.length) { toast('Preencha os campos marcados antes de gerar a planilha.', 'warn'); return; }
+      salvarCancelamento(true);
+      baixar(`Cancelamento_NF_${cancTexto('nf', d.nf)}_${cnAtual.t}.xlsx`, cancXlsx(d));
+      toast('Planilha de cancelamento gerada (modelo oficial, só as células de dados preenchidas).', 'ok');
+    });
+    $('#cn-img').addEventListener('click', async () => {
+      try {
+        salvarCancelamento(true);
+        const blob = await cancPNG(cnAtual.d);
+        try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Imagem do formulário copiada: cole (Ctrl+V) no corpo do e-mail.', 'ok'); }
+        catch (e) { baixar(`Cancelamento_NF_${cancTexto('nf', cnAtual.d.nf)}.png`, blob); toast('O navegador não deixou copiar a imagem; ela foi baixada (.png) para anexar.', 'warn'); }
+      } catch (e) { toast('Não foi possível gerar a imagem: ' + (e.message || e), 'err'); }
+    });
+  }
+
   // ------------------------------------------------------------------ conferência do transporte na saída (balança)
   // manual.conferido = { nome, em, por }: linha sem conferência fica vermelho claro na lista diária.
   // Modelo do que conferir no SAP (Modificar transporte): exportação × mercado interno (desenho com dados fictícios).
@@ -2388,6 +2572,7 @@
     const e = T.eff;
     const alerts = [];
     if (T.verificarQtd) alerts.push(`<div class="alert warn"><b>Verificar quantidade de lotes:</b> ${T.items.filter(i => i.pallets == null).length} item(ns) sem as peças por pallet na descrição (padrão P/xx/NNN). Digite a quantidade de lotes no campo do item (coluna Pallets); enquanto faltar, a ordem sai com "VERIFICAR QUANTIDADE" ao lado dos lotes.</div>`);
+    if (T.man.cancelamento) alerts.push(`<div class="alert err"><b>Cancelamento da NF ${esc(cancTexto('nf', T.man.cancelamento.nf))}</b> registrado${T.man.cancelamento.por ? ' por ' + esc(T.man.cancelamento.por) : ''} em ${esc(new Date(T.man.cancelamento.em).toLocaleString('pt-BR'))}${T.man.cancelamento.motivo ? ` · motivo: ${esc(T.man.cancelamento.motivo)}` : ''}. <a href="#" data-cn-abrir>Abrir formulário</a></div>`);
     { const esp = especialDe(T); if (esp) alerts.push(`<div class="alert especial"><b>Cliente especial: ${esc(esp.mensagem || esp.nome)}</b>${esp.detalhes ? `<div class="esp-det">${esc(esp.detalhes)}</div>` : ''}<div class="small">${esp.checklist !== false ? 'A impressão inclui o <b>check list visual do material carregado</b>. ' : ''}${esp.fotos !== false ? `Registre as <b>fotos das duas laterais</b> da carga (${nLaterais(T.transporte)}/2).` : ''}</div></div>`); }
     if (isAmostra(T)) alerts.push(`<div class="alert warn"><b>Amostra — conferir cliente.</b> A carga contém amostra; o aviso sai no check-list ao lado da quantidade de lotes.</div>`);
     { const tks = String(T.ot.ticket || '').split(/[\/,;\s]+/).map(P.ticketNorm).filter(k => k && state.tickets[k]);
@@ -2688,6 +2873,7 @@
       imprimirAvulso([doc.dataset.doc === 'sep' ? buildSeparacao(T) : buildIdentificador(T)]);
     });
     $('#d-body').addEventListener('click', e => {
+      if (e.target.closest('[data-cn-abrir]')) { e.preventDefault(); abrirCancelamento(ui.open); return; }
       if (e.target.closest('#oc-reg')) { e.preventDefault(); novaOcorrencia(getTransport(ui.open)); return; }
       const doc = e.target.closest('[data-doc]');
       if (doc) {
@@ -3424,7 +3610,7 @@
     if (!TPL) { document.body.innerHTML = '<p style="padding:40px">Modelos de impressão não encontrados (js/templates.js).</p>'; return; }
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
-    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo(); bindOcorr(); bindEspeciais(); bindConferencia();
+    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo(); bindOcorr(); bindEspeciais(); bindConferencia(); bindCancelamento();
     setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });

@@ -611,3 +611,17 @@ Carga **FOB** (o cliente retira): a conferência é opcional — a linha não fi
 - A cada importação (colar ordem, MI, CONTAINER, LT22, FSC, base de pesos/balança, planilha), se houver transportes de
   **dias anteriores sem conferência na saída**, aparece o aviso *Confira os transportes do dia anterior* com os dias e
   transportes pendentes; **Ver transportes** abre a lista do dia pendente mais recente.
+
+### Cancelamento de nota
+
+Painel da ordem → **Cancelamento de nota**: abre o formulário igual à guia **FORMULÁRIO CANCELAMENTO** da planilha
+oficial, já preenchido com o que o transporte tem (Nº da NF-e e Nº do documento do Controle OT, série 0, data de emissão =
+quando a nota foi lançada, mês corrente, filial PB26, razão social do cliente e transportadora). Complete só o que estiver
+em amarelo (o motivo, e o valor/NF substituta se tiver). Avisos: prazo legal pelo estado de destino (PR/RS 168 h; MS/SC/SP
+24 h) e nota fora do mês corrente.
+- **Baixar Excel**: a planilha oficial com os dados só nas células de dados (estrutura, fórmulas, estilos e guias intactos).
+- **Copiar imagem (e-mail)**: imagem fiel da área de impressão (cores, fontes, tamanhos) na área de transferência para colar no
+  Outlook; se o navegador não deixar copiar, a imagem é baixada (.png).
+- O cancelamento fica registrado no transporte (aviso no painel com quem fez, quando e o motivo).
+O modelo vem de `js/cancelamento-modelo.js`, gerado por `python3 tools/build_cancelamento.py <planilha.xlsx>` (a planilha
+original não fica no repositório; os dados de exemplo e nomes de autores são apagados na geração).
