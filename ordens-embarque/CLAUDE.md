@@ -192,7 +192,7 @@
   Fotos das laterais: `state.fotos[t].slots.latE/latD` (mesma gravação `gravarFoto`, fora de `OEF.SLOTS`), seção `#lat-sec`,
   `nLaterais`. `printTransports` → `avisoEspeciais` (mensagem + pedido das fotos). Mantido no fechamento semanal.
 - Conferência na saída (balança): `manual.conferido` = { nome, em, por } (sync `man:t|conferido`). Lista diária: coluna `.c-conf`
-  (`confCel`), linha `tr.nconf` vermelho claro sem conferência (`precisaConferir`; carga FOB = `isFOB`, opcional, sem vermelho e fora do lembrete); marcar → `#cfr-dialog` (`conferirTransporte`, nome lembrado em
+  (`confCel`), linha `tr.nconf` vermelho claro sem conferência (`precisaConferir`; carga FOB = `isFOB`, opcional, sem vermelho e fora do lembrete — exceto transferência entre Araucos para Ponta Grossa/Jaguariaíva, `isTransfArauco`, que segue a regra do CIF); marcar → `#cfr-dialog` (`conferirTransporte`, nome lembrado em
   `arauco.ordensEmbarque.conferente`), desmarcar com confirmação. Botões "?" (`sapModelo`): desenho HTML da tela SAP "Modificar
   transporte" com dados fictícios (as capturas reais do usuário NÃO vão para o repositório): exportação (`isExport`) = peso,
   Planejamento travado, Início transp. desmarcado; mercado interno = peso, Condição exped. (Y3 Truck), Planejamento travado,
@@ -202,7 +202,7 @@
   (`processarColagem` → `processarColagem0`, arquivos de pesos/FSC/planilha): transportes com data < hoje sem `manual.conferido`.
 - Cancelamento de nota (`#d-canc` → `#cn-dialog`, `abrirCancelamento`; `manual.cancelamento`): modelo `window.OE_CANC`
   (`js/cancelamento-modelo.js`, gerado por `tools/build_cancelamento.py` a partir da planilha oficial — **não editar à mão**;
-  o gerador apaga dados de exemplo/autores). Células de dados (`campos`): B5 nf, C5 série (0, formato "00"), D5 doc,
+  o gerador apaga dados de exemplo/autores). Células de dados (`campos`): B5 nf, C5 série (sempre "000", gravada como texto), D5 doc,
   F5 emissão, G5 mês, B8 filial, B15 razão, G15 valor, B18 transportadora, B20 motivo, B23 NF substituta. `cancHTML` desenha
   a área de impressão B2:G30 com os estilos da planilha (texto escorre como no Excel); `cancXlsx` = partes originais + valores
   nas células (zip sem compressão próprio, `zipStore`/`crc32`, sem depender do SheetJS); `cancPNG` = mesmo desenho via SVG

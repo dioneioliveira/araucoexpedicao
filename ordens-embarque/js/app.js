@@ -1987,7 +1987,7 @@
   function cancDados(T) {
     const hoje = new Date(), salvo = T.man.cancelamento || {};
     const fat = state.faturado[T.transporte] ? isoDia(new Date(state.faturado[T.transporte])) : '';
-    const d = { nf: String(T.ot.nf || '').split(/[\/,;\s]+/)[0].replace(/\D/g, ''), serie: '0', doc: String(T.ot.doc || '').replace(/\D/g, ''), emissao: fat,
+    const d = { nf: String(T.ot.nf || '').split(/[\/,;\s]+/)[0].replace(/\D/g, ''), serie: '000', doc: String(T.ot.doc || '').replace(/\D/g, ''), emissao: fat,
       mes: `${hoje.getFullYear()}-${P.pad(hoje.getMonth() + 1)}`, filial: 'PB26', razao: T.eff.cliente || '', valor: '', transp: T.eff.transportadora || '', motivo: '', subst: '' };
     Object.keys(d).forEach(k => { if (salvo[k] != null && salvo[k] !== '') d[k] = salvo[k]; });
     return d;
@@ -1996,7 +1996,7 @@
   function cancTexto(k, v) {
     if (v == null || v === '') return '';
     if (k === 'nf') return String(v).replace(/\D/g, '').padStart(9, '0');
-    if (k === 'serie') return String(+v || 0).padStart(2, '0');
+    if (k === 'serie') return String(v).replace(/\D/g, '').padStart(3, '0'); // série sempre 000
     if (k === 'emissao') { const [y, m, dd] = v.split('-'); return `${dd}/${m}/${y.slice(2)}`; }
     if (k === 'mes') { const [y, m] = v.split('-'); return `${MESES[+m - 1]}-${y.slice(2)}`; }
     if (k === 'valor') { const n = P.toNum(v); return n == null || !isFinite(n) ? String(v) : 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -2112,7 +2112,8 @@
     Object.entries(CN.campos).forEach(([ref, k]) => {
       let v = d[k], cel;
       if (v == null || v === '') return;
-      if (['nf', 'doc', 'serie'].includes(k)) v = { n: +String(v).replace(/\D/g, '') || 0 };
+      if (['nf', 'doc'].includes(k)) v = { n: +String(v).replace(/\D/g, '') || 0 };
+      else if (k === 'serie') v = { s: cancTexto('serie', v) }; // texto "000" (o formato da célula mostraria só "00")
       else if (k === 'valor') { const n = P.toNum(v); v = n != null && isFinite(n) ? { n } : { s: String(v) }; }
       else if (k === 'emissao') v = { n: serialData(v) };
       else if (k === 'mes') v = { n: serialData(v + '-01') };
@@ -2166,7 +2167,9 @@
   // Modelo do que conferir no SAP (Modificar transporte): exportação × mercado interno (desenho com dados fictícios).
   const CONF_NOME = 'arauco.ordensEmbarque.conferente';
   // carga FOB: o cliente retira, a conferência na saída não é obrigatória (sem vermelho e sem lembrete)
-  const isFOB = T => /\bFOB\b/.test(P.norm(T.eff.incoterm));
+  // exceção: transferência FOB entre unidades Arauco (Ponta Grossa e Jaguariaíva) segue a regra do CIF mercado interno
+  const isTransfArauco = T => /\bARAUCO\b/.test(P.norm(T.eff.cliente)) && /PONTA GROSSA|JAGUARIAIVA/.test(P.norm([T.eff.cliente, T.solic && T.solic.cidade, T.eff.obs].join(' ')));
+  const isFOB = T => /\bFOB\b/.test(P.norm(T.eff.incoterm)) && !isTransfArauco(T);
   const precisaConferir = T => !isFOB(T) && !T.man.conferido;
   function confCel(T) {
     const c = T.man.conferido;

@@ -603,6 +603,7 @@ mostram o modelo correto da tela *Modificar transporte* do SAP (desenho com dado
   **Início transp. marcado** (com data, hora e ✔).
 Desmarcar pede confirmação. A conferência entra no Excel semanal (coluna "Conferido na saída").
 Carga **FOB** (o cliente retira): a conferência é opcional — a linha não fica vermelha ("FOB · opcional") e não entra no lembrete.
+Exceção: **transferências FOB entre unidades Arauco para Ponta Grossa e Jaguariaíva** seguem a mesma regra do CIF (conferência obrigatória).
 
 ### Lista sem rolagem lateral e lembrete de conferência
 
@@ -615,7 +616,7 @@ Carga **FOB** (o cliente retira): a conferência é opcional — a linha não fi
 ### Cancelamento de nota
 
 Painel da ordem → **Cancelamento de nota**: abre o formulário igual à guia **FORMULÁRIO CANCELAMENTO** da planilha
-oficial, já preenchido com o que o transporte tem (Nº da NF-e e Nº do documento do Controle OT, série 0, data de emissão =
+oficial, já preenchido com o que o transporte tem (Nº da NF-e e Nº do documento do Controle OT, série 000, data de emissão =
 quando a nota foi lançada, mês corrente, filial PB26, razão social do cliente e transportadora). Complete só o que estiver
 em amarelo (o motivo, e o valor/NF substituta se tiver). Avisos: prazo legal pelo estado de destino (PR/RS 168 h; MS/SC/SP
 24 h) e nota fora do mês corrente.
