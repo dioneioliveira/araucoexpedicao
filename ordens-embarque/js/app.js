@@ -1640,24 +1640,40 @@
 
   // ---------- e-mail do container: EXP, container e lacre em destaque; fotos logo abaixo ----------
   const MAIL_KEY = 'arauco.ordensEmbarque.emailContainer';
+  // dados obrigatórios no e-mail (preenchidos no Controle OT / faturamento): sem eles não copia nem gera o e-mail
+  const MAIL_CAMPOS = [['exp', 'EXP'], ['container', 'Nº container'], ['lacre', 'Lacre'], ['tara', 'Tara'], ['mwg', 'Carga máx. (MWG)'], ['nf', 'NF-e'], ['doc', 'Documento SAP']];
+  const faltaEmail = T => MAIL_CAMPOS.filter(([k]) => semValor(T.ot[k])).map(([, l]) => l);
+  // foto do e-mail: mesmo tamanho para todas (4:3 deitada, foto inteira centralizada em fundo cinza claro) = grade alinhada
+  async function fotoEmail(blob) {
+    const bmp = await createImageBitmap(blob), W = 880, H = 660, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d'); g.fillStyle = '#EDEDED'; g.fillRect(0, 0, W, H); // faixas cinza: cada foto vira um bloco igual
+    const k = Math.min(W / bmp.width, H / bmp.height), w = bmp.width * k, h = bmp.height * k;
+    g.drawImage(bmp, (W - w) / 2, (H - h) / 2, w, h);
+    return new Promise(res => cv.toBlob(res, 'image/jpeg', 0.85));
+  }
   async function emailContainer(t, modo) {
     const T = getTransport(t); const v = validarFotos(T); const f = v.f;
     const fotos = [];
-    for (const s of F.SLOTS) { const it = f.slots[s.k]; if (!it) continue; const b0 = await F.get(it.id).catch(() => null); const b = b0 && await F.reduzir(b0); if (b) fotos.push({ s, b, nome: `${s.k}-${F.normCont(T.ot.container) || t}.jpg` }); }
+    for (const s of F.SLOTS) { const it = f.slots[s.k]; if (!it) continue; const b0 = await F.get(it.id).catch(() => null); const b = b0 && await fotoEmail(b0).catch(() => null); if (b) fotos.push({ s, b, nome: `${s.k}-${F.normCont(T.ot.container) || t}.jpg` }); }
     for (const x of fotos) { x.base64 = (await F.blobToDataURL(x.b)).split(',')[1]; x.cid = `${x.s.k}.${t}@ordens-embarque`; }
     const src = x => modo === 'eml' ? `cid:${x.cid}` : `data:image/jpeg;base64,${x.base64}`;
-    const cell = (l, val) => `<td style="border:1px solid #4A4A4A;padding:10px 14px;text-align:center"><div style="font-size:11px;color:#7A7A7A;letter-spacing:1px;font-weight:bold">${l}</div><div style="font-size:22px;font-weight:bold;font-family:Consolas,'Courier New',monospace;color:#000">${esc(val || '—')}</div></td>`;
+    const cell = (l, val, w) => `<td style="border:1px solid #4A4A4A;padding:10px 14px;text-align:center${w ? `;width:${w}` : ''}"><div style="font-size:11px;color:#7A7A7A;letter-spacing:1px;font-weight:bold">${l}</div><div style="font-size:22px;font-weight:bold;font-family:Consolas,'Courier New',monospace;color:#000">${esc(val || '—')}</div></td>`;
+    // sem texto de "conferência pendente": só aparece quando confere ou diverge
     const conf = v.st === 'ok' ? '<span style="color:#2e7d4f;font-weight:bold">✔ Dados conferidos: container, lacre, tara e carga máx. batem com o agendamento.</span>'
-      : (v.st === 'div' ? `<span style="color:#b4473b;font-weight:bold">⚠ Divergência: ${esc(v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', '))}.</span>` : '<span style="color:#7A7A7A">Conferência pendente.</span>');
+      : (v.st === 'div' ? `<span style="color:#b4473b;font-weight:bold">⚠ Divergência: ${esc(v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', '))}.</span>` : '');
+    // fotos sem legenda, 3 por linha, todas do mesmo tamanho (220 × 165)
     const linhasFotos = [];
-    for (let i = 0; i < fotos.length; i += 2) linhasFotos.push(`<tr>${fotos.slice(i, i + 2).map(x => `<td style="padding:6px;vertical-align:top;width:50%"><img src="${src(x)}" width="330" style="width:330px;max-width:100%;border:1px solid #D9D9D9;display:block" alt="${esc(x.s.nome)}"><div style="font-size:12px;color:#4A4A4A;margin-top:3px"><b>${esc(x.s.nome)}</b></div></td>`).join('')}</tr>`);
+    // 3 fotos de 222 px + 2 espaços de 6 px = 678 px, a mesma largura dos quadros de cima
+    for (let i = 0; i < fotos.length; i += 3) linhasFotos.push(`<tr>${[0, 1, 2].map(j => { const x = fotos[i + j]; const pad = j < 2 ? '0 6px 6px 0' : '0 0 6px 0';
+      return `<td style="padding:${pad};vertical-align:top;width:${j < 2 ? 228 : 222}px">${x ? `<img src="${src(x)}" width="222" height="166" style="width:222px;height:166px;border:0;display:block" alt="">` : ''}</td>`; }).join('')}</tr>`);
     const assunto = `Embarque container ${F.fmtCont(T.ot.container) || ''} · EXP ${T.ot.exp || '—'} · Lacre ${T.ot.lacre || '—'} · Transporte ${t}`;
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#4A4A4A;max-width:700px">
       <p style="margin:0 0 10px">Segue o embarque do container — transporte <b>${esc(t)}</b>, ${esc(T.eff.cliente)}, ${esc(P.fmtDateBR(T.eff.data))}.</p>
-      <table style="border-collapse:collapse;width:100%;margin-bottom:8px"><tr>${cell('EXP', T.ot.exp)}${cell('CONTAINER', F.fmtCont(T.ot.container))}${cell('LACRE', T.ot.lacre)}</tr></table>
-      <p style="font-size:12px;margin:4px 0 6px">Tara: <b>${T.ot.tara ? esc(fmtVal('Tara', T.ot.tara)) : '—'}</b> · Carga máx.: <b>${T.ot.mwg ? esc(fmtVal('MWG', T.ot.mwg)) : '—'}</b> · Placa: <b>${esc(T.eff.placaL)}</b>${T.otList.length ? ` · OT: <b>${esc(T.otList.join(' / '))}</b>` : ''}</p>
-      <p style="font-size:12px;margin:0 0 10px">${conf}</p>
-      <table style="border-collapse:collapse;width:100%">${linhasFotos.join('')}</table>
+      <table style="border-collapse:collapse;width:678px;table-layout:fixed;margin-bottom:6px"><tr>${cell('EXP', T.ot.exp, '33.33%')}${cell('CONTAINER', F.fmtCont(T.ot.container), '33.34%')}${cell('LACRE', T.ot.lacre, '33.33%')}</tr></table>
+      <table style="border-collapse:collapse;width:678px;table-layout:fixed;margin-bottom:8px"><tr>${cell('NOTA FISCAL', T.ot.nf, '50%')}${cell('DOCUMENTO SAP', T.ot.doc, '50%')}</tr></table>
+      <p style="font-size:12px;margin:4px 0 ${conf ? 6 : 12}px">Tara: <b>${T.ot.tara ? esc(fmtVal('Tara', T.ot.tara)) : '—'}</b> · Carga máx.: <b>${T.ot.mwg ? esc(fmtVal('MWG', T.ot.mwg)) : '—'}</b> · Placa: <b>${esc(T.eff.placaL)}</b>${T.otList.length ? ` · OT: <b>${esc(T.otList.join(' / '))}</b>` : ''}</p>
+      ${conf ? `<p style="font-size:12px;margin:0 0 12px">${conf}</p>` : ''}
+      <table style="border-collapse:collapse;width:678px">${linhasFotos.join('')}</table>
       <p style="font-size:11px;color:#7A7A7A;margin-top:10px">Arauco · Expedição Piên</p></div>`;
     return { T, html, assunto, fotos, v };
   }
@@ -1670,7 +1686,16 @@
     $('#ml-preview').innerHTML = '<p class="muted">Montando…</p>';
     dlg.showModal();
     const m = await emailContainer(t, 'preview');
-    $('#ml-preview').innerHTML = (m.v.st === 'div' ? '<div class="alert err"><b>Atenção:</b> há divergência entre as fotos e o agendamento.</div>' : '') + m.html;
+    const falta = faltaEmail(T);
+    $('#ml-preview').innerHTML = (falta.length ? `<div class="alert err"><b>Não é possível copiar/enviar:</b> falta preencher no Controle OT ${esc(falta.join(', '))}.</div>` : '')
+      + (m.v.st === 'div' ? '<div class="alert err"><b>Atenção:</b> há divergência entre as fotos e o agendamento.</div>' : '') + m.html;
+    ['#ml-copy', '#ml-mailto', '#ml-eml'].forEach(id => $(id).classList.toggle('bloq', !!falta.length));
+  }
+  // antes de copiar/enviar: todos os dados do faturamento preenchidos
+  function emailLiberado(t) {
+    const T = getTransport(t); const falta = T ? faltaEmail(T) : ['transporte'];
+    if (falta.length) toast(`Não foi possível copiar: falta preencher no Controle OT ${falta.join(', ')}.`, 'err');
+    return !falta.length;
   }
   function bindEmailContainer() {
     const dlg = $('#mail-dialog');
@@ -1679,19 +1704,20 @@
     $('#ml-close').addEventListener('click', () => dlg.close());
     $('#d-mail').addEventListener('click', () => { if (ui.open) abrirEmailContainer(ui.open); });
     $('#ml-eml').addEventListener('click', async () => {
-      salvar(); const t = dlg.dataset.t; const m = await emailContainer(t, 'eml');
+      salvar(); const t = dlg.dataset.t; if (!emailLiberado(t)) return; const m = await emailContainer(t, 'eml');
       const eml = F.montarEML({ para: $('#ml-to').value.trim().replace(/;/g, ','), cc: $('#ml-cc').value.trim().replace(/;/g, ','), assunto: m.assunto, html: m.html,
         anexos: m.fotos.map(x => ({ nome: x.nome, tipo: 'image/jpeg', cid: x.cid, base64: x.base64 })) });
       baixar(`container-${F.normCont(m.T.ot.container) || t}.eml`, new Blob([eml], { type: 'message/rfc822' }));
       toast('E-mail baixado (.eml). Abra o arquivo: o Outlook mostra o e-mail pronto, com as fotos, para enviar.', 'ok');
     });
     $('#ml-copy').addEventListener('click', async () => {
+      if (!emailLiberado(dlg.dataset.t)) return;
       const m = await emailContainer(dlg.dataset.t, 'copy');
       const ok = await copiarHTML(m.html, m.assunto);
       toast(ok ? 'E-mail copiado com as fotos — cole (Ctrl+V) no corpo da mensagem.' : 'Não foi possível copiar.', ok ? 'ok' : 'err');
     });
     $('#ml-mailto').addEventListener('click', async () => {
-      salvar(); const m = await emailContainer(dlg.dataset.t, 'copy');
+      salvar(); if (!emailLiberado(dlg.dataset.t)) return; const m = await emailContainer(dlg.dataset.t, 'copy');
       const ok = await copiarHTML(m.html, m.assunto);
       const para = $('#ml-to').value.split(/[;,\s]+/).filter(x => /^[^@\s]+@[^@\s]+$/.test(x)).join(',');
       const cc = $('#ml-cc').value.split(/[;,\s]+/).filter(x => /^[^@\s]+@[^@\s]+$/.test(x)).join(',');

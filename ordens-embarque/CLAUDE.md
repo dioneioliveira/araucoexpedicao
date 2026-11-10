@@ -144,7 +144,10 @@
   WhatsApp (1600 px) quase não são legíveis: o caminho confiável é **"Ler área"** (`#zoom-dialog`, clique na foto):
   zoom, retângulo sobre o texto, `OEF.recortar` amplia o recorte (até 4×) e lê só ele; valores lidos substituem
   vazio/ILEGÍVEL/"auto", nunca o digitado.
-  E-mail do container (`#mail-dialog`): EXP, container e lacre em destaque + fotos; `.eml` com `X-Unsent: 1` e imagens
+  E-mail do container (`#mail-dialog`): EXP, container e lacre + NF-e e Documento SAP em destaque (largura fixa 678 px);
+  bloqueado (`emailLiberado`/`faltaEmail`, `MAIL_CAMPOS`) se faltar EXP, container, lacre, tara, MWG, NF-e ou Doc no Controle OT;
+  sem texto de "conferência pendente"; fotos sem legenda, 3 por linha, todas 222×166 (`fotoEmail`: 4:3, foto inteira em fundo
+  cinza claro), alinhadas às bordas dos quadros; `.eml` com `X-Unsent: 1` e imagens
   `cid:` (abre como rascunho no Outlook), ou copiar HTML com as fotos.
 - Semana (`#btn-mes` "Semana", `#mes-dialog`, `dadosPeriodo`/`excelMes`/`fecharSemana`/`verificarFechamento`): **fechamento
   semanal automático todo domingo às 22:40** (`ultimoCorte`; se nenhum computador estiver aberto, no primeiro que abrir depois,

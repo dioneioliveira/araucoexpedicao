@@ -761,3 +761,5 @@ tr.bl-excluida td:last-child, tr.bl-excluida td:nth-child(5){text-decoration:non
 .cn-in.falta{background:#fff7c2;border-color:#d4a300}
 #cn-dialog .modal-foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 #cn-dialog #cn-status{margin-right:auto}
+
+#mail-dialog .btn.bloq{opacity:.45}

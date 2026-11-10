@@ -626,3 +626,10 @@ em amarelo (o motivo, e o valor/NF substituta se tiver). Avisos: prazo legal pel
 - O cancelamento fica registrado no transporte (aviso no painel com quem fez, quando e o motivo).
 O modelo vem de `js/cancelamento-modelo.js`, gerado por `python3 tools/build_cancelamento.py <planilha.xlsx>` (a planilha
 original não fica no repositório; os dados de exemplo e nomes de autores são apagados na geração).
+
+### E-mail do container (exportação)
+
+O e-mail traz em destaque **EXP, Container, Lacre, Nota Fiscal e Documento SAP** (os dois últimos do Controle OT/faturamento).
+Se faltar algum dado (EXP, container, lacre, tara, carga máx., NF-e ou documento), o app **não copia nem gera** o e-mail e mostra
+o que falta. O texto "conferência pendente" não vai mais; as fotos vão **sem legenda**, 3 por linha, todas do mesmo tamanho
+(foto inteira centralizada, faixas cinza claro quando a foto é em pé), alinhadas com as bordas dos quadros de cima.
