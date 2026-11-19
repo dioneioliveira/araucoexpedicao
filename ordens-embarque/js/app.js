@@ -528,7 +528,7 @@
       ['Ordens impressas', `${printed}<span class="k-sub"> / ${dayAll.length}</span>`, `${dayAll.length - printed} a imprimir · ${fat} faturada(s)`, ''],
       ['Com alterações', alt, 'impressas com agendamento alterado', alt ? 'red' : 'grey'],
       ['Atenção', pend + tr, `${pend} com dados faltando · ${tr} treinamento`, 'lime'],
-      ...(() => { const cts = dayAll.filter(temContainer); if (!cts.length) return []; const f = cts.filter(T => nFotos(T.transporte) < 6); return [['Fotos faltando', `${f.length}<span class="k-sub"> / ${cts.length}</span>`, f.length ? 'containers sem as 6 fotos: ' + f.map(T => `${T.transporte} (${nFotos(T.transporte)}/6)`).join(', ') : 'todas as cargas de container com as 6 fotos', f.length ? 'red' : 'grey']]; })(),
+      ...(() => { const cts = dayAll.filter(pedeFotos); if (!cts.length) return []; const f = cts.filter(T => nFotos(T.transporte) < 6); return [['Fotos faltando', `${f.length}<span class="k-sub"> / ${cts.length}</span>`, f.length ? 'cargas (container / MADERAS ARAUCO) sem as 6 fotos: ' + f.map(T => `${T.transporte} (${nFotos(T.transporte)}/6)`).join(', ') : 'todas as cargas de container / MADERAS ARAUCO com as 6 fotos', f.length ? 'red' : 'grey']]; })(),
     ].map(([l, v, s, c]) => `<div class="card kpi ${c}" title="${esc(s)}"><div class="k-label">${l}</div><div class="k-val">${v}</div></div>`).join('');
   }
 
@@ -1289,6 +1289,19 @@
   // Imagens no IndexedDB deste computador (OEF); em state.fotos[t] vão só os nomes e os dados lidos de cada foto.
   const F = window.OEF;
   const temContainer = T => T.janela === 'CONTAINER' || isCabotagem(T);
+  // MADERAS ARAUCO (exportação terrestre, caminhão): também exige as 6 fotos e usa o mesmo e-mail da exportação
+  const isTerrestreFotos = T => !temContainer(T) && isAraucoMaderas(T);
+  const pedeFotos = T => temContainer(T) || isAraucoMaderas(T);
+  // mesmas chaves das posições do container (porta, ric, lacre, f4–f6), com nomes de caminhão e sem leitura de dados
+  const SLOTS_TERR = [
+    ['porta', 'Frente + placa', 'caminhão de frente, placa legível', /frente|placa|front|plate/i],
+    ['ric', 'Lateral esquerda', 'carga inteira, lado esquerdo', /esquerd|left/i],
+    ['lacre', 'Lateral direita', 'carga inteira, lado direito', /direit|right/i],
+    ['f4', 'Traseira', 'fundo da carga', /trase|tras|back|rear/i],
+    ['f5', 'Amarração / cintas', 'cintas, calços e amarração', /amarra|cinta|calc|strap/i],
+    ['f6', 'Lona / cobertura', 'carga coberta', /lona|cobert|cover|tarp/i],
+  ].map(([k, nome, dica, re]) => ({ k, nome, dica, re, campos: [] }));
+  const slotsDe = T => T && isTerrestreFotos(T) ? SLOTS_TERR : F.SLOTS;
   const fotosDe = t => state.fotos[t] || (state.fotos[t] = { slots: {}, lido: {}, auto: {} });
   const nFotos = t => { const f = state.fotos[t]; return f ? F.SLOTS.filter(s => f.slots[s.k]).length : 0; };
   const fotoURL = new Map(); // id -> objectURL
@@ -1301,6 +1314,7 @@
   // confronto: agendamento / Controle OT × porta × RIC × foto do lacre
   function validarFotos(T) {
     const f = state.fotos[T.transporte] || { slots: {}, lido: {} };
+    if (isTerrestreFotos(T)) { const n = SLOTS_TERR.filter(s => f.slots[s.k]).length; return { linhas: [], n, st: n === 6 ? 'ok' : 'pend', f }; }
     const L = s => f.lido[s] || {};
     const sewC = T.sew && T.sew.container ? T.sew.container : '';
     // confere quando há o valor agendado e ao menos uma foto com o dado, todos iguais; qualquer diferença = divergente
@@ -1332,17 +1346,19 @@
     return { linhas, n, st, f };
   }
   function fotoChip(T) {
-    if (!temContainer(T)) return '';
+    if (!pedeFotos(T)) return '';
     const v = validarFotos(T);
     const ileg = v.st !== 'div' && v.linhas.some(l => l.st === 'ileg');
     const cls = v.st === 'div' ? 'alt' : (v.st === 'ok' ? 'imp' : (ileg ? 'warn' : 'grey'));
     const tit = v.st === 'div' ? 'Divergência entre fotos e agendamento: ' + v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', ') : (v.st === 'ok' ? 'Fotos conferidas' : 'Fotos/conferência pendentes');
-    const falta = faltandoFotos(T.transporte);
+    const falta = faltandoFotos(T.transporte, T);
     return ` <span class="chip ${cls} ft-chip" title="${esc(tit + (falta.length ? '\nFaltam fotos: ' + falta.join(', ') : ''))}"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>${v.n}/6${v.st === 'div' ? ' divergente' : (v.st === 'ok' ? ' ok' : (ileg ? ' ilegível' : (v.n < 6 ? ' faltam ' + (6 - v.n) : '')))}</span>`;
   }
   const fmtVal = (dado, v) => !v ? '' : F.ehIlegivel(v) ? F.ILEGIVEL : (dado === 'Nº container' ? F.fmtCont(v) : (/Tara|MWG/.test(dado) ? fmtNum(+String(v).replace(/\D/g, ''), 0) + ' kg' : String(v)));
   function validacaoHTML(T) {
     const v = validarFotos(T);
+    if (isTerrestreFotos(T)) return v.n === 6 ? '<div class="alert ok"><b>As 6 fotos do embarque estão completas.</b></div>'
+      : `<div class="alert err"><b>Exportação terrestre (MADERAS ARAUCO): 6 fotos obrigatórias</b> — ${v.n}/6. Faltam: ${esc(faltandoFotos(T.transporte, T).join(', '))}. Sem as 6 fotos não dá para marcar a conferência na saída nem enviar o e-mail.</div>`;
     const ST = { ok: '<span class="chip imp">Confere</span>', div: '<span class="chip alt">Divergente</span>', ileg: '<span class="chip warn">Ilegível</span>', falta: '<span class="chip grey">Falta dado</span>' };
     const podeFill = ['container', 'lacre', 'tara', 'mwg'].some(k => (!T.ot[k] || T.otPadrao[k]) && valorFoto(v.f, k) && String(valorFoto(v.f, k)) !== String(T.ot[k]));
     return `<div class="alert ${v.st === 'div' ? 'err' : (v.st === 'ok' ? 'ok' : 'info')}">${v.st === 'div' ? '<b>Embarque com divergência</b>: os dados das fotos não batem com o agendado. Confira antes de liberar.' : (v.st === 'ok' ? '<b>Embarque conferido</b>: container, lacre, tara e carga máx. batem entre fotos e agendamento.' : `Conferência pendente: ${v.n}/6 fotos${v.n < 6 ? ` — <b>faltam: ${esc(faltandoFotos(T.transporte).join(', '))}</b>` : ''}${v.linhas.some(l => l.st === 'ileg') ? ' · <b>dados ilegíveis nas fotos</b>: leia na foto (clique para ampliar) e digite' : ''}${v.linhas.some(l => l.st === 'falta') ? ' · faltam dados para confrontar' : ''}.`)}</div>
@@ -1354,7 +1370,8 @@
   const valorFoto = (f, k) => { for (const s of ['ric', 'porta', 'lacre']) { const x = (f.lido[s] || {})[k]; if (x && !F.ehIlegivel(x)) return x; } return ''; };
   function fotosHTML(T) {
     const f = state.fotos[T.transporte] || { slots: {}, lido: {}, auto: {} };
-    const slots = F.SLOTS.map(s => {
+    const terr = isTerrestreFotos(T);
+    const slots = slotsDe(T).map(s => {
       const it = f.slots[s.k]; const lido = f.lido[s.k] || {}; const auto = (f.auto || {})[s.k] || {};
       return `<div class="ft-slot ${it ? 'tem' : ''}" data-slot="${s.k}" draggable="${it ? 'true' : 'false'}">
         <div class="ft-img" title="${it ? esc(it.nome) + ' — arraste para trocar de posição' : 'Clique ou arraste a foto aqui'}">${it ? `<img data-fid="${esc(it.id)}" alt="${esc(s.nome)}">` : '<span>+ foto</span>'}
@@ -1364,17 +1381,17 @@
       </div>`;
     }).join('');
     return `<div class="section" id="ft-sec">
-      <h3>Fotos do container <span class="h-note">${nFotos(T.transporte)}/6 · confronto com o agendamento</span></h3>
+      <h3>${terr ? 'Fotos do embarque' : 'Fotos do container'} <span class="h-note">${nFotos(T.transporte)}/6 · ${terr ? 'exportação terrestre: 6 fotos obrigatórias' : 'confronto com o agendamento'}</span></h3>
       <div class="ft-bar">
         <label class="btn btn-ghost btn-sm">Importar pasta<input type="file" id="ft-pasta" webkitdirectory multiple hidden></label>
         <label class="btn btn-primary btn-sm">Selecionar fotos<input type="file" id="ft-arq" accept="image/*" multiple hidden></label>
-        <button class="btn btn-ghost btn-sm" id="ft-ocr">Ler dados das fotos</button>
-        <button class="btn btn-primary btn-sm" id="ft-mail">E-mail do container</button>
+        ${terr ? '' : '<button class="btn btn-ghost btn-sm" id="ft-ocr">Ler dados das fotos</button>'}
+        <button class="btn btn-primary btn-sm" id="ft-mail">${terr ? 'E-mail do embarque' : 'E-mail do container'}</button>
         <input type="file" id="ft-um" accept="image/*" hidden>
       </div>
-      <p class="muted small">Selecione as fotos todas de uma vez (sem renomear): cada uma vai para a posição certa pelo conteúdo. Dá para importar aos poucos — as posições já preenchidas são mantidas. Arraste para trocar. As imagens ficam guardadas neste computador.</p>
+      ${terr ? '<p class="muted small">Selecione as fotos (pode ser todas de uma vez): vão para as posições na ordem — ou pelo nome do arquivo (frente, esquerda, direita, traseira, amarração, lona). Arraste para trocar. As 6 são obrigatórias para a conferência na saída e para o e-mail.</p>' : `<p class="muted small">Selecione as fotos todas de uma vez (sem renomear): cada uma vai para a posição certa pelo conteúdo. Dá para importar aos poucos — as posições já preenchidas são mantidas. Arraste para trocar. As imagens ficam guardadas neste computador.</p>`}
       <div class="ft-status" id="ft-status" hidden></div>
-      ${(() => { const o = F.estadoOCR(); return o.st === 'nao' ? '' : `<div class="ft-ocr ${o.st}">${esc(o.msg)}</div>`; })()}
+      ${(() => { const o = F.estadoOCR(); return terr || o.st === 'nao' ? '' : `<div class="ft-ocr ${o.st}">${esc(o.msg)}</div>`; })()}
       <div class="ft-grid">${slots}</div>
       <div id="ft-val">${validacaoHTML(T)}</div>
     </div>`;
@@ -1400,13 +1417,14 @@
     const f = fotosDe(t);
     if (slot) {
       try { await gravarFoto(t, slot, files[0]); } catch (e) { toast('Não foi possível guardar a foto: ' + (e.message || e), 'err'); return; }
-      save(true); renderAll(); toast(`Foto guardada em "${F.SLOTS.find(s => s.k === slot).nome}".`, 'ok'); return;
+      save(true); renderAll(); toast(`Foto guardada em "${slotsDe(T).find(s => s.k === slot).nome}".`, 'ok'); return;
     }
     const sigs = new Set(Object.values(f.slots).map(x => x.sig));
     const imgs = F.imagens(files); const novos = imgs.filter(x => !sigs.has(F.assinatura(x)));
     if (!imgs.length) { toast('Nenhuma imagem encontrada (JPG/PNG).', 'err'); return; }
     if (!novos.length) { toast('Essas fotos já estão nesta carga.', 'warn'); return; }
-    const livres = () => F.SLOTS.map(s => s.k).filter(k => !f.slots[k]);
+    const SL = slotsDe(T), terr = isTerrestreFotos(T);
+    const livres = () => SL.map(s => s.k).filter(k => !f.slots[k]);
     if (!livres().length) { toast('A carga já tem as 6 fotos. Remova uma (×) para trocar.', 'warn'); return; }
     const pos = new Map(); // arquivo -> posição
     const texto = new Map(); // arquivo -> texto lido (OCR)
@@ -1414,11 +1432,11 @@
       ftStatus('Preparando fotos…');
       for (const x of novos) x._blob = await F.comprimir(x);
       // 1) nome do arquivo, se tiver (porta, ric, lacre…)
-      let pend = novos.filter(x => { const s = F.SLOTS.find(s => !f.slots[s.k] && ![...pos.values()].includes(s.k) && s.re.test(x.name)); if (s) { pos.set(x, s.k); return false; } return true; });
+      let pend = novos.filter(x => { const s = SL.find(s => !f.slots[s.k] && ![...pos.values()].includes(s.k) && s.re.test(x.name)); if (s) { pos.set(x, s.k); return false; } return true; });
       // 2) conteúdo da foto
       const chaves = () => ['porta', 'ric', 'lacre'].filter(k => !f.slots[k] && ![...pos.values()].includes(k));
       let leu = false;
-      if (pend.length && chaves().length) {
+      if (pend.length && chaves().length && !terr) { // exportação terrestre: sem leitura, só pelo nome e pela ordem
         try {
           ftStatus('Carregando a leitura automática (na 1ª vez pode levar até 1 minuto)…'); await F.carregarOCR(); leu = true;
           for (let i = 0; i < pend.length; i++) { ftStatus(`Identificando foto ${i + 1} de ${pend.length}…`); texto.set(pend[i], [await F.ocr(pend[i])]); } // original, em alta resolução
@@ -1441,11 +1459,11 @@
         pend = pend.filter(x => !pos.has(x));
       }
       // 3) o resto vai para as fotos 4–6 e, depois, para as posições que ainda faltam
-      const ordem = ['f4', 'f5', 'f6', 'porta', 'ric', 'lacre'];
+      const ordem = terr ? SL.map(s => s.k) : ['f4', 'f5', 'f6', 'porta', 'ric', 'lacre'];
       pend.forEach(x => { const k = ordem.find(k => !f.slots[k] && ![...pos.values()].includes(k)); if (k) pos.set(x, k); });
       // toda foto que ficou em Porta/RIC/Lacre é lida (também as posicionadas pelo nome do arquivo)
-      const chave = k => (F.SLOTS.find(s => s.k === k) || {}).campos.length > 0;
-      if (F.estadoOCR().st !== 'erro') {
+      const chave = k => (SL.find(s => s.k === k) || {}).campos.length > 0;
+      if (!terr && F.estadoOCR().st !== 'erro') {
         // fotos com dados: 2 leituras (normal e cores invertidas, para pintura clara em porta escura)
         const aLer = [...pos].filter(([x, k]) => chave(k));
         for (let i = 0; i < aLer.length; i++) {
@@ -1469,12 +1487,12 @@
     } catch (e) { ftStatus(''); toast('Não foi possível guardar as fotos: ' + (e.message || e), 'err'); return; }
     ftStatus('');
     save(true); renderAll();
-    const fora = novos.length - pos.size; const falta = faltandoFotos(t);
+    const fora = novos.length - pos.size; const falta = faltandoFotos(t, T);
     toast(`${pos.size} foto(s) guardada(s) no transporte ${t}${fora ? ` · ${fora} a mais ficaram de fora (máx. 6)` : ''}.`
       + (falta.length ? ` Faltam: ${falta.join(', ')}.` : ' As 6 fotos estão completas.')
-      + (texto.size ? ' Dados lidos das fotos: confira os campos marcados "auto".' : ` ${F.estadoOCR().st === 'erro' ? F.estadoOCR().msg : 'Nenhum dado lido.'} Confira as posições (arraste para trocar).`), falta.length || !texto.size ? 'warn' : 'ok');
+      + (terr ? ' Confira as posições (arraste para trocar).' : texto.size ? ' Dados lidos das fotos: confira os campos marcados "auto".' : ` ${F.estadoOCR().st === 'erro' ? F.estadoOCR().msg : 'Nenhum dado lido.'} Confira as posições (arraste para trocar).`), falta.length || (!terr && !texto.size) ? 'warn' : 'ok');
   }
-  const faltandoFotos = t => { const f = state.fotos[t] || { slots: {} }; return F.SLOTS.filter(s => !f.slots[s.k]).map(s => s.nome); };
+  const faltandoFotos = (t, T) => { const f = state.fotos[t] || { slots: {} }; return slotsDe(T || getTransport(t)).filter(s => !f.slots[s.k]).map(s => s.nome); };
   async function lerFotos(t) {
     const T = getTransport(t); if (!T) return;
     const f = fotosDe(t); const alvo = F.SLOTS.filter(s => s.campos.length && f.slots[s.k]).map(s => s.k);
@@ -1508,7 +1526,7 @@
   const zoomUI = { t: null, slot: null, r: null };
   async function abrirZoom(t, slot) {
     const f = fotosDe(t); const it = f.slots[slot]; if (!it) return;
-    const s = F.SLOTS.find(x => x.k === slot); const u = await urlFoto(it.id); if (!u) return;
+    const s = slotsDe(getTransport(t)).find(x => x.k === slot); const u = await urlFoto(it.id); if (!u) return;
     Object.assign(zoomUI, { t, slot, r: null });
     $('#zm-title').textContent = `${s.nome} · transporte ${t}`;
     $('#zm-img').src = u; $('#zm-sel').hidden = true; $('#zm-res').innerHTML = ''; $('#zm-zoom').value = 1; $('#zm-img').style.height = '';
@@ -1525,7 +1543,7 @@
       Object.assign(sel.style, { left: (b.left - wb.left + r.x * b.width + wrap.scrollLeft) + 'px', top: (b.top - wb.top + r.y * b.height + wrap.scrollTop) + 'px', width: r.w * b.width + 'px', height: r.h * b.height + 'px' });
       sel.hidden = false; return r;
     };
-    wrap.addEventListener('pointerdown', e => { if (!F.SLOTS.find(x => x.k === zoomUI.slot).campos.length) return; e.preventDefault(); ini = pos(e); wrap.setPointerCapture(e.pointerId); });
+    wrap.addEventListener('pointerdown', e => { if (!slotsDe(getTransport(zoomUI.t)).find(x => x.k === zoomUI.slot).campos.length) return; e.preventDefault(); ini = pos(e); wrap.setPointerCapture(e.pointerId); });
     wrap.addEventListener('pointermove', e => { if (ini) zoomUI.r = desenha(ini, pos(e)); });
     wrap.addEventListener('pointerup', () => { ini = null; $('#zm-ler').disabled = !(zoomUI.r && zoomUI.r.w > 0.02 && zoomUI.r.h > 0.02); });
     $('#zm-close').addEventListener('click', () => $('#zoom-dialog').close());
@@ -1642,7 +1660,11 @@
   const MAIL_KEY = 'arauco.ordensEmbarque.emailContainer';
   // dados obrigatórios no e-mail (preenchidos no Controle OT / faturamento): sem eles não copia nem gera o e-mail
   const MAIL_CAMPOS = [['exp', 'EXP'], ['container', 'Nº container'], ['lacre', 'Lacre'], ['tara', 'Tara'], ['mwg', 'Carga máx. (MWG)'], ['nf', 'NF-e'], ['doc', 'Documento SAP']];
-  const faltaEmail = T => MAIL_CAMPOS.filter(([k]) => semValor(T.ot[k])).map(([, l]) => l);
+  const MAIL_CAMPOS_TERR = [['exp', 'EXP'], ['nf', 'NF-e'], ['doc', 'Documento SAP']]; // + as 6 fotos
+  const faltaEmail = T => {
+    if (isTerrestreFotos(T)) { const n = nFotos(T.transporte); return MAIL_CAMPOS_TERR.filter(([k]) => semValor(T.ot[k])).map(([, l]) => l).concat(n < 6 ? [`as 6 fotos (tem ${n}/6)`] : []); }
+    return MAIL_CAMPOS.filter(([k]) => semValor(T.ot[k])).map(([, l]) => l);
+  };
   // foto do e-mail: mesmo tamanho para todas (4:3 deitada, foto inteira centralizada em fundo cinza claro) = grade alinhada
   async function fotoEmail(blob) {
     const bmp = await createImageBitmap(blob), W = 880, H = 660, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -1654,10 +1676,10 @@
   async function emailContainer(t, modo) {
     const T = getTransport(t); const v = validarFotos(T); const f = v.f;
     const fotos = [];
-    for (const s of F.SLOTS) { const it = f.slots[s.k]; if (!it) continue; const b0 = await F.get(it.id).catch(() => null); const b = b0 && await fotoEmail(b0).catch(() => null); if (b) fotos.push({ s, b, nome: `${s.k}-${F.normCont(T.ot.container) || t}.jpg` }); }
+    for (const s of slotsDe(T)) { const it = f.slots[s.k]; if (!it) continue; const b0 = await F.get(it.id).catch(() => null); const b = b0 && await fotoEmail(b0).catch(() => null); if (b) fotos.push({ s, b, nome: `${s.k}-${F.normCont(T.ot.container) || t}.jpg` }); }
     for (const x of fotos) { x.base64 = (await F.blobToDataURL(x.b)).split(',')[1]; x.cid = `${x.s.k}.${t}@ordens-embarque`; }
     const src = x => modo === 'eml' ? `cid:${x.cid}` : `data:image/jpeg;base64,${x.base64}`;
-    const cell = (l, val, w) => `<td style="border:1px solid #4A4A4A;padding:10px 14px;text-align:center${w ? `;width:${w}` : ''}"><div style="font-size:11px;color:#7A7A7A;letter-spacing:1px;font-weight:bold">${l}</div><div style="font-size:22px;font-weight:bold;font-family:Consolas,'Courier New',monospace;color:#000">${esc(val || '—')}</div></td>`;
+    const cell = (l, val, w, fs) => `<td style="border:1px solid #4A4A4A;padding:10px 14px;text-align:center${w ? `;width:${w}` : ''}"><div style="font-size:11px;color:#7A7A7A;letter-spacing:1px;font-weight:bold">${l}</div><div style="white-space:nowrap;font-size:${fs || 22}px;line-height:27px;font-weight:bold;font-family:Consolas,'Courier New',monospace;color:#000">${esc(val || '—')}</div></td>`;
     // sem texto de "conferência pendente": só aparece quando confere ou diverge
     const conf = v.st === 'ok' ? '<span style="color:#2e7d4f;font-weight:bold">✔ Dados conferidos: container, lacre, tara e carga máx. batem com o agendamento.</span>'
       : (v.st === 'div' ? `<span style="color:#b4473b;font-weight:bold">⚠ Divergência: ${esc(v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', '))}.</span>` : '');
@@ -1666,6 +1688,18 @@
     // 3 fotos de 222 px + 2 espaços de 6 px = 678 px, a mesma largura dos quadros de cima
     for (let i = 0; i < fotos.length; i += 3) linhasFotos.push(`<tr>${[0, 1, 2].map(j => { const x = fotos[i + j]; const pad = j < 2 ? '0 6px 6px 0' : '0 0 6px 0';
       return `<td style="padding:${pad};vertical-align:top;width:${j < 2 ? 228 : 222}px">${x ? `<img src="${src(x)}" width="222" height="166" style="width:222px;height:166px;border:0;display:block" alt="">` : ''}</td>`; }).join('')}</tr>`);
+    if (isTerrestreFotos(T)) {
+      // exportação terrestre (MADERAS ARAUCO): mesmo layout, com placas no lugar de container/lacre
+      const e = T.eff, placas = isTruck(e) ? P.plate7(e.placaL) : [P.plate7(e.placaL), P.plate7(e.placaM)].filter(Boolean).join('/');
+      return { T, v, fotos, assunto: `Embarque exportação terrestre · EXP ${T.ot.exp || '—'} · NF ${T.ot.nf || '—'} · Transporte ${t}`,
+        html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#4A4A4A;max-width:700px">
+      <p style="margin:0 0 10px">Segue o embarque de exportação terrestre — transporte <b>${esc(t)}</b>, ${esc(e.cliente)}, ${esc(P.fmtDateBR(e.data))}.</p>
+      <table style="border-collapse:collapse;width:678px;table-layout:fixed;margin-bottom:6px"><tr>${cell('EXP', T.ot.exp, '33.33%')}${cell('PLACAS', placas, '33.34%', placas.length > 9 ? 18 : 22)}${cell('TRANSPORTE', t, '33.33%')}</tr></table>
+      <table style="border-collapse:collapse;width:678px;table-layout:fixed;margin-bottom:8px"><tr>${cell('NOTA FISCAL', T.ot.nf, '50%')}${cell('DOCUMENTO SAP', T.ot.doc, '50%')}</tr></table>
+      <p style="font-size:12px;margin:4px 0 12px">Motorista: <b>${esc(e.motorista || '—')}</b> · Transportadora: <b>${esc(e.transportadora || '—')}</b>${T.otList.length ? ` · OT: <b>${esc(T.otList.join(' / '))}</b>` : ''}</p>
+      <table style="border-collapse:collapse;width:678px">${linhasFotos.join('')}</table>
+      <p style="font-size:11px;color:#7A7A7A;margin-top:10px">Arauco · Expedição Piên</p></div>` };
+    }
     const assunto = `Embarque container ${F.fmtCont(T.ot.container) || ''} · EXP ${T.ot.exp || '—'} · Lacre ${T.ot.lacre || '—'} · Transporte ${t}`;
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#4A4A4A;max-width:700px">
       <p style="margin:0 0 10px">Segue o embarque do container — transporte <b>${esc(t)}</b>, ${esc(T.eff.cliente)}, ${esc(P.fmtDateBR(T.eff.data))}.</p>
@@ -1682,19 +1716,19 @@
     if (!nFotos(t)) toast('Esta carga ainda não tem fotos.', 'warn');
     const dlg = $('#mail-dialog'); dlg.dataset.t = t;
     try { const s = JSON.parse(localStorage.getItem(MAIL_KEY) || '{}'); $('#ml-to').value = s.to || ''; $('#ml-cc').value = s.cc || ''; } catch (e) { /* sem storage */ }
-    $('#ml-title').textContent = `Container ${F.fmtCont(T.ot.container) || '(sem nº)'} · transporte ${t}`;
+    $('#ml-title').textContent = isTerrestreFotos(T) ? `Exportação terrestre · transporte ${t}` : `Container ${F.fmtCont(T.ot.container) || '(sem nº)'} · transporte ${t}`;
     $('#ml-preview').innerHTML = '<p class="muted">Montando…</p>';
     dlg.showModal();
     const m = await emailContainer(t, 'preview');
     const falta = faltaEmail(T);
-    $('#ml-preview').innerHTML = (falta.length ? `<div class="alert err"><b>Não é possível copiar/enviar:</b> falta preencher no Controle OT ${esc(falta.join(', '))}.</div>` : '')
+    $('#ml-preview').innerHTML = (falta.length ? `<div class="alert err"><b>Não é possível copiar/enviar:</b> falta ${esc(falta.join(', '))}.</div>` : '')
       + (m.v.st === 'div' ? '<div class="alert err"><b>Atenção:</b> há divergência entre as fotos e o agendamento.</div>' : '') + m.html;
     ['#ml-copy', '#ml-mailto', '#ml-eml'].forEach(id => $(id).classList.toggle('bloq', !!falta.length));
   }
   // antes de copiar/enviar: todos os dados do faturamento preenchidos
   function emailLiberado(t) {
     const T = getTransport(t); const falta = T ? faltaEmail(T) : ['transporte'];
-    if (falta.length) toast(`Não foi possível copiar: falta preencher no Controle OT ${falta.join(', ')}.`, 'err');
+    if (falta.length) toast(`Não foi possível copiar: falta ${falta.join(', ')}.`, 'err');
     return !falta.length;
   }
   function bindEmailContainer() {
@@ -1707,7 +1741,7 @@
       salvar(); const t = dlg.dataset.t; if (!emailLiberado(t)) return; const m = await emailContainer(t, 'eml');
       const eml = F.montarEML({ para: $('#ml-to').value.trim().replace(/;/g, ','), cc: $('#ml-cc').value.trim().replace(/;/g, ','), assunto: m.assunto, html: m.html,
         anexos: m.fotos.map(x => ({ nome: x.nome, tipo: 'image/jpeg', cid: x.cid, base64: x.base64 })) });
-      baixar(`container-${F.normCont(m.T.ot.container) || t}.eml`, new Blob([eml], { type: 'message/rfc822' }));
+      baixar(`${isTerrestreFotos(m.T) ? 'embarque-' + t : 'container-' + (F.normCont(m.T.ot.container) || t)}.eml`, new Blob([eml], { type: 'message/rfc822' }));
       toast('E-mail baixado (.eml). Abra o arquivo: o Outlook mostra o e-mail pronto, com as fotos, para enviar.', 'ok');
     });
     $('#ml-copy').addEventListener('click', async () => {
@@ -1761,12 +1795,12 @@
       'Placa carreta/truck', 'Placa cavalo', 'Motorista', 'CPF', 'Treinamento', 'Transportadora', 'OT(s)', 'Doc', 'NF-e', 'EXP', 'Container', 'Lacre', 'Tara (kg)', 'MWG (kg)', 'Ticket balança', 'Peso balança (kg)',
       'Impressa em', 'Faturada em', 'Conferido na saída', 'Status', 'Alterações após impressão', 'Fotos', 'Conferência das fotos', 'Container (porta)', 'Container (RIC)', 'Lacre (RIC)', 'Lacre físico', 'Tara (RIC)', 'Max gross (RIC)']]
       .concat(list.map(T => {
-        const e = T.eff, f = state.fotos[T.transporte], L = s => (f && f.lido[s]) || {}, v = temContainer(T) ? validarFotos(T) : null;
+        const e = T.eff, f = state.fotos[T.transporte], L = s => (f && f.lido[s]) || {}, v = pedeFotos(T) ? validarFotos(T) : null;
         return [P.fmtDateBR(e.data), e.hora, T.transporte, tipoCarga(T), e.cliente, T.solic && T.solic.cidade ? `${T.solic.cidade}/${T.solic.uf}` : '', T.entregas.join(' / '), e.incoterm,
           T.items.map(i => i.descricao).filter(Boolean).join(' | '), T.items.reduce((a, i) => a + (i.qtd || 0), 0), T.pallets == null ? '' : round(T.pallets, 2), T.reduzido ? `${resumoReducao(T)}${T.reducao.motivo ? ' · motivo: ' + T.reducao.motivo : ''}` : '', isFracionada(T) ? 'SIM' : '', isAmostra(T) ? 'SIM' : '', T.fsc ? (T.fsc.fsc || 'FSC') : '',
           e.placaL, isTruck(e) ? '' : e.placaM, e.motorista, P.fmtCPF(e.cpf), e.treinamento, e.transportadora, T.otList.join(' / '), T.ot.doc, T.ot.nf, T.ot.exp, T.ot.container, T.ot.lacre, T.ot.tara, T.ot.mwg, T.ot.ticket, pesoTicket(T),
           dt(T.printed), dt(T.faturado), T.man.conferido ? `${T.man.conferido.nome} · ${dt(T.man.conferido.em)}` : '', statusTexto(T), T.alteracoes.map(a => `${a.campo}: ${a.de || '—'} → ${a.para || '—'}`).join('; '),
-          temContainer(T) ? `${nFotos(T.transporte)}/6` : '', v ? ({ ok: 'Conferido', div: 'DIVERGENTE: ' + v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', '), pend: 'Pendente' }[v.st]) : '',
+          pedeFotos(T) ? `${nFotos(T.transporte)}/6` : '', v ? ({ ok: 'Conferido', div: 'DIVERGENTE: ' + v.linhas.filter(l => l.st === 'div').map(l => l.dado).join(', '), pend: 'Pendente' }[v.st]) : '',
           L('porta').container || '', L('ric').container || '', L('ric').lacre || '', L('ric').lacreFis || '', L('ric').tara || '', L('ric').mwg || ''];
       }));
     const itens = [['Data', 'Transporte', 'Cliente', 'Pedido', 'Entrega', 'Material', 'Descrição', 'Qtd (pç)', 'Pallets / lotes']]
@@ -2240,6 +2274,11 @@
       if (!(await confirmBox('Desmarcar conferência', `<p>O transporte <b>${esc(t)}</b> foi conferido por <b>${esc(c.nome)}</b> em ${esc(new Date(c.em).toLocaleString('pt-BR'))}. Desmarcar?</p>`, 'Desmarcar'))) return;
       const man = state.manual[t] || {}; delete man.conferido; save(true); renderAll(); toast(`Conferência do transporte ${t} desmarcada.`, 'ok'); return;
     }
+    if (isTerrestreFotos(T) && nFotos(t) < 6) {
+      toast(`MADERAS ARAUCO: são obrigatórias as 6 fotos do embarque antes da conferência na saída (${nFotos(t)}/6). Faltam: ${faltandoFotos(t, T).join(', ')}.`, 'err');
+      if (ui.open !== t) openDetail(t); setTimeout(() => { const el = $('#ft-sec'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 200);
+      return;
+    }
     const dlg = $('#cfr-dialog'); dlg._t = t;
     $('#cfr-info').innerHTML = `Transporte <b>${esc(t)}</b> · ${esc(T.eff.cliente)} · placa ${esc(T.eff.placaL || '—')} · <b>${modeloConf(T) === 'exp' ? 'Exportação' : 'Mercado interno'}</b>`;
     let nome = ''; try { nome = localStorage.getItem(CONF_NOME) || ''; } catch (e) { /* sem storage */ }
@@ -2683,7 +2722,7 @@
           ${OT_FIELDS.map(([k, l]) => `<div class="f"><label for="ot-${k}">${esc(l)}${k === 'ot' && T.otList.length > 1 ? ` (${T.otList.length})` : ''}${k === 'container' && !T.man.container && T.ot.container && !T.otPadrao.container ? ' <span class="src">SEW</span>' : ''}${T.otPadrao[k] ? ' <span class="src">padrão</span>' : ''}${k === 'ot' && T.otSrc === 'LT22' ? ' <span class="src">tela de OTs</span>' : ''}</label><input id="ot-${k}" data-ot="${k}" value="${esc(T.ot[k])}" style="font-family:var(--f-mono)"></div>`).join('')}
         </div>
       </div>
-      ${temContainer(T) ? fotosHTML(T) : ''}
+      ${pedeFotos(T) ? fotosHTML(T) : ''}
       ${especialDe(T) && especialDe(T).fotos !== false ? lateraisHTML(T) : ''}
       ${ocSecaoHTML(T)}
       <div class="section">
@@ -2696,9 +2735,9 @@
     renderThumbs(T);
     marcarPendOT(T);
     renderPresencaPainel();
-    $('#d-mail').hidden = !temContainer(T);
+    $('#d-mail').hidden = !pedeFotos(T);
     $('#d-expterr').hidden = !isAraucoMaderas(T); // só em exportação terrestre (Arauco Maderas)
-    if (temContainer(T) || $('#lat-sec')) carregarMiniaturas($('#d-body'));
+    if (pedeFotos(T) || $('#lat-sec')) carregarMiniaturas($('#d-body'));
   }
 
   function scalePage(page, boxWidth) {

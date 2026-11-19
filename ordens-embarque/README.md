@@ -633,3 +633,11 @@ O e-mail traz em destaque **EXP, Container, Lacre, Nota Fiscal e Documento SAP**
 Se faltar algum dado (EXP, container, lacre, tara, carga máx., NF-e ou documento), o app **não copia nem gera** o e-mail e mostra
 o que falta. O texto "conferência pendente" não vai mais; as fotos vão **sem legenda**, 3 por linha, todas do mesmo tamanho
 (foto inteira centralizada, faixas cinza claro quando a foto é em pé), alinhadas com as bordas dos quadros de cima.
+
+### MADERAS ARAUCO: 6 fotos obrigatórias e e-mail
+
+Para o cliente **MADERAS ARAUCO S.A.** (exportação terrestre) o painel da ordem tem a seção **Fotos do embarque** com 6
+posições: Frente + placa, Lateral esquerda, Lateral direita, Traseira, Amarração / cintas e Lona / cobertura. As fotos podem ser
+selecionadas todas de uma vez (vão na ordem, ou pelo nome do arquivo) e arrastadas para trocar de posição. **Sem as 6 fotos não
+dá para marcar a conferência na saída** nem copiar/enviar o e-mail. O e-mail (botão "E-mail do embarque") tem o mesmo formato
+do de exportação: EXP, placas e transporte, nota fiscal e documento SAP, e as 6 fotos alinhadas. A lista mostra o chip "n/6".

@@ -210,4 +210,10 @@
   a área de impressão B2:G30 com os estilos da planilha (texto escorre como no Excel); `cancXlsx` = partes originais + valores
   nas células (zip sem compressão próprio, `zipStore`/`crc32`, sem depender do SheetJS); `cancPNG` = mesmo desenho via SVG
   foreignObject → canvas → clipboard (senão baixa .png). Avisos de prazo (PR/RS 168 h; MS/SC/SP 24 h) e mês corrente.
+- MADERAS ARAUCO (exportação terrestre, caminhão; `isTerrestreFotos` = `isAraucoMaderas` sem container): **6 fotos obrigatórias**
+  (`pedeFotos` = container | Maderas). Mesmas chaves de `OEF.SLOTS`, com nomes de caminhão e sem leitura (`SLOTS_TERR`/`slotsDe`):
+  Frente + placa, Lateral esquerda, Lateral direita, Traseira, Amarração / cintas, Lona / cobertura; importação pelo nome do arquivo
+  ou na ordem (sem OCR). `validarFotos` = só contagem (6 = ok). Chip n/6, KPI "Fotos faltando", Excel. **Conferência na saída
+  bloqueada** sem as 6 fotos (`conferirTransporte`). E-mail igual ao da exportação (`emailContainer`, ramo terrestre): EXP | PLACAS |
+  TRANSPORTE + NOTA FISCAL | DOCUMENTO SAP, fotos em grade; bloqueado sem EXP, NF-e, Doc ou sem as 6 fotos (`MAIL_CAMPOS_TERR`).
 
