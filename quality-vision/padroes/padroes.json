@@ -284,6 +284,16 @@
    ],
    "gravidade": "critico",
    "descricao": "Vermelho: fitas verdes do lote soltas, pendendo dos lotes até a carroceria (fita_solta). Roxo: furos de garfo na borda inferior dos lotes, junto ao nível da carroceria (crítico). Gravidade da fita solta a confirmar com a operação."
+  },
+  {
+   "id": 28,
+   "imagem": "padroes/p28.jpg",
+   "titulo": "Plastificação incompleta",
+   "tipos": [
+    "filme_stretch"
+   ],
+   "gravidade": "leve",
+   "descricao": "Lote de cima, no fundo da carga: o filme stretch não cobre todo o lote (parte do topo/lateral fica sem plástico, enquanto os lotes vizinhos estão plastificados por inteiro). Defeito LEVE. Diferente de falta de filme (crítico), que é o lote sem filme ou com a maior parte exposta."
   }
  ]
 }
