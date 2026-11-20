@@ -294,6 +294,16 @@
    ],
    "gravidade": "leve",
    "descricao": "Lote de cima, no fundo da carga: o filme stretch não cobre todo o lote (parte do topo/lateral fica sem plástico, enquanto os lotes vizinhos estão plastificados por inteiro). Defeito LEVE. Diferente de falta de filme (crítico), que é o lote sem filme ou com a maior parte exposta."
+  },
+  {
+   "id": 29,
+   "imagem": "padroes/p29.jpg",
+   "titulo": "Embalagem fora de padrão: fitas desalinhadas",
+   "tipos": [
+    "embalagem_fora_padrao"
+   ],
+   "gravidade": "moderado (a confirmar)",
+   "descricao": "Lote de cima (contorno rosa) com as fitas verdes fora da posição padrão; os traços vermelhos mostram o alinhamento correto. A posição errada das fitas pode causar ondulação por estar fora da posição dos calços. Gravidade não informada: tratada como moderada."
   }
  ]
 }
