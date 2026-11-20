@@ -31,7 +31,9 @@ Ao final do carregamento, o operador fotografa a carga no celular. O sistema ana
 | Etiqueta rasurada, rasgada ou caída | fora de posição ou ilegível | Moderado |
 | Manchas / diferença de cor | em relação a lotes do mesmo padrão (a verificar) | Moderado |
 | Embalagem danificada | papelão rasgado ou solto | Moderado |
-| Fita de fixação solta ou faltando | fita frouxa, rompida ou ausente | Moderado |
+| Fita solta | fita verde do lote solta ou pendurada | **Crítico** |
+| Calço projetado para fora do lote | bloco que avança para fora do lote, provavelmente solto | **Crítico** |
+| Fita faltando | lote com menos fitas que os vizinhos | Moderado |
 
 **O que não é defeito** (e o sistema ignora): reflexo de luz no plástico stretch; sombras e partes escuras por iluminação; o vão onde a empilhadeira coloca o garfo; cintas de amarração do veículo; réguas já posicionadas; lona do sider, veículo e fundo; lotes sem papelão que usam apenas filme stretch e calços (padrão válido).
 

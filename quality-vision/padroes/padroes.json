@@ -304,6 +304,18 @@
    ],
    "gravidade": "moderado (a confirmar)",
    "descricao": "Lote de cima (contorno rosa) com as fitas verdes fora da posição padrão; os traços vermelhos mostram o alinhamento correto. A posição errada das fitas pode causar ondulação por estar fora da posição dos calços. Gravidade não informada: tratada como moderada."
+  },
+  {
+   "id": 30,
+   "imagem": "padroes/p30.jpg",
+   "titulo": "Fita solta, calço faltando e calço projetado para fora do lote",
+   "tipos": [
+    "fita_solta",
+    "calco_faltando",
+    "calco_projetado"
+   ],
+   "gravidade": "critico",
+   "descricao": "Vermelho: fita verde solta, pendendo do lote. Amarelo: falta um calço no vão. Roxo/verde: calço projetado para fora do lote, provavelmente solto. A operação classificou todos como críticos."
   }
  ]
 }
