@@ -25,6 +25,7 @@ Ao final do carregamento, o operador fotografa a carga no celular. O sistema ana
 | Barrote quebrado | bloco partido, torto ou deslocado | **Crítico** |
 | Falta de filme stretch | lote que deveria estar plastificado e está sem filme | **Crítico** |
 | Canto batido / avaria no lote | canto amassado, esfarelado ou quebrado; lote quebrado ou tombado | **Crítico** |
+| Plástico arrebentado | filme stretch rompido que deixa o lote exposto | **Crítico** |
 | Material molhado | manchas de água, papelão encharcado ou ondulado | **Crítico** |
 | Desalinhamento de carga (empilhamento) | chapas deslocadas ou salientes, carga torta, material encavalado | Moderado |
 | Filme stretch solto ou pendurado | plástico aberto, rasgado ou pendurado | Moderado |

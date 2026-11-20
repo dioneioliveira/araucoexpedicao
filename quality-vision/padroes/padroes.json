@@ -316,6 +316,16 @@
    ],
    "gravidade": "critico",
    "descricao": "Vermelho: fita verde solta, pendendo do lote. Amarelo: falta um calço no vão. Roxo/verde: calço projetado para fora do lote, provavelmente solto. A operação classificou todos como críticos."
+  },
+  {
+   "id": 31,
+   "imagem": "padroes/p31.jpg",
+   "titulo": "Plástico arrebentado (problema de embalagem)",
+   "tipos": [
+    "filme_rompido"
+   ],
+   "gravidade": "critico",
+   "descricao": "Lote de cima, no fundo da carga: o filme stretch está arrebentado, deixando a lateral do lote exposta. Problema de embalagem crítico. Diferente de plástico apenas solto/pendurado (moderado) e de plastificação incompleta (leve)."
   }
  ]
 }

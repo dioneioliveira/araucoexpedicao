@@ -49,7 +49,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const st = k => { try { return localStorage.getItem('qv_' + k) || ''; } catch(e) { return ''; } };
-const TIPOS = { calco_faltando:'Calço/barrote faltando', barrote_quebrado:'Barrote quebrado', furo_garfo:'Furo de garfo', filme_ausente:'Falta de filme stretch', molhado:'Molhado', lote_quebrado:'Lote quebrado', filme_stretch:'Filme stretch solto', etiqueta:'Etiqueta', dano:'Dano / canto', mancha_cor:'Mancha / cor', empilhamento:'Empilhamento', fita_faltando:'Fita faltando', fita_solta:'Fita solta', calco_projetado:'Calço projetado', embalagem_fora_padrao:'Embalagem', outro:'Outro' };
+const TIPOS = { calco_faltando:'Calço/barrote faltando', barrote_quebrado:'Barrote quebrado', furo_garfo:'Furo de garfo', filme_ausente:'Falta de filme stretch', molhado:'Molhado', lote_quebrado:'Lote quebrado', filme_stretch:'Filme stretch solto', etiqueta:'Etiqueta', dano:'Dano / canto', mancha_cor:'Mancha / cor', empilhamento:'Empilhamento', fita_faltando:'Fita faltando', fita_solta:'Fita solta', calco_projetado:'Calço projetado', filme_rompido:'Plástico arrebentado', embalagem_fora_padrao:'Embalagem', outro:'Outro' };
 Object.entries(TIPOS).forEach(([k, v]) => { const o = document.createElement('option'); o.value = k; o.textContent = v; $('fTipo').appendChild(o); });
 const SEV = [[80, 'Crítico', '#ff2d6f'], [65, 'Alto', '#ff6a2b'], [40, 'Moderado', '#ffb02e'], [0, 'Leve', '#e8e04a']];
 const sev = g => SEV.find(s => (g || 0) >= s[0]);
