@@ -273,6 +273,17 @@
    ],
    "gravidade": "critico",
    "descricao": "X vermelho: barrote faltando, foge do padrão dos demais lotes (os círculos verdes marcam blocos presentes, o padrão). Marca amarela na lateral: desalinhamento de carga (moderado), NÃO é dano nem fita solta."
+  },
+  {
+   "id": 27,
+   "imagem": "padroes/p27.jpg",
+   "titulo": "Fitas soltas e furos de garfo em carga sobre carroceria",
+   "tipos": [
+    "fita_solta",
+    "furo_garfo"
+   ],
+   "gravidade": "critico",
+   "descricao": "Vermelho: fitas verdes do lote soltas, pendendo dos lotes até a carroceria (fita_solta). Roxo: furos de garfo na borda inferior dos lotes, junto ao nível da carroceria (crítico). Gravidade da fita solta a confirmar com a operação."
   }
  ]
 }
