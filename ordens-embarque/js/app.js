@@ -2037,6 +2037,26 @@
     $('#oc-quando').addEventListener('change', e => { if (e.target.value) $('#oc-turno').value = turnoDe(new Date(e.target.value)); });
   }
 
+  // ------------------------------------------------------------------ modo compacto da lista diária
+  // botão −/+ no título da lista: oculta abas, filtros/botões e contadores para a listagem de cargas ficar maior
+  const COMPACTO_KEY = 'arauco.ordensEmbarque.compacto';
+  function aplicarCompacto(on) {
+    document.body.classList.toggle('compacto', on);
+    const b = $('#btn-min'); if (!b) return;
+    b.querySelector('span').textContent = on ? '+' : '−';
+    b.title = on ? 'Mostrar abas, filtros e contadores' : 'Ocultar abas, filtros e contadores (lista maior)';
+    b.setAttribute('aria-label', b.title); b.setAttribute('aria-expanded', String(!on));
+  }
+  function bindCompacto() {
+    let on = false; try { on = localStorage.getItem(COMPACTO_KEY) === '1'; } catch (e) { /* sem storage */ }
+    if (on && ui.view !== 'lista') setView('lista');
+    aplicarCompacto(on);
+    $('#btn-min').addEventListener('click', () => {
+      const novo = !document.body.classList.contains('compacto');
+      aplicarCompacto(novo); try { localStorage.setItem(COMPACTO_KEY, novo ? '1' : '0'); } catch (e) { /* sem storage */ }
+    });
+  }
+
   // ------------------------------------------------------------------ cancelamento de nota (planilha oficial)
   // Formulário igual à guia "FORMULÁRIO CANCELAMENTO" (window.OE_CANC, gerado por tools/build_cancelamento.py).
   // O Excel é a planilha original com valores só nas células de dados; a imagem do e-mail é o mesmo desenho.
@@ -3678,7 +3698,7 @@
     if (!TPL) { document.body.innerHTML = '<p style="padding:40px">Modelos de impressão não encontrados (js/templates.js).</p>'; return; }
     ui.date = pickDefaultDate();
     $('#date-filter').value = ui.date;
-    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo(); bindOcorr(); bindEspeciais(); bindConferencia(); bindCancelamento();
+    bind(); bindImport(); bindRelatorio(); bindSync(); bindMes(); bindExpo(); bindOcorr(); bindEspeciais(); bindConferencia(); bindCancelamento(); bindCompacto();
     setView('lista');
     // pré-carrega os modelos para a impressão sair na hora
     window.__oeBg = Object.values(TPL).map(t => { const i = new Image(); i.src = t.background; return i; });

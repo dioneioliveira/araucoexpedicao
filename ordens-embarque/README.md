@@ -641,3 +641,9 @@ posições: Frente + placa, Lateral esquerda, Lateral direita, Traseira, Amarra�
 selecionadas todas de uma vez (vão na ordem, ou pelo nome do arquivo) e arrastadas para trocar de posição. **Sem as 6 fotos não
 dá para marcar a conferência na saída** nem copiar/enviar o e-mail. O e-mail (botão "E-mail do embarque") tem o mesmo formato
 do de exportação: EXP, placas e transporte, nota fiscal e documento SAP, e as 6 fotos alinhadas. A lista mostra o chip "n/6".
+
+### Lista maior (ocultar abas e filtros)
+
+O botão **−** ao lado do título **LISTA DIÁRIA** oculta as abas, os filtros/botões (data, Todas/MI/Containers, busca, Semana,
+Relatório…) e os contadores, e a listagem de cargas fica maior. O botão vira **+** para mostrar tudo de novo. A escolha fica
+lembrada neste computador.

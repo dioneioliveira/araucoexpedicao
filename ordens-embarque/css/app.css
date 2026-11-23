@@ -763,3 +763,9 @@ tr.bl-excluida td:last-child, tr.bl-excluida td:nth-child(5){text-decoration:non
 #cn-dialog #cn-status{margin-right:auto}
 
 #mail-dialog .btn.bloq{opacity:.45}
+
+/* modo compacto: abas, filtros e contadores ocultos, lista diária maior */
+.btn-min{width:28px;height:28px;flex:none;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--title);font:700 18px/1 var(--f-ui,inherit);cursor:pointer;display:grid;place-items:center;align-self:center}
+.btn-min:hover{border-color:var(--turq-strong);color:var(--turq-strong);background:var(--turq-ghost)}
+body.compacto #views,body.compacto .toolbar,body.compacto #kpis{display:none !important}
+body.compacto .list-card .table-wrap{max-height:calc(100vh - 150px)}

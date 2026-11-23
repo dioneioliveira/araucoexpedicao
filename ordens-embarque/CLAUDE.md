@@ -216,4 +216,6 @@
   ou na ordem (sem OCR). `validarFotos` = só contagem (6 = ok). Chip n/6, KPI "Fotos faltando", Excel. **Conferência na saída
   bloqueada** sem as 6 fotos (`conferirTransporte`). E-mail igual ao da exportação (`emailContainer`, ramo terrestre): EXP | PLACAS |
   TRANSPORTE + NOTA FISCAL | DOCUMENTO SAP, fotos em grade; bloqueado sem EXP, NF-e, Doc ou sem as 6 fotos (`MAIL_CAMPOS_TERR`).
+- Modo compacto da lista diária: botão `#btn-min` (−/+) no título da lista → `body.compacto` oculta `#views`, `.toolbar` e
+  `#kpis` e aumenta a altura da `.table-wrap`; lembrado por computador (`arauco.ordensEmbarque.compacto`, `bindCompacto`).
 
