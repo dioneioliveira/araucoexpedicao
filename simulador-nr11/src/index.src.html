@@ -157,6 +157,10 @@ body{display:block}
   .swrap{min-height:320px}
   .cwrap{min-height:380px}
   #aTitle,#aHint{display:none}
+  #mainTrn:not([hidden]){display:block!important}
+  #tStage{overflow:visible}
+  .tview{flex:none!important;height:calc((100vw - 40px)*.5625 + 30px)!important}
+  .tarrow{width:30px;height:44px;font-size:22px}
   #aTray{max-height:none;height:340px}
   .card h2{flex-wrap:wrap;white-space:normal}
   header{flex-wrap:wrap}
@@ -243,6 +247,135 @@ button.glow{animation:glow 1.2s infinite}
 #tip3d{position:absolute;left:50%;top:14px;transform:translateX(-50%);font-weight:800;font-size:16px;white-space:nowrap;color:#d6303a;background:rgba(255,255,255,.95);border:2px solid #d6303a;border-radius:12px;padding:5px 14px;animation:blink .7s infinite;pointer-events:none}
 @keyframes blink{50%{opacity:.25}}
 #sCam{position:absolute;right:10px;top:8px;margin:0;background:#fff}
+
+/* ===== menu lateral e treinamento ===== */
+#shell{position:relative}
+#rail{gap:8px}
+.rb{width:40px;height:36px;padding:0;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #E3E6E6;flex:0 0 auto;box-shadow:none}
+.rb svg{width:20px;height:20px;fill:none;stroke:#7A7A7A;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rb:hover{border-color:#B7D9D8;background:#F1F8F8}
+.rb.on{background:#EEF5F5;border-color:#B7D9D8}.rb.on svg{stroke:#3f8f8c}
+#railName{min-height:0;overflow:hidden}
+#railPanel{position:absolute;left:58px;top:0;bottom:0;width:292px;z-index:30;background:rgba(255,255,255,.97);backdrop-filter:blur(10px);border-right:1px solid #E3E6E6;box-shadow:12px 0 40px rgba(60,70,70,.18);padding:14px 12px;overflow:auto;animation:pnl .22s ease-out}
+@keyframes pnl{from{transform:translateX(-14px);opacity:0}to{transform:none;opacity:1}}
+#railPanel h3{margin:10px 6px 6px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:#9a9700}
+.pn{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:8px 10px;margin:2px 0;border-radius:12px;border:1px solid transparent;background:transparent;box-shadow:none;font-size:13px;color:#4A4A4A;cursor:pointer}
+.pn:hover{background:#F4F9F8;border-color:#DCEBEA}
+.pn.on{background:#EEF5F5;border-color:#B7D9D8;font-weight:700}
+.pn .nb{flex:0 0 26px;height:26px;border-radius:50%;background:#EEF5F5;color:#3f8f8c;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+.pn.on .nb{background:#D0CC00;color:#3d3b00}
+.pn small{display:block;color:#7A7A7A;font-weight:400;font-size:11px}
+.pn a{color:inherit;text-decoration:none}
+#mainTrn{flex:1 1 0;min-height:0;display:grid;padding:8px;grid-template-columns:minmax(0,1fr)}
+#mainTrn[hidden]{display:none}
+#tStage{overflow:hidden;padding:8px 10px}
+.tview{position:relative;flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 100% at 50% 40%,#FFFFFF,#F4F7F7);border-radius:12px;border:1px solid #ECEEEE;overflow:hidden}
+.tstage{position:relative;background:#fff;box-shadow:0 18px 50px rgba(60,70,70,.16),0 1px 0 #ECEEEE;border-radius:6px;overflow:hidden;--u:10px;font-size:calc(var(--u)*1.6)}
+.tarrow{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:64px;font-size:34px;line-height:1;border:none;background:rgba(255,255,255,.85);color:#7A7A7A;box-shadow:0 4px 14px rgba(60,70,70,.2);padding:0;z-index:5}
+.tarrow.prev{left:8px;border-radius:12px}.tarrow.next{right:8px;border-radius:12px}
+.tarrow:hover{background:#D0CC00;color:#3d3b00}
+.tarrow[disabled]{opacity:.25}
+.tbar{display:flex;align-items:center;gap:12px;padding-top:6px;flex:0 0 auto}
+#tDots{flex:1;display:flex;gap:3px;align-items:center;min-width:0}
+#tDots .sg{height:8px;border-radius:5px;background:#E3E6E6;cursor:pointer;position:relative;overflow:hidden;transition:.2s}
+#tDots .sg i{position:absolute;inset:0;width:0;background:#B7D9D8;transition:width .3s}
+#tDots .sg.done i{width:100%}#tDots .sg.cur i{width:100%;background:#D0CC00}
+#tDots .sg:hover{transform:scaleY(1.5)}
+#tCount{font-size:12px;color:#7A7A7A;white-space:nowrap;font-weight:600}
+.tprog{position:absolute;left:0;right:0;bottom:0;height:calc(var(--u)*.45);background:#F0F2F2}
+.tprog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#B7D9D8,#D0CC00);transition:width .5s ease}
+/* slides */
+.sl{position:absolute;inset:0;opacity:0;pointer-events:none;overflow:hidden;color:#4A4A4A;font-family:"Segoe UI",Aptos,Calibri,system-ui,sans-serif}
+.sl.cur{opacity:1;pointer-events:auto;z-index:2}
+.sl.leaving{opacity:1;z-index:1}
+.sl::before{content:"";position:absolute;left:0;top:0;bottom:0;width:calc(var(--u)*.9);background:linear-gradient(#D0CC00,#B7D9D8)}
+.sl::after{content:"";position:absolute;right:calc(var(--u)*-9);bottom:calc(var(--u)*-9);width:calc(var(--u)*26);height:calc(var(--u)*26);border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(183,217,216,.55),rgba(183,217,216,0) 70%);pointer-events:none}
+.sl .in{position:absolute;inset:calc(var(--u)*3.2) calc(var(--u)*5) calc(var(--u)*4.4) calc(var(--u)*5.2);display:flex;flex-direction:column;z-index:2}
+.sl .tag{display:inline-flex;align-self:flex-start;align-items:center;gap:calc(var(--u)*.7);font-size:calc(var(--u)*1.25);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8d8a00;background:#FBFBE0;border:1px solid #EEEBA6;border-radius:99px;padding:calc(var(--u)*.35) calc(var(--u)*1.2)}
+.sl h2{white-space:normal;overflow:visible;display:block;text-transform:none;letter-spacing:-.01em;margin:calc(var(--u)*1) 0 calc(var(--u)*1.4);font-size:calc(var(--u)*3.5);line-height:1.12;font-weight:700;color:#7A7A7A;letter-spacing:-.01em}
+.sl h2 em{font-style:normal;color:#5BA8A5}
+.sl .foot{position:absolute;left:calc(var(--u)*5.2);right:calc(var(--u)*5);bottom:calc(var(--u)*1.1);display:flex;justify-content:space-between;font-size:calc(var(--u)*1.05);color:#9a9a9a;z-index:2}
+.sl .body{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+.sl p{margin:0 0 calc(var(--u)*1);font-size:calc(var(--u)*2);line-height:1.45}
+.rv{opacity:0}
+.sl.cur .rv{animation:rv .65s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--d,0)*1ms)}
+.sl.cur .rv.l{animation-name:rvl}.sl.cur .rv.pop{animation-name:rvp}.sl.cur .rv.fade{animation-name:rvf}
+@keyframes rv{from{opacity:0;transform:translateY(calc(var(--u)*1.6))}to{opacity:1;transform:none}}
+@keyframes rvl{from{opacity:0;transform:translateX(calc(var(--u)*-2.6))}to{opacity:1;transform:none}}
+@keyframes rvp{0%{opacity:0;transform:scale(.6)}60%{opacity:1;transform:scale(1.07)}100%{opacity:1;transform:none}}
+@keyframes rvf{from{opacity:0}to{opacity:1}}
+/* transições entre slides */
+.t-slide.in{animation:tSi .6s cubic-bezier(.2,.8,.2,1) both}.t-slide.out{animation:tSo .5s ease both}
+.t-slideL.in{animation:tSiL .6s cubic-bezier(.2,.8,.2,1) both}.t-slideL.out{animation:tSoL .5s ease both}
+.t-rise.in{animation:tRi .6s cubic-bezier(.2,.8,.2,1) both}.t-rise.out{animation:tRo .45s ease both}
+.t-zoom.in{animation:tZi .6s cubic-bezier(.2,.8,.2,1) both}.t-zoom.out{animation:tZo .45s ease both}
+.t-fade.in{animation:rvf .6s ease both}.t-fade.out{animation:tFo .5s ease both}
+.t-flip.in{animation:tFi .7s cubic-bezier(.2,.8,.2,1) both}.t-flip.out{animation:tFlo .5s ease both}
+@keyframes tSi{from{transform:translateX(100%)}to{transform:none}}@keyframes tSo{to{transform:translateX(-30%);opacity:0}}
+@keyframes tSiL{from{transform:translateX(-100%)}to{transform:none}}@keyframes tSoL{to{transform:translateX(30%);opacity:0}}
+@keyframes tRi{from{transform:translateY(40%);opacity:0}to{transform:none;opacity:1}}@keyframes tRo{to{transform:translateY(-12%);opacity:0}}
+@keyframes tZi{from{transform:scale(.86);opacity:0}to{transform:none;opacity:1}}@keyframes tZo{to{transform:scale(1.12);opacity:0}}
+@keyframes tFo{to{opacity:0}}
+@keyframes tFi{from{transform:perspective(1400px) rotateY(-70deg);opacity:0}to{transform:perspective(1400px) none;opacity:1}}@keyframes tFlo{to{transform:perspective(1400px) rotateY(60deg);opacity:0}}
+/* componentes */
+.cards{display:grid;gap:calc(var(--u)*1.4);grid-template-columns:repeat(var(--c,3),1fr);flex:1;align-content:center}
+.cd{background:#fff;border:1px solid #E3E6E6;border-top:calc(var(--u)*.4) solid #B7D9D8;border-radius:calc(var(--u)*1.2);padding:calc(var(--u)*1.5);box-shadow:0 10px 26px rgba(70,80,80,.08)}
+.cd b{display:block;font-size:calc(var(--u)*2);color:#4A4A4A;margin-bottom:calc(var(--u)*.5)}
+.cd span{font-size:calc(var(--u)*1.55);color:#6a6a6a;line-height:1.4;display:block}
+.cd.lime{border-top-color:#D0CC00}.cd.red{border-top-color:#d6303a}.cd.amb{border-top-color:#d98a00}.cd.grn{border-top-color:#2e9e6b}
+.cd .ic{font-size:calc(var(--u)*3.2);line-height:1;margin-bottom:calc(var(--u)*.6)}
+.chips{display:flex;flex-wrap:wrap;gap:calc(var(--u)*.9);align-content:flex-start}
+.chip2{background:#F4F9F8;border:1px solid #CFE6E4;color:#3b6f6c;border-radius:99px;padding:calc(var(--u)*.55) calc(var(--u)*1.4);font-size:calc(var(--u)*1.55);font-weight:600;display:inline-flex;gap:calc(var(--u)*.7);align-items:center}
+.chip2 i{font-style:normal;background:#D0CC00;color:#3d3b00;border-radius:50%;min-width:calc(var(--u)*2);height:calc(var(--u)*2);display:inline-flex;align-items:center;justify-content:center;font-size:calc(var(--u)*1.1);font-weight:800}
+.lst{display:flex;flex-direction:column;gap:calc(var(--u)*1);flex:1;justify-content:center}
+.li{display:flex;gap:calc(var(--u)*1.2);align-items:flex-start;font-size:calc(var(--u)*1.95);line-height:1.38}
+.li::before{content:"";flex:0 0 calc(var(--u)*1.1);height:calc(var(--u)*1.1);margin-top:calc(var(--u)*.55);border-radius:50%;background:#D0CC00;box-shadow:0 0 0 calc(var(--u)*.35) #FBFBE0}
+.lst.sm .li{font-size:calc(var(--u)*1.55)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*.4) calc(var(--u)*2.4);flex:1;align-content:start}
+.cols .li{font-size:calc(var(--u)*1.38);line-height:1.34}
+.cols .li b{color:#8d8a00;flex:0 0 calc(var(--u)*2.6);text-align:right;margin-right:calc(var(--u)*.2)}
+.cols .li::before{display:none}
+.norm{display:flex;flex-direction:column;gap:calc(var(--u)*1.2);flex:1;justify-content:center}
+.nm{display:flex;gap:calc(var(--u)*1.4);align-items:flex-start;background:#F8FAFA;border:1px solid #E3E6E6;border-left:calc(var(--u)*.5) solid #B7D9D8;border-radius:calc(var(--u)*1);padding:calc(var(--u)*1.1) calc(var(--u)*1.4)}
+.nm b{flex:0 0 auto;background:#EEF5F5;color:#3f8f8c;border-radius:calc(var(--u)*.7);padding:calc(var(--u)*.3) calc(var(--u)*.9);font-size:calc(var(--u)*1.55)}
+.nm span{font-size:calc(var(--u)*1.55);line-height:1.4}
+.dos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:calc(var(--u)*1.5);flex:1;align-content:center}
+.dn{border-radius:calc(var(--u)*1.4);padding:calc(var(--u)*1.6);background:#FFF7F6;border:1px solid #F5CFCB;text-align:center;box-shadow:0 10px 26px rgba(214,48,58,.10)}
+.dn .x{width:calc(var(--u)*5.6);height:calc(var(--u)*5.6);margin:0 auto calc(var(--u)*1);border-radius:50%;background:#d6303a;color:#fff;font-size:calc(var(--u)*3.4);font-weight:800;display:flex;align-items:center;justify-content:center}
+.dn.ok{background:#F3FBF7;border-color:#C5E8D6;box-shadow:0 10px 26px rgba(46,158,107,.10)}.dn.ok .x{background:#2e9e6b}
+.dn span{font-size:calc(var(--u)*1.85);font-weight:600;line-height:1.35;display:block}
+.tbtn{align-self:flex-start;margin-top:calc(var(--u)*.8);padding:calc(var(--u)*.7) calc(var(--u)*1.6);border-radius:calc(var(--u)*1);background:#D0CC00;border:1px solid #b3af00;color:#3d3b00;font-weight:700;font-size:calc(var(--u)*1.5);cursor:pointer;box-shadow:0 6px 16px rgba(150,148,0,.25)}
+.tbtn.sec{background:#fff;border-color:#B7D9D8;color:#3f8f8c;box-shadow:none}
+.row2{display:flex;gap:calc(var(--u)*2);flex:1;min-height:0}
+.row2>*{flex:1;min-width:0}
+.big{font-size:calc(var(--u)*2.6)!important;line-height:1.4!important;color:#4A4A4A}
+.quote{border-left:calc(var(--u)*.7) solid #D0CC00;padding:calc(var(--u)*1.2) calc(var(--u)*2);background:linear-gradient(90deg,#FBFBE0,#fff);border-radius:0 calc(var(--u)*1.2) calc(var(--u)*1.2) 0}
+.title-s .in{justify-content:center}
+.title-s h1{margin:calc(var(--u)*1.4) 0 calc(var(--u)*.6);font-size:calc(var(--u)*5.6);line-height:1.05;color:#7A7A7A;font-weight:700;letter-spacing:-.02em;max-width:60%}
+.title-s h1 em{font-style:normal;color:#8d8a00}
+.title-s .sub{font-size:calc(var(--u)*2.3);color:#7A7A7A;max-width:55%}
+.title-s .by{margin-top:calc(var(--u)*2.2);font-size:calc(var(--u)*1.7);color:#4A4A4A;font-weight:600;display:flex;align-items:center;gap:calc(var(--u)*1);max-width:55%}
+.title-s .by::before{content:"";width:calc(var(--u)*4);height:calc(var(--u)*.4);background:#D0CC00;border-radius:4px}
+.stage3d{position:absolute;right:0;top:0;bottom:0;width:48%;z-index:1}
+.stage3d canvas{width:100%;height:100%;display:block}
+.svgbox{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.svgbox svg{width:100%;height:100%;max-height:100%}
+.ctl{display:flex;align-items:center;gap:calc(var(--u)*1.2);font-size:calc(var(--u)*1.5);color:#6a6a6a;margin-top:calc(var(--u)*.8)}
+.ctl input[type=range]{flex:1}
+.pill{display:inline-block;border-radius:99px;padding:calc(var(--u)*.3) calc(var(--u)*1.2);font-weight:700;font-size:calc(var(--u)*1.5)}
+.pill.ok{background:#E3F6EC;color:#1e7a4f}.pill.bad{background:#FDE6E7;color:#b3202a}.pill.warn{background:#FFF1D6;color:#a56500}
+table.t2{table-layout:auto!important;border-collapse:collapse;font-size:calc(var(--u)*1.45);width:100%}
+table.t2 td,table.t2 th{white-space:nowrap}
+table.t2 th,table.t2 td{border:1px solid #E3E6E6;padding:calc(var(--u)*.6) calc(var(--u)*1.4);text-align:center}
+table.t2 th{background:#EEF5F5;color:#3f8f8c}
+.hot{cursor:pointer}
+.hot circle.r{fill:#fff;stroke:#d6303a;stroke-width:3}
+.hot.on circle.r{fill:#d6303a}
+.hot.on text{fill:#fff}
+.chk{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*.9) calc(var(--u)*1.6);flex:1;align-content:center}
+.ck{display:flex;gap:calc(var(--u)*1);align-items:center;background:#F8FAFA;border:1px solid #E3E6E6;border-radius:calc(var(--u)*1);padding:calc(var(--u)*.8) calc(var(--u)*1.1);font-size:calc(var(--u)*1.55);font-weight:600}
+.ck i{flex:0 0 calc(var(--u)*2.4);height:calc(var(--u)*2.4);border-radius:50%;background:#2e9e6b;color:#fff;font-style:normal;display:flex;align-items:center;justify-content:center;font-size:calc(var(--u)*1.4)}
+@media (max-width:760px){.tarrow{width:34px;height:48px;font-size:26px}}
 </style>
 </head>
 <body>
@@ -258,13 +391,18 @@ button.glow{animation:glow 1.2s infinite}
     <circle cx="14" cy="38" r="4.2" fill="#4A4A4A"/><circle cx="14" cy="38" r="1.6" fill="#B7D9D8"/>
     <circle cx="26.5" cy="38" r="4.2" fill="#4A4A4A"/><circle cx="26.5" cy="38" r="1.6" fill="#B7D9D8"/>
   </svg></div>
-  <div id="railName"><span>DIONEI CLEITO</span><b>DE OLIVEIRA</b></div>
+  <button class="rb" id="railToggle" title="Menu do treinamento"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  <button class="rb" data-go="load" title="Teste de carga"><svg viewBox="0 0 24 24"><path d="M12 4v16M5 20h14M6 8h12M6 8l-3 7h6zM18 8l-3 7h6z"/></svg></button>
+  <button class="rb" data-go="asm" title="Montagem da empilhadeira"><svg viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0-5 5L4 17l3 3 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2-2z"/></svg></button>
+  <button class="rb" data-go="trn:0" title="Treinamento NR-11"><svg viewBox="0 0 24 24"><path d="M3 9l9-4 9 4-9 4zM7 11v5c0 1.5 2.2 3 5 3s5-1.5 5-3v-5M21 9v6"/></svg></button>
+  <div id="railName"><span>DIONEI CLEITON</span><b>DE OLIVEIRA</b></div>
   <div id="railFoot">NR-11</div>
 </aside>
+<div id="railPanel" hidden></div>
 <div id="content">
 <header>
   <h1>Simulador NR-11 · Empilhadeira<small>Teste de carga e montagem — formação e reciclagem de operadores</small></h1>
-  <nav id="tabs"><button class="tab on" data-tab="load">Teste de carga</button><button class="tab" data-tab="asm">Montagem da empilhadeira</button></nav>
+  <nav id="tabs"><button class="tab on" data-tab="load">Teste de carga</button><button class="tab" data-tab="asm">Montagem da empilhadeira</button><button class="tab" data-tab="trn">Treinamento NR-11</button></nav>
   <div class="hdr-ctl" id="hdrLoad">
     <label>Modelo <select id="selTruck"></select></label>
     <span id="scBtns" style="display:flex;gap:6px;flex-wrap:wrap"></span>
@@ -326,7 +464,7 @@ button.glow{animation:glow 1.2s infinite}
         <ul>
           <li><b>Triângulo de estabilidade:</b> rodas dianteiras + pivô traseiro. O CG combinado precisa ficar dentro.</li>
           <li><b>Centro de carga (C):</b> do talão dos garfos ao CG da carga; a placa vale para C nominal (500 mm; 600 mm na 7 t).</li>
-          <li><b>Boas práticas:</b> carga encostada no talão, garfos sob ≥ 2/3, mastro para trás, garfos a ~15–20 cm do piso, rampa com a carga do lado de cima, curva devagar.</li>
+          <li><b>Boas práticas:</b> carga encostada no talão, garfos sob ≥ 3/4 (75%), mastro para trás, garfos a ~15–20 cm do piso, rampa com a carga do lado de cima, curva devagar.</li>
         </ul>
       </details>
     </section>
@@ -366,13 +504,26 @@ button.glow{animation:glow 1.2s infinite}
       <div id="aLabels"></div>
       <div id="aToast"></div>
       <div id="aHint">Arraste para girar · roda do mouse para aproximar · duplo clique para recentralizar</div>
-      <div id="aTitle"><b>PROJETO</b> Empilhadeira contrabalançada 2,5 t<br><b>FINALIDADE</b> Formação e reciclagem de operadores · NR-11<br><b>DESENHO</b> Dionei Cleito de Oliveira · <b>FOLHA</b> 01/01</div>
+      <div id="aTitle"><b>PROJETO</b> Empilhadeira contrabalançada 2,5 t<br><b>FINALIDADE</b> Formação e reciclagem de operadores · NR-11<br><b>DESENHO</b> Dionei Cleiton de Oliveira · <b>FOLHA</b> 01/01</div>
     </div>
   </section>
 
   <section class="card" id="aInfo">
     <h2>Ficha da peça <span class="sub" id="aGroup"></span></h2>
     <div id="aCard"></div>
+  </section>
+</main>
+
+<main id="mainTrn" hidden>
+  <section class="card" id="tStage">
+    <h2><span id="tSec">Treinamento</span> <span class="sub" id="tSub"></span>
+      <span class="seg" id="tTools"><button id="tAuto">▶ Auto</button><button id="tFull">⛶ Tela cheia</button></span></h2>
+    <div class="tview" id="tView">
+      <div class="tstage" id="tFrame"><div id="tSlides"></div><div class="tprog"><i id="tProg"></i></div></div>
+      <button class="tarrow prev" id="tPrev" aria-label="Anterior">‹</button>
+      <button class="tarrow next" id="tNext" aria-label="Próximo">›</button>
+    </div>
+    <div class="tbar"><div id="tDots"></div><span id="tCount"></span></div>
   </section>
 </main>
 </div>
@@ -873,7 +1024,7 @@ function drawTop(A,dt){
     }
     // apoio dos garfos
     const supp=clamp((Math.min(T.fork,st.s+st.Lc)-st.s)/st.Lc,0,1);
-    txt(`garfos sob ${Math.round(supp*100)}% da carga`,(x0+x1)/2,st.yl+st.Wc/2-0.12,{align:'center',size:10.5,color:supp<2/3?'#c0262d':'#4A4A4A',bg:'rgba(255,255,255,.9)'});
+    txt(`garfos sob ${Math.round(supp*100)}% da carga`,(x0+x1)/2,st.yl+st.Wc/2-0.12,{align:'center',size:10.5,color:supp<0.75?'#c0262d':'#4A4A4A',bg:'rgba(255,255,255,.9)'});
   }
   // arestas do triângulo
   dash(8,5); ctx.beginPath(); [FL,FR,R].forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath();
@@ -1007,7 +1158,7 @@ function coach(A,capN,pct){
   if(st.mass>capN) add('bad','Carga acima da capacidade residual',`Para C = ${c} mm e garfo a ${cur.lift.toFixed(2).replace('.',',')} m a placa permite ${capN} kg; a carga é de ${st.mass} kg. Reduza o peso, encoste a carga no talão ou baixe-a.`);
   else if(pct>0.9&&st.mass>0) add('warn','Perto do limite de capacidade',`A carga usa ${Math.round(pct*100)}% da capacidade residual. Qualquer elevação ou afastamento adicional pode excedê-la.`);
   if(c>T.D*1000+10&&st.mass>0) add('warn','Centro de carga maior que o nominal',`C = ${c} mm (nominal ${Math.round(T.D*1000)} mm). Cada 100 mm a mais aumenta o braço de momento e reduz a capacidade. ${st.s>0.01?'Encoste a carga no talão dos garfos.':'Use carga mais curta ou reduza o peso.'}`);
-  if(st.mass>0&&supp<2/3) add('bad','Garfos sustentam pouco da carga',`Os garfos apoiam apenas ${Math.round(supp*100)}% do comprimento (mínimo recomendado: 2/3). A carga pode escorregar e desloca o CG.`);
+  if(st.mass>0&&supp<0.75) add('bad','Garfos sustentam pouco da carga',`Os garfos apoiam apenas ${Math.round(supp*100)}% do comprimento (mínimo recomendado: 3/4, ou 75%). A carga pode escorregar e desloca o CG.`);
   if(st.mass>0&&st.s+st.Lc>T.fork+0.01) add('info','Carga ultrapassa a ponta dos garfos',`Sobram ${Math.round((st.s+st.Lc-T.fork)*1000)} mm além da ponta. Use garfos mais longos ou posicione de modo que fiquem sob a carga.`);
   if(st.mass>0&&Math.abs(st.yl+st.cgy)>0.06) add(Math.abs(st.yl+st.cgy)>0.2?'bad':'warn','Carga fora do centro',`O CG da carga está ${Math.round(Math.abs(st.yl+st.cgy)*1000)} mm ${st.yl+st.cgy>0?'à esquerda':'à direita'} do eixo. A margem lateral cai para ${Math.round(A.lat.d*1000)} mm. Centralize ou fixe/redistribua o carregamento.`);
   if(st.mass>0&&Math.abs(st.cgx)>0.06) add('info','CG real deslocado na carga',`O CG da carga está ${Math.round(st.cgx*1000)} mm da posição geométrica ao longo do garfo, alterando o centro de carga. Confira a distribuição do peso antes de içar.`);
@@ -1138,6 +1289,7 @@ let A_ = null, last = performance.now(), acc = 0;
 function frame(now){
   const dt = Math.min(0.05,(now-last)/1000); last=now;
   if(TAB==='asm'){ ASM.frame(dt); requestAnimationFrame(frame); return; }
+  if(TAB==='trn'){ TRN.frame(dt); requestAnimationFrame(frame); return; }
   // elevação e inclinação animadas
   const lt=clamp(st.lift,minLift(st.tilt),T.maxLift);
   cur.lift += clamp(lt-cur.lift,-0.7*dt,0.7*dt);
@@ -1176,12 +1328,16 @@ function setTruck(key){
 <!--INLINE:src/f3d.js-->
 <!--INLINE:src/load3d.js-->
 <!--INLINE:src/asm.js-->
+<!--INLINE:src/training.js-->
 <script>
 /* ---------------- abas ---------------- */
 function setTab(t){
-  TAB=t; $('#mainLoad').hidden=(t!=='load'); $('#mainAsm').hidden=(t!=='asm'); $('#hdrLoad').hidden=(t!=='load');
+  TAB=t; $('#mainLoad').hidden=(t!=='load'); $('#mainAsm').hidden=(t!=='asm'); $('#mainTrn').hidden=(t!=='trn'); $('#hdrLoad').hidden=(t!=='load');
   document.querySelectorAll('#tabs .tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  document.querySelectorAll('#rail .rb[data-go]').forEach(b=>b.classList.toggle('on',b.dataset.go.split(':')[0]===t));
   if(t==='asm') ASM.init();
+  if(t==='trn') TRN.enter(); else TRN.leave();
+  TRN.markPanel();
 }
 document.querySelectorAll('#tabs .tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 document.querySelectorAll('#sView button').forEach(b=>b.onclick=()=>{ VIEW3D=(b.dataset.v==='3d'); L3D.show(VIEW3D); $('#sTitle').textContent=VIEW3D?'Vista 3D':'Vista lateral'; });

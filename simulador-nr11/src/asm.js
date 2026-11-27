@@ -70,7 +70,7 @@ const ASM = (function(){
     where:'Na face frontal do mastro.',
     nr:'Correntes: lubrificadas, sem folga excessiva e sem elos trincados. Corrente desigual desalinha a carga.'},
    {id:'garfos',n:16,name:'Garfos',grp:'Sistema de elevação',req:['carro'],kg:110,anchor:[0.9,0.1,0],ex:[2.9,0,0],
-    func:'Apoiam a carga. Devem entrar sob pelo menos 2/3 do comprimento do pallet, bem afastados e centralizados.',
+    func:'Apoiam a carga. Devem entrar sob pelo menos 3/4 (75%) do comprimento da carga, bem afastados e centralizados.',
     where:'Presos ao carro porta-garfos, apontando para frente.',
     nr:'Trincas, empenamento ou talão desgastado: retire de uso. Nunca levante pessoas nos garfos.'},
    {id:'espaldar',n:17,name:'Espaldar (encosto da carga)',grp:'Sistema de elevação',req:['carro'],kg:28,anchor:[0.38,0.7,0],ex:[2.55,0.9,0],
