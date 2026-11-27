@@ -262,8 +262,10 @@ const ASM = (function(){
     const r=stage.canvas.getBoundingClientRect(); const m=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
     ray.setFromCamera(m,stage.camera);
     const objs=[]; PARTS.forEach(p=>{ const s=S[p.id].st; if(s==='on') objs.push(holders[p.id]); else if(s==='idle') objs.push(ghosts[p.id].g); });
-    const hits=ray.intersectObjects(objs,true); for(const h of hits){ if(h.object.isLineSegments&&!h.object.userData.pid) continue; let o=h.object; while(o&&!o.userData.pid) o=o.parent; if(o&&o.userData.pid) return o.userData.pid; }
-    return null;
+    const hits=ray.intersectObjects(objs,true); const ids=[];
+    for(const h of hits){ if(h.object.isLineSegments&&!h.object.userData.pid) continue; let o=h.object; while(o&&!o.userData.pid) o=o.parent; if(o&&o.userData.pid&&!ids.includes(o.userData.pid)) ids.push(o.userData.pid); }
+    // prefere peças já montadas ou que podem ser montadas agora (as bloqueadas ficam por último)
+    return ids.find(id=>S[id].st==='on'||canMount(id))||ids[0]||null;
   }
   function onHover3d(e){ const id=hit(e); A.hover=id; stage.canvas.style.cursor=id?'pointer':'grab'; }
   function onClick3d(e){ const id=hit(e); if(id) pick(id); }

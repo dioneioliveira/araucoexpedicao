@@ -153,6 +153,14 @@ body{display:block}
 #mSee svg{width:100%;height:auto;max-height:190px;display:block;background:#F8F9F9;border:1px solid #ECEEEE;border-radius:12px}
 @media (max-width:1100px){
   #shell{flex-direction:column;height:auto}
+  #content{display:block}
+  .swrap{min-height:320px}
+  .cwrap{min-height:380px}
+  #aTitle,#aHint{display:none}
+  #aTray{max-height:none;height:340px}
+  .card h2{flex-wrap:wrap;white-space:normal}
+  header{flex-wrap:wrap}
+  #tabs{margin-left:0}
   #rail{flex:0 0 auto;flex-direction:row;width:100%;padding:6px 10px;border-right:none;border-bottom:1px solid var(--line)}
   #rail::after{right:0;left:0;top:auto;bottom:-1px;width:auto;height:3px;background:linear-gradient(90deg,#B7D9D8,#D0CC00)}
   #railName{gap:.9em;writing-mode:horizontal-tb;transform:none;justify-content:flex-start;flex:1}
@@ -206,7 +214,7 @@ button.glow{animation:glow 1.2s infinite}
 #aToast{position:absolute;left:50%;top:12px;transform:translateX(-50%) translateY(-10px);background:#fff;border:1px solid #E3E6E6;border-left:5px solid #D0CC00;border-radius:10px;padding:7px 14px;font-size:13px;font-weight:600;color:#4A4A4A;box-shadow:0 8px 22px rgba(70,80,80,.18);opacity:0;pointer-events:none;transition:.25s;max-width:80%}
 #aToast.show{opacity:1;transform:translateX(-50%)}
 #aToast.warn{border-left-color:#d98a00}
-#aHint{position:absolute;left:10px;bottom:8px;font-size:11px;color:#7A7A7A;background:rgba(255,255,255,.85);padding:2px 8px;border-radius:6px;pointer-events:none}
+#aHint{position:absolute;left:10px;bottom:8px;max-width:calc(100% - 430px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:#7A7A7A;background:rgba(255,255,255,.85);padding:2px 8px;border-radius:6px;pointer-events:none}
 #aTitle{position:absolute;right:10px;bottom:8px;font-size:10.5px;line-height:1.5;color:#6a6a6a;background:rgba(255,255,255,.92);border:1px solid #9aa3a3;border-radius:2px;padding:5px 10px;pointer-events:none;box-shadow:0 2px 8px rgba(70,80,80,.12)}
 #aTitle b{color:#8d8a00;letter-spacing:.06em;margin-right:4px}
 #aInfo{overflow:hidden}
@@ -1930,8 +1938,10 @@ const ASM = (function(){
     const r=stage.canvas.getBoundingClientRect(); const m=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
     ray.setFromCamera(m,stage.camera);
     const objs=[]; PARTS.forEach(p=>{ const s=S[p.id].st; if(s==='on') objs.push(holders[p.id]); else if(s==='idle') objs.push(ghosts[p.id].g); });
-    const hits=ray.intersectObjects(objs,true); for(const h of hits){ if(h.object.isLineSegments&&!h.object.userData.pid) continue; let o=h.object; while(o&&!o.userData.pid) o=o.parent; if(o&&o.userData.pid) return o.userData.pid; }
-    return null;
+    const hits=ray.intersectObjects(objs,true); const ids=[];
+    for(const h of hits){ if(h.object.isLineSegments&&!h.object.userData.pid) continue; let o=h.object; while(o&&!o.userData.pid) o=o.parent; if(o&&o.userData.pid&&!ids.includes(o.userData.pid)) ids.push(o.userData.pid); }
+    // prefere peças já montadas ou que podem ser montadas agora (as bloqueadas ficam por último)
+    return ids.find(id=>S[id].st==='on'||canMount(id))||ids[0]||null;
   }
   function onHover3d(e){ const id=hit(e); A.hover=id; stage.canvas.style.cursor=id?'pointer':'grab'; }
   function onClick3d(e){ const id=hit(e); if(id) pick(id); }
