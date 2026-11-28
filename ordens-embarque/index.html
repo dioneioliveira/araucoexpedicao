@@ -90,6 +90,7 @@
       <div class="list-head">
         <button class="btn-min" id="btn-min" type="button" title="Ocultar abas, filtros e contadores (lista maior)" aria-label="Ocultar abas, filtros e contadores"><span>−</span></button>
         <h2 id="list-title">Lista diária</h2>
+        <label class="mini-date" title="Data da lista">Data <input type="date" id="date-mini"></label>
         <span class="muted" id="list-sub"></span>
         <span class="list-legend"><span><i style="background:var(--ok)"></i>Impressa</span><span><i style="background:var(--err)"></i>Com alterações</span><span><i style="background:#d6d6d6"></i>Faturada</span><span><i style="background:#fff;border:1px solid var(--line)"></i>A imprimir</span><span><i style="background:#f4f4f4;border:1px dashed var(--ink-faint)"></i>Agendado, ordem não importada</span></span>
       </div>
@@ -255,6 +256,7 @@
           <button class="btn btn-primary da-btn da-main" id="d-print"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6z"/></svg><span>Imprimir ordem<small id="d-print-sub">2 check-lists</small></span></button>
           <button class="btn btn-ghost da-btn" data-doc="sep"><svg viewBox="0 0 24 24"><path d="M9 5h11M9 12h11M9 19h11M4 5h.01M4 12h.01M4 19h.01"/></svg><span>Separação<small>A4 em pé</small></span></button>
           <button class="btn btn-ghost da-btn" data-doc="id"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="1"/><path d="M6 10h8M6 14h5"/></svg><span>Identificador da carga<small>A4 deitado</small></span></button>
+          <button class="btn btn-ghost da-btn" data-doc="mold" id="d-mold" hidden><svg viewBox="0 0 24 24"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg><span>Simulação de carga<small>molduras · 3D</small></span></button>
           <button class="btn btn-ghost da-btn" data-doc="ver"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Ver documentos</span></button>
         </div>
         <div class="da-group">
@@ -614,6 +616,7 @@
 <script src="js/sync.js"></script>
 <script src="js/fotos.js"></script>
 <script src="js/cancelamento-modelo.js"></script>
+<script src="js/molduras-sim.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

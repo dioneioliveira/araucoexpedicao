@@ -352,6 +352,7 @@
       if (isExport(T) && comSeparacao(T)) pages.push(buildSeparacao(T));
       if (comIdentificador(T)) pages.push(buildIdentificador(T)); // identificador só para container
       const esp = especialDe(T); if (esp && esp.checklist !== false) pages.push(buildCheckVisual(T, esp)); // cliente especial
+      if (isMoldura(T)) { const sm = moldCache.get(chaveMoldura(T)); if (sm) pages.push(buildMoldura(T, sm)); } // simulação de carga (molduras)
     }
     return pages;
   }
@@ -439,6 +440,7 @@
     if (!list.length) return;
     if (!(await avisoOcorrencias(list))) return;
     if (!(await avisoEspeciais(list))) return;
+    await prepararMolduras(list);
     const incompletos = list.filter(T => T.missing.length);
     if (incompletos.length) {
       const ok = await confirmBox('Dados obrigatórios faltando',
@@ -611,6 +613,7 @@
     $('#empty-state').hidden = linhas.length > 0;
     $('#daily-table').style.display = linhas.length ? '' : 'none';
     $('#list-title').textContent = `Lista diária · ${P.fmtDateBR(ui.date)}`;
+    { const dm = $('#date-mini'); if (dm && document.activeElement !== dm) dm.value = ui.date; }
     const altN = list.filter(T => T.printed && !T.faturado && T.alteracoes.length).length;
     const ag = state.sew.filter(s => !s.carregamento && !s.removed && s.data === ui.date).length;
     $('#list-sub').textContent = `${list.length} ordem(ns)${fantasmas.length ? ` · ${fantasmas.length} agendamento(s) sem ordem importada` : ''}${ag ? ` · ${ag} agendamento(s) SEW` : ''}${altN ? ` · ${altN} impressa(s) com alterações` : ''} · faturadas ficam no fim da lista`;
@@ -2037,6 +2040,83 @@
     $('#oc-quando').addEventListener('change', e => { if (e.target.value) $('#oc-turno').value = turnoDe(new Date(e.target.value)); });
   }
 
+  // ------------------------------------------------------------------ simulação de carga de molduras (folha extra)
+  // Simulador do usuário (vendor/carregador-molduras.html → js/molduras-sim.js) rodando num iframe escondido; recebe os
+  // dados da ordem pela API window.CarregadorMolduras.simular e devolve o resultado + o desenho 3D (canvas → imagem).
+  const isMoldura = T => T.items.some(i => /^\s*MOL\b/i.test(i.descricao || ''));
+  const moldCache = new Map(); // chave da carga -> { r, img, cores }
+  const dadosMoldura = T => ({
+    carga: T.transporte, placa: T.eff.placaL, container: semValor(T.ot.container) ? '' : T.ot.container,
+    carregamento: (T.items[0] || {}).agendamento || '', agendamento: [P.fmtDateBR(T.eff.data), T.eff.hora].filter(Boolean).join(' '),
+    pesoCarga: (T.items[0] || {}).peso || null, itens: T.items.map(i => ({ item: i.material, descricao: i.descricao, qtde: i.qtd })),
+  });
+  const chaveMoldura = T => JSON.stringify(dadosMoldura(T));
+  let moldFrame = null;
+  function frameMoldura() {
+    if (moldFrame) return moldFrame;
+    moldFrame = new Promise((res, rej) => {
+      if (!window.OE_MOLD_HTML) { rej(new Error('simulador de molduras não incluído')); return; }
+      const f = document.createElement('iframe');
+      f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+      f.style.cssText = 'position:fixed;left:-30000px;top:0;width:1180px;height:1800px;border:0;visibility:visible';
+      f.onload = () => { const api = f.contentWindow && f.contentWindow.CarregadorMolduras; api ? res(f) : rej(new Error('simulador sem a API CarregadorMolduras')); };
+      f.srcdoc = window.OE_MOLD_HTML; document.body.appendChild(f);
+    });
+    moldFrame.catch(() => { moldFrame = null; });
+    return moldFrame;
+  }
+  async function simularMoldura(T) {
+    const k = chaveMoldura(T); if (moldCache.has(k)) return moldCache.get(k);
+    const f = await frameMoldura(), w = f.contentWindow, d = w.document;
+    const r = w.CarregadorMolduras.simular(dadosMoldura(T));
+    await new Promise(ok => w.requestAnimationFrame(() => w.requestAnimationFrame(ok)));
+    const cap = id => { const c = d.getElementById(id); try { return c && c.width ? c.toDataURL('image/png') : ''; } catch (e) { return ''; } };
+    const cores = {}; d.querySelectorAll('#legenda span').forEach(sp => { const i = sp.querySelector('i'); cores[sp.textContent.trim()] = i ? i.style.background : ''; });
+    const sm = { r, cores, img: { stage: cap('stage'), top: cap('stageTop'), side: cap('stageSide'), front: cap('stageFront'), angle: cap('stageAngle') } };
+    moldCache.set(k, sm); return sm;
+  }
+  async function prepararMolduras(list) {
+    for (const T of list.filter(isMoldura)) {
+      try { await simularMoldura(T); } catch (e) { toast(`Simulação de molduras do transporte ${T.transporte} não foi gerada: ${e.message || e}`, 'warn'); }
+    }
+  }
+  // impressão avulsa pelos botões do painel (separação, identificador ou simulação de molduras)
+  async function imprimirDoc(T, tipo) {
+    if (tipo === 'mold') {
+      try { imprimirAvulso([buildMoldura(T, await simularMoldura(T))]); } catch (e) { toast('Não foi possível gerar a simulação de molduras: ' + (e.message || e), 'err'); }
+      return;
+    }
+    imprimirAvulso([tipo === 'sep' ? buildSeparacao(T) : buildIdentificador(T)]);
+  }
+  function buildMoldura(T, sm) {
+    const r = sm.r, e = T.eff, el = document.createElement('div');
+    el.className = 'sheet sheet-sep sheet-mold'; el.dataset.wpt = '595.3'; el.dataset.hpt = '841.9';
+    const kpi = (l, v, sub) => `<div class="mo-kpi"><span>${esc(l)}</span><b>${esc(v)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
+    const pecas = r.itens.reduce((a, i) => a + (i.pecas || 0), 0);
+    const al = [...r.faltas.map(x => ['warn', 'Falta para simular: ' + x]), ...r.desvios.map(x => ['warn', 'Desvio: ' + x]), ...r.avisos.map(x => ['info', x])];
+    if (r.ok) al.push(['ok', `Carga completa: todos os ${r.totalLotes} lotes cabem no veículo, dentro do peso.`]);
+    const mini = (l, src) => `<div class="mo-mini"><span>${esc(l)}</span>${src ? `<img src="${src}" alt="">` : ''}</div>`;
+    el.innerHTML = `
+      <div class="sp-head">
+        <img src="${logoSrc()}" alt="Arauco">
+        <div class="sp-title"><div>SIMULAÇÃO DE CARGA · MOLDURAS</div><small>${esc(r.veiculo.nome)} · ${fmtNum(r.veiculo.comprimento, 0)}×${fmtNum(r.veiculo.largura, 0)}×${fmtNum(r.veiculo.altura, 0)} mm</small></div>
+        <div class="sp-tr"><span>TRANSPORTE</span><b>${esc(T.transporte)}</b><small>${esc(P.fmtDateBR(e.data))} ${esc(e.hora || '')}</small></div>
+      </div>
+      <div class="mo-info">${esc([e.cliente, r.container && 'Container ' + fmtContainer(r.container), r.placa && 'Placa ' + r.placa, r.pesoCarga && 'Peso da carga ' + fmtNum(r.pesoCarga, 0) + ' kg'].filter(Boolean).join(' · '))}</div>
+      <div class="mo-kpis">${kpi('Lotes carregados', `${r.lotesCarregados}/${r.totalLotes}`, r.lotesSemEspaco ? `${r.lotesSemEspaco} sem espaço` : 'todos no veículo')}${kpi('Peso', fmtNum(r.pesoCarregado, 0) + ' kg', 'de ' + fmtNum(r.pesoMax, 0) + ' kg')}${kpi('Volume ocupado', fmtNum(r.ocupacaoVolume, 1) + '%')}${kpi('Peças', fmtNum(pecas, 0), r.itens.length + ' material(is)')}</div>
+      ${al.length ? `<div class="mo-al">${al.map(([c, t]) => `<div class="mo-a ${c}">${esc(t)}</div>`).join('')}</div>` : ''}
+      <div class="mo-stage">${sm.img.stage ? `<img src="${sm.img.stage}" alt="Visão 3D da carga">` : ''}</div>
+      <div class="mo-minis">${mini('Superior', sm.img.top)}${mini('Lateral', sm.img.side)}${mini('Frontal (porta)', sm.img.front)}${mini('Em ângulo', sm.img.angle)}</div>
+      <table class="sp-tab mo-tab"><thead><tr><th>Item / descrição</th><th class="n">Peças</th><th class="n">Pç/lote</th><th class="n">Lotes</th><th class="n">Lote (mm)</th><th class="n">Peso (kg)</th><th>Situação</th></tr></thead>
+      <tbody>${r.itens.map(i => `<tr><td><i class="mo-dot" style="background:${esc(sm.cores[i.item] || '#ccc')}"></i><b>${esc(i.item || '—')}</b> <span class="tx">${esc(i.descricao || '')}</span></td>
+        <td class="n">${i.pecas == null ? '—' : fmtNum(i.pecas, 0)}</td><td class="n">${i.pecasPorLote ? fmtNum(i.pecasPorLote, 0) : '—'}</td><td class="n"><b>${i.lotes == null ? '—' : i.lotes}</b></td>
+        <td class="n">${i.medidasLote ? `${fmtNum(i.medidasLote.comprimento, 0)}×${fmtNum(i.medidasLote.largura, 0)}×${fmtNum(i.medidasLote.altura, 0)}` : '—'}</td><td class="n">${i.pesoKg == null ? '—' : fmtNum(i.pesoKg, 0)}</td>
+        <td>${esc(i.situacao === 'pendente' ? i.faltas.join(' · ') : i.situacao === 'parcial' ? `${i.lotesSemEspaco} lote(s) sem espaço` : 'carregado')}${i.porCima ? ' · por cima' : ''}${i.ultimoLote ? ` · último lote: ${i.ultimoLote} pç` : ''}</td></tr>`).join('')}
+        ${(r.ignorados || []).map(g => `<tr class="mo-ign"><td><b>${esc(g.item || '—')}</b> <span class="tx">${esc(g.descricao || '')}</span></td><td class="n">${g.pecas == null ? '—' : fmtNum(g.pecas, 0)}</td><td class="n">—</td><td class="n">${g.lotes == null ? '—' : g.lotes}</td><td class="n">—</td><td class="n">—</td><td>não é moldura — fora da simulação</td></tr>`).join('')}</tbody></table>
+      <div class="sp-foot">Arauco · Expedição Piên · simulação de carga (Carregador ${esc(r.versao || '')}) · gerado em ${esc(new Date().toLocaleString('pt-BR'))}</div>`;
+    return el;
+  }
+
   // ------------------------------------------------------------------ modo compacto da lista diária
   // botão −/+ no título da lista: oculta abas, filtros/botões e contadores para a listagem de cargas ficar maior
   const COMPACTO_KEY = 'arauco.ordensEmbarque.compacto';
@@ -2756,6 +2836,7 @@
     marcarPendOT(T);
     renderPresencaPainel();
     $('#d-mail').hidden = !pedeFotos(T);
+    $('#d-mold').hidden = !isMoldura(T);
     $('#d-expterr').hidden = !isAraucoMaderas(T); // só em exportação terrestre (Arauco Maderas)
     if (pedeFotos(T) || $('#lat-sec')) carregarMiniaturas($('#d-body'));
   }
@@ -2837,6 +2918,7 @@
 
   function bind() {
     $('#date-filter').addEventListener('change', e => { ui.date = e.target.value || P.todayISO(); ui.selected.clear(); renderAll(); });
+    $('#date-mini').addEventListener('change', e => { ui.date = e.target.value || P.todayISO(); $('#date-filter').value = ui.date; ui.selected.clear(); renderAll(); });
     $$('#janela-filter button').forEach(b => b.addEventListener('click', () => {
       $$('#janela-filter button').forEach(x => x.classList.toggle('active', x === b)); ui.janela = b.dataset.v; renderList();
     }));
@@ -2958,7 +3040,7 @@
       const doc = e.target.closest('[data-doc]'); if (!doc) return;
       const T = getTransport(ui.open); if (!T) return;
       if (doc.dataset.doc === 'ver') { openPreview([T]); return; }
-      imprimirAvulso([doc.dataset.doc === 'sep' ? buildSeparacao(T) : buildIdentificador(T)]);
+      imprimirDoc(T, doc.dataset.doc);
     });
     $('#d-body').addEventListener('click', e => {
       if (e.target.closest('[data-cn-abrir]')) { e.preventDefault(); abrirCancelamento(ui.open); return; }
@@ -2967,7 +3049,7 @@
       if (doc) {
         const T = getTransport(ui.open); if (!T) return;
         if (doc.dataset.doc === 'ver') { openPreview([T]); return; }
-        imprimirAvulso([doc.dataset.doc === 'sep' ? buildSeparacao(T) : buildIdentificador(T)]);
+        imprimirDoc(T, doc.dataset.doc);
         return;
       }
       const b = e.target.closest('[data-reset]'); if (!b) return;

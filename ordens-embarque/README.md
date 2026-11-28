@@ -647,3 +647,13 @@ do de exportação: EXP, placas e transporte, nota fiscal e documento SAP, e as 
 O botão **−** ao lado do título **LISTA DIÁRIA** oculta as abas, os filtros/botões (data, Todas/MI/Containers, busca, Semana,
 Relatório…) e os contadores, e a listagem de cargas fica maior. O botão vira **+** para mostrar tudo de novo. A escolha fica
 lembrada neste computador.
+
+### Simulação de carga · molduras (folha extra na impressão)
+
+Quando a ordem tem material de **moldura** (descrição "MOL …"), a impressão inclui também a folha **Simulação de carga ·
+Molduras**: lotes carregados, peso, volume ocupado, peças, avisos/desvios (ex.: lotes sem espaço), visão 3D, vistas superior /
+lateral / frontal / em ângulo e a tabela dos itens. A simulação é feita pelo **Carregador de molduras** (o HTML que você
+mandou), com os dados da própria ordem (mesma Solicitação de Embarque colada com Ctrl+C/Ctrl+V). No painel, o botão
+**Simulação de carga** imprime só essa folha. Para atualizar o simulador: `python3 tools/build_molduras.py novo.html`.
+
+No modo compacto da lista (botão −), a **data** continua visível ao lado do título.

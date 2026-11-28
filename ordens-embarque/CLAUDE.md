@@ -218,4 +218,11 @@
   TRANSPORTE + NOTA FISCAL | DOCUMENTO SAP, fotos em grade; bloqueado sem EXP, NF-e, Doc ou sem as 6 fotos (`MAIL_CAMPOS_TERR`).
 - Modo compacto da lista diária: botão `#btn-min` (−/+) no título da lista → `body.compacto` oculta `#views`, `.toolbar` e
   `#kpis` e aumenta a altura da `.table-wrap`; lembrado por computador (`arauco.ordensEmbarque.compacto`, `bindCompacto`).
+  A data continua visível no compacto (`#date-mini` no título da lista, sincronizada com `#date-filter`).
+- Simulação de carga de molduras (`isMoldura` = algum item "MOL…"): simulador do usuário `vendor/carregador-molduras.html`
+  (não editar aqui; atualizar com `python3 tools/build_molduras.py <novo.html>`, que troca placas/container do exemplo por
+  fictícios e gera `js/molduras-sim.js` = `window.OE_MOLD_HTML`). Roda num iframe escondido (`frameMoldura`), API
+  `CarregadorMolduras.simular(dadosMoldura(T))` (itens da ordem: material, descrição, qtd; carga, placa, container, peso);
+  `simularMoldura` guarda resultado + canvases em imagem (`moldCache`); `printTransports` → `prepararMolduras`; `pagesFor`
+  acrescenta `buildMoldura` (A4 `sheet-mold`). Botão avulso `#d-mold` (`imprimirDoc`). Veículo = padrão do simulador (40' HC).
 

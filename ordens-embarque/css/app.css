@@ -769,3 +769,29 @@ tr.bl-excluida td:last-child, tr.bl-excluida td:nth-child(5){text-decoration:non
 .btn-min:hover{border-color:var(--turq-strong);color:var(--turq-strong);background:var(--turq-ghost)}
 body.compacto #views,body.compacto .toolbar,body.compacto #kpis{display:none !important}
 body.compacto .list-card .table-wrap{max-height:calc(100vh - 150px)}
+
+/* data visível no modo compacto */
+.mini-date{display:none;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--title);align-self:center}
+.mini-date input{font:inherit;font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;border:1px solid var(--line);border-radius:8px;padding:4px 8px;color:var(--ink)}
+body.compacto .mini-date{display:inline-flex}
+/* simulação de carga · molduras (folha A4) */
+.sheet-mold{gap:2.4mm}
+.sheet-mold .sp-title div{font-size:15pt}
+.mo-info{font-size:9pt;color:#333}
+.mo-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:2.5mm}
+.mo-kpi{border:.35mm solid #000;border-radius:1.5mm;padding:1.2mm 2.5mm}
+.mo-kpi span{display:block;font-size:6.8pt;font-weight:700;text-transform:uppercase;color:#444}
+.mo-kpi b{display:block;font-size:13pt}
+.mo-kpi small{font-size:7.5pt;color:#444}
+.mo-al{display:flex;flex-direction:column;gap:.8mm}
+.mo-a{font-size:8pt;padding:1mm 2mm;border-left:1.2mm solid #888;background:#f4f4f4;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.mo-a.warn{border-color:#b5473f;background:#f8e6e4}.mo-a.ok{border-color:#4f8f6a;background:#e6f2ea}
+.mo-stage{border:.35mm solid #000;border-radius:1.5mm;height:92mm;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mo-stage img{max-width:100%;max-height:100%;object-fit:contain}
+.mo-minis{display:grid;grid-template-columns:repeat(4,1fr);gap:2mm}
+.mo-mini{border:.35mm solid #000;border-radius:1.5mm;padding:1mm;height:34mm;display:flex;flex-direction:column;overflow:hidden}
+.mo-mini span{font-size:6.5pt;font-weight:700;text-transform:uppercase;color:#444}
+.mo-mini img{flex:1;min-height:0;width:100%;object-fit:contain}
+.mo-tab{font-size:7.8pt}.mo-tab td{height:auto;padding:1mm 1.5mm}.mo-tab .tx{font-size:7pt;color:#333}
+.mo-dot{display:inline-block;width:2.6mm;height:2.6mm;border-radius:.6mm;margin-right:1.2mm;vertical-align:-.3mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.mo-tab tr.mo-ign td{color:#777}
